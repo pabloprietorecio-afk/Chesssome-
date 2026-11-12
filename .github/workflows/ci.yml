@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  web:
+    name: Núcleo TypeScript y prototipo web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      # Incluye el test que comprueba que los datos de oro de Godot están al día con el núcleo TypeScript.
+      - run: npm test
+      - run: npm run build:single
+
+      - name: Prototipo web en un solo archivo
+        uses: actions/upload-artifact@v4
+        with:
+          name: chessome-web
+          path: dist/chessome.html
+          retention-days: 14
+
+  godot:
+    name: Godot (tests sin pantalla y APK de depuración)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Caché de Godot y plantillas de Android
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-dl
+          key: godot-${{ env.GODOT_VERSION }}-android-v1
+
+      - name: Descargar Godot y plantillas (comprobando las sumas SHA-512 oficiales)
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/godot-dl/templates && cd ~/godot-dl
+          BASE=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          ED=Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          TPZ=Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          W="wget -nv --tries=6 --waitretry=15 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+          $W $BASE/SHA512-SUMS.txt
+          $W $BASE/$ED
+          $W $BASE/$TPZ
+          grep -E "  ($ED|$TPZ)$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q $ED && rm $ED
+          unzip -q -j $TPZ templates/android_debug.apk templates/android_release.apk templates/version.txt -d templates/
+          rm $TPZ
+          ls -la ~/godot-dl ~/godot-dl/templates
+
+      - name: Instalar plantillas, firma de depuración y ajustes del editor
+        run: |
+          set -euo pipefail
+          T=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $T ~/.config/godot
+          cp ~/godot-dl/templates/* $T/
+          cat $T/version.txt
+          # Firma de depuración fija (android_firma/): cada APK se instala encima del anterior.
+          cp android_firma/debug.keystore ~/debug.keystore
+          # versionCode creciente: Android solo actualiza a un versionCode igual o mayor.
+          sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/; s/^version\/name=.*/version\/name=\"0.1.${{ github.run_number }}\"/" godot/export_presets.cfg
+          grep -E "^version/(code|name)" godot/export_presets.cfg
+          V=$(echo $GODOT_VERSION | cut -d. -f1,2)
+          for F in editor_settings-$V.tres editor_settings-4.tres; do
+          cat > ~/.config/godot/$F <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          done
+          cat ~/.config/godot/editor_settings-$V.tres
+
+      - name: Importar el proyecto
+        run: |
+          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tail -20 || true
+
+      - name: Prueba de oro de Glicko-2 (GDScript frente al núcleo TypeScript)
+        run: |
+          set -o pipefail
+          G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
+          timeout 300 $G --headless --path godot -s tests/test_glicko2.gd 2>&1 | tee /tmp/test_glicko2.log
+          # un error de guion no siempre cambia el código de salida: se busca también en la salida
+          ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" /tmp/test_glicko2.log
+          grep -q "TODO OK" /tmp/test_glicko2.log
+
+      - name: APK de depuración (arm64)
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/android_firma/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          set -o pipefail
+          mkdir -p build/android
+          A=$GITHUB_WORKSPACE/build/android/Chessome-debug.apk
+          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-debug "Android Debug" $A 2>&1 | tail -40
+          ls -lh $A
+          unzip -l $A | tail -3
+
+      - name: Subir el APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chessome-debug-apk
+          path: build/android/Chessome-debug.apk
+          if-no-files-found: error
+          retention-days: 14
