@@ -64,6 +64,18 @@ func _run() -> void:
 	board.anim_mode = Board3D.Anim.NONE
 	await _frames(8)
 	await _shot("01_inicio")
+	var maple := load("res://textures/arce.jpg") as Texture2D
+	if maple != null:
+		var img := maple.get_image()
+		print("TEXTURA arce %s formato=%d mipmaps=%s" % [str(maple.get_size()), img.get_format(), str(img.has_mipmaps())])
+	# El otro acabado: ilustrado, con su contorno de tinta.
+	view.set_board_style("ilustrado")
+	await _frames(3)
+	await _shot("01b_ilustrado")
+	view.set_board_style("realista", true)
+	await _frames(3)
+	await _shot("01c_realista_con_contorno")
+	view.set_board_style("realista")
 
 	# Medio juego: última jugada, jaque y pieza seleccionada con sus destinos.
 	view.set_fen(MID_FEN)

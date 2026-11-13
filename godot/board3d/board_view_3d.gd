@@ -188,6 +188,11 @@ func set_board_theme(theme_name: String, backdrop: Color = Color(0, 0, 0, 0)) ->
 	_style_promotion(theme_name == "dark")
 
 
+## Acabado del tablero y de las piezas: "realista" (maderas con textura) o "ilustrado" (liso, con contorno).
+func set_board_style(style_name: String, with_outline: Variant = null) -> void:
+	board.set_style(style_name, with_outline)
+
+
 ## La vista actual es (casi) en picado.
 func is_top_view() -> bool:
 	return board.cam_pitch > 84.0

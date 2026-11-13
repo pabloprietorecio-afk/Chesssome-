@@ -37,6 +37,10 @@ var orientation := 0
 var anim_mode: Anim = Anim.FAST
 var set_id := "clasico"
 var show_coordinates := true
+## Acabado: "realista" (maderas con textura fotográfica y reflejos de estudio) o "ilustrado" (porcelana lisa).
+var style := "realista"
+## Contorno de tinta alrededor de las piezas (ver set_style y set_outline).
+var outline := false
 
 var camera: Camera3D
 var cam_pitch := DEFAULT_PITCH
@@ -60,6 +64,14 @@ var _targets := PackedInt32Array()
 var _pieces := {}
 var _meshes := {}
 var _mats: Array[ShaderMaterial] = []
+var _wood_mats: Array[ShaderMaterial] = []
+var _squares_wood: ShaderMaterial
+var _frame_wood: ShaderMaterial
+var _squares_node: MeshInstance3D
+var _frame_node: MeshInstance3D
+var _sky: Sky
+var _sky_mat: ShaderMaterial
+var _rim_light: DirectionalLight3D
 var _outline_mats: Array[ShaderMaterial] = []
 var _disc_mats: Array[ShaderMaterial] = []
 var _disc_mesh: ArrayMesh
@@ -94,6 +106,7 @@ var _fit_dist := 30.0
 
 func _ready() -> void:
 	_build()
+	_apply_style()
 	set_theme(_theme_name)
 	set_fen(chess.fen())
 	set_orientation(orientation)
@@ -134,6 +147,19 @@ func _build() -> void:
 	_fill.rotation = Vector3(deg_to_rad(-32.0), deg_to_rad(138.0), 0.0)
 	_fill.shadow_enabled = false
 	_light_rig.add_child(_fill)
+	# Luz de contra, baja y desde el fondo: dibuja el filo de las piezas en el acabado realista.
+	_rim_light = DirectionalLight3D.new()
+	_rim_light.rotation = Vector3(deg_to_rad(-24.0), deg_to_rad(205.0), 0.0)
+	_rim_light.shadow_enabled = false
+	_rim_light.light_energy = 0.0
+	_light_rig.add_child(_rim_light)
+	# Entorno de estudio (solo para la luz ambiente y los reflejos del acabado realista; no se ve de fondo).
+	_sky_mat = ShaderMaterial.new()
+	_sky_mat.shader = load("res://board3d/shaders/studio_sky.gdshader") as Shader
+	_sky = Sky.new()
+	_sky.sky_material = _sky_mat
+	_sky.radiance_size = Sky.RADIANCE_SIZE_256
+	_sky.process_mode = Sky.PROCESS_MODE_QUALITY
 
 	camera = Camera3D.new()
 	camera.fov = cam_fov
@@ -168,6 +194,7 @@ func _build() -> void:
 	_frame_mat.roughness = 0.5
 	frame.material_override = _frame_mat
 	add_child(frame)
+	_frame_node = frame
 
 	# Casillas.
 	var plane := PlaneMesh.new()
@@ -184,6 +211,18 @@ func _build() -> void:
 	_squares_mat.set_shader_parameter("state", _state_tex)
 	squares.material_override = _squares_mat
 	add_child(squares)
+	_squares_node = squares
+	# Materiales del acabado realista: taracea de arce y nogal, marco de palisandro, piezas de boj y de ébano.
+	_squares_wood = ShaderMaterial.new()
+	_squares_wood.shader = load("res://board3d/shaders/squares_wood.gdshader") as Shader
+	_squares_wood.set_shader_parameter("state", _state_tex)
+	_squares_wood.set_shader_parameter("light_wood", _texture("arce"))
+	_squares_wood.set_shader_parameter("light_normal", _texture("arce_normal"))
+	_squares_wood.set_shader_parameter("dark_wood", _texture("nogal"))
+	_squares_wood.set_shader_parameter("dark_normal", _texture("nogal_normal"))
+	_frame_wood = ShaderMaterial.new()
+	_frame_wood.shader = load("res://board3d/shaders/frame_wood.gdshader") as Shader
+	_frame_wood.set_shader_parameter("wood", _texture("palisandro"))
 
 	# Coordenadas dentro de las casillas del borde, como en los tableros en pantalla: así el marco puede ser
 	# fino y el tablero ocupa casi todo el ancho. Un juego para cada lado; se enseña el del lado que juega abajo.
@@ -211,10 +250,15 @@ func _build() -> void:
 	var piece_shader := load("res://board3d/shaders/piece.gdshader") as Shader
 	var outline_shader := load("res://board3d/shaders/outline.gdshader") as Shader
 	var disc_shader := load("res://board3d/shaders/outline_disc.gdshader") as Shader
+	var wood_shader := load("res://board3d/shaders/piece_wood.gdshader") as Shader
 	for side in 2:
 		var m := ShaderMaterial.new()
 		m.shader = piece_shader
 		_mats.append(m)
+		var wm := ShaderMaterial.new()
+		wm.shader = wood_shader
+		wm.set_shader_parameter("wood", _texture("boj" if side == 0 else "ebano"))
+		_wood_mats.append(wm)
 		var om := ShaderMaterial.new()
 		om.shader = outline_shader
 		om.set_shader_parameter("width", OUTLINE_WIDTH)
@@ -226,6 +270,14 @@ func _build() -> void:
 	for t: int in PIECE_FILES:
 		_meshes[t] = _load_mesh("res://sets/%s/%s.glb" % [set_id, PIECE_FILES[t]])
 	_built = true
+
+
+static func _texture(texture_name: String) -> Texture2D:
+	var path := "res://textures/%s.jpg" % texture_name
+	if not ResourceLoader.exists(path):
+		push_error("Falta la textura " + path)
+		return null
+	return load(path) as Texture2D
 
 
 func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label3D:
@@ -316,39 +368,119 @@ static func _inverse_filmic(y: float) -> float:
 	return maxf((-qb - sqrt(disc)) / (2.0 * qa), 0.0)
 
 
+## Cambia el acabado: "realista" o "ilustrado". El contorno de tinta va con el ilustrado, salvo que se indique.
+func set_style(style_name: String, with_outline: Variant = null) -> void:
+	style = style_name if style_name in ["realista", "ilustrado"] else "realista"
+	outline = (style == "ilustrado") if with_outline == null else bool(with_outline)
+	if not _built:
+		return
+	_apply_style()
+	set_theme(_theme_name)
+
+
+## Contorno de tinta alrededor de las piezas, en cualquiera de los dos acabados.
+func set_outline(on: bool) -> void:
+	outline = on
+	if not _built:
+		return
+	for node: Node3D in _pieces.values():
+		_dress(node)
+	for node: Node3D in _dying:
+		if is_instance_valid(node):
+			_dress(node)
+
+
+func _piece_material(side: int) -> ShaderMaterial:
+	return _wood_mats[side] if style == "realista" else _mats[side]
+
+
+## Pone a una pieza el material del acabado y enseña u oculta su contorno.
+func _dress(node: Node3D) -> void:
+	var side := Chess.color_of(node.get_meta("piece"))
+	(node.get_node("Malla") as MeshInstance3D).material_override = _piece_material(side)
+	(node.get_node("Contorno") as MeshInstance3D).visible = outline
+	(node.get_node("Peana") as MeshInstance3D).visible = outline
+
+
+func _apply_style() -> void:
+	var real := style == "realista"
+	_squares_node.material_override = _squares_wood if real else _squares_mat
+	_frame_node.material_override = _frame_wood if real else _frame_mat
+	# El acabado realista se ilumina con el entorno de estudio (luz ambiente y reflejos); el ilustrado, con un
+	# color de ambiente liso y sin reflejos.
+	_env.sky = _sky if real else null
+	_env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY if real else Environment.AMBIENT_SOURCE_COLOR
+	_env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if real else Environment.REFLECTION_SOURCE_DISABLED
+	for node: Node3D in _pieces.values():
+		_dress(node)
+	for node: Node3D in _dying:
+		if is_instance_valid(node):
+			_dress(node)
+
+
 func set_theme(theme_name: String) -> void:
 	_theme_name = theme_name
 	if not _built:
 		return
 	var dark := theme_name == "dark"
-	_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
-	_env.ambient_light_energy = 0.42 if dark else 0.42
-	_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
-	_key.light_energy = 0.9 if dark else 0.76
-	_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
-	_fill.light_energy = 0.2 if dark else 0.16
 	_shadow_mat.set_shader_parameter("shadow_color", Color("000208") if dark else Color("203060"))
 	_shadow_mat.set_shader_parameter("strength", 0.75 if dark else 0.36)
-	_frame_mat.albedo_color = Color("202b4e") if dark else Color("27335a")
-	# Casillas con cuerpo: las claras no llegan al blanco, para que las piezas de marfil destaquen sobre ellas.
-	var light_sq := Color("bfcfea") if dark else Color("bdcdea")
-	var dark_sq := Color("6481b5") if dark else Color("6683b7")
-	_squares_mat.set_shader_parameter("light_sq", light_sq)
-	_squares_mat.set_shader_parameter("dark_sq", dark_sq)
-	# Claras: marfil limpio. Oscuras: azul tinta con el canto más claro. Las dos con contorno de tinta.
-	_mats[0].set_shader_parameter("base_color", Color("f8f0e0"))
-	_mats[0].set_shader_parameter("rim_color", Color("94846c"))
-	_mats[0].set_shader_parameter("rim_amount", 0.36)
-	_mats[1].set_shader_parameter("base_color", Color("2a3557"))
-	_mats[1].set_shader_parameter("rim_color", Color("9db2e0"))
-	_mats[1].set_shader_parameter("rim_amount", 0.56)
 	var outline_colors: Array[Color] = [Color("262e4c"), Color("0a0f22")]
+	var light_label := Color.WHITE
+	var dark_label := Color.BLACK
+	if style == "realista":
+		# Estudio: luz principal cálida con sombra, ambiente y reflejos del entorno, y una contra suave.
+		_env.ambient_light_sky_contribution = 1.0
+		_env.ambient_light_energy = 0.62
+		_sky_mat.set_shader_parameter("intensity", 1.0)
+		_key.light_color = Color("fff1dc")
+		_key.light_energy = 1.0
+		_fill.light_energy = 0.0
+		_rim_light.light_color = Color("dfe9ff")
+		_rim_light.light_energy = 0.3
+		_squares_wood.set_shader_parameter("light_tint", Color(1.0, 0.98, 0.94))
+		_squares_wood.set_shader_parameter("dark_tint", Color(0.78, 0.7, 0.64))
+		_frame_wood.set_shader_parameter("tint", Color(0.62, 0.56, 0.54))
+		# Boj claro y ébano casi negro: los brillos del barniz son los que dibujan el volumen de las oscuras.
+		_wood_mats[0].set_shader_parameter("tint", Color(1.08, 1.02, 0.9))
+		_wood_mats[0].set_shader_parameter("rough", 0.36)
+		_wood_mats[0].set_shader_parameter("rim_amount", 0.0)
+		_wood_mats[1].set_shader_parameter("tint", Color(0.34, 0.31, 0.3))
+		_wood_mats[1].set_shader_parameter("rough", 0.27)
+		_wood_mats[1].set_shader_parameter("rim_color", Color("c9d6f2"))
+		_wood_mats[1].set_shader_parameter("rim_amount", 0.14)
+		outline_colors = [Color("2b1a10"), Color("050302")]
+		light_label = Color("f6e9cf")
+		dark_label = Color("5b3d27")
+	else:
+		_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
+		_env.ambient_light_energy = 0.42
+		_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
+		_key.light_energy = 0.9 if dark else 0.76
+		_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
+		_fill.light_energy = 0.2 if dark else 0.16
+		_rim_light.light_energy = 0.0
+		_frame_mat.albedo_color = Color("202b4e") if dark else Color("27335a")
+		# Casillas con cuerpo: las claras no llegan al blanco, para que las piezas de marfil destaquen sobre ellas.
+		var light_sq := Color("bfcfea") if dark else Color("bdcdea")
+		var dark_sq := Color("6481b5") if dark else Color("6683b7")
+		_squares_mat.set_shader_parameter("light_sq", light_sq)
+		_squares_mat.set_shader_parameter("dark_sq", dark_sq)
+		# Claras: marfil limpio. Oscuras: azul tinta con el canto más claro.
+		_mats[0].set_shader_parameter("base_color", Color("f8f0e0"))
+		_mats[0].set_shader_parameter("rim_color", Color("94846c"))
+		_mats[0].set_shader_parameter("rim_amount", 0.36)
+		_mats[1].set_shader_parameter("base_color", Color("2a3557"))
+		_mats[1].set_shader_parameter("rim_color", Color("9db2e0"))
+		_mats[1].set_shader_parameter("rim_amount", 0.56)
+		light_label = light_sq.lightened(0.65)
+		dark_label = dark_sq.darkened(0.3)
 	for i in 2:
 		_outline_mats[i].set_shader_parameter("outline_color", outline_colors[i])
 		_disc_mats[i].set_shader_parameter("outline_color", outline_colors[i])
 	for group in _labels:
 		for l in group.get_children():
-			(l as Label3D).modulate = light_sq.lightened(0.65) if l.get_meta("on_dark", false) else dark_sq.darkened(0.3)
+			(l as Label3D).modulate = light_label if l.get_meta("on_dark", false) else dark_label
 
 
 # ---------------------------------------------------------------- posición y piezas
@@ -379,7 +511,7 @@ func _make_piece(p: int, s: int) -> Node3D:
 	var mi := MeshInstance3D.new()
 	mi.name = "Malla"
 	mi.mesh = mesh
-	mi.material_override = _mats[side]
+	mi.material_override = _piece_material(side)
 	node.add_child(mi)
 	# Contorno: la misma malla con el material de casco invertido. No proyecta sombra.
 	var hull := MeshInstance3D.new()
@@ -387,6 +519,7 @@ func _make_piece(p: int, s: int) -> Node3D:
 	hull.mesh = mesh
 	hull.material_override = _outline_mats[side]
 	hull.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	hull.visible = outline
 	node.add_child(hull)
 	# Y un disco bajo la base, que cierra el contorno donde la pieza toca el tablero.
 	var disc := MeshInstance3D.new()
@@ -395,6 +528,7 @@ func _make_piece(p: int, s: int) -> Node3D:
 	disc.material_override = _disc_mats[side]
 	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	disc.position = Vector3(0.0, 0.007, 0.0)
+	disc.visible = outline
 	node.add_child(disc)
 	_fit_disc(node, mesh)
 	node.set_meta("piece", p)
@@ -466,6 +600,7 @@ func set_orientation(o: int) -> void:
 	if not _built:
 		return
 	_light_rig.rotation.y = PI if o == 1 else 0.0
+	_env.sky_rotation = Vector3(0.0, PI if o == 1 else 0.0, 0.0)
 	# La sombra del tablero cae un poco hacia el lado del jugador.
 	_shadow_node.position.z = -0.16 if o == 1 else 0.16
 	_labels[0].visible = show_coordinates and o == 0

@@ -42,6 +42,9 @@ var dark := false
 var phase: Phase = Phase.INTRO
 var options_open := false
 var top_view := false
+## Acabado del tablero: "realista" o "ilustrado". El contorno de tinta va por defecto con el ilustrado.
+var board_style := "realista"
+var board_outline := false
 
 var view: BoardView3D
 var bg: SkyBackdrop
@@ -354,6 +357,7 @@ func _build_chrome() -> void:
 	bg.ornament = _c("cloud")
 	bg.night = dark
 	bg.queue_redraw()
+	view.set_board_style(board_style, board_outline)
 	view.set_board_theme("dark" if dark else "light", _c("bg"))
 
 	var inset := _insets()
@@ -540,10 +544,15 @@ func _refresh() -> void:
 	title.add_theme_color_override("font_color", tone)
 	subtitle.text = sub
 
-	# Peón con el color del bando que juega. En el tema oscuro, las negras llevan el canto claro, como en el tablero.
+	# Peón con el color del bando que juega, según el acabado. Las oscuras llevan el canto claro en el tema oscuro.
 	var white_to_move := view.board.chess.turn == 0
-	turn_dot.fill = Color("f8f0e0") if white_to_move else Color("2a3557")
-	turn_dot.line = (Color("0a0f22") if dark else Color("262e4c")) if white_to_move else (Color("9db2e0") if dark else Color("0a0f22"))
+	var real := board_style == "realista"
+	if white_to_move:
+		turn_dot.fill = Color("e7cf9c") if real else Color("f8f0e0")
+		turn_dot.line = Color("4a3220") if real else (Color("0a0f22") if dark else Color("262e4c"))
+	else:
+		turn_dot.fill = Color("2b2422") if real else Color("2a3557")
+		turn_dot.line = (Color("c9b79a") if real else Color("9db2e0")) if dark else (Color("120c0a") if real else Color("0a0f22"))
 	turn_dot.queue_redraw()
 	turn_dot.visible = show_dot
 
@@ -658,6 +667,9 @@ func _build_sheet() -> void:
 	header.add_child(close)
 	box.add_child(header)
 
+	box.add_child(_caption("Acabado"))
+	box.add_child(_segments(["Realista", "Ilustrado"], 0 if board_style == "realista" else 1, _set_style_index))
+	box.add_child(_switch_row("Contorno de las piezas", "Una línea de tinta alrededor de cada pieza.", board_outline, _set_outline))
 	box.add_child(_caption("Animaciones"))
 	box.add_child(_segments(["Completas", "Rápidas", "Mínimas", "Sin"], int(view.board.anim_mode), _set_anim))
 	box.add_child(_caption("Vista"))
@@ -718,6 +730,21 @@ func _switch_row(label: String, hint: String, value: bool, on_change: Callable) 
 	sw.pressed.connect(on_change.bind(not value))
 	row.add_child(sw)
 	return row
+
+
+func _set_style_index(i: int) -> void:
+	board_style = "realista" if i == 0 else "ilustrado"
+	# Cada acabado tiene su contorno por defecto: el ilustrado lo lleva; el realista, no.
+	board_outline = board_style == "ilustrado"
+	view.set_board_style(board_style, board_outline)
+	_refresh()
+	_sync_sheet()
+
+
+func _set_outline(on: bool) -> void:
+	board_outline = on
+	view.board.set_outline(on)
+	_sync_sheet()
 
 
 func _set_anim(mode: int) -> void:
