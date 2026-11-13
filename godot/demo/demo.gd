@@ -18,6 +18,7 @@ var step := 0
 var fen_before := ""
 var run_id := 0
 var dark := false
+var solution_button: Button
 
 var view: BoardView3D
 var bg: ColorRect
@@ -154,7 +155,7 @@ func _build_ui() -> void:
 	solution.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	solution.focus_mode = Control.FOCUS_NONE
 	solution.pressed.connect(_on_solution)
-	_style_button(solution, ACCENT_SOFT, ACCENT_TEXT)
+	solution_button = solution
 	actions.add_child(solution)
 	var next := Button.new()
 	next.text = "Siguiente"
@@ -176,6 +177,8 @@ func _apply_theme() -> void:
 	body.add_theme_color_override("font_color", Color("a9b1c7") if dark else QUIET)
 	view.board.set_theme("dark" if dark else "light")
 	theme_button.text = "Claro" if dark else "Oscuro"
+	# El botón secundario usa el naranja suave del tema: en oscuro, fondo tostado y texto naranja claro.
+	_style_button(solution_button, Color("3a2416") if dark else ACCENT_SOFT, Color("ff9a2e") if dark else ACCENT_TEXT)
 
 
 func _refresh_chips() -> void:

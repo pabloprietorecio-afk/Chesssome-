@@ -50,9 +50,13 @@ godot --headless --path godot --import
 godot --headless --path godot -s tests/test_glicko2.gd      # prueba de oro de Glicko-2
 ```
 
-La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, la prueba de oro en Godot y genera un APK de depuración (artefacto `Chessome-debug-apk`). `android_firma/debug.keystore` es una clave solo de depuración y se sube a propósito para que cada APK se instale encima del anterior; la clave de publicación nunca debe subirse al repositorio.
+La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas de oro en Godot (reglas y Glicko-2), dibuja 20 capturas del tablero 3D y de la demo (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
 
-Provisional: el renderizador es `gl_compatibility` (el mismo que Football Cards); se decidirá en la fase 3D.
+https://github.com/pabloprietorecio-afk/Chesssome-/releases/download/ultimo-apk/Chessome-debug.apk
+
+`android_firma/debug.keystore` es una clave solo de depuración y se sube a propósito para que cada APK se instale encima del anterior; la clave de publicación nunca debe subirse al repositorio.
+
+El tablero 3D usa el renderizador «Mobile» (Vulkan) y una colección de piezas propia generada por código (`tools/pieces`). Resumen técnico en `docs/sistema-3d.md`.
 
 ## Estructura
 
@@ -63,7 +67,8 @@ src/ui/          Pantallas, tablero 2D, panel de explicación, encuesta (tablero
 src/data/        Paquete de problemas analizados que consume la app
 pipeline/        Importación, análisis con Stockfish y control de calidad
 tests/           Pruebas (Vitest)
-godot/           App Godot: núcleo portado (core/), pruebas de oro (tests/) y escenas
+godot/           App Godot: núcleo portado (core/), tablero 3D (board3d/), piezas (sets/), demo y pruebas (tests/)
+tools/pieces/    Modelado de las piezas 3D por código (campos de distancia → GLB)
 scripts/         Utilidades de desarrollo y prueba en navegador
 data/raw/        Muestra de 1.000 problemas reales de Lichess
 data/dev/        Problemas importados, análisis del motor e informe de calidad
@@ -81,6 +86,7 @@ data/dev/        Problemas importados, análisis del motor e informe de calidad
 | Piezas 2D | Propias | Dibujadas para el proyecto |
 | Glicko-2 | Dominio público | Implementación propia (TypeScript y port a GDScript) |
 | Godot Engine 4.7.2 | MIT | Motor de la app Android |
+| Piezas y tablero 3D | Propias | Modeladas por código del proyecto (`tools/pieces`); sin modelos ni texturas de terceros |
 
 El paquete de datos está marcado como `provisional: true`: es una muestra de desarrollo, no el catálogo de producción.
 
@@ -92,4 +98,7 @@ El paquete de datos está marcado como `provisional: true`: es una muestra de de
 - Hecho: tema claro, oscuro o automático (Ajustes).
 - Diseñado, sin implementar: fondos de escena con piezas de ajedrez bajo el tiempo del usuario (MET Norway, opcional; ver `docs/estilo-2d.md`).
 - Diseñado, sin implementar: «Cine de finales», películas generadas por la app con filtro de cine antiguo (ver `docs/cine-finales.md`). Va después de las piezas 3D.
-- Pendiente: tablero 3D y sistema de animaciones (`src/ui/Board3D.tsx` es provisional; `BOARD_3D_READY` en `src/ui/boardTypes.ts` lo activa).
+- Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor», tablero 3D con toque y arrastre, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista, y demo con 60 problemas reales (`docs/sistema-3d.md`).
+- Sin verificar: el APK en un teléfono real (rendimiento, tacto y sentido del giro con los sensores).
+- Pendiente (Godot): tablero 2D y alternancia 2D/3D para medir H3, explicaciones y entrenamiento, niveles de calidad, sonido y partículas.
+- Provisional (web): `src/ui/Board3D.tsx` sigue desactivado (`BOARD_3D_READY` en `src/ui/boardTypes.ts`); el 3D real es el de Godot.
