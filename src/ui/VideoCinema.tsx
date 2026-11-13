@@ -336,6 +336,15 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     ev('answer', { stop: st.stop, question: qi, uci, outcome: res.outcome });
   };
 
+  // Tras una jugada que no mantiene el resultado: volver a la posición y probar otra.
+  const retry = () => {
+    if (!q || !answer || busy) return;
+    setAnswer(null);
+    setBoard({ fen: q.fen, last: q.lead ? { from: q.lead.from, to: q.lead.to } : null, anim: null });
+    ev('retry', { stop: st.stop, question: qi });
+  };
+  const canRetry = !!answer && answer.outcome !== 'answer' && answer.outcome !== 'also-good' && !busy;
+
   const showAnswer = () => {
     if (!q || answer) return;
     setAnswer({ outcome: 'answer', text: q.why });
@@ -555,6 +564,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           <div className={`cm-hint vc-panel vc-answer vc-o-${answer.outcome}`}>
             <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
             <p>{answer.text}</p>
+            {canRetry && (
+              <button className="cm-why vc-retry" onClick={retry}>
+                Repetir
+              </button>
+            )}
           </div>
         )}
 

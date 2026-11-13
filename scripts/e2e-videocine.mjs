@@ -136,6 +136,14 @@ assert(/No es esa/.test(await panel()), 'Tb1+ debe darse por mala: ' + (await pa
 await page.evaluate(() => document.querySelector('.vc-answer')?.scrollIntoView({ block: 'start' }));
 await sleep(200);
 await shot('04-respuesta-mala');
+// «Repetir»: vuelve a la posición de la pregunta y deja probar otra jugada.
+await clickText('Repetir');
+await sleep(300);
+assert(await page.$('.vc-ask .vc-question'), 'tras «Repetir» debe volver la pregunta');
+assert(!(await hasButton('Repetir')), 'sin respuesta no hay «Repetir»');
+await move('b2f2');
+assert(/¡Esa es!/.test(await panel()), 'tras repetir, Txf2 debe darse por buena: ' + (await panel()));
+assert(!(await hasButton('Repetir')), 'con la buena no se ofrece «Repetir»');
 await clickText('Siguiente pregunta');
 await waitAttr('question', 1);
 await sleep(300);
