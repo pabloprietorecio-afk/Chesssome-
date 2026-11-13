@@ -46,6 +46,8 @@ oga() { # oga <slug de la página> <nombre del zip>
 }
 oga scrapes scrapes.zip || true
 oga 100-cc0-metal-and-wood-sfx 100-CC0-wood-metal-SFX.zip || true
+# «Casino Audio» de Kenney, en la copia que el propio Kenney subió a OpenGameArt (su web no enlaza el zip en el HTML).
+oga 54-casino-sound-effects-cards-dice-chips kenney_casino-audio.zip || true
 
 ls -la "$OUT/zips"
 for z in "$OUT"/zips/*.zip; do
