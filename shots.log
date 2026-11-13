@@ -1,0 +1,148 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+
+SHOTS driver=X11 pantalla=(1080, 2400) lienzo=(1080.0, 2400.0)
+SHOT 01_inicio
+TEXTURA arce (1024.0, 1024.0) formato=17 mipmaps=true
+SHOT 01_marmol
+SHOT 01_metal
+SHOT 01_ilustrado
+SHOT 01_madera_con_contorno
+SHOT 02_jaque_y_seleccion
+SHOT 03_flechas
+SHOT 04_cenital
+SHOT 05_girada
+SHOT 06_oscuro
+SHOT 07_negras
+SHOT 08_primer_plano
+SHOT 09_primer_plano_negras
+SHOT 09_primer_plano_marmol
+SHOT 09_primer_plano_metal
+SHOT 10_salto_del_caballo
+SHOT 11_captura
+SHOT 12_enroque
+SHOT 13_promocion
+SHOT 14_mate
+SHOT 15_mate_final
+SHOT 16_arrastre
+SHOT 17_fichas_madera
+SHOT 17_fichas_marmol
+SHOT 17_fichas_metal
+SHOT 17_fichas_ilustrado
+SHOT 17_fichas_jaque_y_seleccion
+SHOT 17_fichas_cenital
+SHOT 17_fichas_negras
+SHOT 18_fichas_de_cerca_madera
+SHOT 18_fichas_de_cerca_marmol
+SHOT 18_fichas_de_cerca_metal
+SHOT 18_fichas_de_cerca_ilustrado
+SHOT 18_fichas_de_cerca_oscuras
+SHOT 19_fichas_mate
+SHOT 19_fichas_mate_final
+SONIDOS avisos=["capture", "slide", "place", "fall"] grabaciones: arrastre=true posar=true captura=true jaque=true caida=true
+SHOT 20_demo
+ICONOS 48 en el atlas, faltan=[] emblema=true
+DEMO pista de gestos visible=true botones=«Pista» «Un paso» «Solución» «Saltar»
+DEMO explicaciones=true puntos=1
+SHOT 20b_demo_fallo
+DEMO fallo=d2e3 titulo=«No es la mejor» fase=2 parcial=true interactivo=true
+DEMO fallo dice: Tu jugada, De3, amenaza mate con Dxe1# y ataca a la dama de e1. | Pero permite Dxe3, que captura tu dama de e3. En pocas jugadas pierdes la dama y un alfil a cambio de la torre. | La mejor era Dxe1#, que es jaque mate.
+SHOT 20c_demo_fallo_variante
+DEMO tras la variante: fase=2 interactivo=true
+SHOT 21_demo_pieza_tocada
+DEMO seleccionada=11 (esperada 11)
+SHOT 22_demo_bien
+DEMO titulo=«¡Resuelto!» paso=2
+SHOT 23_demo_sigue
+DEMO titulo=«¡Resuelto!» paso=2
+SHOT 24_demo_solucion
+DEMO titulo=«Juegan negras» izquierda=«Solución» derecha=«Saltar»
+SHOT 24b_demo_nivel_2
+SHOT 24c_demo_nivel_3
+SHOT 24d_demo_nivel_4
+DEMO nivel=4 flechas=0 alto de la tarjeta=295
+SHOT 24e_demo_nivel_4_final
+SHOT 24g_demo_y_si_juego
+SHOT 24h_demo_y_si_juego_jugada
+DEMO y si juego d2e3: titulo=«No es la mejor» interactivo=true
+SHOT 24i_demo_pregunta_a_una_ia
+DEMO texto para la IA: 901 caracteres, empieza «Estoy aprendiendo ajedrez y tengo una duda sobre esta posici»
+DEMO lichess=https://lichess.org/analysis/6k1/p4pp1/2R2b1p/1P6/P7/3b4/3q1PPP/4Q1K1%20b%20-%20-%200%2037
+SHOT 25_demo_opciones
+SHOT 26_demo_opciones_oscuro
+SHOT 27_demo_oscuro
+SHOT 28_demo_oscuro_picado
+SHOT 29_demo_repetido
+DEMO titulo=«La solución» paso=2 problema=0
+SHOT 30_demo_ampliado
+DEMO ampliado zoom=1.88 desplazamiento=(-0.001215, 0.011288)
+SHOT 31_demo_desplazado
+DEMO desplazado zoom=1.88 desplazamiento=(-1.028388, 0.485368) seleccionada=-1
+SHOT 32_demo_entero_otra_vez
+DEMO entero zoom=1.00 desplazamiento=(0.0, -0.0) picado=false
+SHOT 33_demo_resuelto
+DEMO resuelto: fase=4 titulo=«¡Resuelto!» problema=1
+SHOT 34_demo_resuelto_por_que
+SHOT 35_demo_fichas
+SHOT 36_demo_fichas_problema
+SHOT 37_demo_opciones_fichas
+SHOT 37b_demo_opciones_final
+SHOT 40_demo_pista
+SHOT 41_demo_pista_pieza
+AYUDA pista nivel=2 pieza elegida=58 (esperada 58) fase=1
+SHOT 42_demo_un_paso
+AYUDA un paso: fase=7 titulo=«Este paso: Tc1+» paso 1→2 botones=«Solución» «Seguir»
+SHOT 43_demo_un_paso_por_que
+SHOT 44_demo_tras_el_paso
+AYUDA tras seguir: fase=1 titulo=«Juegan negras» paso=3 interactivo=true
+SHOT 45_demo_giro_fijado
+AYUDA giro fijado=true: tras girar dos dedos 30°, giro=0.0 pista de gestos=true
+SHOT 46_demo_girado_con_dos_dedos
+AYUDA giro libre: tras girar dos dedos 30° a la derecha, giro=24.0 inclinación=64.0 pista de gestos=false
+AYUDA casi derecho al soltar: giro=0.0
+SHOT 47_demo_enderezado
+SHOT 50_experiencia
+SHOT 51_test_problema
+NIVEL test: modo=test fase=1 contador=«Test de nivel · problema 1» botón=«No lo sé» problema=vzMIJ dificultad=1172
+SHOT 52_test_fallo
+NIVEL fallo c2d4: fase=6 anotados=1 error=«worse» paso=0 tiempo=20770 ms nivel=1011±230 botón=«Siguiente»
+SHOT 53_test_acierto
+NIVEL acierto: fase=4 anotados=2 correcto=true nivel=1107±194
+SHOT 54_test_no_lo_se
+NIVEL no lo sé: fase=6 anotados=3 ayuda=«giveup» titulo=«La solución»
+SHOT 55_resultado
+NIVEL resultado: problemas=9 nivel=936±113 mates=0/5 largos=0/2 fallos=5 respuesta=3 precipitados=4 plan=[{ "kind": "mate" }] hábitos=["reply", "rushed"] modo=train página=result
+SHOT 55b_resultado_perfil
+SHOT 55c_resultado_plan
+SHOT 56_entrenamiento
+NIVEL entrenamiento: modo=train problema=iQadh dificultad=715 (objetivo 745) píldora=«Nivel 3» visible=true
+SHOT 57_entrenamiento_resuelto
+NIVEL tras resolver: fase=4 anotados=10 cambio=[936.110112506424, 951.286195644208]
+SHOT 58_progreso
+SHOT 58b_repaso
+NIVEL repaso: problema=vzMIJ es el primer fallo del test=true ayudas=«Pista» «Un paso» anotados=12 (antes 10 + 2 nuevos)
+NIVEL repaso visto: fase=6 repasados=["vzMIJ"] nivel sin cambio=true
+NIVEL repasos servidos=1
+SHOT 59_progreso_oscuro
+SHOT 59b_experiencia_oscuro
+SHOT 59c_test_saltar
+NIVEL saltar test: modo=train nivel=600 saltado=true anotados=0→0 dificultad del problema=399
+SHOT 60_curso
+CURSO lecciones=17 página=course
+SHOT 61_leccion_intro
+SHOT 62_leccion_estrellas
+SHOT 63_leccion_estrellas_hecho
+CURSO estrellas: estado=done jugadas=2 mínimo=2 quedan=0 texto=«¡Perfecto! En 2 jugadas, el mínimo posible.»
+SHOT 64_leccion_a_salvo_fallo
+CURSO a salvo: estado=fail texto=«Esa casilla la ataca una pieza negra: te capturarían. Mira antes qué casillas atacan.»
+SHOT 65_leccion_mate_fallo
+CURSO mate fallo: estado=play texto=«Ta7 no es jaque: el rey negro no está atacado.»
+SHOT 66_leccion_mate
+CURSO mate: estado=done texto=«¡Jaque mate! Con Ta8# el rey negro no tiene salida.»
+SHOT 67_leccion_enroque
+CURSO enroque: estado=done texto=«¡Enroque corto! El rey queda resguardado y la torre entra en juego.»
+SHOT 68_leccion_fin
+CURSO fin: estado=end hecha={ "enroque": 3 }
+SHOT 38_demo_bienvenida
+SHOT 39_demo_bienvenida_oscuro
+SHOTS DONE
