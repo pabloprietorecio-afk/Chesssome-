@@ -453,3 +453,27 @@ describe('marcado rápido', () => {
     expect(syncRemoveFrom(sy, 105).marks).toEqual([{ ply: 104, at: 10 }]);
   });
 });
+
+describe('Gukesh–Carlsen: marcas medidas sobre la grabación', () => {
+  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  it('puede pararse sola y sus marcas son coherentes', () => {
+    expect(canAutoPause(gc)).toBe(true);
+    expect(marksProblems(marksOf(gc))).toEqual([]);
+    expect(syncProblems(gc, gc.sync!, marksOf(gc))).toEqual([]);
+    expect(gc.marks).toBe('pending'); // medidas por Claude sobre vídeo, sin comprobar por una persona
+  });
+  it('la pausa va antes de 52…Ce2+ y el vídeo se reanuda justo antes del final', () => {
+    const stop = gc.stops[0];
+    expect(stop.at).toBeLessThan(281);
+    expect(stop.resumeAt).toBeGreaterThan(stop.at!);
+    expect(plyAt(gc.sync!, stop.at!)).toBe(103); // aún no se ha jugado 52…Ce2+
+    expect(plyAt(gc.sync!, stop.resumeAt!)).toBe(118); // 59…Rd2: antes de 60.Cb2
+  });
+  it('el tablero sigue el final del vídeo', () => {
+    expect(plyAt(gc.sync!, 366)).toBe(119); // 60.Cb2
+    expect(plyAt(gc.sync!, 371.3)).toBe(120); // 60…e3
+    expect(plyAt(gc.sync!, 372.2)).toBe(121); // 61.Cc4+
+    expect(plyAt(gc.sync!, 378)).toBe(123); // 62.Rf4
+  });
+});
+

@@ -411,7 +411,7 @@ await page.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
 // Para probar el caso «sin marcas», este dispositivo deja el clip sin marcas (interruptor de desarrollo).
 await page.evaluate(() => {
   localStorage.setItem('chessome.dev.localMarks', '1');
-  localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'gukesh-carlsen-2025-norway-r6': { start: null, end: null, stops: [null], duration: null } }));
+  localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'gukesh-carlsen-2025-norway-r6': { start: null, end: null, stops: [null], duration: null, sync: null } }));
 });
 await clickText('Volver a la cartelera');
 await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]');
@@ -426,7 +426,7 @@ assert(gap < 80, `el aviso queda muy separado del vídeo (${Math.round(gap)} px)
 await shot('15b-sin-marcas-sin-hueco');
 await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
 await clickText('Volver a la cartelera');
-assert(/Sin pausa marcada/.test(await page.$eval('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"] .vc-chip', (e) => e.textContent)), 'el clip está por marcar');
+assert(/Se para solo · marcas sin comprobar/.test(await page.$eval('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"] .vc-chip', (e) => e.textContent)), 'el clip lleva marcas medidas, pendientes de comprobar');
 await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]');
 await openGC('Ir directo');
 await waitAttr('phase', 'asking');
@@ -452,6 +452,11 @@ assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await p
 await shot('17-gukesh-carlsen-pregunta-3');
 
 // ── H. Marcado rápido: un botón que se pulsa mientras corre el vídeo; «Saltar» y «Deshacer». ──
+await page.evaluate(() => {
+  // El marcado rápido se prueba desde cero: este dispositivo deja el clip sin marcas.
+  localStorage.setItem('chessome.dev.localMarks', '1');
+  localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'gukesh-carlsen-2025-norway-r6': { start: null, end: null, stops: [null], duration: null, sync: null } }));
+});
 await clickText('Volver a la cartelera');
 await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]');
 await openGC('Comenzar');

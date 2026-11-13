@@ -116,10 +116,38 @@ export const CLIPS: ClipSource[] = [
       checked: '2026-11-13',
       duration: 759,
     },
-    // Sin marcar: las primeras marcas de Pablo (13 nov 2026) eran erróneas y se han retirado.
-    start: null,
-    end: null,
+    // Marcas medidas por Claude sobre la grabación de pantalla de Pablo (13 nov 2026), sin comprobar aún en el móvil.
+    // La posición está quieta hasta ~280 s; Carlsen juega 52…Ce2+ en ~281 s. Las jugadas 53–59 no se pueden fechar
+    // con fiabilidad en el vídeo (cortes de cámara y manos), así que tras las preguntas el vídeo se reanuda en 364,4 s,
+    // justo antes de 60.Cb2, y el tablero salta a esa posición.
+    start: 257,
+    end: 378.8,
     marks: 'pending',
+    sync: {
+      startPly: 103,
+      marks: [
+        { ply: 104, at: 281.0 },
+        { ply: 105, at: 364.4 },
+        { ply: 106, at: 364.4 },
+        { ply: 107, at: 364.4 },
+        { ply: 108, at: 364.4 },
+        { ply: 109, at: 364.4 },
+        { ply: 110, at: 364.4 },
+        { ply: 111, at: 364.4 },
+        { ply: 112, at: 364.4 },
+        { ply: 113, at: 364.4 },
+        { ply: 114, at: 364.4 },
+        { ply: 115, at: 364.4 },
+        { ply: 116, at: 364.4 },
+        { ply: 117, at: 364.4 },
+        { ply: 118, at: 364.4 },
+        { ply: 119, at: 365.9 },
+        { ply: 120, at: 371.2 },
+        { ply: 121, at: 372.1 },
+        { ply: 122, at: 375.6 },
+        { ply: 123, at: 376.4 },
+      ],
+    },
     moves:
       '1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. d3 Bc5 5. c3 O-O 6. O-O d6 7. h3 a6 8. Ba4 h6 9. Re1 b5 10. Bc2 Bb6 11. Nbd2 Ne7 12. a4 Rb8 13. d4 Ng6 14. Nf1 c5 15. Ng3 cxd4 16. cxd4 bxa4 17. Bxa4 Bb7 18. d5 a5 19. Be3 Bc8 20. b3 Bxe3 21. Rxe3 Nf4 22. Bc6 Rb4 23. Qc2 g6 24. Kh1 Ba6 25. Qa2 Bd3 26. Nd2 h5 27. Qxa5 Qxa5 28. Rxa5 h4 29. Ra4 Rfb8 30. Ra2 Kg7 31. Ra7 Rd4 32. Nf3 hxg3 33. fxg3 Nxh3 34. gxh3 Bxe4 35. Kh2 Rd1 36. g4 Bxd5 37. Bxd5 Nxd5 38. Re2 Nf4 39. Rc2 Kf6 40. h4 Ke6 41. Ng5+ Kd5 42. Ra5+ Kd4 43. Ra4+ Kd3 44. Rf2 f6 45. Rf3+ Ke2 46. Ra2+ Rd2 47. Rxd2+ Kxd2 48. Ne4+ Ke2 49. Kg3 d5 50. Nxf6 Rf8 51. Rf2+ Ke1 52. Nd7 Ne2+ 53. Rxe2+ Kxe2 54. Nxf8 d4 55. Ne6 d3 56. Nc5 Ke3 57. Na4 e4 58. h5 gxh5 59. gxh5 Kd2 60. Nb2 e3 61. Nc4+ Ke2 62. Kf4 1-0',
     gameSource:
@@ -129,7 +157,8 @@ export const CLIPS: ClipSource[] = [
       'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Carlsen, con negras, ha llevado ventaja casi toda la partida, pero los dos llegan al final con muy poco tiempo en el reloj.',
     stops: [
       {
-        at: null,
+        at: 277.5,
+        resumeAt: 364.4,
         questions: [
           {
             ply: 104,
@@ -154,6 +183,6 @@ export const CLIPS: ClipSource[] = [
     ],
     outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
     notes:
-      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt) y el buscador no muestra sus tiempos, así que las marcas se ponen a mano en el editor. En las preguntas, el tablero se orienta hacia quien juega (negras en la primera, blancas en las otras dos).',
+      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s, 52…Ce2+ en ~281 s (pausa en 277,5), y el final fechado al segundo (60.Cb2 365,9; 60…e3 371,2; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). Las jugadas 53–59 no se pueden fechar con fiabilidad, así que el vídeo se reanuda en 364,4 s y el tablero salta a la posición de 60.Cb2. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt). En las preguntas, el tablero se orienta hacia quien juega (negras en la primera, blancas en las otras dos).',
   },
 ];
