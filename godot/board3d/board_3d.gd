@@ -220,24 +220,25 @@ func set_theme(theme_name: String) -> void:
 	var dark := theme_name == "dark"
 	_env.background_color = Color("0c1224") if dark else Color("e6eef9")
 	_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
-	_env.ambient_light_energy = 0.42 if dark else 0.62
+	_env.ambient_light_energy = 0.42 if dark else 0.46
 	_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
-	_key.light_energy = 1.0 if dark else 1.05
+	_key.light_energy = 1.0 if dark else 0.92
 	_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
-	_fill.light_energy = 0.22 if dark else 0.28
-	_backdrop_mat.set_shader_parameter("top_color", Color("0b1020") if dark else Color("f4f8ff"))
-	_backdrop_mat.set_shader_parameter("bottom_color", Color("141d38") if dark else Color("dce8f7"))
-	_backdrop_mat.set_shader_parameter("halo_color", Color("2b3a6b") if dark else Color("ffffff"))
-	_backdrop_mat.set_shader_parameter("halo", 0.55 if dark else 0.4)
+	_fill.light_energy = 0.22 if dark else 0.2
+	# El fondo es el de la app (docs/estilo-2d.md) con un halo suave detrás del tablero.
+	_backdrop_mat.set_shader_parameter("top_color", Color("0a0f1e") if dark else Color("eaf1fb"))
+	_backdrop_mat.set_shader_parameter("bottom_color", Color("0a0f1e") if dark else Color("eaf1fb"))
+	_backdrop_mat.set_shader_parameter("halo_color", Color("24325e") if dark else Color("ffffff"))
+	_backdrop_mat.set_shader_parameter("halo", 0.6 if dark else 0.55)
 	_shadow_mat.set_shader_parameter("shadow_color", Color("02040c") if dark else Color("1f2d55"))
 	_shadow_mat.set_shader_parameter("strength", 0.55 if dark else 0.32)
 	_frame_mat.albedo_color = Color("222d4d") if dark else Color("2b3859")
-	_squares_mat.set_shader_parameter("light_sq", Color("d3deef") if dark else Color("e8eff8"))
-	_squares_mat.set_shader_parameter("dark_sq", Color("7d94b8") if dark else Color("8ea5c8"))
+	_squares_mat.set_shader_parameter("light_sq", Color("d3deef") if dark else Color("dbe5f2"))
+	_squares_mat.set_shader_parameter("dark_sq", Color("7d94b8") if dark else Color("8299be"))
 	# Claras: marfil con el borde algo más oscuro. Oscuras: azul tinta con el borde más claro.
-	_mats[0].set_shader_parameter("base_color", Color("f3ebdc"))
-	_mats[0].set_shader_parameter("rim_color", Color("a3927a"))
-	_mats[0].set_shader_parameter("rim_amount", 0.42)
+	_mats[0].set_shader_parameter("base_color", Color("f1e8d6"))
+	_mats[0].set_shader_parameter("rim_color", Color("8f7d63"))
+	_mats[0].set_shader_parameter("rim_amount", 0.55)
 	_mats[1].set_shader_parameter("base_color", Color("2a3554"))
 	_mats[1].set_shader_parameter("rim_color", Color("8ea4d2"))
 	_mats[1].set_shader_parameter("rim_amount", 0.5)
@@ -357,7 +358,7 @@ func _refresh_state() -> void:
 		var to := Chess.move_to(m)
 		mark[to] = 2 if chess.b[to] != 0 or Chess.move_flag(m) == Chess.F_EN_PASSANT else 1
 	for s in 64:
-		_state_img.set_pixel(s & 7, s >> 3, Color8(hi[s], mark[s], 0, 255))
+		_state_img.set_pixel(s & 7, s >> 3, Color8(hi[s], mark[s], 255 if chess.b[s] != 0 else 0, 255))
 	_state_tex.update(_state_img)
 
 
@@ -370,7 +371,7 @@ func set_arrows(arrows: Array) -> void:
 		var tone: String = a.get("tone", "info")
 		var color := Color("1f9a52") if tone == "good" else (Color("e5484d") if tone == "bad" else Color("7c5cfa"))
 		var mi := MeshInstance3D.new()
-		mi.mesh = _arrow_mesh(sq_pos(int(a["from"])), sq_pos(int(a["to"])))
+		mi.mesh = _arrow_mesh(sq_pos(int(a["from"])), sq_pos(int(a["to"])), chess.b[int(a["to"])] != 0)
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -382,11 +383,12 @@ func set_arrows(arrows: Array) -> void:
 		_arrows_root.add_child(mi)
 
 
-func _arrow_mesh(a: Vector3, b: Vector3) -> ArrayMesh:
+## La flecha sale del borde de la pieza de origen y, si el destino está ocupado, se detiene antes de su base.
+func _arrow_mesh(a: Vector3, b: Vector3, occupied: bool) -> ArrayMesh:
 	var dir := (b - a).normalized()
 	var side := Vector3(-dir.z, 0.0, dir.x)
-	var start := a + dir * 0.3
-	var tip := b + dir * 0.1
+	var start := a + dir * 0.4
+	var tip := b - dir * 0.36 if occupied else b + dir * 0.12
 	var neck := tip - dir * 0.42
 	var w := 0.085
 	var hw := 0.24

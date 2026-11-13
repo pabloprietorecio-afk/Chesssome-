@@ -24,5 +24,6 @@ void fragment() {
 	SPECULAR = spec;
 	AO = ao;
 	AO_LIGHT_AFFECT = 0.3;
-	EMISSION = glow_color.rgb * glow * (0.25 + 0.75 * fres);
+	// Selección: solo un borde luminoso, la pieza conserva su color.
+	EMISSION = glow_color.rgb * glow * fres * 0.7;
 }

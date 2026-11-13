@@ -9,7 +9,7 @@ uniform vec4 c_select : source_color = vec4(0.49, 0.36, 0.98, 1.0);
 uniform vec4 c_check : source_color = vec4(0.9, 0.28, 0.3, 1.0);
 uniform vec4 c_hint : source_color = vec4(0.1, 0.14, 0.25, 1.0);
 // R: 1 = origen de la última jugada, 2 = destino, 3 = seleccionada, 4 = rey en jaque.
-// G: 1 = destino libre (punto), 2 = destino con captura (anillo).
+// G: 1 = destino libre (punto), 2 = destino con captura (anillo).  B: 255 = casilla ocupada.
 uniform sampler2D state : filter_nearest, repeat_disable;
 uniform float rough = 0.62;
 
@@ -42,6 +42,10 @@ void fragment() {
 		col = mix(col, c_select.rgb, 0.5);
 	} else if (hi == 4) {
 		col = mix(col, c_check.rgb, (1.0 - smoothstep(0.08, 0.66, d)) * 0.9);
+	}
+	// Sombra de contacto bajo cada pieza (B = casilla ocupada): la asienta y la separa de la casilla.
+	if (st.b > 0.5) {
+		col *= 1.0 - 0.22 * (1.0 - smoothstep(0.16, 0.5, d));
 	}
 	if (mark == 1) {
 		col = mix(col, c_hint.rgb, (1.0 - smoothstep(0.15 - aa, 0.15 + aa, d)) * 0.42);

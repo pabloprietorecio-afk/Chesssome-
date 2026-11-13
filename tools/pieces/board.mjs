@@ -46,17 +46,21 @@ const center = P.length / 3;
 P.push(0, 0, 0); N.push(0, 1, 0); C.push(1, 1, 1, 1);
 for (let i = 0; i < n; i++) I.push(center, ((i + 1) % n) * m, i * m);
 
-// Comprobación: las normales de los triángulos deben coincidir con las de los vértices.
-let flipped = 0;
+// Cada triángulo se orienta según las normales de sus vértices (Godot dibuja la cara de sentido horario).
+let fixed = 0;
 for (let t = 0; t < I.length; t += 3) {
   const [a, b, c] = [I[t], I[t + 1], I[t + 2]];
   const ux = P[3 * b] - P[3 * a], uy = P[3 * b + 1] - P[3 * a + 1], uz = P[3 * b + 2] - P[3 * a + 2];
   const vx = P[3 * c] - P[3 * a], vy = P[3 * c + 1] - P[3 * a + 1], vz = P[3 * c + 2] - P[3 * a + 2];
   const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
-  if (fx * N[3 * a] + fy * N[3 * a + 1] + fz * N[3 * a + 2] < 0) flipped++;
+  const nx = N[3 * a] + N[3 * b] + N[3 * c], ny = N[3 * a + 1] + N[3 * b + 1] + N[3 * c + 1], nz = N[3 * a + 2] + N[3 * b + 2] + N[3 * c + 2];
+  // glTF usa sentido antihorario para la cara frontal: la normal geométrica debe coincidir con la de los vértices.
+  if (fx * nx + fy * ny + fz * nz < 0) {
+    [I[t + 1], I[t + 2]] = [I[t + 2], I[t + 1]];
+    fixed++;
+  }
 }
-if (flipped > I.length / 6) for (let t = 0; t < I.length; t += 3) [I[t + 1], I[t + 2]] = [I[t + 2], I[t + 1]];
 
 const out = fileURLToPath(new URL(`../../godot/sets/${setId}/board.glb`, import.meta.url));
 writeGlb(out, 'board', [{ name: 'marco', mesh: { positions: Float32Array.from(P), normals: Float32Array.from(N), colors: Float32Array.from(C), indices: Uint32Array.from(I) } }]);
-console.log(`board   ${I.length / 3} triángulos${flipped > I.length / 6 ? ' (caras invertidas y corregidas)' : ''}`);
+console.log(`board   ${I.length / 3} triángulos (${fixed} reorientados)`);

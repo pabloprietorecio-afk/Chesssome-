@@ -5,7 +5,7 @@ import { union, subtract, smin, lathe, smoothProfile, polygon2D, pillow, roundCy
 const stem = (pts) => lathe(smoothProfile(pts, 10));
 
 /** Pie común a toda la familia: disco de apoyo y moldura. */
-const foot = (R) => union(0.028, roundCylinder(R, 0, 0.078, 0.03), torus(0.106, R * 0.75, 0.05));
+const foot = (R) => union(0.04, roundCylinder(R, 0, 0.078, 0.03), torus(0.106, R * 0.75, 0.05));
 
 function pawn() {
   const body = union(
@@ -42,7 +42,8 @@ function bishop() {
   const collars = union(0.022, disc(0.686, 0.192, 0.027), disc(0.74, 0.136, 0.022));
   const mitre = stem([[0, 0.745, 1], [0.1, 0.745, 1], [0.156, 0.84], [0.17, 0.93], [0.135, 1.04], [0.075, 1.125], [0.036, 1.16, 1], [0, 1.16, 1]]);
   const finial = sphere(0, 1.195, 0, 0.052);
-  const slit = translate(rotateZ(roundBox(0, 0, 0, 0.14, 0.034, 0.3, 0.014), -0.66), 0.115, 0.985, 0);
+  // Corte del alfil: una lente inclinada (sin aristas vivas, para que el mallado salga limpio).
+  const slit = translate(rotateZ(ellipsoid(0, 0, 0, 0.17, 0.034, 0.26), -0.66), 0.125, 0.99, 0);
   const head = union(0.02, subtract(0.02, mitre, slit), finial);
   return { field: union(0.03, body, collars, head), bounds: [-0.39, -0.03, -0.39, 0.39, 1.3, 0.39], cell: 0.021 };
 }
