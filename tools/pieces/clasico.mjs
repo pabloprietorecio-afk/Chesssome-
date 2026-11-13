@@ -16,7 +16,7 @@ function pawn() {
   const collar = disc(0.487, 0.178, 0.027);
   const neck = roundCone([0, 0.49, 0], [0, 0.57, 0], 0.098, 0.085);
   const head = sphere(0, 0.682, 0, 0.16);
-  return { field: union(0.03, body, collar, union(0.03, neck, head)), bounds: [-0.36, -0.03, -0.36, 0.36, 0.9, 0.36], cell: 0.029 };
+  return { field: union(0.04, body, collar, union(0.03, neck, head)), bounds: [-0.36, -0.03, -0.36, 0.36, 0.9, 0.36], cell: 0.029 };
 }
 
 function rook() {
@@ -29,8 +29,8 @@ function rook() {
   const tower = roundCylinder(0.265, 0.675, 0.985, 0.028);
   const hollow = roundCylinder(0.172, 0.87, 1.3, 0.02);
   const slot = radial(roundBox(0.26, 1.0, 0, 0.13, 0.082, 0.047, 0.012), 6, Math.PI / 6);
-  const top = subtract(0.02, tower, hollow, slot);
-  return { field: union(0.03, body, collar, top), bounds: [-0.4, -0.03, -0.4, 0.4, 1.05, 0.4], cell: 0.026 };
+  const top = subtract(0.03, tower, hollow, slot);
+  return { field: union(0.04, body, collar, top), bounds: [-0.4, -0.03, -0.4, 0.4, 1.05, 0.4], cell: 0.026 };
 }
 
 function bishop() {
@@ -39,13 +39,13 @@ function bishop() {
     foot(0.325),
     stem([[0, 0.05, 1], [0.255, 0.05, 1], [0.245, 0.14], [0.188, 0.23], [0.128, 0.37], [0.102, 0.53], [0.1, 0.66, 1], [0, 0.66, 1]]),
   );
-  const collars = union(0.022, disc(0.686, 0.192, 0.027), disc(0.74, 0.136, 0.022));
+  const collars = union(0.03, disc(0.686, 0.192, 0.027), disc(0.74, 0.136, 0.022));
   const mitre = stem([[0, 0.745, 1], [0.1, 0.745, 1], [0.156, 0.84], [0.17, 0.93], [0.135, 1.04], [0.075, 1.125], [0.036, 1.16, 1], [0, 1.16, 1]]);
   const finial = sphere(0, 1.195, 0, 0.052);
   // Corte del alfil: una lente inclinada (sin aristas vivas, para que el mallado salga limpio).
   const slit = translate(rotateZ(ellipsoid(0, 0, 0, 0.17, 0.034, 0.26), -0.66), 0.125, 0.99, 0);
-  const head = union(0.02, subtract(0.02, mitre, slit), finial);
-  return { field: union(0.03, body, collars, head), bounds: [-0.39, -0.03, -0.39, 0.39, 1.3, 0.39], cell: 0.021 };
+  const head = union(0.02, subtract(0.045, mitre, slit), finial);
+  return { field: union(0.04, body, collars, head), bounds: [-0.39, -0.03, -0.39, 0.39, 1.3, 0.39], cell: 0.021 };
 }
 
 function queen() {
@@ -54,14 +54,14 @@ function queen() {
     foot(0.355),
     stem([[0, 0.05, 1], [0.28, 0.05, 1], [0.27, 0.15], [0.205, 0.26], [0.138, 0.43], [0.108, 0.63], [0.103, 0.8], [0.11, 0.9, 1], [0, 0.9, 1]]),
   );
-  const collars = union(0.022, disc(0.927, 0.218, 0.028), disc(0.985, 0.152, 0.022));
+  const collars = union(0.03, disc(0.927, 0.218, 0.028), disc(0.985, 0.152, 0.022));
   const cup = stem([[0, 0.995, 1], [0.115, 0.995, 1], [0.137, 1.08], [0.192, 1.2], [0.248, 1.315], [0.238, 1.35, 1], [0, 1.35, 1]]);
   // Corona de perlas: ocho bolas sobre el borde, que desde arriba dibujan un anillo de puntos inconfundible.
   const pearls = radial(sphere(0.228, 1.372, 0, 0.05), 8, Math.PI / 8);
   const dome = ellipsoid(0, 1.335, 0, 0.16, 0.105, 0.16);
   const finial = sphere(0, 1.47, 0, 0.056);
   const crown = union(0.02, cup, pearls, dome, finial);
-  return { field: union(0.03, body, collars, crown), bounds: [-0.42, -0.03, -0.42, 0.42, 1.56, 0.42], cell: 0.022 };
+  return { field: union(0.04, body, collars, crown), bounds: [-0.42, -0.03, -0.42, 0.42, 1.56, 0.42], cell: 0.022 };
 }
 
 function king() {
@@ -70,12 +70,12 @@ function king() {
     foot(0.37),
     stem([[0, 0.05, 1], [0.29, 0.05, 1], [0.28, 0.15], [0.218, 0.27], [0.152, 0.45], [0.124, 0.67], [0.12, 0.86], [0.127, 0.96, 1], [0, 0.96, 1]]),
   );
-  const collars = union(0.022, disc(0.987, 0.23, 0.03), disc(1.048, 0.162, 0.022));
+  const collars = union(0.03, disc(0.987, 0.23, 0.03), disc(1.048, 0.162, 0.022));
   const cup = stem([[0, 1.055, 1], [0.125, 1.055, 1], [0.147, 1.14], [0.2, 1.26], [0.252, 1.375], [0.242, 1.405, 1], [0, 1.405, 1]]);
   const dome = ellipsoid(0, 1.395, 0, 0.205, 0.075, 0.205);
   const cross = union(0.014, roundBox(0, 1.61, 0, 0.047, 0.15, 0.042, 0.018), roundBox(0, 1.635, 0, 0.125, 0.045, 0.042, 0.018));
   const crown = union(0.02, cup, dome, cross);
-  return { field: union(0.03, body, collars, crown), bounds: [-0.44, -0.03, -0.44, 0.44, 1.82, 0.44], cell: 0.024 };
+  return { field: union(0.04, body, collars, crown), bounds: [-0.44, -0.03, -0.44, 0.44, 1.82, 0.44], cell: 0.021 };
 }
 
 function knight() {

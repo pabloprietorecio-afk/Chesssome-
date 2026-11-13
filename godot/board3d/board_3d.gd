@@ -220,11 +220,11 @@ func set_theme(theme_name: String) -> void:
 	var dark := theme_name == "dark"
 	_env.background_color = Color("0c1224") if dark else Color("e6eef9")
 	_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
-	_env.ambient_light_energy = 0.42 if dark else 0.46
+	_env.ambient_light_energy = 0.4 if dark else 0.4
 	_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
-	_key.light_energy = 1.0 if dark else 0.92
+	_key.light_energy = 0.92 if dark else 0.74
 	_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
-	_fill.light_energy = 0.22 if dark else 0.2
+	_fill.light_energy = 0.2 if dark else 0.16
 	# El fondo es el de la app (docs/estilo-2d.md) con un halo suave detrás del tablero.
 	_backdrop_mat.set_shader_parameter("top_color", Color("0a0f1e") if dark else Color("eaf1fb"))
 	_backdrop_mat.set_shader_parameter("bottom_color", Color("0a0f1e") if dark else Color("eaf1fb"))
@@ -233,7 +233,7 @@ func set_theme(theme_name: String) -> void:
 	_shadow_mat.set_shader_parameter("shadow_color", Color("02040c") if dark else Color("1f2d55"))
 	_shadow_mat.set_shader_parameter("strength", 0.55 if dark else 0.32)
 	_frame_mat.albedo_color = Color("222d4d") if dark else Color("2b3859")
-	_squares_mat.set_shader_parameter("light_sq", Color("d3deef") if dark else Color("dbe5f2"))
+	_squares_mat.set_shader_parameter("light_sq", Color("d3deef") if dark else Color("d6e1ef"))
 	_squares_mat.set_shader_parameter("dark_sq", Color("7d94b8") if dark else Color("8299be"))
 	# Claras: marfil con el borde algo más oscuro. Oscuras: azul tinta con el borde más claro.
 	_mats[0].set_shader_parameter("base_color", Color("f1e8d6"))
