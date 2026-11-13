@@ -18,10 +18,18 @@ get() { curl -sS -L --retry 3 --max-time 180 -A "$UA" "$@"; }
 # Kenney: la página del recurso enlaza el zip (la ruta lleva un código que cambia con cada versión).
 for asset in casino-audio impact-sounds; do
   get "https://kenney.nl/assets/$asset" -o "$OUT/kenney_$asset.html" || continue
-  url=$(grep -o 'https://kenney.nl/media/pages/assets/[^"]*\.zip' "$OUT/kenney_$asset.html" | head -1)
+  # El enlace puede venir absoluto o relativo.
+  url=$(grep -o 'href="[^"]*\.zip"' "$OUT/kenney_$asset.html" | head -1 | sed 's/^href="//; s/"$//')
+  case "$url" in
+    http*) ;;
+    //*) url="https:$url" ;;
+    /*) url="https://kenney.nl$url" ;;
+  esac
   echo "kenney $asset -> ${url:-sin enlace}"
   if [ -n "$url" ]; then get "$url" -o "$OUT/zips/kenney_$asset.zip" || true; fi
-  grep -i -o 'License[^<]*<[^>]*>[^<]*' "$OUT/kenney_$asset.html" | head -3
+  # Lo que dice la propia página sobre la licencia.
+  tr '\n' ' ' < "$OUT/kenney_$asset.html" | sed 's/<[^>]*>/ /g; s/  */ /g' | grep -o -i 'License.\{0,60\}' | head -3
+  grep -o -i 'href="[^"]*"' "$OUT/kenney_$asset.html" | grep -i -E 'zip|download|media' | head -8
   rm -f "$OUT/kenney_$asset.html"
 done
 
