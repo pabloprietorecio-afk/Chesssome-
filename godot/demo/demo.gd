@@ -44,7 +44,7 @@ var options_open := false
 var top_view := false
 
 var view: BoardView3D
-var bg: Sky
+var bg: SkyBackdrop
 var bar_row: Control
 var chrome: VBoxContainer
 var board_slot: Control
@@ -66,7 +66,7 @@ var font_display: Font
 ## Fondo de la pantalla: cielo. Arriba es algo más intenso y se va fundiendo con el color de fondo; en el
 ## hueco que queda sobre el tablero en los móviles altos hay unas nubes (de día) o la luna y estrellas (de noche).
 ## Es el sitio previsto para los paisajes con el tiempo real (docs/estilo-2d.md); de momento, un cielo quieto.
-class Sky extends Control:
+class SkyBackdrop extends Control:
 	var base := Color.WHITE
 	var top := Color.WHITE
 	var ornament := Color.WHITE
@@ -176,7 +176,7 @@ func _ready() -> void:
 	font_display = _load_font("InterDisplay-Bold.woff2")
 	_load_puzzles()
 
-	bg = Sky.new()
+	bg = SkyBackdrop.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
