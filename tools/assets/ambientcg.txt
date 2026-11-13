@@ -1,0 +1,6 @@
+# Recursos de ambientCG (CC0 1.0). «categoria <Nombre>» para ver miniaturas; «zip <Id> <atributo>» para descargar.
+categoria Marble
+categoria Granite
+categoria Onyx
+categoria Travertine
+categoria Metal
