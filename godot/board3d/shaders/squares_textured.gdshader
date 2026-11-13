@@ -1,10 +1,10 @@
 shader_type spatial;
-// Las 64 casillas del acabado realista: taracea de dos maderas, barnizada. Cada casilla es un trozo distinto
-// de chapa (mismo sentido de la veta, otro sitio de la tabla), con una junta fina entre casillas.
-// Los resaltados y las marcas llegan en la misma textura de estado de 8×8 que en el estilo ilustrado.
+// Las 64 casillas de los acabados realistas (madera, mármol, metal): dos materiales con textura fotográfica.
+// Cada casilla es un trozo distinto del material (otro sitio de la tabla o de la losa), con una junta fina
+// entre casillas. Los resaltados y las marcas llegan en la misma textura de estado de 8×8 que en el estilo ilustrado.
 
-uniform sampler2D light_wood : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D dark_wood : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D light_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D dark_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D light_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform sampler2D dark_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform vec3 light_tint : source_color = vec3(1.0);
@@ -12,9 +12,15 @@ uniform vec3 dark_tint : source_color = vec3(1.0);
 // Parte de la textura que ocupa una casilla.
 uniform float light_grain = 0.2;
 uniform float dark_grain = 0.16;
+// 1 = la textura se gira un cuarto de vuelta (para igualar el sentido de la veta, o para cruzar el cepillado).
+uniform float light_turn = 0.0;
+uniform float dark_turn = 0.0;
 uniform float rough : hint_range(0.0, 1.0) = 0.3;
 uniform float coat : hint_range(0.0, 1.0) = 0.4;
+uniform float metallic : hint_range(0.0, 1.0) = 0.0;
 uniform float normal_depth = 0.6;
+// Cuánto se oscurece la junta entre casillas (0 = no se ve).
+uniform float joint_dark : hint_range(0.0, 1.0) = 0.5;
 uniform vec4 c_last : source_color = vec4(1.0, 0.62, 0.12, 1.0);
 uniform vec4 c_select : source_color = vec4(0.96, 0.8, 0.2, 1.0);
 uniform vec4 c_check : source_color = vec4(0.86, 0.16, 0.14, 1.0);
@@ -46,22 +52,28 @@ void fragment() {
 	vec2 dy = dFdy(q);
 	vec3 col;
 	vec3 nm;
+	vec2 base = vec2(f.x * flip, f.y);
 	if (dark) {
-		vec2 uv = vec2(f.x * flip, f.y) * dark_grain + offset;
-		col = textureGrad(dark_wood, uv, dx * dark_grain, dy * dark_grain).rgb * dark_tint;
-		nm = textureGrad(dark_normal, uv, dx * dark_grain, dy * dark_grain).rgb;
+		bool turn = dark_turn > 0.5;
+		vec2 uv = (turn ? base.yx : base) * dark_grain + offset;
+		vec2 gx = (turn ? dx.yx : dx) * dark_grain;
+		vec2 gy = (turn ? dy.yx : dy) * dark_grain;
+		col = textureGrad(dark_tex, uv, gx, gy).rgb * dark_tint;
+		nm = textureGrad(dark_normal, uv, gx, gy).rgb;
 	} else {
-		// La chapa clara tiene la veta en horizontal: se gira para que corra como la oscura.
-		vec2 uv = vec2(f.y, f.x * flip) * light_grain + offset;
-		col = textureGrad(light_wood, uv, dx.yx * light_grain, dy.yx * light_grain).rgb * light_tint;
-		nm = textureGrad(light_normal, uv, dx.yx * light_grain, dy.yx * light_grain).rgb;
+		bool turn = light_turn > 0.5;
+		vec2 uv = (turn ? base.yx : base) * light_grain + offset;
+		vec2 gx = (turn ? dx.yx : dx) * light_grain;
+		vec2 gy = (turn ? dy.yx : dy) * light_grain;
+		col = textureGrad(light_tex, uv, gx, gy).rgb * light_tint;
+		nm = textureGrad(light_normal, uv, gx, gy).rgb;
 	}
-	// Cada trozo de chapa tiene su tono.
-	col *= 0.95 + 0.1 * hash(cell + vec2(9.7, 1.3));
+	// Cada trozo tiene su tono.
+	col *= 0.96 + 0.08 * hash(cell + vec2(9.7, 1.3));
 	// Junta entre casillas.
 	float edge = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
 	float joint = 1.0 - smoothstep(0.004, 0.016, edge);
-	col *= mix(1.0, 0.5, joint);
+	col *= mix(1.0, 1.0 - joint_dark, joint);
 	// El borde del tablero se oscurece un poco hacia el marco.
 	float rim = min(min(q.x, 8.0 - q.x), min(q.y, 8.0 - q.y));
 	col *= mix(0.72, 1.0, smoothstep(0.0, 0.08, rim));
@@ -72,9 +84,9 @@ void fragment() {
 	float d = length(f - vec2(0.5));
 	float aa = fwidth(d) * 1.2 + 0.002;
 	if (hi == 1) {
-		col = mix(col, c_last.rgb, 0.3);
+		col = mix(col, c_last.rgb, 0.42);
 	} else if (hi == 2) {
-		col = mix(col, c_last.rgb, 0.46);
+		col = mix(col, c_last.rgb, 0.6);
 	} else if (hi == 3) {
 		col = mix(col, c_select.rgb, 0.5);
 	} else if (hi == 4) {
@@ -93,6 +105,9 @@ void fragment() {
 		col = mix(col, hint, ring * (hint_alpha + 0.1));
 	}
 	ALBEDO = col;
+	// Los resaltados y las marcas son pintura sobre el material: ahí no brilla como metal.
+	float paint = (hi > 0 || mark > 0) ? 0.5 : 1.0;
+	METALLIC = metallic * paint;
 	ROUGHNESS = rough + joint * 0.25;
 	SPECULAR = 0.5;
 	CLEARCOAT = coat * (1.0 - joint);

@@ -24,6 +24,53 @@ const FRAME_THICK := 0.36
 const FIT_HEIGHT := 1.8
 ## Grosor del contorno de las piezas, en casillas.
 const OUTLINE_WIDTH := 0.026
+## Acabados realistas: materiales con textura fotográfica (godot/textures) y reflejos del entorno de estudio.
+## El tablero abarca los tonos medios y las piezas, los extremos: las claras son más claras que las casillas
+## claras y las oscuras, más oscuras que las casillas oscuras. Así cada pieza destaca sobre las dos casillas.
+const FINISHES := {
+	"madera": {
+		"light": {"tex": "arce", "normal": "arce_normal", "tint": Color(0.98, 0.94, 0.86), "grain": 0.24, "turn": 1.0},
+		"dark": {"tex": "nogal", "normal": "nogal_normal", "tint": Color(0.8, 0.72, 0.66), "grain": 0.16, "turn": 0.0},
+		"board": {"rough": 0.3, "coat": 0.4, "metallic": 0.0, "normal_depth": 0.6, "joint": 0.5},
+		"frame": {"tex": "palisandro", "tint": Color(0.62, 0.56, 0.54), "rough": 0.3, "coat": 0.4, "metallic": 0.0, "grain": 0.22},
+		"pieces": [
+			{"tex": "boj", "tint": Color(1.08, 1.02, 0.9), "grain": 0.3, "rough": 0.36, "coat": 0.35, "metallic": 0.0, "rim": 0.0},
+			{"tex": "ebano", "tint": Color(0.34, 0.31, 0.3), "grain": 0.3, "rough": 0.27, "coat": 0.35, "metallic": 0.0, "rim": 0.14},
+		],
+		"labels": [Color("f6e9cf"), Color("5b3d27")],
+		"outline": [Color("2b1a10"), Color("050302")],
+		"swatch": [Color("e7cf9c"), Color("2b2422")],
+		"light_setup": {"key": 1.0, "ambient": 0.62, "sky": 1.0, "rim": 0.3},
+	},
+	"marmol": {
+		"light": {"tex": "marmol_crema", "normal": "", "tint": Color(0.96, 0.95, 0.93), "grain": 0.3, "turn": 0.0},
+		"dark": {"tex": "marmol_pizarra", "normal": "", "tint": Color(0.86, 0.9, 0.96), "grain": 0.3, "turn": 0.0},
+		"board": {"rough": 0.16, "coat": 0.0, "metallic": 0.0, "normal_depth": 0.0, "joint": 0.42},
+		"frame": {"tex": "marmol_negro", "tint": Color(0.5, 0.5, 0.52), "rough": 0.16, "coat": 0.0, "metallic": 0.0, "grain": 0.3},
+		"pieces": [
+			{"tex": "marmol_blanco", "tint": Color(1.03, 1.03, 1.04), "grain": 0.45, "rough": 0.2, "coat": 0.0, "metallic": 0.0, "rim": 0.0},
+			{"tex": "marmol_negro", "tint": Color(0.55, 0.55, 0.57), "grain": 0.45, "rough": 0.16, "coat": 0.0, "metallic": 0.0, "rim": 0.12},
+		],
+		"labels": [Color("eef2f8"), Color("5a5348")],
+		"outline": [Color("3a3a40"), Color("050506")],
+		"swatch": [Color("f1f0ee"), Color("2a2b2e")],
+		"light_setup": {"key": 0.95, "ambient": 0.6, "sky": 1.0, "rim": 0.3},
+	},
+	"metal": {
+		"light": {"tex": "acero", "normal": "acero_normal", "tint": Color(1.22, 1.24, 1.28), "grain": 0.3, "turn": 0.0},
+		"dark": {"tex": "acero", "normal": "acero_normal", "tint": Color(0.34, 0.37, 0.43), "grain": 0.3, "turn": 1.0},
+		"board": {"rough": 0.42, "coat": 0.0, "metallic": 1.0, "normal_depth": 1.0, "joint": 0.6},
+		"frame": {"tex": "bronce", "tint": Color(0.7, 0.7, 0.72), "rough": 0.36, "coat": 0.0, "metallic": 1.0, "grain": 0.3},
+		"pieces": [
+			{"tex": "laton", "tint": Color(1.0, 0.86, 0.6), "grain": 0.4, "rough": 0.24, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
+			{"tex": "bronce", "tint": Color(0.62, 0.64, 0.72), "grain": 0.4, "rough": 0.26, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
+		],
+		"labels": [Color("eef1f6"), Color("30343c")],
+		"outline": [Color("3a2c10"), Color("040506")],
+		"swatch": [Color("e2bd62"), Color("33363e")],
+		"light_setup": {"key": 0.85, "ambient": 0.7, "sky": 1.25, "rim": 0.25},
+	},
+}
 const START_FEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const PITCH_MIN := 36.0
 const PITCH_MAX := 90.0
@@ -37,8 +84,8 @@ var orientation := 0
 var anim_mode: Anim = Anim.FAST
 var set_id := "clasico"
 var show_coordinates := true
-## Acabado: "realista" (maderas con textura fotográfica y reflejos de estudio) o "ilustrado" (porcelana lisa).
-var style := "realista"
+## Acabado: "madera", "marmol" o "metal" (realistas, ver FINISHES) o "ilustrado" (porcelana lisa).
+var style := "madera"
 ## Contorno de tinta alrededor de las piezas (ver set_style y set_outline).
 var outline := false
 
@@ -64,9 +111,10 @@ var _targets := PackedInt32Array()
 var _pieces := {}
 var _meshes := {}
 var _mats: Array[ShaderMaterial] = []
-var _wood_mats: Array[ShaderMaterial] = []
-var _squares_wood: ShaderMaterial
-var _frame_wood: ShaderMaterial
+var _tex_mats: Array[ShaderMaterial] = []
+var _squares_tex: ShaderMaterial
+var _frame_tex: ShaderMaterial
+var _textures := {}
 var _squares_node: MeshInstance3D
 var _frame_node: MeshInstance3D
 var _sky: Sky
@@ -212,17 +260,12 @@ func _build() -> void:
 	squares.material_override = _squares_mat
 	add_child(squares)
 	_squares_node = squares
-	# Materiales del acabado realista: taracea de arce y nogal, marco de palisandro, piezas de boj y de ébano.
-	_squares_wood = ShaderMaterial.new()
-	_squares_wood.shader = load("res://board3d/shaders/squares_wood.gdshader") as Shader
-	_squares_wood.set_shader_parameter("state", _state_tex)
-	_squares_wood.set_shader_parameter("light_wood", _texture("arce"))
-	_squares_wood.set_shader_parameter("light_normal", _texture("arce_normal"))
-	_squares_wood.set_shader_parameter("dark_wood", _texture("nogal"))
-	_squares_wood.set_shader_parameter("dark_normal", _texture("nogal_normal"))
-	_frame_wood = ShaderMaterial.new()
-	_frame_wood.shader = load("res://board3d/shaders/frame_wood.gdshader") as Shader
-	_frame_wood.set_shader_parameter("wood", _texture("palisandro"))
+	# Materiales de los acabados realistas: sus texturas y parámetros se ponen al elegir el acabado (_apply_style).
+	_squares_tex = ShaderMaterial.new()
+	_squares_tex.shader = load("res://board3d/shaders/squares_textured.gdshader") as Shader
+	_squares_tex.set_shader_parameter("state", _state_tex)
+	_frame_tex = ShaderMaterial.new()
+	_frame_tex.shader = load("res://board3d/shaders/frame_textured.gdshader") as Shader
 
 	# Coordenadas dentro de las casillas del borde, como en los tableros en pantalla: así el marco puede ser
 	# fino y el tablero ocupa casi todo el ancho. Un juego para cada lado; se enseña el del lado que juega abajo.
@@ -250,15 +293,14 @@ func _build() -> void:
 	var piece_shader := load("res://board3d/shaders/piece.gdshader") as Shader
 	var outline_shader := load("res://board3d/shaders/outline.gdshader") as Shader
 	var disc_shader := load("res://board3d/shaders/outline_disc.gdshader") as Shader
-	var wood_shader := load("res://board3d/shaders/piece_wood.gdshader") as Shader
+	var textured_shader := load("res://board3d/shaders/piece_textured.gdshader") as Shader
 	for side in 2:
 		var m := ShaderMaterial.new()
 		m.shader = piece_shader
 		_mats.append(m)
-		var wm := ShaderMaterial.new()
-		wm.shader = wood_shader
-		wm.set_shader_parameter("wood", _texture("boj" if side == 0 else "ebano"))
-		_wood_mats.append(wm)
+		var tm := ShaderMaterial.new()
+		tm.shader = textured_shader
+		_tex_mats.append(tm)
 		var om := ShaderMaterial.new()
 		om.shader = outline_shader
 		om.set_shader_parameter("width", OUTLINE_WIDTH)
@@ -272,12 +314,29 @@ func _build() -> void:
 	_built = true
 
 
-static func _texture(texture_name: String) -> Texture2D:
-	var path := "res://textures/%s.jpg" % texture_name
-	if not ResourceLoader.exists(path):
-		push_error("Falta la textura " + path)
+## Textura de godot/textures por su nombre ("" = ninguna). Se cargan al usarlas por primera vez.
+func _texture(texture_name: String) -> Texture2D:
+	if texture_name == "":
 		return null
-	return load(path) as Texture2D
+	if not _textures.has(texture_name):
+		var path := "res://textures/%s.jpg" % texture_name
+		if ResourceLoader.exists(path):
+			_textures[texture_name] = load(path) as Texture2D
+		else:
+			push_error("Falta la textura " + path)
+			_textures[texture_name] = null
+	return _textures[texture_name]
+
+
+func is_realistic() -> bool:
+	return FINISHES.has(style)
+
+
+## Colores de las piezas claras y oscuras del acabado actual, para dibujarlas en la interfaz (marca del turno).
+func piece_swatches() -> Array:
+	if is_realistic():
+		return FINISHES[style]["swatch"]
+	return [Color("f8f0e0"), Color("2a3557")]
 
 
 func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label3D:
@@ -368,9 +427,10 @@ static func _inverse_filmic(y: float) -> float:
 	return maxf((-qb - sqrt(disc)) / (2.0 * qa), 0.0)
 
 
-## Cambia el acabado: "realista" o "ilustrado". El contorno de tinta va con el ilustrado, salvo que se indique.
+## Cambia el acabado: "madera", "marmol", "metal" o "ilustrado". El contorno de tinta va con el ilustrado,
+## salvo que se indique otra cosa.
 func set_style(style_name: String, with_outline: Variant = null) -> void:
-	style = style_name if style_name in ["realista", "ilustrado"] else "realista"
+	style = style_name if (FINISHES.has(style_name) or style_name == "ilustrado") else "madera"
 	outline = (style == "ilustrado") if with_outline == null else bool(with_outline)
 	if not _built:
 		return
@@ -378,7 +438,7 @@ func set_style(style_name: String, with_outline: Variant = null) -> void:
 	set_theme(_theme_name)
 
 
-## Contorno de tinta alrededor de las piezas, en cualquiera de los dos acabados.
+## Contorno de tinta alrededor de las piezas, en cualquier acabado.
 func set_outline(on: bool) -> void:
 	outline = on
 	if not _built:
@@ -391,7 +451,7 @@ func set_outline(on: bool) -> void:
 
 
 func _piece_material(side: int) -> ShaderMaterial:
-	return _wood_mats[side] if style == "realista" else _mats[side]
+	return _tex_mats[side] if is_realistic() else _mats[side]
 
 
 ## Pone a una pieza el material del acabado y enseña u oculta su contorno.
@@ -403,11 +463,40 @@ func _dress(node: Node3D) -> void:
 
 
 func _apply_style() -> void:
-	var real := style == "realista"
-	_squares_node.material_override = _squares_wood if real else _squares_mat
-	_frame_node.material_override = _frame_wood if real else _frame_mat
-	# El acabado realista se ilumina con el entorno de estudio (luz ambiente y reflejos); el ilustrado, con un
-	# color de ambiente liso y sin reflejos.
+	var real := is_realistic()
+	if real:
+		var fin: Dictionary = FINISHES[style]
+		for key: String in ["light", "dark"]:
+			var half: Dictionary = fin[key]
+			_squares_tex.set_shader_parameter(key + "_tex", _texture(half["tex"]))
+			_squares_tex.set_shader_parameter(key + "_normal", _texture(half["normal"]))
+			_squares_tex.set_shader_parameter(key + "_tint", half["tint"])
+			_squares_tex.set_shader_parameter(key + "_grain", half["grain"])
+			_squares_tex.set_shader_parameter(key + "_turn", half["turn"])
+		var board: Dictionary = fin["board"]
+		_squares_tex.set_shader_parameter("rough", board["rough"])
+		_squares_tex.set_shader_parameter("coat", board["coat"])
+		_squares_tex.set_shader_parameter("metallic", board["metallic"])
+		_squares_tex.set_shader_parameter("normal_depth", board["normal_depth"])
+		_squares_tex.set_shader_parameter("joint_dark", board["joint"])
+		var frame: Dictionary = fin["frame"]
+		_frame_tex.set_shader_parameter("wood", _texture(frame["tex"]))
+		for key: String in ["tint", "rough", "coat", "metallic", "grain"]:
+			_frame_tex.set_shader_parameter(key, frame[key])
+		for side in 2:
+			var piece: Dictionary = fin["pieces"][side]
+			_tex_mats[side].set_shader_parameter("wood", _texture(piece["tex"]))
+			_tex_mats[side].set_shader_parameter("tint", piece["tint"])
+			_tex_mats[side].set_shader_parameter("grain_scale", piece["grain"])
+			_tex_mats[side].set_shader_parameter("rough", piece["rough"])
+			_tex_mats[side].set_shader_parameter("coat", piece["coat"])
+			_tex_mats[side].set_shader_parameter("metallic", piece["metallic"])
+			_tex_mats[side].set_shader_parameter("rim_amount", piece["rim"])
+			_tex_mats[side].set_shader_parameter("rim_color", Color("c9d6f2"))
+	_squares_node.material_override = _squares_tex if real else _squares_mat
+	_frame_node.material_override = _frame_tex if real else _frame_mat
+	# Los acabados realistas se iluminan con el entorno de estudio (luz ambiente y reflejos); el ilustrado, con
+	# un color de ambiente liso y sin reflejos.
 	_env.sky = _sky if real else null
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY if real else Environment.AMBIENT_SOURCE_COLOR
 	_env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if real else Environment.REFLECTION_SOURCE_DISABLED
@@ -428,30 +517,22 @@ func set_theme(theme_name: String) -> void:
 	var outline_colors: Array[Color] = [Color("262e4c"), Color("0a0f22")]
 	var light_label := Color.WHITE
 	var dark_label := Color.BLACK
-	if style == "realista":
+	if is_realistic():
 		# Estudio: luz principal cálida con sombra, ambiente y reflejos del entorno, y una contra suave.
+		var fin: Dictionary = FINISHES[style]
+		var setup: Dictionary = fin["light_setup"]
 		_env.ambient_light_sky_contribution = 1.0
-		_env.ambient_light_energy = 0.62
-		_sky_mat.set_shader_parameter("intensity", 1.0)
+		_env.ambient_light_energy = setup["ambient"]
+		_sky_mat.set_shader_parameter("intensity", setup["sky"])
 		_key.light_color = Color("fff1dc")
-		_key.light_energy = 1.0
+		_key.light_energy = setup["key"]
 		_fill.light_energy = 0.0
 		_rim_light.light_color = Color("dfe9ff")
-		_rim_light.light_energy = 0.3
-		_squares_wood.set_shader_parameter("light_tint", Color(1.0, 0.98, 0.94))
-		_squares_wood.set_shader_parameter("dark_tint", Color(0.78, 0.7, 0.64))
-		_frame_wood.set_shader_parameter("tint", Color(0.62, 0.56, 0.54))
-		# Boj claro y ébano casi negro: los brillos del barniz son los que dibujan el volumen de las oscuras.
-		_wood_mats[0].set_shader_parameter("tint", Color(1.08, 1.02, 0.9))
-		_wood_mats[0].set_shader_parameter("rough", 0.36)
-		_wood_mats[0].set_shader_parameter("rim_amount", 0.0)
-		_wood_mats[1].set_shader_parameter("tint", Color(0.34, 0.31, 0.3))
-		_wood_mats[1].set_shader_parameter("rough", 0.27)
-		_wood_mats[1].set_shader_parameter("rim_color", Color("c9d6f2"))
-		_wood_mats[1].set_shader_parameter("rim_amount", 0.14)
-		outline_colors = [Color("2b1a10"), Color("050302")]
-		light_label = Color("f6e9cf")
-		dark_label = Color("5b3d27")
+		_rim_light.light_energy = setup["rim"]
+		outline_colors[0] = fin["outline"][0]
+		outline_colors[1] = fin["outline"][1]
+		light_label = fin["labels"][0]
+		dark_label = fin["labels"][1]
 	else:
 		_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
 		_env.ambient_light_energy = 0.42

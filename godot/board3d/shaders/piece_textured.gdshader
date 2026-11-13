@@ -1,9 +1,10 @@
 shader_type spatial;
-// Piezas de madera torneada y barnizada (acabado realista): la textura de la madera se proyecta por los tres
-// ejes de la pieza, con la veta en vertical; la oclusión viene horneada en el color de vértice y los brillos
-// los pone el entorno de estudio.
+// Piezas de los acabados realistas (madera barnizada, mármol pulido, metal): la textura del material se
+// proyecta por los tres ejes de la pieza, con la veta en vertical; la oclusión viene horneada en el color de
+// vértice y los brillos los pone el entorno de estudio.
 
 uniform sampler2D wood : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float metallic : hint_range(0.0, 1.0) = 0.0;
 uniform vec3 tint : source_color = vec3(1.0);
 // Repeticiones de la textura por casilla de altura.
 uniform float grain_scale = 0.3;
@@ -39,6 +40,7 @@ void fragment() {
 	float fres = pow(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), 3.0);
 	col = mix(col, rim_color.rgb, fres * rim_amount);
 	ALBEDO = col;
+	METALLIC = metallic;
 	ROUGHNESS = rough;
 	SPECULAR = spec;
 	CLEARCOAT = coat;

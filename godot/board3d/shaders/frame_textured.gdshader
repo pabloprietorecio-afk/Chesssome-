@@ -1,12 +1,13 @@
 shader_type spatial;
-// Marco del tablero del acabado realista: madera oscura con la veta a lo largo de cada lado y las esquinas
-// a inglete. La malla del marco no tiene coordenadas de textura: se usan las del propio modelo.
+// Marco del tablero de los acabados realistas: el material oscuro del juego, con la veta a lo largo de cada
+// lado y las esquinas a inglete. La malla del marco no tiene coordenadas de textura: se usan las del propio modelo.
 
 uniform sampler2D wood : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec3 tint : source_color = vec3(0.7);
 uniform float grain = 0.22;
 uniform float rough : hint_range(0.0, 1.0) = 0.3;
 uniform float coat : hint_range(0.0, 1.0) = 0.4;
+uniform float metallic : hint_range(0.0, 1.0) = 0.0;
 
 varying vec3 lp;
 
@@ -24,6 +25,7 @@ void fragment() {
 	float mitre = abs(abs(lp.x) - abs(lp.z));
 	col *= mix(0.55, 1.0, smoothstep(0.004, 0.018, mitre));
 	ALBEDO = col;
+	METALLIC = metallic;
 	ROUGHNESS = rough;
 	SPECULAR = 0.5;
 	CLEARCOAT = coat;

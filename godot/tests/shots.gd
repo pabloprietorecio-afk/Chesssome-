@@ -68,14 +68,15 @@ func _run() -> void:
 	if maple != null:
 		var img := maple.get_image()
 		print("TEXTURA arce %s formato=%d mipmaps=%s" % [str(maple.get_size()), img.get_format(), str(img.has_mipmaps())])
-	# El otro acabado: ilustrado, con su contorno de tinta.
-	view.set_board_style("ilustrado")
+	# Los otros acabados: mármol, metal e ilustrado (con su contorno de tinta); y la madera con contorno.
+	for other: String in ["marmol", "metal", "ilustrado"]:
+		view.set_board_style(other)
+		await _frames(4)
+		await _shot("01_" + other)
+	view.set_board_style("madera", true)
 	await _frames(3)
-	await _shot("01b_ilustrado")
-	view.set_board_style("realista", true)
-	await _frames(3)
-	await _shot("01c_realista_con_contorno")
-	view.set_board_style("realista")
+	await _shot("01_madera_con_contorno")
+	view.set_board_style("madera")
 
 	# Medio juego: última jugada, jaque y pieza seleccionada con sus destinos.
 	view.set_fen(MID_FEN)
@@ -118,6 +119,8 @@ func _run() -> void:
 
 	# Primer plano para juzgar formas y materiales.
 	view.set_fen(Board3D.START_FEN)
+	board.camera.fov = 26.0
+	board.camera.near = 0.2
 	var eye := Vector3(2.9, 2.3, 6.9)
 	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.2, 0.55, 2.7) - eye, Vector3.UP), eye)
 	await _frames(3)
@@ -126,6 +129,11 @@ func _run() -> void:
 	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.6, 0.6, -3.3) - eye, Vector3.UP), eye)
 	await _frames(3)
 	await _shot("09_primer_plano_negras")
+	for other: String in ["marmol", "metal"]:
+		view.set_board_style(other)
+		await _frames(4)
+		await _shot("09_primer_plano_" + other)
+	view.set_board_style("madera")
 	board.apply_camera()
 
 	# Animaciones completas, a mitad de recorrido.
