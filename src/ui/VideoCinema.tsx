@@ -9,6 +9,12 @@ import { Chess } from 'chess.js';
 import pack from '../data/videocine.pack.json';
 import {
   EPS,
+  defaultStartPly,
+  fenAfter,
+  moveAt,
+  plyAt,
+  syncCap,
+  syncProblems,
   canAutoPause,
   direct,
   initialDirector,
@@ -22,6 +28,8 @@ import {
   type ClipAnswer,
   type ClipMarks,
   type ClipQuestion,
+  type ClipSync,
+  type SyncMark,
   type DirectorEvent,
   type DirectorState,
   type VideoCinePack,
@@ -47,13 +55,28 @@ type View = { kind: 'list' } | { kind: 'clip'; id: string } | { kind: 'editor'; 
 
 /** Interruptor de desarrollo: localStorage['chessome.dev.localMarks'] = '1' deja usar marcas locales también en clips verificados. */
 const LOCAL_MARKS_FLAG = 'localMarks';
-const canEditMarks = (clip: Clip) => clip.marks !== 'verified' || devFlag(LOCAL_MARKS_FLAG);
+/** ¿Se pueden cambiar en este dispositivo las marcas de pausa? (no, si están verificadas) */
+const canEditTiming = (clip: Clip) => clip.marks !== 'verified' || devFlag(LOCAL_MARKS_FLAG);
+/** ¿Hay algo que marcar? Las pausas si no están verificadas; el tablero sincronizado si el clip aún no lo trae. */
+const canEditMarks = (clip: Clip) => canEditTiming(clip) || !clip.sync;
 
-/** Clip con las marcas hechas en este dispositivo, si el paquete aún no trae marcas verificadas. */
+/** Clip con las marcas hechas en este dispositivo. En un clip verificado solo cuenta el tablero sincronizado local. */
 function effective(clip: Clip): { clip: Clip; local: boolean } {
-  if (!canEditMarks(clip)) return { clip, local: false };
   const local = loadMarks(clip.id);
-  return local ? { clip: withMarks(clip, local), local: true } : { clip, local: false };
+  if (!local) return { clip, local: false };
+  if (canEditTiming(clip)) return { clip: withMarks(clip, local), local: true };
+  if (!clip.sync && local.sync) return { clip: withMarks(clip, { ...marksOf(clip), sync: local.sync }), local: true };
+  return { clip, local: false };
+}
+
+/** Lo que muestra el tablero sincronizado en el segundo `t`, sin pasar de la media jugada `cap`. */
+function syncedView(clip: Clip, sync: ClipSync, t: number, cap = Infinity): { ply: number; fen: string; last: { from: string; to: string } | null; label: string } | null {
+  const ply = Math.min(plyAt(sync, t), cap);
+  if (ply < sync.startPly) return null;
+  const fen = fenAfter(clip, ply);
+  if (!fen) return null;
+  const m = moveAt(clip, ply);
+  return { ply, fen, last: m ? { from: m.from, to: m.to } : null, label: m ? `tras ${m.number}${sanEs(m.san)}` : 'posición inicial' };
 }
 
 export function VideoCinemaScreen(): JSX.Element {
@@ -112,6 +135,7 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
   const [player, setPlayer] = useState<PlayerStatus>('none');
   const [blocked, setBlocked] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [now, setNow] = useState<number | null>(null);
 
   const send = useCallback(
     (e: DirectorEvent) => {
@@ -146,6 +170,7 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
       const snap = adapter.current?.snapshot();
       if (!snap) return;
       setPlaying(snap.playing);
+      setNow(snap.time);
       if (snap.playing) setBlocked(false);
       send({ type: 'tick', ...snap, now: performance.now() });
     }, 100);
@@ -161,7 +186,7 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
   );
 
   const time = useCallback(() => adapter.current?.snapshot()?.time ?? null, []);
-  return { st, send, player, blocked, playing, time };
+  return { st, send, player, blocked, playing, time, now };
 }
 
 /** Desplaza hasta el elemento si no está a la vista en más de la mitad; resuelve cuando ya lo está. */
@@ -198,7 +223,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
   const mount = useRef<HTMLDivElement>(null);
   const videoBox = useRef<HTMLDivElement>(null);
   const askBox = useRef<HTMLDivElement>(null);
-  const { st, send, player, blocked, playing, time } = useDirector(clip, mount);
+  const { st, send, player, blocked, playing, time, now } = useDirector(clip, mount);
 
   const [qi, setQi] = useState(0);
   const [answer, setAnswer] = useState<ClipAnswer | null>(null);
@@ -310,6 +335,27 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
 
   const at = stop?.resumeAt ?? stop?.at ?? clip.start;
   const lastSan = lastQ ? sanEs(lastQ.played.san) : '';
+  // Tablero sincronizado con el vídeo: mientras se ve el vídeo y, si hay jugadas marcadas, al revelar y al final.
+  const sync: ClipSync = clip.sync ?? { startPly: defaultStartPly(clip), marks: [] };
+  const hasSyncMarks = sync.marks.length > 0;
+  const syncTime = st.phase === 'ended' && hasSyncMarks ? Infinity : (now ?? (st.phase === 'watching' ? (clip.start ?? 0) : null));
+  const useSynced = syncTime != null && (st.phase === 'watching' || ((st.phase === 'reveal' || st.phase === 'ended') && hasSyncMarks));
+  const synced = useSynced ? syncedView(clip, sync, syncTime!, syncCap(clip, st)) : null;
+  const prevSynced = useRef<{ ply: number; key: number } | null>(null);
+  let syncedAnim: MoveAnim | null = null;
+  if (synced) {
+    const prev = prevSynced.current;
+    if (!prev || prev.ply !== synced.ply) {
+      // Se anima solo el paso de una jugada a la siguiente; los saltos (rebobinar, adelantar) van sin animación.
+      const step = !!prev && synced.ply === prev.ply + 1;
+      prevSynced.current = { ply: synced.ply, key: step ? ++animKey.current : -1 };
+    }
+    const cur = prevSynced.current!;
+    const m = moveAt(clip, synced.ply);
+    if (cur.key >= 0 && m) syncedAnim = { from: m.from, to: m.to, key: cur.key, captured: m.captured };
+  } else prevSynced.current = null;
+  const shown = synced ? { fen: synced.fen, last: synced.last, anim: syncedAnim } : board;
+
   // Mientras se ve o se responde, la cabecera y el crédito se encogen para que vídeo, pregunta y tablero quepan en un móvil.
   const compact = st.phase === 'watching' || st.phase === 'asking' || st.phase === 'reveal';
   const videoCredit = (
@@ -461,14 +507,15 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
         </div>
       )}
 
-      {board && st.phase !== 'idle' && st.phase !== 'watching' && (
-        <div className="vc-board">
+      {shown && st.phase !== 'idle' && (
+        <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''}>
+          {synced && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
           <Board2D
-            fen={board.fen}
+            fen={shown.fen}
             orientation={clip.orientation}
             interactive={st.phase === 'asking' && !answer && !busy}
-            lastMove={board.last}
-            animate={board.anim}
+            lastMove={shown.last}
+            animate={shown.anim}
             animMode={s.settings.anim}
             coordinates={s.settings.coordinates}
             onMove={onMove}
@@ -506,7 +553,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
                 </p>
               )}
               {player === 'loading' && <p className="cm-quiet">Cargando el reproductor de YouTube…</p>}
-              {playing && <p>En la partida se jugó {lastSan}. Mira cómo ocurrió.</p>}
+              {playing && <p>En la partida se jugó {lastSan}. {hasSyncMarks ? 'El tablero de abajo sigue al vídeo.' : 'Mira cómo ocurrió.'}</p>}
               {st.adSuspected && <p className="cm-quiet">Anuncio de YouTube: el vídeo sigue después.</p>}
             </>
           ) : (
@@ -664,7 +711,15 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
     adapter.current?.play();
   };
 
-  const problems = marksProblems(marks);
+  // Tablero sincronizado: se guarda junto a las marcas (marks.sync).
+  const timing = canEditTiming(clip);
+  const sync: ClipSync = marks.sync ?? { startPly: defaultStartPly(clip), marks: [] };
+  const changeSync = (f: (s: ClipSync) => ClipSync) => {
+    setNote('');
+    setMarks((m) => ({ ...m, sync: f(m.sync ?? { startPly: defaultStartPly(clip), marks: [] }) }));
+  };
+
+  const problems = [...marksProblems(marks), ...syncProblems(clip, sync, marks)];
   const json = JSON.stringify({ clip: clip.id, video: clip.video.id, ...marks });
   const rows: { key: MarkKey; label: string }[] = [
     { key: 'start', label: 'Inicio' },
@@ -706,36 +761,39 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
         )}
       </p>
 
-      <div className="vc-marks">
-        {rows.map(({ key, label }) => {
-          const v = get(key);
-          return (
-            <div className="vc-mark" key={String(key)} data-mark={String(key)}>
-              <div className="vc-mark-head">
-                <span>{label}</span>
-                <strong>{fmt(v)}</strong>
-              </div>
-              <div className="vc-mark-tools">
-                <button className="cm-chip" onClick={() => now != null && set(key, now)} disabled={now == null}>
-                  = ahora
-                </button>
-                {[-1, -0.1, 0.1, 1].map((d) => (
-                  <button key={d} className="cm-chip" onClick={() => nudge(key, d)} disabled={v == null} aria-label={`${d > 0 ? 'Sumar' : 'Restar'} ${Math.abs(d)} segundos`}>
-                    {d > 0 ? `+${d}` : d}
+      {!timing && <p className="cm-quiet cm-small">Las pausas de este clip ya están verificadas. Aquí solo se marca el tablero sincronizado.</p>}
+      {timing && (
+        <div className="vc-marks">
+          {rows.map(({ key, label }) => {
+            const v = get(key);
+            return (
+              <div className="vc-mark" key={String(key)} data-mark={String(key)}>
+                <div className="vc-mark-head">
+                  <span>{label}</span>
+                  <strong>{fmt(v)}</strong>
+                </div>
+                <div className="vc-mark-tools">
+                  <button className="cm-chip" onClick={() => now != null && set(key, now)} disabled={now == null}>
+                    = ahora
                   </button>
-                ))}
-                {typeof key === 'number' && (
-                  <button className="cm-chip" onClick={() => v != null && tryPause(v)} disabled={v == null || status !== 'ready'}>
-                    Probar
-                  </button>
-                )}
+                  {[-1, -0.1, 0.1, 1].map((d) => (
+                    <button key={d} className="cm-chip" onClick={() => nudge(key, d)} disabled={v == null} aria-label={`${d > 0 ? 'Sumar' : 'Restar'} ${Math.abs(d)} segundos`}>
+                      {d > 0 ? `+${d}` : d}
+                    </button>
+                  ))}
+                  {typeof key === 'number' && (
+                    <button className="cm-chip" onClick={() => v != null && tryPause(v)} disabled={v == null || status !== 'ready'}>
+                      Probar
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {clip.clocks && labels.length > 0 && (
+      {timing && clip.clocks && labels.length > 0 && (
         <section className="vc-clock" data-clock="on">
           <h3>Estimar con los relojes</h3>
           {clip.video.continuous === false && (
@@ -804,6 +862,8 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
           )}
         </section>
       )}
+
+      <SyncEditor clip={clip} sync={sync} onChange={changeSync} now={now} ready={status === 'ready'} onGo={goTo} />
 
       {test && (
         <p className="cm-quiet" aria-live="polite">
@@ -881,6 +941,119 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
       <button className="cm-link" onClick={onClose}>
         Volver al clip
       </button>
+    </section>
+  );
+}
+
+/** Marcas del tablero sincronizado: en qué segundo del vídeo aparece cada jugada. */
+function SyncEditor({
+  clip,
+  sync,
+  onChange,
+  now,
+  ready,
+  onGo,
+}: {
+  clip: Clip;
+  sync: ClipSync;
+  onChange: (f: (s: ClipSync) => ClipSync) => void;
+  now: number | null;
+  ready: boolean;
+  onGo: (t: number) => void;
+}): JSX.Element {
+  const s = useAppState();
+  const firstQ = clip.stops[0]?.questions[0]?.ply ?? 1;
+  const minStart = clip.timeline.fromPly === 1 ? 0 : clip.timeline.fromPly;
+  const lastPly = clip.timeline.fromPly + clip.timeline.moves.length - 1;
+  const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
+  const name = (p: number) => {
+    if (p === 0) return 'Posición inicial';
+    const m = moveAt(clip, p);
+    return m ? `${m.number}${sanEs(m.san)}` : `media jugada ${p}`;
+  };
+  const markOf = (p: number) => sync.marks.find((m) => m.ply === p)?.at ?? null;
+  const questionPlies = new Set(clip.stops.flatMap((st) => st.questions.map((q) => q.ply)));
+
+  // Marcar una jugada: las anteriores sin marcar se ponen en el mismo segundo y el orden se mantiene.
+  const setAt = (p: number, t: number) =>
+    onChange((sy) => {
+      const lastMarked = sy.marks.length ? sy.marks[sy.marks.length - 1].ply : sy.startPly;
+      const out: SyncMark[] = [];
+      for (let q = sy.startPly + 1; q <= Math.max(p, lastMarked); q++) {
+        const old = sy.marks.find((m) => m.ply === q)?.at;
+        let at = q === p ? t : (old ?? (q < p ? t : null));
+        if (at == null) break;
+        if (q < p && at > t) at = t;
+        if (q > p && at < t) at = t;
+        out.push({ ply: q, at: Math.round(at * 100) / 100 });
+      }
+      return { ...sy, marks: out };
+    });
+  const removeFrom = (p: number) => onChange((sy) => ({ ...sy, marks: sy.marks.filter((m) => m.ply < p) }));
+
+  const preview = syncedView(clip, sync, now ?? 0);
+
+  return (
+    <section className="vc-sync" data-sync={sync.marks.length}>
+      <h3>Tablero sincronizado</h3>
+      <p className="cm-quiet cm-small">
+        Marca el segundo en que cada jugada aparece en el tablero del vídeo. Si una jugada no sale en cámara, márcala cuando el vídeo ya la muestre (por ejemplo, después de un corte). Las jugadas de una pregunta no
+        pueden aparecer antes de su pausa.
+      </p>
+      <label className="vc-sync-start">
+        Al empezar el clip, el tablero está{' '}
+        <select
+          value={sync.startPly}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            onChange((sy) => ({ startPly: v, marks: sy.marks.filter((m) => m.ply > v) }));
+          }}
+        >
+          {range(minStart, firstQ - 1).map((p) => (
+            <option key={p} value={p}>
+              {p === 0 ? 'en la posición inicial' : `tras ${name(p)}`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="vc-marks">
+        {range(sync.startPly + 1, lastPly).map((p) => {
+          const at = markOf(p);
+          return (
+            <div className="vc-mark" key={p} data-sync-ply={p}>
+              <div className="vc-mark-head">
+                <span>
+                  {name(p)}
+                  {questionPlies.has(p) && <span className="cm-quiet"> · pregunta</span>}
+                </span>
+                <strong>{fmt(at)}</strong>
+              </div>
+              <div className="vc-mark-tools">
+                <button className="cm-chip" onClick={() => now != null && setAt(p, now)} disabled={now == null}>
+                  = ahora
+                </button>
+                {[-0.5, 0.5].map((d) => (
+                  <button key={d} className="cm-chip" onClick={() => at != null && setAt(p, Math.max(0, at + d))} disabled={at == null} aria-label={`${d > 0 ? 'Sumar' : 'Restar'} medio segundo`}>
+                    {d > 0 ? `+${d}` : d}
+                  </button>
+                ))}
+                <button className="cm-chip" onClick={() => at != null && onGo(at + 2)} disabled={at == null || !ready}>
+                  Ir
+                </button>
+                <button className="cm-chip" onClick={() => removeFrom(p)} disabled={at == null} aria-label={`Quitar ${name(p)} y las siguientes`}>
+                  Quitar
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {preview && (
+        <div className="vc-board vc-sync-preview" data-board="preview" data-ply={preview.ply}>
+          <p className="cm-kicker vc-board-label">En este segundo del vídeo · <span className="vc-san">{preview.label}</span></p>
+          <Board2D fen={preview.fen} orientation={clip.orientation} interactive={false} lastMove={preview.last} animMode={s.settings.anim} coordinates={s.settings.coordinates} />
+        </div>
+      )}
     </section>
   );
 }

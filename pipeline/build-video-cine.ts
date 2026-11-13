@@ -22,7 +22,7 @@ import { UciEngine } from './uci';
 import { CLIPS } from './video-clips';
 import { analyseAll, neg, ranked, toVerdicts } from './cine-engine';
 import { classify, DRAW_KEEPS_CP, WIN_SPOILS_CP, type FilmResult } from '../src/core/cinema';
-import { canAutoPause, marksProblems, replay, type Clip, type ClipQuestion, type ClipSource, type ClipStop, type VideoCinePack } from '../src/core/videoCine';
+import { canAutoPause, defaultStartPly, marksProblems, replay, syncProblems, type Clip, type ClipQuestion, type ClipSource, type ClipStop, type VideoCinePack } from '../src/core/videoCine';
 import { pressTimes } from '../src/core/clockSync';
 import { sanEs } from '../src/core/lang';
 import type { Color } from '../src/core/types';
@@ -163,10 +163,21 @@ async function buildClip(engine: UciEngine, src: ClipSource): Promise<{ clip?: C
     }
   }
 
+  // Trozo de la partida que viaja con el clip: desde unas jugadas antes de la primera pregunta (o del inicio
+  // del tablero sincronizado) hasta el final. Lo usan el tablero sincronizado y el editor de marcas.
+  const firstQ = src.stops[0]?.questions[0]?.ply ?? 1;
+  const fromPly = Math.max(1, Math.min(firstQ - 12, src.sync?.startPly ?? firstQ));
+  const timeline = { fromPly, moves: game.slice(fromPly - 1) };
+  if (src.sync) {
+    const probe = { timeline, stops, plies: game.length };
+    for (const p of syncProblems(probe, src.sync, src)) fail(`Tablero sincronizado: ${p}`);
+    if (src.sync.marks.length === 0) warn('Tablero sincronizado sin jugadas marcadas: solo mostrará la posición inicial.');
+  } else warn(`Sin tablero sincronizado: mientras se ve el vídeo se mostrará la posición de la primera pregunta (tras la media jugada ${defaultStartPly(src)}).`);
+
   report.ok = report.errors.length === 0;
   if (!report.ok) return { report };
   const { moves: _moves, stops: _stops, ...rest } = src;
-  return { clip: { ...rest, stops, tail: game.slice(lastPly), plies: game.length, ...(clockLabels ? { clockLabels } : {}) }, report };
+  return { clip: { ...rest, stops, tail: game.slice(lastPly), plies: game.length, timeline, ...(clockLabels ? { clockLabels } : {}) }, report };
 }
 
 const engine = await UciEngine.start('lite-single', 128);

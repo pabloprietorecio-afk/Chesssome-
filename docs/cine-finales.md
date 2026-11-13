@@ -2,14 +2,15 @@
 
 Idea de Pablo: ver finales reales en vídeo y que el vídeo **se pare solo justo antes de la jugada** para preguntar al jugador «¿Qué jugarías?». Después, el vídeo sigue y se ve lo que pasó de verdad.
 
-**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Primer clip terminado (Ding–Gukesh, Mundial 2024): tres preguntas comprobadas con Stockfish y marcas de tiempo puestas por Pablo y verificadas en su móvil: **la pausa automática cae antes de que Gukesh coja la torre**. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
+**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Primer clip terminado (Ding–Gukesh, Mundial 2024): tres preguntas comprobadas con Stockfish y marcas de tiempo puestas por Pablo y verificadas en su móvil: **la pausa automática cae antes de que Gukesh coja la torre**. Nuevo: tablero 2D sincronizado con el vídeo; falta marcar sus segundos en el clip. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
 
 ## 1. Cómo es la experiencia
 
 1. **Ver el vídeo.** El jugador pulsa ▶ en el reproductor. El vídeo corre hasta la marca y se para solo.
-2. **Pregunta.** Debajo del vídeo aparece la pregunta y nuestro tablero con la posición. Puede haber varias preguntas encadenadas en la misma pausa; el tablero juega las jugadas intermedias de la partida.
-3. **Respuesta.** Tras cada jugada, la app dice si mantiene el resultado, si lo estropea y con qué línea del motor.
-4. **Así ocurrió.** El vídeo sigue desde la pausa y se ve la jugada real y lo que vino después.
+2. **Tablero del vídeo.** Mientras se ve el vídeo, debajo va nuestro tablero 2D con la posición que hay en el tablero del vídeo, y se mueve cuando se mueve en el vídeo (apartado 6, «Tablero sincronizado»).
+3. **Pregunta.** Debajo del vídeo aparece la pregunta y nuestro tablero con la posición. Puede haber varias preguntas encadenadas en la misma pausa; el tablero juega las jugadas intermedias de la partida.
+4. **Respuesta.** Tras cada jugada, la app dice si mantiene el resultado, si lo estropea y con qué línea del motor.
+5. **Así ocurrió.** El vídeo sigue desde la pausa y se ve la jugada real y lo que vino después.
 
 Y dos atajos:
 
@@ -118,6 +119,16 @@ Comparación con las marcas de Pablo (pausa 215,47 s, fin 233,07 s): en 3:53 los
 
 Conclusión: los resúmenes editados se marcan a mano. La estimación por relojes es para retransmisiones completas sin cortes (por ejemplo, el directo entero de una partida), donde una sola marca da todas las demás. Riesgo en esas retransmisiones: los comentaristas pueden adelantar la jugada antes de la pausa.
 
+**Tablero sincronizado (13 nov 2026, a petición de Pablo).** Debajo del vídeo, nuestro tablero 2D enseña la posición del tablero del vídeo y la va moviendo.
+
+- Datos: posición al empezar el clip (`sync.startPly`, por defecto la de la primera pregunta) y, para cada media jugada siguiente, el segundo del vídeo en que aparece (`sync.marks`). El paquete lleva la partida desde 12 medias jugadas antes de la primera pregunta hasta el final (`timeline`).
+- Se marca a mano en el editor de marcas, sección «Tablero sincronizado»: «= ahora» en cada jugada (las anteriores sin marcar se ponen en el mismo segundo), ±0,5 s, «Ir» y «Quitar» (borra esa y las siguientes). Una vista previa enseña el tablero en el segundo actual del vídeo. En un clip con pausas verificadas, el editor solo deja tocar el tablero.
+- Jugadas que no salen en cámara (vídeo con cortes): se marcan cuando el vídeo ya las muestra, por ejemplo tras el corte.
+- Sin destripes, por dos vías: (1) la validación (`syncProblems`) no deja guardar ni empaquetar una jugada de pregunta, o posterior, marcada antes de su pausa; (2) mientras se ve el vídeo, el tablero nunca pasa de la posición de la próxima pregunta (`syncCap`), aunque una marca esté mal.
+- Animación solo al avanzar una jugada; al rebobinar o saltar, el tablero cambia sin animación.
+- En la pausa, el tablero es el de la pregunta. Al revelar y al final, vuelve a seguir al vídeo si hay jugadas marcadas.
+- Ding–Gukesh: según Pablo, en el vídeo solo se ve mover el rey blanco una casilla (56.Rxf2). Falta que marque los segundos.
+
 **Idea para escalar (hipótesis):** pedir permiso por escrito a FIDE o a los canales permitiría automatizar la búsqueda del segundo exacto mirando el tablero en el vídeo. Sin permiso, las condiciones de YouTube prohíben descargar el vídeo y acceder por medios automatizados.
 
 ## 7. Vídeos
@@ -170,7 +181,7 @@ Sin verificar en todos: que se vea bien el tablero y el segundo exacto de cada j
 | Fuentes de los clips | `pipeline/video-clips.ts` |
 | Comprobación y paquete | `pipeline/build-video-cine.ts` → `src/data/videocine.pack.json` (10 KB), informe en `data/dev/videocine-report.json` |
 | Análisis compartido | `pipeline/cine-engine.ts` |
-| Pruebas | `tests/videoCine.test.ts` (24), `scripts/e2e-videocine.mjs` (Chrome con la API de YouTube simulada) |
+| Pruebas | `tests/videoCine.test.ts` (32), `scripts/e2e-videocine.mjs` (Chrome con la API de YouTube simulada) |
 
 ```bash
 npx tsx pipeline/build-video-cine.ts                          # comprueba los clips y escribe el paquete

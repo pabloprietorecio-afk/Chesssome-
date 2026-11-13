@@ -272,19 +272,97 @@ await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); lo
 await clickText('Volver a la cartelera');
 await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
 await page.waitForSelector('.vc[data-phase="idle"]');
-assert(!(await hasButton('Editor de marcas')), 'con marcas verificadas no debe ofrecerse el editor');
+// Con las pausas verificadas pero sin tablero sincronizado, el editor se ofrece solo para marcar el tablero.
+assert(await hasButton('Editor de marcas'), 'sin tablero sincronizado debe ofrecerse el editor para marcarlo');
 await clickText('Ver el vídeo: se para');
 await waitAttr('phase', 'watching');
 await waitAttr('player', 'ready');
 const cued = await fake(() => window.__fakeYT.last().time);
 assert(Math.abs(cued - 200) < 0.5, `el clip debe empezar en 200 s (está en ${cued})`);
+// Mientras se ve el vídeo, debajo va el tablero del vídeo: la posición antes de la pregunta (tras 55.Tf2).
+const boardInfo = () => page.$eval('.vc-board', (e) => ({ kind: e.dataset.board, ply: e.dataset.ply, label: e.querySelector('.vc-board-label')?.textContent ?? '' }));
+let bi = await boardInfo();
+assert(bi.kind === 'video' && bi.ply === '109' && /tras 55\.Tf2/.test(bi.label), 'tablero del vídeo al empezar: ' + JSON.stringify(bi));
+await page.evaluate(() => window.scrollTo(0, 0));
+await sleep(200);
+await shot('13-viendo-con-tablero');
 await fake(() => window.__fakeYT.tapPlay());
 await waitAttr('phase', 'asking', 25000);
 const packPause = await fake(() => window.__fakeYT.last().time);
 assert(packPause >= 215.47 - 0.13 && packPause <= 215.47 + 0.2, `la pausa del paquete cayó en ${packPause}`);
+bi = await boardInfo();
+assert(bi.kind === 'question', 'en la pausa, el tablero es el de la pregunta: ' + JSON.stringify(bi));
+
+// ── F. Tablero sincronizado: se marca en el editor (solo el tablero: las pausas están verificadas) y sigue al vídeo. ──
+await clickText('Editor de marcas');
+await page.waitForSelector('.vc-editor .vc-sync');
+assert(!(await page.$('.vc-mark[data-mark]')), 'en un clip verificado no deben poder tocarse las pausas');
+await clickText('Cargar el vídeo');
+await page.waitForSelector('.vc-editor[data-player="ready"]');
+const markPly = async (p) => { await sleep(260); await page.evaluate((p) => document.querySelector(`.vc-mark[data-sync-ply="${p}"] button`).click(), p); await sleep(150); };
+const syncButton = (p, t) => page.evaluate((p, t) => [...document.querySelectorAll(`.vc-mark[data-sync-ply="${p}"] button`)].find((b) => b.textContent.trim() === t).click(), p, t);
+const warnings = () => page.$$eval('.vc-warn', (els) => els.map((e) => e.textContent).join(' | '));
+const saveDisabled = () => page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Guardar en este dispositivo').disabled);
+const syncTimes = () => page.$$eval('.vc-mark[data-sync-ply]', (els) => Object.fromEntries(els.map((e) => [e.dataset.syncPly, e.querySelector('strong').textContent])));
+const previewPly = () => page.$eval('.vc-sync-preview', (e) => e.dataset.ply);
+// Destripe: 55…Txf2 no puede aparecer antes de la pausa (215,47 s).
+await setTime(214); await markPly(110);
+assert(/antes de la pausa/.test(await warnings()), 'debe avisar del destripe: ' + (await warnings()));
+assert(await saveDisabled(), 'no debe dejar guardar un tablero que destripa la pregunta');
+await setTime(216); await markPly(110);
+await setTime(218.5); await markPly(111);
+// Marcar una jugada posterior rellena las que faltan con el mismo segundo.
+await setTime(230); await markPly(113);
+let times = await syncTimes();
+assert(times['110'] === '216.00 s' && times['111'] === '218.50 s' && times['112'] === '230.00 s' && times['113'] === '230.00 s' && times['114'] === '—', 'marcas: ' + JSON.stringify(times));
+await syncButton(112, 'Quitar');
+await sleep(150);
+times = await syncTimes();
+assert(times['111'] === '218.50 s' && times['112'] === '—' && times['113'] === '—', 'quitar debe borrar esa y las siguientes: ' + JSON.stringify(times));
+assert((await warnings()) === '', 'no debe haber avisos: ' + (await warnings()));
+for (const [t, ply] of [[205, '109'], [217, '110'], [219, '111']]) {
+  await setTime(t);
+  await sleep(300);
+  assert((await previewPly()) === ply, `vista previa en ${t} s: ${await previewPly()} (esperado ${ply})`);
+}
+await page.evaluate(() => document.querySelector('.vc-sync')?.scrollIntoView({ block: 'start' }));
+await sleep(200);
+await shot('14-editor-tablero');
+const copied = await page.$eval('.vc-json', (e) => JSON.parse(e.value));
+assert(JSON.stringify(copied.sync) === JSON.stringify({ startPly: 109, marks: [{ ply: 110, at: 216 }, { ply: 111, at: 218.5 }] }), 'JSON copiable: ' + JSON.stringify(copied.sync));
+assert(copied.stops[0] === 215.47, 'las pausas verificadas no cambian: ' + JSON.stringify(copied.stops));
+await clickText('Guardar en este dispositivo');
+await sleep(200);
+await clickText('Volver al clip');
+await page.waitForSelector('.vc[data-phase="idle"]');
+await clickText('Ver el vídeo: se para');
+await waitAttr('phase', 'watching');
+await waitAttr('player', 'ready');
+await fake(() => { window.__fakeYT.rate = 4; window.__fakeYT.tapPlay(); });
+await waitAttr('phase', 'asking', 20000);
+await fake(() => { window.__fakeYT.rate = 1; });
+const syncPause = await fake(() => window.__fakeYT.last().time);
+assert(syncPause >= 215.47 - 0.13 && syncPause <= 215.47 + 0.45, `con tablero, la pausa cayó en ${syncPause}`);
+await clickText('Seguir viendo sin responder');
+await waitAttr('phase', 'reveal');
+const waitPly = async (ply, ms = 8000) => { const t0 = Date.now(); while ((await boardInfo()).ply !== ply) { if (Date.now() - t0 > ms) throw new Error(`El tablero no llega a ${ply}: ${JSON.stringify(await boardInfo())}`); await sleep(80); } };
+await waitPly('110');
+bi = await boardInfo();
+assert(bi.kind === 'video' && /tras 55…Txf2/.test(bi.label), 'tras la pausa, el tablero sigue al vídeo: ' + JSON.stringify(bi));
+await waitPly('111');
+assert(/tras 56\.Rxf2/.test((await boardInfo()).label), 'etiqueta: ' + (await boardInfo()).label);
+await page.evaluate(() => document.querySelector('.vc-board')?.scrollIntoView({ block: 'center' }));
+await sleep(500);
+await shot('15-tablero-sigue-al-video');
+await fake(() => { window.__fakeYT.rate = 25; });
+await waitAttr('phase', 'ended', 20000);
+await fake(() => { window.__fakeYT.rate = 1; });
+bi = await boardInfo();
+assert(bi.kind === 'video' && bi.ply === '111', 'al final, la última jugada marcada: ' + JSON.stringify(bi));
+await page.evaluate(() => localStorage.removeItem('chessome.clipMarks.v1'));
 
 console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
-console.log('Clip con las marcas del paquete: empieza en', cued.toFixed(2), 's y se para en', packPause.toFixed(2), 's (marca 215,47).');
+console.log('Clip con las marcas del paquete: empieza en', cued.toFixed(2), 's y se para en', packPause.toFixed(2), 's (marca 215,47). Con tablero sincronizado: pausa en', syncPause.toFixed(2), 's.');
 console.log('Pausa automática en', paused.time.toFixed(2), 's (marca 8,40). Prueba del editor en', tested, 's. Reproductor', Math.round(geom.w) + '×' + Math.round(geom.h), 'px.');
 await browser.close();
 server.close();

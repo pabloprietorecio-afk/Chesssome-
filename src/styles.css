@@ -1614,3 +1614,26 @@ a {
 .vc-clock-t {
   color: var(--quiet);
 }
+.vc-sync {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+.vc-sync h3 {
+  margin: 0;
+}
+.vc-sync-start select {
+  max-width: 100%;
+}
+.vc-board-label {
+  margin: 0 0 6px;
+}
+.vc-san {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.vc-sync .vc-mark-tools .cm-chip {
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+}

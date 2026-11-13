@@ -6,7 +6,9 @@
    "id": "ding-gukesh-2024-g14",
    "ok": true,
    "errors": [],
-   "warnings": [],
+   "warnings": [
+    "Sin tablero sincronizado: mientras se ve el vídeo se mostrará la posición de la primera pregunta (tras la media jugada 109)."
+   ],
    "questions": [
     {
      "ply": 110,

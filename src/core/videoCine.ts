@@ -92,6 +92,24 @@ export interface ClipSource {
   notes?: string;
   /** Relojes de la partida (retransmisión oficial), para estimar el segundo de cada jugada. */
   clocks?: ClockData;
+  /** Tablero sincronizado con el vídeo: posición al empezar y segundo en que aparece cada jugada. */
+  sync?: ClipSync;
+}
+
+/** Segundo del vídeo en que el tablero 2D debe mostrar hecha la media jugada `ply`. */
+export interface SyncMark {
+  ply: number;
+  at: number;
+}
+
+/**
+ * Tablero sincronizado. `startPly` es la posición que muestra el vídeo al empezar el clip (tras esa media jugada).
+ * Hay que dar el segundo de cada media jugada siguiente hasta la última marcada, sin huecos. Las jugadas que el
+ * vídeo no enseña (cortes, cámara) se marcan donde tenga sentido, pero nunca antes de la pausa de su pregunta.
+ */
+export interface ClipSync {
+  startPly: number;
+  marks: SyncMark[];
 }
 
 /** Jugada de la partida que el tablero reproduce entre preguntas. */
@@ -137,6 +155,8 @@ export interface Clip extends Omit<ClipSource, 'stops' | 'moves'> {
   plies: number;
   /** Nombre de cada media jugada con reloj («55…Txf2»), para el editor de marcas. */
   clockLabels?: { ply: number; label: string }[];
+  /** Jugadas de la partida desde `fromPly` hasta el final (para el tablero sincronizado y el editor). */
+  timeline: { fromPly: number; moves: GameMove[] };
 }
 
 export interface VideoCinePack {
@@ -152,9 +172,17 @@ export interface ClipMarks {
   end: number | null;
   stops: (number | null)[];
   duration: number | null;
+  /** Tablero sincronizado; null o ausente = sin sincronizar. */
+  sync?: ClipSync | null;
 }
 
-export const marksOf = (clip: Clip): ClipMarks => ({ start: clip.start, end: clip.end, stops: clip.stops.map((s) => s.at), duration: clip.video.duration });
+export const marksOf = (clip: Clip): ClipMarks => ({
+  start: clip.start,
+  end: clip.end,
+  stops: clip.stops.map((s) => s.at),
+  duration: clip.video.duration,
+  ...(clip.sync ? { sync: clip.sync } : {}),
+});
 
 /** Aplica unas marcas (p. ej. las hechas en este dispositivo con el editor) sobre un clip. */
 export function withMarks(clip: Clip, m: ClipMarks): Clip {
@@ -164,6 +192,7 @@ export function withMarks(clip: Clip, m: ClipMarks): Clip {
     end: m.end,
     video: { ...clip.video, duration: m.duration ?? clip.video.duration },
     stops: clip.stops.map((s, i) => ({ ...s, at: m.stops[i] ?? null, resumeAt: null })),
+    sync: m.sync === undefined ? clip.sync : m.sync ?? undefined,
   };
 }
 
@@ -181,6 +210,74 @@ export function marksProblems(m: ClipMarks): string[] {
   for (let i = 1; i < seq.length; i++) if (seq[i] <= seq[i - 1]) out.push('Las marcas tienen que ir en orden: inicio, pausas y fin.');
   if (m.duration != null && seq.some((x) => x > m.duration!)) out.push('Hay marcas más allá del final del vídeo.');
   if (seq.some((x) => x < 0)) out.push('Hay marcas negativas.');
+  return [...new Set(out)];
+}
+
+// ───────────────────────── Tablero sincronizado ─────────────────────────
+
+export const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+/** Jugada de la partida en la media jugada `ply`, si está en el trozo empaquetado. */
+export function moveAt(clip: Pick<Clip, 'timeline'>, ply: number): GameMove | null {
+  const i = ply - clip.timeline.fromPly;
+  return i >= 0 && i < clip.timeline.moves.length ? clip.timeline.moves[i] : null;
+}
+
+/** Posición tras la media jugada `ply` (0 = posición inicial). */
+export function fenAfter(clip: Pick<Clip, 'timeline'>, ply: number): string | null {
+  if (ply === 0) return START_FEN;
+  return moveAt(clip, ply)?.fenAfter ?? null;
+}
+
+/** Posición por defecto al empezar el clip: la de la primera pregunta. */
+export const defaultStartPly = (clip: { stops: { questions: { ply: number }[] }[] }): number => (clip.stops[0]?.questions[0]?.ply ?? 1) - 1;
+
+/** Media jugada que el tablero sincronizado debe mostrar en el segundo `t`. */
+export function plyAt(sync: ClipSync, t: number): number {
+  let ply = sync.startPly;
+  for (const m of sync.marks) {
+    if (m.at <= t) ply = m.ply;
+    else break;
+  }
+  return ply;
+}
+
+/**
+ * Última media jugada que el tablero sincronizado puede enseñar sin destripar la próxima pregunta.
+ * Es una red de seguridad además de syncProblems: aunque una marca caiga mal, la jugada de la pregunta
+ * no aparece en el tablero hasta que se ha preguntado.
+ */
+export function syncCap(clip: { stops: { questions: { ply: number }[] }[] }, st: { phase: Phase; stop: number; mode: DirectorState['mode'] }): number {
+  if (st.mode === 'free') return Infinity;
+  const next = st.phase === 'watching' ? clip.stops[st.stop] : st.phase === 'reveal' ? clip.stops[st.stop + 1] : undefined;
+  const q = next?.questions[0]?.ply;
+  return q == null ? Infinity : q - 1;
+}
+
+/** Problemas de un tablero sincronizado; lista vacía si está bien. */
+export function syncProblems(
+  clip: Pick<Clip, 'timeline' | 'plies'> & { stops: { questions: { ply: number }[] }[] },
+  sync: ClipSync,
+  marks: { start: number | null; end: number | null; stops: (number | null | { at: number | null })[] },
+): string[] {
+  const out: string[] = [];
+  if (fenAfter(clip, sync.startPly) == null) out.push('La posición inicial del tablero sincronizado queda fuera de las jugadas disponibles.');
+  sync.marks.forEach((m, i) => {
+    if (m.ply !== sync.startPly + 1 + i) out.push('Faltan jugadas por marcar en el tablero sincronizado: tienen que ir seguidas, sin huecos.');
+    if (i > 0 && m.at < sync.marks[i - 1].at) out.push('Las jugadas del tablero sincronizado tienen que ir en orden de tiempo.');
+    if (m.ply > clip.plies) out.push('Hay jugadas marcadas más allá del final de la partida.');
+    if (marks.start != null && m.at < marks.start) out.push('Hay jugadas marcadas antes del inicio del clip.');
+    if (marks.end != null && m.at > marks.end) out.push('Hay jugadas marcadas después del fin del clip.');
+  });
+  // Sin destripar: ninguna jugada de una pregunta (ni posterior) puede aparecer en el tablero antes de su pausa.
+  clip.stops.forEach((st, i) => {
+    const q = st.questions[0]?.ply;
+    const raw = marks.stops[i];
+    const at = raw != null && typeof raw === 'object' ? raw.at : raw;
+    if (q == null || at == null) return;
+    if (sync.startPly >= q) out.push(`El tablero empieza después de la pregunta ${i + 1}: la destriparía.`);
+    for (const m of sync.marks) if (m.ply >= q && m.at < at) out.push(`El tablero mostraría la jugada de la pregunta ${i + 1} antes de la pausa.`);
+  });
   return [...new Set(out)];
 }
 

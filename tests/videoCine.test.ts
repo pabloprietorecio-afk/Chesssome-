@@ -4,13 +4,19 @@ import { CLIPS } from '../pipeline/video-clips';
 import {
   EPS,
   canAutoPause,
+  defaultStartPly,
   direct,
+  fenAfter,
   initialDirector,
   judgeAnswer,
   marksOf,
   marksProblems,
+  moveAt,
+  plyAt,
   replay,
   run,
+  syncCap,
+  syncProblems,
   watchUrl,
   withMarks,
   youtubeId,
@@ -31,7 +37,7 @@ describe('paquete de clips de vídeo', () => {
     for (const src of CLIPS) {
       const clip = PACK.clips.find((c) => c.id === src.id)!;
       const { moves, stops, ...meta } = src;
-      const { stops: packedStops, tail, plies, clockLabels: _labels, ...packedMeta } = clip;
+      const { stops: packedStops, tail, plies, clockLabels: _labels, timeline: _timeline, ...packedMeta } = clip;
       expect(packedMeta).toEqual(meta);
       const game = replay(moves, src.id);
       expect(plies).toBe(game.length);
@@ -47,6 +53,10 @@ describe('paquete de clips de vídeo', () => {
         });
       });
       expect(tail.length).toBe(game.length - stops.at(-1)!.questions.at(-1)!.ply);
+      // El trozo de partida del tablero sincronizado llega hasta el final y coincide con la partida.
+      expect(clip.timeline.fromPly + clip.timeline.moves.length - 1).toBe(game.length);
+      clip.timeline.moves.forEach((m, i) => expect(m).toEqual(game[clip.timeline.fromPly - 1 + i]));
+      expect(fenAfter(clip, defaultStartPly(clip))).toBe(packedStops[0].questions[0].fen);
     }
   });
 
@@ -330,5 +340,60 @@ describe('director', () => {
       expect(pausedAt!).toBeLessThanOrEqual(at + 0.1);
       expect(log.filter((l) => l.startsWith('pause')).length).toBe(1);
     }
+  });
+});
+
+describe('tablero sincronizado', () => {
+  const q1 = ding.stops[0].questions[0].ply;
+  const pause = ding.stops[0].at!;
+  const marks = marksOf(ding);
+
+  it('por defecto empieza en la posición de la primera pregunta', () => {
+    expect(defaultStartPly(ding)).toBe(q1 - 1);
+    expect(moveAt(ding, q1)!.san).toBe(ding.stops[0].questions[0].played.san);
+    expect(fenAfter(ding, 0)).toMatch(/^rnbqkbnr\/pppppppp/);
+    expect(fenAfter(ding, ding.timeline.fromPly - 1)).toBeNull();
+  });
+
+  it('cada jugada aparece en su segundo; antes, la posición de partida', () => {
+    const sync = { startPly: 109, marks: [{ ply: 110, at: 216 }, { ply: 111, at: 218.5 }] };
+    expect(plyAt(sync, 200)).toBe(109);
+    expect(plyAt(sync, 215.99)).toBe(109);
+    expect(plyAt(sync, 216)).toBe(110);
+    expect(plyAt(sync, 230)).toBe(111);
+    expect(plyAt(sync, Infinity)).toBe(111);
+  });
+
+  it('acepta marcas seguidas, en orden y sin destripar', () => {
+    const ok = { startPly: q1 - 1, marks: [{ ply: q1, at: pause }, { ply: q1 + 1, at: pause + 3 }] };
+    expect(syncProblems(ding, ok, marks)).toEqual([]);
+    expect(syncProblems(ding, { startPly: q1 - 1, marks: [] }, marks)).toEqual([]);
+  });
+
+  it('rechaza huecos, desorden, marcas fuera del clip y destripes', () => {
+    const at = (ms: { ply: number; at: number }[], startPly = q1 - 1) => syncProblems(ding, { startPly, marks: ms }, marks).join(' ');
+    expect(at([{ ply: q1 + 1, at: pause + 1 }])).toMatch(/sin huecos/);
+    expect(at([{ ply: q1, at: pause + 3 }, { ply: q1 + 1, at: pause + 1 }])).toMatch(/orden de tiempo/);
+    expect(at([{ ply: q1, at: ding.end! + 1 }])).toMatch(/después del fin/);
+    expect(at([{ ply: q1, at: ding.start! - 1 }])).toMatch(/antes del inicio/);
+    expect(at([{ ply: q1, at: pause - 0.5 }])).toMatch(/antes de la pausa/);
+    expect(at([], q1)).toMatch(/destriparía/);
+    expect(at([], ding.timeline.fromPly - 1)).toMatch(/fuera de las jugadas/);
+  });
+
+  it('mientras se ve el vídeo, el tablero no pasa de la posición de la próxima pregunta', () => {
+    expect(syncCap(ding, { phase: 'watching', stop: 0, mode: 'film' })).toBe(q1 - 1);
+    expect(syncCap(ding, { phase: 'reveal', stop: 0, mode: 'film' })).toBe(Infinity);
+    expect(syncCap(ding, { phase: 'watching', stop: 0, mode: 'free' })).toBe(Infinity);
+    const two = { stops: [{ questions: [{ ply: 20 }] }, { questions: [{ ply: 40 }] }] };
+    expect(syncCap(two, { phase: 'reveal', stop: 0, mode: 'film' })).toBe(39);
+    expect(syncCap(two, { phase: 'ended', stop: 1, mode: 'film' })).toBe(Infinity);
+  });
+
+  it('las marcas del tablero viajan con las demás marcas', () => {
+    const sync = { startPly: q1 - 1, marks: [{ ply: q1, at: pause }] };
+    expect(withMarks(ding, { ...marks, sync }).sync).toEqual(sync);
+    expect(withMarks({ ...ding, sync }, { ...marks, sync: null }).sync).toBeUndefined();
+    expect(withMarks({ ...ding, sync }, marksOf(ding)).sync).toEqual(sync);
   });
 });
