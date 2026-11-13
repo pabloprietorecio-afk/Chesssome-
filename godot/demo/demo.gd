@@ -114,6 +114,15 @@ var test_skipped := false
 var _try := {}
 ## Nivel antes y después del intento anotado en este problema (para enseñar el cambio al terminar).
 var _rating_shown: Array = []
+## Repaso de errores: en el entrenamiento, cada pocos problemas vuelve uno que se falló (los del test, los
+## primeros), ahora con todas las ayudas y la explicación completa. No mueve el nivel. `reviewed` guarda los
+## que ya se han repasado; `is_review`, si el problema en pantalla es un repaso.
+var reviewed := {}
+var is_review := false
+var _since_review := 0
+## Cada cuántos problemas nuevos toca un repaso, y cuántos problemas tienen que haber pasado desde el fallo.
+const REVIEW_EVERY := 3
+const REVIEW_GAP := 4
 var _rng := RandomNumberGenerator.new()
 const PLAYER_PATH := "user://chessome_jugador.json"
 ## Con false no se leen ni se guardan los ajustes ni se enseña la bienvenida (lo usan las pruebas).
@@ -569,6 +578,9 @@ func _load_player() -> void:
 	player = {"rating": rating, "tries": data["tries"], "done": bool(data.get("done", false))}
 	experience = str(data.get("experience", ""))
 	test_skipped = bool(data.get("skipped", false))
+	reviewed = {}
+	for id: Variant in data.get("reviewed", []):
+		reviewed[str(id)] = true
 
 
 func _save_player() -> void:
@@ -577,7 +589,7 @@ func _save_player() -> void:
 	var file := FileAccess.open(PLAYER_PATH, FileAccess.WRITE)
 	if file == null:
 		return
-	file.store_string(JSON.stringify({"version": 1, "experience": experience, "skipped": test_skipped, "rating": player["rating"], "tries": player["tries"], "done": bool(player.get("done", false))}))
+	file.store_string(JSON.stringify({"version": 1, "experience": experience, "skipped": test_skipped, "rating": player["rating"], "tries": player["tries"], "done": bool(player.get("done", false)), "reviewed": reviewed.keys()}))
 	file.close()
 
 
@@ -1315,6 +1327,9 @@ func _build_card() -> void:
 			# En el test no se enseña la dificultad: no hay que saber por dónde va la estimación.
 			chips.add_child(_chip("Test de nivel", _c("field"), _c("ink")))
 		else:
+			if is_review:
+				var review_tint := _tint("lilac")
+				chips.add_child(_chip("Repaso de un fallo", review_tint[0], review_tint[1]))
 			if done and _rating_shown.size() == 2:
 				var up := float(_rating_shown[1]) >= float(_rating_shown[0])
 				var chip_tint := _tint("mint" if up else "peach")
@@ -1546,6 +1561,10 @@ func _add_whatif(e: Dictionary) -> void:
 
 func _set_phase(p: Phase) -> void:
 	phase = p
+	# Un repaso queda hecho cuando el problema termina, resuelto o con la solución a la vista.
+	if is_review and (p == Phase.SOLVED or p == Phase.SHOWN) and not puzzle.is_empty() and not reviewed.has(str(puzzle["id"])):
+		reviewed[str(puzzle["id"])] = true
+		_save_player()
 	_refresh()
 
 
@@ -2274,9 +2293,10 @@ func _clear_explanation() -> void:
 	line_ply = -1
 
 
-func _start(i: int) -> void:
+func _start(i: int, review: bool = false) -> void:
 	run_id += 1
 	var my_run := run_id
+	is_review = review
 	if puzzles.is_empty():
 		_refresh()
 		return
@@ -2594,6 +2614,8 @@ func _idle() -> void:
 func _start_test(exp: String) -> void:
 	experience = exp
 	test_skipped = false
+	reviewed = {}
+	_since_review = 0
 	player = Assessment.start_test(exp)
 	mode = "test"
 	_close_progress()
@@ -2635,10 +2657,38 @@ func _next_training() -> void:
 	if pool.is_empty() or not _has_player():
 		_start(index + 1)
 		return
+	# Cada pocos problemas, un repaso de un fallo anterior; si no toca o no hay, un problema nuevo.
+	var due := _due_review()
+	if not due.is_empty():
+		_since_review = 0
+		_start(int(_index_of[due["id"]]), true)
+		return
+	_since_review += 1
 	var item := Assessment.pick_training_item(player["rating"], player["tries"], pool, _rng.randf())
 	if item.is_empty():
 		item = Assessment.pick_review_item(player["tries"], pool)
 	_start(int(_index_of[item["id"]]))
+
+
+## Problema que toca repasar ({} si ninguno): el fallo más antiguo que no se ha repasado, cuando han pasado
+## al menos REVIEW_EVERY problemas nuevos desde el último repaso y REVIEW_GAP problemas desde ese fallo.
+func _due_review() -> Dictionary:
+	if _since_review < REVIEW_EVERY or not _has_player():
+		return {}
+	var tries: Array = player["tries"]
+	var solved := {}
+	for t: Dictionary in tries:
+		if bool(t["correct"]):
+			solved[str(t["id"])] = true
+	for i in tries.size():
+		var t: Dictionary = tries[i]
+		var id := str(t["id"])
+		if bool(t["correct"]) or solved.has(id) or reviewed.has(id) or not _index_of.has(id):
+			continue
+		if tries.size() - i < REVIEW_GAP:
+			break
+		return pool[int(_index_of[id])]
+	return {}
 
 
 ## Anota el intento en curso (una sola vez por problema): mueve el nivel y lo guarda.

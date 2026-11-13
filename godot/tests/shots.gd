@@ -599,6 +599,26 @@ func _level_shots(demo: Control) -> void:
 	await _frames(8)
 	await _shot("58_progreso")
 	demo._close_progress()
+	# Repaso de errores: tras tres problemas nuevos vuelve el primer fallo del test, con todas las ayudas.
+	var seen_before: int = (demo.player["tries"] as Array).size()
+	var reviews := 0
+	for attempt in 5:
+		demo._on_right()
+		await _frames(4)
+		if demo.is_review:
+			reviews += 1
+			await _frames(40)
+			await _shot("58b_repaso")
+			print("NIVEL repaso: problema=%s es el primer fallo del test=%s ayudas=«%s» «%s» anotados=%d (antes %d + %d nuevos)" % [str(demo.puzzle["id"]), str(str(demo.puzzle["id"]) == str(demo.player["tries"][0]["id"])), demo.button_label(demo.hint_button), demo.button_label(demo.step_button), (demo.player["tries"] as Array).size(), seen_before, attempt])
+			demo._on_left()
+			await _frames(70)
+			print("NIVEL repaso visto: fase=%d repasados=%s nivel sin cambio=%s" % [demo.phase, str(demo.reviewed.keys()), str(demo._rating_shown.is_empty())])
+			break
+		# Un problema nuevo, que se deja sin resolver pidiendo la solución (cuenta como intento).
+		await _frames(36)
+		demo._on_left()
+		await _frames(4)
+	print("NIVEL repasos servidos=%d" % reviews)
 	demo._set_dark(true)
 	await _frames(6)
 	demo._open_progress("progress")

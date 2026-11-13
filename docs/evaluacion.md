@@ -86,6 +86,9 @@ dice («Sin medir todavía») en lugar de inventar una cifra.
 - **Hábitos**, cuando los datos los señalan: mirar la respuesta del rival (la mitad o más de tres o más fallos
   se castigaban con la respuesta inmediata), no precipitarse (dos o más fallos rápidos) y calcular hasta el
   final (dos o más fallos después de acertar la primera jugada).
+- **Repaso de errores**: cada tres problemas nuevos vuelve un fallo anterior (los del test, los primeros),
+  cuando han pasado al menos cuatro problemas desde él. Ahora con todas las ayudas y la explicación completa.
+  No mueve el nivel.
 - Agotados los problemas nuevos, vuelve el que se falló hace más tiempo y no se ha resuelto después.
 
 ## Límites conocidos

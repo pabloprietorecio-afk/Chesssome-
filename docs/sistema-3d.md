@@ -21,7 +21,7 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | Pantalla | `godot/demo/` | La app: bienvenida, experiencia, test de nivel, resultado y plan, entrenamiento adaptado y progreso, sobre 150 problemas reales (`godot/data/demo_puzzles.json`) |
 | Iconos | `godot/ui/` | Atlas de iconos (Phosphor, MIT, y piezas propias) y emblema; los genera `tools/ui/icons.mjs` |
 | Tipografía | `godot/fonts/` | Inter e Inter Display (OFL 1.1) |
-| Capturas | `godot/tests/shots.gd` | 88 capturas: tablero, fichas, la pantalla de problema y el test de nivel, con toques y gestos simulados |
+| Capturas | `godot/tests/shots.gd` | 89 capturas: tablero, fichas, la pantalla de problema y el test de nivel, con toques y gestos simulados |
 
 Renderizador: «Mobile» (Vulkan). Modelos, iconos de las piezas y código de modelado propios. Las texturas de
 los acabados realistas son de Poly Haven y ambientCG, y los sonidos de OpenGameArt y Versilian Studios; todo
