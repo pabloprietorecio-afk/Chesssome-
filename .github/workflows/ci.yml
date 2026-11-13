@@ -168,7 +168,8 @@ jobs:
           ls -lh $A
           # Lo que la app lee como archivo suelto tiene que ir dentro del APK.
           MISSING=0
-          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/explain/1fSFn.json assets/sets/fichas/iconos.bin assets/ui/iconos.bin assets/ui/iconos.json assets/ui/emblema.bin assets/data/curso.json; do
+          FIRST=$(python3 -c "import json; print(json.load(open('godot/data/demo_puzzles.json'))['puzzles'][0]['id'])")
+          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/explain/$FIRST.json assets/sets/fichas/iconos.bin assets/ui/iconos.bin assets/ui/iconos.json assets/ui/emblema.bin assets/data/curso.json; do
             if unzip -l $A | grep -q " $f$"; then echo "OK $f"; else echo "FALTA $f"; MISSING=1; fi
           done
           [ "$MISSING" = 0 ]
