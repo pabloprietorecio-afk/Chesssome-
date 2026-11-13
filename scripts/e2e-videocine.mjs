@@ -450,6 +450,23 @@ await sleep(400);
 await move('b2c4', 'w'); // 61.Cc4+
 assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
 await shot('17-gukesh-carlsen-pregunta-3');
+// Tras las preguntas, el vídeo sigue de corrido desde la pausa: se ve 52…Ce2+, y en el tramo de cortes (53–59)
+// el tablero se atenúa y dice qué jugadas se hacen, hasta ponerse al día antes de 60.Cb2.
+await clickText('Ver cómo ocurrió en el vídeo');
+await waitAttr('phase', 'reveal');
+await waitAttr('player', 'ready');
+assert(Math.abs((await fake(() => window.__fakeYT.last().time)) - 277.5) < 0.6, 'el vídeo arranca en la pausa, no salta: ' + (await fake(() => window.__fakeYT.last().time)));
+await setTime(282); await sleep(300);
+bi = await boardInfo();
+assert(bi.ply === '104' && /tras 52…Ce2\+/.test(bi.label) && (await page.$eval('.vc-board', (e) => e.dataset.gap)) === 'off', 'se ve 52…Ce2+ sin aviso: ' + JSON.stringify(bi));
+await setTime(320); await sleep(300);
+assert((await page.$eval('.vc-board', (e) => e.dataset.gap)) === 'on', 'en el tramo de cortes, el tablero avisa');
+const gapText = await page.$eval('.vc-gap', (e) => e.textContent);
+assert(/53\.Txe2\+ Rxe2 54\.Cxf8/.test(gapText) && /59\.gxh5 Rd2/.test(gapText), 'el aviso dice las jugadas 53–59: ' + gapText);
+await shot('17b-tramo-sin-seguimiento');
+await setTime(366); await sleep(300);
+bi = await boardInfo();
+assert(bi.ply === '119' && (await page.$eval('.vc-board', (e) => e.dataset.gap)) === 'off', 'tras el tramo, el tablero sigue a 60.Cb2: ' + JSON.stringify(bi));
 
 // ── H. Marcado rápido: un botón que se pulsa mientras corre el vídeo; «Saltar» y «Deshacer». ──
 await page.evaluate(() => {

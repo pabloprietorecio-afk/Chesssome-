@@ -118,13 +118,14 @@ export const CLIPS: ClipSource[] = [
     },
     // Marcas medidas por Claude sobre la grabación de pantalla de Pablo (13 nov 2026), sin comprobar aún en el móvil.
     // La posición está quieta hasta ~280 s; Carlsen juega 52…Ce2+ en ~281 s. Las jugadas 53–59 no se pueden fechar
-    // con fiabilidad en el vídeo (cortes de cámara y manos), así que tras las preguntas el vídeo se reanuda en 364,4 s,
-    // justo antes de 60.Cb2, y el tablero salta a esa posición.
+    // con fiabilidad en el vídeo (cortes de cámara y manos): el vídeo sigue de corrido y, entre 283 y 364,4 s, el tablero
+    // se atenúa y dice qué jugadas se están haciendo (tramo sin seguimiento). En 364,4 s se pone al día, antes de 60.Cb2.
     start: 257,
     end: 378.8,
     marks: 'pending',
     sync: {
       startPly: 103,
+      gaps: [{ from: 283, to: 364.4 }],
       marks: [
         { ply: 104, at: 281.0 },
         { ply: 105, at: 364.4 },
@@ -158,7 +159,6 @@ export const CLIPS: ClipSource[] = [
     stops: [
       {
         at: 277.5,
-        resumeAt: 364.4,
         questions: [
           {
             ply: 104,
@@ -183,6 +183,6 @@ export const CLIPS: ClipSource[] = [
     ],
     outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
     notes:
-      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s, 52…Ce2+ en ~281 s (pausa en 277,5), y el final fechado al segundo (60.Cb2 365,9; 60…e3 371,2; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). Las jugadas 53–59 no se pueden fechar con fiabilidad, así que el vídeo se reanuda en 364,4 s y el tablero salta a la posición de 60.Cb2. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
+      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s, 52…Ce2+ en ~281 s (pausa en 277,5), y el final fechado al segundo (60.Cb2 365,9; 60…e3 371,2; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). Las jugadas 53–59 no se pueden fechar con fiabilidad: el vídeo sigue de corrido y, entre 283 y 364,4 s, el tablero se atenúa y dice qué jugadas se están haciendo; en 364,4 s se pone al día. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
   },
 ];

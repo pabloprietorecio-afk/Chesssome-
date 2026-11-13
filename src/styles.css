@@ -1628,6 +1628,53 @@ a {
 .vc-board-label {
   margin: 0 0 6px;
 }
+/* Tramo sin seguimiento: el tablero se atenúa y un aviso encima dice qué jugadas se están haciendo en el vídeo. */
+.vc-board-box {
+  position: relative;
+}
+.vc-stage[data-fit='on'] .vc-board-fit .vc-board-box {
+  width: min(100cqw, 100cqh);
+  margin: 0 auto;
+}
+.vc-board-fit[data-gap='on'] .cm-board {
+  opacity: 0.18;
+  filter: grayscale(1);
+}
+.vc-gap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  pointer-events: none;
+}
+.vc-gap-card {
+  display: grid;
+  gap: 8px;
+  max-width: 26em;
+  padding: 14px 16px;
+  border-radius: var(--radius-s);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.vc-gap p {
+  margin: 0;
+}
+.vc-gap-title {
+  font-weight: 700;
+}
+.vc-gap-moves {
+  font-weight: 600;
+  line-height: 1.45;
+}
+.vc-gap-note {
+  color: var(--quiet);
+  font-size: 0.85rem;
+}
 .vc-san {
   text-transform: none;
   letter-spacing: 0;

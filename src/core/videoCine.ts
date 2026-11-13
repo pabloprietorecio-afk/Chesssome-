@@ -113,7 +113,25 @@ export interface SyncMark {
 export interface ClipSync {
   startPly: number;
   marks: SyncMark[];
+  /**
+   * Tramos del vídeo en que no se puede saber qué jugada se está viendo (cortes de cámara, manos que tapan las
+   * piezas). Durante un tramo, el tablero no finge seguir al vídeo: se atenúa y dice qué jugadas se están
+   * haciendo. Las jugadas del tramo se marcan todas al final del tramo.
+   */
+  gaps?: SyncGap[];
 }
+
+/** Tramo [from, to) en segundos del vídeo en que el tablero no puede seguir las jugadas. */
+export interface SyncGap {
+  from: number;
+  to: number;
+}
+
+/** Tramo sin seguimiento en el que cae el segundo `t`, si lo hay. */
+export const syncGapAt = (sync: ClipSync, t: number): SyncGap | null => sync.gaps?.find((g) => t >= g.from && t < g.to) ?? null;
+
+/** Medias jugadas que se hacen durante un tramo sin seguimiento: de la siguiente a la que había al empezar, a la marcada al acabar. */
+export const gapPlies = (sync: ClipSync, g: SyncGap): { first: number; last: number } => ({ first: plyAt(sync, g.from) + 1, last: plyAt(sync, g.to) });
 
 /** Jugada de la partida que el tablero reproduce entre preguntas. */
 export interface GameMove {
@@ -314,6 +332,12 @@ export function syncProblems(
     if (m.ply > clip.plies) out.push('Hay jugadas marcadas más allá del final de la partida.');
     if (marks.start != null && m.at < marks.start) out.push('Hay jugadas marcadas antes del inicio del clip.');
     if (marks.end != null && m.at > marks.end) out.push('Hay jugadas marcadas después del fin del clip.');
+  });
+  (sync.gaps ?? []).forEach((g, i, all) => {
+    if (!(g.from < g.to)) out.push('Un tramo sin seguimiento del tablero tiene que empezar antes de acabar.');
+    if (i > 0 && g.from < all[i - 1].to) out.push('Los tramos sin seguimiento del tablero tienen que ir en orden y sin solaparse.');
+    if ((marks.start != null && g.from < marks.start) || (marks.end != null && g.to > marks.end)) out.push('Hay un tramo sin seguimiento del tablero fuera del clip.');
+    if (gapPlies(sync, g).last < gapPlies(sync, g).first) out.push('Un tramo sin seguimiento del tablero no tiene jugadas: sobra.');
   });
   // Sin destripar: ninguna jugada de una pregunta (ni posterior) puede aparecer en el tablero antes de su pausa.
   clip.stops.forEach((st, i) => {

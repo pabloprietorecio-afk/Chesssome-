@@ -7,6 +7,7 @@ import {
   defaultStartPly,
   direct,
   fenAfter,
+  gapPlies,
   initialDirector,
   judgeAnswer,
   marksOf,
@@ -18,6 +19,7 @@ import {
   replay,
   run,
   syncCap,
+  syncGapAt,
   syncProblems,
   syncRemoveFrom,
   syncSetAt,
@@ -462,12 +464,20 @@ describe('Gukesh–Carlsen: marcas medidas sobre la grabación', () => {
     expect(syncProblems(gc, gc.sync!, marksOf(gc))).toEqual([]);
     expect(gc.marks).toBe('pending'); // medidas por Claude sobre vídeo, sin comprobar por una persona
   });
-  it('la pausa va antes de 52…Ce2+ y el vídeo se reanuda justo antes del final', () => {
+  it('la pausa va antes de 52…Ce2+ y el vídeo sigue de corrido: se ve la jugada de Carlsen', () => {
     const stop = gc.stops[0];
     expect(stop.at).toBeLessThan(281);
-    expect(stop.resumeAt).toBeGreaterThan(stop.at!);
+    expect(stop.resumeAt ?? null).toBeNull();
     expect(plyAt(gc.sync!, stop.at!)).toBe(103); // aún no se ha jugado 52…Ce2+
-    expect(plyAt(gc.sync!, stop.resumeAt!)).toBe(118); // 59…Rd2: antes de 60.Cb2
+    expect(plyAt(gc.sync!, 282)).toBe(104); // 52…Ce2+
+  });
+  it('las jugadas 53–59 caen en un tramo sin seguimiento y el tablero se pone al día antes de 60.Cb2', () => {
+    expect(syncGapAt(gc.sync!, 282)).toBeNull();
+    const g = syncGapAt(gc.sync!, 300)!;
+    expect(g).not.toBeNull();
+    expect(gapPlies(gc.sync!, g)).toEqual({ first: 105, last: 118 }); // 53.Txe2+ … 59…Rd2
+    expect(syncGapAt(gc.sync!, 364.4)).toBeNull();
+    expect(plyAt(gc.sync!, 364.5)).toBe(118);
   });
   it('el tablero sigue el final del vídeo', () => {
     expect(plyAt(gc.sync!, 366)).toBe(119); // 60.Cb2
@@ -477,3 +487,15 @@ describe('Gukesh–Carlsen: marcas medidas sobre la grabación', () => {
   });
 });
 
+describe('tramos sin seguimiento del tablero', () => {
+  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  const m = marksOf(gc);
+  it('se rechazan tramos al revés, solapados, fuera del clip o sin jugadas', () => {
+    const bad = (gaps: { from: number; to: number }[]) => syncProblems(gc, { ...gc.sync!, gaps }, m);
+    expect(bad([{ from: 300, to: 290 }]).length).toBeGreaterThan(0);
+    expect(bad([{ from: 283, to: 320 }, { from: 310, to: 364.4 }]).length).toBeGreaterThan(0);
+    expect(bad([{ from: 200, to: 300 }]).length).toBeGreaterThan(0);
+    expect(bad([{ from: 290, to: 300 }]).length).toBeGreaterThan(0); // ninguna jugada cambia dentro
+    expect(bad([{ from: 283, to: 364.4 }])).toEqual([]);
+  });
+});

@@ -38,6 +38,8 @@ import {
   type DirectorEvent,
   type DirectorState,
   type VideoCinePack,
+  gapPlies,
+  syncGapAt,
 } from '../core/videoCine';
 import { sanEs } from '../core/lang';
 import { go, log, useAppState } from '../app/store';
@@ -86,6 +88,17 @@ function effective(clip: Clip): { clip: Clip; local: boolean; stale: boolean } {
   if (canEditTiming(clip)) return { clip: withMarks(clip, local), local: true, stale };
   if (!clip.sync && local.sync) return { clip: withMarks(clip, { ...marksOf(clip), sync: local.sync }), local: true, stale };
   return { clip, local: false, stale };
+}
+
+/** Jugadas de `first` a `last` en notación española: «53.Txe2+ Rxe2 54.Cxf8». */
+function movesText(clip: Clip, first: number, last: number): string {
+  const out: string[] = [];
+  for (let p = first; p <= last; p++) {
+    const m = moveAt(clip, p);
+    if (!m) break;
+    out.push(m.number.endsWith('.') || p === first ? `${m.number}${sanEs(m.san)}` : sanEs(m.san));
+  }
+  return out.join(' ');
 }
 
 /** Lo que muestra el tablero sincronizado en el segundo `t`, sin pasar de la media jugada `cap`. */
@@ -436,6 +449,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     if (cur.key >= 0 && m) syncedAnim = { from: m.from, to: m.to, key: cur.key, captured: m.captured };
   } else prevSynced.current = null;
   const shown = synced ? { fen: synced.fen, last: synced.last, anim: syncedAnim } : board;
+  // En un tramo sin seguimiento (cortes de cámara), el tablero no finge: se atenúa y dice qué jugadas se están haciendo.
+  const gap = synced && Number.isFinite(syncTime) ? syncGapAt(sync, syncTime!) : null;
+  const gapMoves = gap ? (({ first, last }) => movesText(clip, first, Math.min(last, syncCap(clip, st))))(gapPlies(sync, gap)) : '';
   // El tablero no se gira: siempre la orientación del clip.
   const boardSide = clip.orientation;
 
@@ -587,19 +603,30 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         )}
 
         {shown && st.phase !== 'idle' && (
-          <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''}>
+          <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
             {synced && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
-            <div className="vc-board-fit">
-              <Board2D
-                fen={shown.fen}
-                orientation={boardSide}
-                interactive={st.phase === 'asking' && !answer && !busy}
-                lastMove={shown.last}
-                animate={shown.anim}
-                animMode={s.settings.anim}
-                coordinates={s.settings.coordinates}
-                onMove={onMove}
-              />
+            <div className="vc-board-fit" data-gap={gap ? 'on' : undefined}>
+              <div className="vc-board-box">
+                <Board2D
+                  fen={shown.fen}
+                  orientation={boardSide}
+                  interactive={st.phase === 'asking' && !answer && !busy}
+                  lastMove={shown.last}
+                  animate={shown.anim}
+                  animMode={s.settings.anim}
+                  coordinates={s.settings.coordinates}
+                  onMove={onMove}
+                />
+                {gap && (
+                  <div className="vc-gap" role="status">
+                    <div className="vc-gap-card">
+                      <p className="vc-gap-title">El tablero no puede seguir estas jugadas</p>
+                      {gapMoves && <p className="vc-gap-moves">{gapMoves}</p>}
+                      <p className="vc-gap-note">El vídeo tiene cortes de cámara aquí. El tablero se pone al día en cuanto se vuelven a ver las piezas.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
