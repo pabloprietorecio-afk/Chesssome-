@@ -89,9 +89,9 @@ class SkyBackdrop extends Control:
 			_stars(band)
 			_moon(Vector2(size.x * 0.2, band_top + band * 0.42))
 		else:
-			_cloud(Vector2(size.x * 0.24, band_top + band * 0.4), 1.0)
-			_cloud(Vector2(size.x * 0.73, band_top + band * 0.68), 0.7)
-			_cloud(Vector2(size.x * 0.58, band_top + band * 0.16), 0.46)
+			_cloud(Vector2(size.x * 0.25, band_top + band * 0.4), 1.2)
+			_cloud(Vector2(size.x * 0.74, band_top + band * 0.68), 0.84)
+			_cloud(Vector2(size.x * 0.58, band_top + band * 0.15), 0.54)
 
 	func _sky_at(y: float) -> Color:
 		return top.lerp(base, clampf(y / maxf(band_bottom, 1.0), 0.0, 1.0))
@@ -522,7 +522,8 @@ func _refresh() -> void:
 	# Punto con el color del bando que juega.
 	var white_to_move := view.board.chess.turn == 0
 	var dot := StyleBoxFlat.new()
-	dot.bg_color = Color("f8f0e0") if white_to_move else Color("2a3557")
+	# En el tema oscuro la tarjeta ya es azul tinta: el punto de las negras va casi negro, con el canto claro.
+	dot.bg_color = Color("f8f0e0") if white_to_move else (Color("070b18") if dark else Color("2a3557"))
 	dot.set_corner_radius_all(20)
 	dot.set_border_width_all(4)
 	dot.border_color = Color("262e4c") if white_to_move else (Color("9db2e0") if dark else Color("0a0f22"))

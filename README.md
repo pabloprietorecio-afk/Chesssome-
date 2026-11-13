@@ -50,7 +50,7 @@ godot --headless --path godot --import
 godot --headless --path godot -s tests/test_glicko2.gd      # prueba de oro de Glicko-2
 ```
 
-La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas de oro en Godot (reglas y Glicko-2), dibuja 20 capturas del tablero 3D y de la demo (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
+La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas de oro en Godot (reglas y Glicko-2), dibuja 26 capturas del tablero 3D y de la demo (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
 
 https://github.com/pabloprietorecio-afk/Chesssome-/releases/download/ultimo-apk/Chessome-debug.apk
 
@@ -87,6 +87,7 @@ data/dev/        Problemas importados, análisis del motor e informe de calidad
 | Glicko-2 | Dominio público | Implementación propia (TypeScript y port a GDScript) |
 | Godot Engine 4.7.2 | MIT | Motor de la app Android |
 | Piezas y tablero 3D | Propias | Modeladas por código del proyecto (`tools/pieces`); sin modelos ni texturas de terceros |
+| Inter e Inter Display 4.1.1 | SIL OFL 1.1 | Tipografía de la app Godot (`godot/fonts`, con su licencia) |
 
 El paquete de datos está marcado como `provisional: true`: es una muestra de desarrollo, no el catálogo de producción.
 
@@ -98,7 +99,8 @@ El paquete de datos está marcado como `provisional: true`: es una muestra de de
 - Hecho: tema claro, oscuro o automático (Ajustes).
 - Diseñado, sin implementar: fondos de escena con piezas de ajedrez bajo el tiempo del usuario (MET Norway, opcional; ver `docs/estilo-2d.md`).
 - Diseñado, sin implementar: «Cine de finales», películas generadas por la app con filtro de cine antiguo (ver `docs/cine-finales.md`). Va después de las piezas 3D.
-- Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor», tablero 3D con toque y arrastre, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista, y demo con 60 problemas reales (`docs/sistema-3d.md`).
+- Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor» con contorno de tinta, tablero 3D de lado a lado con toque y arrastre, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista (`docs/sistema-3d.md`).
+- Hecho (Godot): pantalla de problema para móvil con 60 problemas reales: tarjeta del entrenador bajo el tablero, «Repetir» al terminar y opciones en una hoja inferior.
 - Sin verificar: el APK en un teléfono real (rendimiento, tacto y sentido del giro con los sensores).
 - Pendiente (Godot): tablero 2D y alternancia 2D/3D para medir H3, explicaciones y entrenamiento, niveles de calidad, sonido y partículas.
 - Provisional (web): `src/ui/Board3D.tsx` sigue desactivado (`BOARD_3D_READY` en `src/ui/boardTypes.ts`); el 3D real es el de Godot.
