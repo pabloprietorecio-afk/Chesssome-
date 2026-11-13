@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX } from 'react';
+import { useEffect, type JSX } from 'react';
 import { go, useAppState, type Screen } from './app/store';
 import { PlacementScreen, TrainScreen } from './ui/Play';
 import { PieceSvg } from './ui/pieces';
@@ -29,18 +29,34 @@ const ICON: Record<string, JSX.Element> = {
   ),
 };
 
-/** Cada sección con su color, como las pestañas de WakeAgenda (tonos con ≥ 4,5:1 sobre su fondo suave). */
-const NAV: { screen: Screen; label: string; color: string; soft: string }[] = [
-  { screen: 'home', label: 'Hoy', color: '#b84a0c', soft: '#ffebd9' },
-  { screen: 'train', label: 'Entrenar', color: '#1f5fc4', soft: '#ddebff' },
-  { screen: 'profile', label: 'Progreso', color: '#1f7a44', soft: '#e2f6e8' },
-  { screen: 'settings', label: 'Ajustes', color: '#5b3fd0', soft: '#ede7ff' },
-  { screen: 'study', label: 'Estudio', color: '#0b6e8e', soft: '#ddf3fa' },
+/** Cada sección con su color, como las pestañas de WakeAgenda (los tonos de cada tema están en styles.css). */
+const NAV: { screen: Screen; label: string }[] = [
+  { screen: 'home', label: 'Hoy' },
+  { screen: 'train', label: 'Entrenar' },
+  { screen: 'profile', label: 'Progreso' },
+  { screen: 'settings', label: 'Ajustes' },
+  { screen: 'study', label: 'Estudio' },
 ];
+
+/** Aplica el tema elegido; en «automático» sigue al sistema y cambia si el sistema cambia. */
+function useTheme(mode: 'auto' | 'light' | 'dark'): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const apply = () => {
+      root.dataset.theme = mode === 'auto' ? (mq?.matches ? 'dark' : 'light') : mode;
+    };
+    apply();
+    if (mode !== 'auto' || !mq) return;
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [mode]);
+}
 
 export function App(): JSX.Element {
   const s = useAppState();
   const placed = !!s.rating && !!s.placement?.done;
+  useTheme(s.settings.theme ?? 'auto');
   const view = ((): JSX.Element => {
     switch (s.screen) {
       case 'welcome':
@@ -80,7 +96,7 @@ export function App(): JSX.Element {
               <button
                 key={n.screen}
                 className={s.screen === n.screen ? 'cm-nav cm-nav-on' : 'cm-nav'}
-                style={{ '--tab': n.color, '--tab-soft': n.soft } as CSSProperties}
+                data-tab={n.screen}
                 aria-current={s.screen === n.screen ? 'page' : undefined}
                 onClick={() => go(n.screen)}
               >

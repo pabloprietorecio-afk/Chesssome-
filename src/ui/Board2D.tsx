@@ -12,8 +12,9 @@ import type { PieceType } from '../core/types';
 const S = 100; // tamaño de casilla en unidades SVG
 const FILES = 'abcdefgh';
 
-const LIGHT = '#e6eef8'; // casillas «cielo», a juego con el estilo WakeAgenda
-const DARK = '#93a9c9';
+// Casillas «cielo», a juego con el estilo WakeAgenda; los valores de cada tema están en styles.css.
+const LIGHT = 'var(--sq-light, #e6eef8)';
+const DARK = 'var(--sq-dark, #93a9c9)';
 const TONE: Record<'good' | 'bad' | 'info', string> = { good: '#1f9a52', bad: '#e5484d', info: '#7c5cfa' };
 
 function squareXY(sq: string, orientation: 'w' | 'b'): { x: number; y: number } {
@@ -128,7 +129,7 @@ export function Board2D(props: BoardProps): JSX.Element {
       const sq = FILES[f] + (r + 1);
       const { x, y } = squareXY(sq, orientation);
       const light = (f + r) % 2 === 1;
-      squares.push(<rect key={sq} x={x} y={y} width={S} height={S} fill={light ? LIGHT : DARK} />);
+      squares.push(<rect key={sq} x={x} y={y} width={S} height={S} style={{ fill: light ? LIGHT : DARK }} />);
     }
   }
 
@@ -182,12 +183,12 @@ export function Board2D(props: BoardProps): JSX.Element {
       const rank = orientation === 'w' ? 8 - i : i + 1;
       const fileDark = (i + 7) % 2 === 1 === (orientation === 'w');
       coords.push(
-        <text key={`f${i}`} x={i * S + S - 6} y={8 * S - 6} textAnchor="end" fontSize="17" fontWeight="600" fill={fileDark ? LIGHT : DARK}>
+        <text key={`f${i}`} x={i * S + S - 6} y={8 * S - 6} textAnchor="end" fontSize="17" fontWeight="600" style={{ fill: fileDark ? LIGHT : DARK }}>
           {file}
         </text>,
       );
       coords.push(
-        <text key={`r${i}`} x={6} y={i * S + 20} fontSize="17" fontWeight="600" fill={i % 2 === 0 ? DARK : LIGHT}>
+        <text key={`r${i}`} x={6} y={i * S + 20} fontSize="17" fontWeight="600" style={{ fill: i % 2 === 0 ? DARK : LIGHT }}>
           {rank}
         </text>,
       );

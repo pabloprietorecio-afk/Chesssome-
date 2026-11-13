@@ -13,7 +13,12 @@ import { BOARD_3D_READY } from '../ui/boardTypes';
 
 export type Screen = 'welcome' | 'experience' | 'placement' | 'placementResult' | 'home' | 'train' | 'profile' | 'settings' | 'study';
 
+/** Tema de color: el del sistema, claro u oscuro (como en WakeAgenda). */
+export type ThemeMode = 'auto' | 'light' | 'dark';
+
 export interface Settings {
+  /** Opcional para no romper los datos guardados antes de existir: sin valor equivale a 'auto'. */
+  theme?: ThemeMode;
   board: BoardMode;
   anim: AnimMode;
   /** Alternar 2D y 3D por bloques de problemas para el estudio (H3). */
@@ -68,7 +73,7 @@ export function initialState(): AppState {
     events: [],
     reviews: [],
     themeFeedback: assignThemes(THEMES_BY_FREQUENCY, seed),
-    settings: { board: '2d', anim: prefersReducedMotion() ? 'minimal' : 'fast', studyAlternateBoard: BOARD_3D_READY, coordinates: true, sound: false },
+    settings: { theme: 'auto', board: '2d', anim: prefersReducedMotion() ? 'minimal' : 'fast', studyAlternateBoard: BOARD_3D_READY, coordinates: true, sound: false },
     surveysDone: [],
   };
 }

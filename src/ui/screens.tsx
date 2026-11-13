@@ -202,6 +202,7 @@ export function Profile(): JSX.Element {
 }
 
 const ANIM_LABEL: Record<AnimMode, string> = { full: 'Completas', fast: 'Rápidas', minimal: 'Mínimas', none: 'Sin animaciones' };
+const THEME_LABEL = { auto: 'Automático (del sistema)', light: 'Claro', dark: 'Oscuro' } as const;
 
 export function SettingsScreen(): JSX.Element {
   const s = useAppState();
@@ -212,6 +213,16 @@ export function SettingsScreen(): JSX.Element {
   return (
     <section className="cm-card">
       <h2>Ajustes</h2>
+      <fieldset>
+        <legend>Tema</legend>
+        <div className="cm-options">
+          {(['auto', 'light', 'dark'] as const).map((t) => (
+            <button key={t} className={(s.settings.theme ?? 'auto') === t ? 'cm-chip cm-chip-on' : 'cm-chip'} onClick={() => set('theme', t, { theme: t })}>
+              {THEME_LABEL[t]}
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <fieldset>
         <legend>Tablero</legend>
         <div className="cm-options">

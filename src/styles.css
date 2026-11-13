@@ -23,6 +23,15 @@
   --radius-s: 18px;
   --shadow: 0 6px 18px rgba(47, 91, 168, 0.18);
   --glow: 0 10px 22px -6px rgba(255, 122, 26, 0.55);
+  --sq-light: #e6eef8;
+  --sq-dark: #93a9c9;
+  --soft-blue: #ddebff;
+  --soft-green: #e2f6e8;
+  --soft-amber: #fff0cc;
+  --soft-violet: #ede7ff;
+  --soft-cyan: #ddf3fa;
+  --on-amber: #5c4310;
+  --line-bg: #f6f9fe;
   color-scheme: light;
 }
 
@@ -668,7 +677,11 @@ legend {
    muy redondeadas con sombra azulada, botones píldora con degradado naranja
    y halo, insignias de icono circulares con fondo suave.
    ====================================================================== */
+html {
+  background: var(--paper-2);
+}
 body {
+  min-height: 100vh;
   background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%) fixed;
 }
 h1,
@@ -709,6 +722,26 @@ h3,
 .cm-nav svg {
   width: 20px;
   height: 20px;
+}
+.cm-nav[data-tab='home'] {
+  --tab: #b84a0c;
+  --tab-soft: var(--accent-soft);
+}
+.cm-nav[data-tab='train'] {
+  --tab: #1f5fc4;
+  --tab-soft: var(--soft-blue);
+}
+.cm-nav[data-tab='profile'] {
+  --tab: #1f7a44;
+  --tab-soft: var(--soft-green);
+}
+.cm-nav[data-tab='settings'] {
+  --tab: #5b3fd0;
+  --tab-soft: var(--soft-violet);
+}
+.cm-nav[data-tab='study'] {
+  --tab: #0b6e8e;
+  --tab-soft: var(--soft-cyan);
 }
 .cm-nav-on {
   background: var(--tab-soft, var(--accent-soft));
@@ -842,7 +875,7 @@ a {
   box-shadow: var(--shadow);
 }
 .cm-promo {
-  background: rgba(241, 247, 255, 0.88);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
 }
 .cm-promo button {
   border-radius: 16px;
@@ -850,17 +883,19 @@ a {
   border: 0;
 }
 .cm-warn {
-  background: #fff0cc;
+  background: var(--soft-amber);
+  color: var(--on-amber);
   border-left: 0;
   border-radius: 14px;
   padding: 10px 14px;
 }
 .cm-callout {
   background: var(--tint);
+  color: var(--ink);
   border-radius: 18px;
 }
 .cm-line {
-  background: #f6f9fe;
+  background: var(--line-bg);
   border-left-color: var(--good-fill);
   border-radius: 12px;
 }
@@ -875,13 +910,13 @@ a {
   min-height: 36px;
 }
 .cm-src-motor {
-  background: #ddebff;
+  background: var(--soft-blue);
 }
 .cm-src-reglas {
-  background: #e2f6e8;
+  background: var(--soft-green);
 }
 .cm-src-lichess {
-  background: #fff0cc;
+  background: var(--soft-amber);
 }
 .cm-insight {
   background: var(--card);
@@ -911,12 +946,12 @@ a {
   color: var(--accent);
 }
 .cm-tool:nth-child(2) .cm-ico {
-  background: #ddebff;
-  color: #1f5fc4;
+  background: var(--soft-blue);
+  color: var(--tool-blue, #1f5fc4);
 }
 .cm-tool:nth-child(3) .cm-ico {
-  background: #ede7ff;
-  color: #5b3fd0;
+  background: var(--soft-violet);
+  color: var(--tool-violet, #5b3fd0);
 }
 .cm-tool .cm-ico circle[fill='var(--card)'] {
   fill: currentColor;
@@ -933,14 +968,106 @@ a {
   color: var(--accent);
 }
 .cm-warn-soft {
-  background: #fff0cc;
+  background: var(--soft-amber);
+  color: var(--on-amber);
   border-radius: 14px;
 }
 .cm-ai-q textarea {
   border-radius: 14px;
-  background: #f6f9fe;
+  background: var(--line-bg);
+  color: var(--ink);
 }
 .cm-ai-preview pre {
-  background: #f6f9fe;
+  background: var(--line-bg);
+  color: var(--ink);
   border-radius: 14px;
+}
+
+
+/* ======================================================================
+   Tema oscuro (paleta oscura de WakeAgenda). Todos los textos ≥ 4,5:1.
+   ====================================================================== */
+:root[data-theme='dark'] {
+  --paper: #0a0f1e;
+  --paper-2: #121a30;
+  --card: #121a30;
+  --tint: #1b2540;
+  --ink: #edeff7;
+  --quiet: #a9b1c7;
+  --line: #2a3558;
+  --good: #4cbf7a;
+  --bad: #ff7b7f;
+  --mid: #f2b84b;
+  --info: #7aa7ff;
+  --accent: #ff9a2e;
+  --accent-soft: #3a2416;
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --sq-light: #c9d6ea;
+  --sq-dark: #7f96b8;
+  --soft-blue: #16294a;
+  --soft-green: #173528;
+  --soft-amber: #3b2f12;
+  --soft-violet: #28214d;
+  --soft-cyan: #123547;
+  --on-amber: #f6d68a;
+  --line-bg: #0f1628;
+  --tool-blue: #7aa7ff;
+  --tool-violet: #a78bfa;
+  color-scheme: dark;
+}
+:root[data-theme='dark'] .cm-card,
+:root[data-theme='dark'] .cm-hero,
+:root[data-theme='dark'] .cm-hint,
+:root[data-theme='dark'] .cm-explain,
+:root[data-theme='dark'] .cm-ai,
+:root[data-theme='dark'] .cm-tool,
+:root[data-theme='dark'] .cm-choice,
+:root[data-theme='dark'] .cm-insight {
+  /* Como SoftCard en oscuro: contorno fino además de la sombra. */
+  box-shadow: inset 0 0 0 1px rgba(42, 53, 88, 0.9), var(--shadow);
+}
+:root[data-theme='dark'] .cm-choice,
+:root[data-theme='dark'] .cm-stepper button:not(.cm-link),
+:root[data-theme='dark'] .cm-chip,
+:root[data-theme='dark'] .cm-promo button {
+  background: var(--card);
+  color: var(--ink);
+}
+:root[data-theme='dark'] .cm-logo {
+  background: rgba(18, 26, 48, 0.9);
+}
+:root[data-theme='dark'] .cm-nav[data-tab='home'] {
+  --tab: #ff9a2e;
+}
+:root[data-theme='dark'] .cm-nav[data-tab='train'] {
+  --tab: #7aa7ff;
+}
+:root[data-theme='dark'] .cm-nav[data-tab='profile'] {
+  --tab: #4cbf7a;
+}
+:root[data-theme='dark'] .cm-nav[data-tab='settings'] {
+  --tab: #a78bfa;
+}
+:root[data-theme='dark'] .cm-nav[data-tab='study'] {
+  --tab: #4fc3e0;
+}
+:root[data-theme='dark'] .cm-tool-on .cm-ico,
+:root[data-theme='dark'] .cm-tool-on:nth-child(n) .cm-ico {
+  background: rgba(10, 15, 30, 0.85);
+  color: #ff9a2e;
+}
+:root[data-theme='dark'] .cm-tool .cm-ico circle[fill='var(--card)'] {
+  fill: currentColor;
+}
+:root[data-theme='dark'] .cm-tool-on .cm-ico circle[fill='var(--card)'] {
+  fill: currentColor;
+}
+:root[data-theme='dark'] .cm-engine th,
+:root[data-theme='dark'] .cm-table th {
+  color: var(--quiet);
+}
+@media (max-width: 700px) {
+  :root[data-theme='dark'] .cm-top nav {
+    box-shadow: inset 0 0 0 1px rgba(42, 53, 88, 0.9), 0 12px 32px -6px rgba(0, 0, 0, 0.6);
+  }
 }

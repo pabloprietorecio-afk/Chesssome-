@@ -36,9 +36,13 @@ Toda la interfaz 2D sigue el estilo de WakeAgenda (`ui/theme/Color.kt`, `ui/them
 - **Colores de cada sección oscurecidos** para que el texto cumpla 4,5:1 sobre su fondo suave (comprobado).
 - **Tablero «cielo»** (`#E6EEF8` / `#93A9C9`) a juego con el fondo. Última jugada en naranja, selección en violeta, flechas verde / rojo / violeta para que ninguna se confunda con las casillas azules.
 
+## Temas claro y oscuro
+
+Ajustes → Tema: «Automático (del sistema)», «Claro» u «Oscuro». El oscuro usa la paleta oscura de WakeAgenda (`DarkBg #0A0F1E`, `DarkSurface #121A30`, `DarkInk #EDEFF7`, `DarkInkSoft #A9B1C7`, `DarkOutline #2A3558`) y tonos más claros para el acento y las secciones; todos los textos dan ≥ 4,5:1 (comprobado). Las tarjetas oscuras llevan contorno fino, como `SoftCard`. El tablero se oscurece un poco (`#C9D6EA` / `#7F96B8`).
+
 ## Pendiente para Godot
 
-- Tema oscuro y los acentos alternativos de WakeAgenda (Océano, Bosque, Atardecer, Arena, Medianoche, Dorado).
+- Los acentos alternativos de WakeAgenda (Océano, Bosque, Atardecer, Arena, Medianoche, Dorado).
 - Comprobar el contraste de todos los temas en una prueba automática, como hace WakeAgenda con sus widgets.
 
 ## Fondos de escena: piezas de ajedrez bajo el tiempo del usuario

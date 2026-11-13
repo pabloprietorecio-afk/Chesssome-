@@ -12,6 +12,8 @@ mkdirSync(out, { recursive: true });
 const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--disable-gpu-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage();
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+// Tema del sistema simulado (el ajuste por defecto es «Automático»): COLOR_SCHEME=dark node scripts/e2e.mjs …
+if (process.env.COLOR_SCHEME) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.COLOR_SCHEME }]);
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -143,6 +145,7 @@ for (let k = 0; k < 6; k++) {
 }
 const state = await page.evaluate(() => { const s = window.__chessome.getState(); return { rating: s.rating, trials: s.trials.length, events: s.events.length, placement: s.placement.attempts.length, fb: s.trials.map((t) => t.phase[0] + (t.correct ? '+' : '-') + t.feedback[0] + t.whyDepth).join(' ') }; });
 await clickText('Progreso'); await sleep(300); await shot('07-profile');
+await clickText('Ajustes'); await sleep(300); await shot('07b-settings');
 await clickText('Estudio'); await sleep(300); await shot('08-study');
 console.log(JSON.stringify({ state, assistChecks, errors }, null, 1));
 } catch (e) {

@@ -89,5 +89,7 @@ El paquete de datos está marcado como `provisional: true`: es una muestra de de
 - Hecho: pipeline, núcleo de explicaciones con control de calidad, Glicko-2 y test de nivel, entrenamiento con condiciones del experimento, tablero 2D, panel «Explícame por qué» (también tras acertar), encuesta, pantalla de resultados y exportación.
 - Hecho: ayudas tras el problema — «¿Y si juego…?», «Analizar en Lichess» y «Pregunta a una IA» (especificación en `docs/ayudas.md`).
 - Hecho: estilo 2D inspirado en WakeAgenda (tokens, componentes, barra flotante y tablero «cielo»; ver `docs/estilo-2d.md`).
+- Hecho: tema claro, oscuro o automático (Ajustes).
 - Diseñado, sin implementar: fondos de escena con piezas de ajedrez bajo el tiempo del usuario (MET Norway, opcional; ver `docs/estilo-2d.md`).
+- Diseñado, sin implementar: «Cine de finales», películas generadas por la app con filtro de cine antiguo (ver `docs/cine-finales.md`). Va después de las piezas 3D.
 - Pendiente: tablero 3D y sistema de animaciones (`src/ui/Board3D.tsx` es provisional; `BOARD_3D_READY` en `src/ui/boardTypes.ts` lo activa).
