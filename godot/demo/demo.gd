@@ -2036,7 +2036,7 @@ func _open_welcome() -> void:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(name_label)
 	body.add_child(_spacer(6.0))
-	var claim := _para("Aprende ajedrez entendiendo cada jugada.", F_HEAD + 2, _c("quiet"), font_medium)
+	var claim := _para("Aprende ajedrez\nentendiendo cada jugada.", F_HEAD + 4, _c("quiet"), font_medium)
 	claim.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(claim)
 	body.add_child(_spacer(54.0, true))
