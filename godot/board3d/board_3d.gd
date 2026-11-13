@@ -1176,8 +1176,8 @@ func take_goal(s: int) -> void:
 func _star_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var outer := 0.3
-	var inner := 0.13
+	var outer := 0.37
+	var inner := 0.16
 	var depth := 0.06
 	var pts: Array[Vector2] = []
 	for i in 10:
