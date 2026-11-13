@@ -2,7 +2,7 @@
 
 Idea de Pablo: ver finales reales en vídeo y que el vídeo **se pare solo justo antes de la jugada** para preguntar al jugador «¿Qué jugarías?». Después, el vídeo sigue y se ve lo que pasó de verdad.
 
-**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Primer clip (Ding–Gukesh, Mundial 2024): tres preguntas comprobadas con Stockfish. **Sus primeras marcas de tiempo resultaron erróneas (Pablo, 13 nov) y se han retirado**: está por marcar de nuevo con un ancla y la estimación de los relojes. Nuevo: tablero 2D sincronizado con el vídeo. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
+**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Primer clip (Ding–Gukesh, Mundial 2024): tres preguntas comprobadas con Stockfish. Sus primeras marcas resultaron erróneas: la pausa caía antes de 58…Re5, no de 55…Txf2. **Marcas actuales estimadas con los relojes y un ancla de Pablo** (Gukesh pulsa el reloj tras 55…Txf2 en 2:21): 55.Tf2 en 0:09, pausa en 2:18, fin en 3:53. Pendientes de comprobar en el vídeo. Nuevo: tablero 2D sincronizado con el vídeo. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
 
 ## 1. Cómo es la experiencia
 
@@ -115,7 +115,7 @@ Coste estimado: un par de minutos por clip (sin medir).
 | 58.Re3 | 53 s | 286 (4:46) |
 | 58…Re5 | 7 s | 293 (4:53) |
 
-~~Conclusión anterior: el vídeo de FIDE está montado con cortes.~~ Salía de las primeras marcas de Pablo (apretón de manos en 3:53), que él mismo ha dado por erróneas: en su captura, cerca de ese segundo Gukesh aún piensa tras 55.Tf2. **No se sabe si el vídeo tiene cortes.** Si no los tiene, una sola marca da todas las demás; se comprueba con «Ir» en dos o tres jugadas (por ejemplo 55.Tf2, 2 min 12 s antes del ancla, y 58.Re3).
+~~Conclusión anterior: el vídeo de FIDE está montado con cortes.~~ Salía de las primeras marcas de Pablo (apretón de manos en 3:53), que él mismo ha dado por erróneas: en su captura, cerca de ese segundo Gukesh aún piensa tras 55.Tf2. **Con el ancla de Pablo (55…Txf2 en 2:21), el vídeo parece continuo desde 2:21 hasta 3:53:** los relojes sitúan 58.Re3 (el rey blanco avanza una casilla) en 3:30 y 58…Re5 en 3:37, y eso cuadra con lo que Pablo vio en su primer clip (3:20 a 3:53, con el rey blanco moviéndose una casilla y el apretón de manos en 3:53). Así, su primera pausa (3:35) caía antes de 58…Re5. Sin comprobar: 55.Tf2 en 0:09 (2 min 12 s antes del ancla), porque entre medias podría haber un corte.
 
 Los resúmenes con cortes se marcan a mano. Riesgo en retransmisiones completas: los comentaristas pueden adelantar la jugada antes de la pausa.
 
@@ -128,7 +128,7 @@ Los resúmenes con cortes se marcan a mano. Riesgo en retransmisiones completas:
 - Sin destripes, por dos vías: (1) la validación (`syncProblems`) no deja guardar ni empaquetar una jugada de pregunta, o posterior, marcada antes de su pausa; (2) mientras se ve el vídeo, el tablero nunca pasa de la posición de la próxima pregunta (`syncCap`), aunque una marca esté mal.
 - Animación solo al avanzar una jugada; al rebobinar o saltar, el tablero cambia sin animación.
 - En la pausa, el tablero es el de la pregunta. Al revelar y al final, vuelve a seguir al vídeo si hay jugadas marcadas.
-- Ding–Gukesh: por marcar.
+- Ding–Gukesh: tablero estimado con los relojes (55.Tf2 en 0:09, 55…Txf2 en 2:20,5 … 58…Re5 en 3:36,5), en `pipeline/video-clips.ts`. Una prueba comprueba que el ancla reproduce exactamente las marcas del paquete.
 
 **Idea para escalar (hipótesis):** pedir permiso por escrito a FIDE o a los canales permitiría automatizar la búsqueda del segundo exacto mirando el tablero en el vídeo. Sin permiso, las condiciones de YouTube prohíben descargar el vídeo y acceder por medios automatizados.
 
@@ -138,7 +138,7 @@ Los resúmenes con cortes se marcan a mano. Riesgo en retransmisiones completas:
 
 | Vídeo | Canal | Momento | Estado |
 | --- | --- | --- | --- |
-| [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | Preguntas terminadas. **Marcas por rehacer** (las primeras eran erróneas). Vídeo de 437 s; no se sabe si tiene cortes |
+| [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | Preguntas terminadas. **Marcas estimadas, sin comprobar**: clip de 0:03,5 a 3:53, pausa en 2:18 antes de 55…Txf2. Vídeo de 437 s, probablemente continuo desde 2:21 |
 | [Final Moments of Gukesh Winning World Championship](https://www.youtube.com/watch?v=HlmhDl_KnOY) | ChessBase India | El mismo momento, grabado a pie de tablero | oEmbed correcto. Alternativa al anterior |
 | [FIDE World Championship Match - TIEBREAK FOR THE TITLE](https://www.youtube.com/watch?v=WkwVXg9a_i0) | FIDE chess | Nepómniashchi–Ding 2023, desempate 4: 46…Tg6 | oEmbed correcto. Retransmisión larga con comentaristas. No es un final técnico |
 | [Instructive Knight vs Rook endgame with a beautiful finish](https://www.youtube.com/watch?v=Y_IV9N5rhhw) | ChessBase India | Final de caballo contra torre entre aficionados | oEmbed correcto. Falta la partida |
@@ -182,7 +182,7 @@ Sin verificar en todos: que se vea bien el tablero y el segundo exacto de cada j
 | Fuentes de los clips | `pipeline/video-clips.ts` |
 | Comprobación y paquete | `pipeline/build-video-cine.ts` → `src/data/videocine.pack.json` (10 KB), informe en `data/dev/videocine-report.json` |
 | Análisis compartido | `pipeline/cine-engine.ts` |
-| Pruebas | `tests/videoCine.test.ts` (32), `scripts/e2e-videocine.mjs` (Chrome con la API de YouTube simulada) |
+| Pruebas | `tests/videoCine.test.ts` (32), `tests/clockSync.test.ts`, `scripts/e2e-videocine.mjs` (Chrome con la API de YouTube simulada) |
 
 ```bash
 npx tsx pipeline/build-video-cine.ts                          # comprueba los clips y escribe el paquete
@@ -213,13 +213,10 @@ El flujo `.github/workflows/pages.yml` construye el prototipo en cada empuje a `
 
 **Primera prueba en el móvil (13 nov, Pablo):** la web carga y el reproductor de YouTube aparece desde `youtube-nocookie.com`. El cartel negro sin botón parecía un vídeo que no cargaba: ahora lleva un ▶ que carga el vídeo aunque no haya marcas.
 
-**Marcar Ding–Gukesh en el móvil, por orden:**
-1. Clip → «Editor de marcas» → «Cargar el vídeo» → ▶. Buscar el momento en que Gukesh captura en f2 y pulsa el reloj.
-2. En «Estimar con los relojes», jugada ancla 55…Txf2 → «= ahora» justo cuando pulsa el reloj.
-3. «Poner las marcas estimadas». Comprobar con «Ir» en 55.Tf2, 56.Rxf2 y 58.Re3 que la pieza se mueve en ese momento. Si no coincide, el vídeo tiene cortes: corregir esas jugadas a mano.
-4. Marcar el fin (apretón de manos) con «= ahora». «Probar» la pausa. «Guardar en este dispositivo».
-5. Volver al clip → «Ver el vídeo: se para antes de la jugada». Debe pararse solo y el tablero de abajo seguir al vídeo.
-6. «Copiar las marcas» y pegarlas en el chat para dejarlas en `pipeline/video-clips.ts` con `marks: 'verified'`.
+**Comprobar Ding–Gukesh en el móvil:**
+1. Clip → «Ver el vídeo: se para antes de la jugada». Ding debe jugar 55.Tf2 hacia 0:09 a la vez que el tablero de abajo, y el vídeo pararse en 2:18, antes de que Gukesh capture en f2.
+2. «Seguir viendo sin responder»: el tablero debe mover 55…Txf2, 56.Rxf2… a la vez que el vídeo, hasta 58…Re5 hacia 3:36.
+3. Si algo no cuadra, en el editor de marcas: «Ir» en la jugada que falle, corregirla, «Guardar en este dispositivo» y «Copiar las marcas» para pegarlas en el chat. Si todo cuadra, pasar el clip a `marks: 'verified'`.
 
 ## 13. Películas generadas (aparcadas)
 

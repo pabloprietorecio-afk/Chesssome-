@@ -272,21 +272,23 @@ assert(await page.evaluate(() => /no permite ver este vídeo fuera de YouTube/.t
 assert(await page.evaluate(() => !!document.querySelector('.vc-poster a[href*="youtube.com/watch?v=W9JtcW_0Sr8"]')), 'debe haber enlace a YouTube');
 await shot('12-video-no-disponible');
 
-// ── E. Como lo verá cualquiera: el clip del paquete está por marcar (las primeras marcas eran erróneas). ──
+// ── E. Como lo verá cualquiera: marcas del paquete, estimadas con los relojes y aún sin comprobar. ──
 await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
 await clickText('Volver a la cartelera');
 await page.waitForSelector('.vc-card');
-assert(/Pausa sin marcar/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"]', (e) => e.textContent)), 'el clip del paquete debe figurar sin marcar');
+assert(/Pausa automática · marcas estimadas/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"]', (e) => e.textContent)), 'el clip debe figurar con marcas estimadas');
 await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
 await page.waitForSelector('.vc[data-phase="idle"]');
-assert(!(await hasButton('Ver el vídeo: se para')), 'sin marcas no debe ofrecerse la pausa automática');
-assert(await hasButton('Editor de marcas'), 'un clip por marcar debe ofrecer el editor');
+assert(await hasButton('Ver el vídeo: se para'), 'con marcas estimadas debe ofrecerse la pausa automática');
+assert(/sin comprobar/.test(await panel()), 'debe decir que las marcas están sin comprobar: ' + (await panel()));
+assert(await hasButton('Editor de marcas'), 'un clip pendiente debe ofrecer el editor');
 
-// ── F. Marcar con un ancla: los relojes dan inicio, pausa y tablero, y el tablero sigue al vídeo. ──
+// ── F. El ancla de Pablo (55…Txf2: reloj en 2:21) reproduce las marcas del paquete; el tablero sigue al vídeo. ──
 await clickText('Editor de marcas');
 await page.waitForSelector('.vc-editor .vc-sync');
-assert(await page.$('.vc-mark[data-mark="start"]'), 'en un clip por marcar se editan también inicio, pausas y fin');
+assert(await page.$('.vc-mark[data-mark="start"]'), 'en un clip pendiente se editan también inicio, pausas y fin');
 assert(!(await page.$('.vc-clock .vc-warn')), 'no debe avisar de cortes: no se sabe si los hay');
+const before = await page.$eval('.vc-json', (e) => e.value);
 await clickText('Cargar el vídeo');
 await page.waitForSelector('.vc-editor[data-player="ready"]');
 const markPly = async (p) => { await sleep(260); await page.evaluate((p) => document.querySelector(`.vc-mark[data-sync-ply="${p}"] button`).click(), p); await sleep(150); };
@@ -295,33 +297,34 @@ const warnings = () => page.$$eval('.vc-warn', (els) => els.map((e) => e.textCon
 const saveDisabled = () => page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Guardar en este dispositivo').disabled);
 const syncTimes = () => page.$$eval('.vc-mark[data-sync-ply]', (els) => Object.fromEntries(els.map((e) => [e.dataset.syncPly, e.querySelector('strong').textContent])));
 const previewPly = () => page.$eval('.vc-sync-preview', (e) => e.dataset.ply);
-// Ancla: Gukesh pulsa el reloj tras 55…Txf2 a los 217 s (vídeo simulado).
-await setTime(217);
+await setTime(141);
 await sleep(260);
 await page.evaluate(() => [...document.querySelectorAll('.vc-clock button')].find((b) => b.textContent.trim() === '= ahora').click());
 await page.waitForSelector('.vc-clock-list li[data-ply="116"]');
 await clickText('Poner las marcas estimadas');
 await sleep(150);
-assert((await head('start')) === '79.50 s' && (await head('0')) === '214.00 s', `inicio ${await head('start')}, pausa ${await head('0')}`);
-assert((await page.$eval('.vc-sync-start select', (e) => e.value)) === '108', 'al empezar, el tablero debe estar tras 54…Re5');
+const after = await page.$eval('.vc-json', (e) => e.value);
+assert(after === before.replace(/"duration":[\d.]+/, after.match(/"duration":[\d.]+/)[0]), 'el ancla en 2:21 debe dar justo las marcas del paquete:\n' + before + '\n' + after);
+assert((await head('start')) === '3.50 s' && (await head('0')) === '138.00 s' && (await head('end')) === '233.07 s', `inicio ${await head('start')}, pausa ${await head('0')}, fin ${await head('end')}`);
 let times = await syncTimes();
-assert(times['109'] === '84.50 s' && times['110'] === '216.50 s' && times['111'] === '218.50 s' && times['116'] === '292.50 s', 'tablero estimado: ' + JSON.stringify(times));
-await setTime(300); await markNow('end');
-// Destripe: 55…Txf2 no puede aparecer antes de la pausa (214 s).
-await setTime(213); await markPly(110);
+assert(times['109'] === '8.50 s' && times['110'] === '140.50 s' && times['111'] === '142.50 s' && times['116'] === '216.50 s', 'tablero estimado: ' + JSON.stringify(times));
+// Destripe: 55…Txf2 no puede aparecer antes de la pausa (138 s).
+await setTime(137); await markPly(110);
 assert(/antes de la pausa/.test(await warnings()), 'debe avisar del destripe: ' + (await warnings()));
 assert(await saveDisabled(), 'no debe dejar guardar un tablero que destripa la pregunta');
-await setTime(216.5); await markPly(110);
+await setTime(140.5); await markPly(110);
 // «Quitar» borra esa jugada y las siguientes; marcar una posterior rellena las que faltan con el mismo segundo.
 await syncButton(115, 'Quitar');
 await sleep(150);
 times = await syncTimes();
-assert(times['114'] === '232.50 s' && times['115'] === '—' && times['116'] === '—', 'quitar: ' + JSON.stringify(times));
-await setTime(292.5); await markPly(116);
+assert(times['114'] === '156.50 s' && times['115'] === '—' && times['116'] === '—', 'quitar: ' + JSON.stringify(times));
+await setTime(216.5); await markPly(116);
 times = await syncTimes();
-assert(times['115'] === '292.50 s' && times['116'] === '292.50 s', 'rellenar: ' + JSON.stringify(times));
+assert(times['115'] === '216.50 s' && times['116'] === '216.50 s', 'rellenar: ' + JSON.stringify(times));
+await setTime(209.5); await markPly(115);
+assert((await page.$eval('.vc-json', (e) => e.value)) === after, 'tras rehacer 58.Re3, las marcas deben volver a ser las del paquete');
 assert((await warnings()) === '', 'no debe haber avisos: ' + (await warnings()));
-for (const [t, ply] of [[50, '108'], [100, '109'], [217, '110'], [219, '111']]) {
+for (const [t, ply] of [[5, '108'], [100, '109'], [141, '110'], [143, '111']]) {
   await setTime(t);
   await sleep(300);
   assert((await previewPly()) === ply, `vista previa en ${t} s: ${await previewPly()} (esperado ${ply})`);
@@ -329,17 +332,13 @@ for (const [t, ply] of [[50, '108'], [100, '109'], [217, '110'], [219, '111']]) 
 await page.evaluate(() => document.querySelector('.vc-sync')?.scrollIntoView({ block: 'start' }));
 await sleep(200);
 await shot('14-editor-tablero');
-const copied = await page.$eval('.vc-json', (e) => JSON.parse(e.value));
-assert(copied.start === 79.5 && copied.stops[0] === 214 && copied.end === 300 && copied.sync.startPly === 108 && copied.sync.marks.length === 8, 'JSON copiable: ' + JSON.stringify(copied));
-await clickText('Guardar en este dispositivo');
-await sleep(200);
 await clickText('Volver al clip');
 await page.waitForSelector('.vc[data-phase="idle"]');
 await clickText('Ver el vídeo: se para');
 await waitAttr('phase', 'watching');
 await waitAttr('player', 'ready');
 const cued = await fake(() => window.__fakeYT.last().time);
-assert(Math.abs(cued - 79.5) < 1, `el clip debe empezar en 79,5 s (está en ${cued})`);
+assert(Math.abs(cued - 3.5) < 1, `el clip debe empezar en 3,5 s (está en ${cued})`);
 // Mientras se ve el vídeo, debajo va el tablero del vídeo.
 const boardInfo = () => page.$eval('.vc-board', (e) => ({ kind: e.dataset.board, ply: e.dataset.ply, label: e.querySelector('.vc-board-label')?.textContent ?? '' }));
 const waitPly = async (ply, ms = 8000) => { const t0 = Date.now(); while ((await boardInfo()).ply !== ply) { if (Date.now() - t0 > ms) throw new Error(`El tablero no llega a ${ply}: ${JSON.stringify(await boardInfo())}`); await sleep(60); } };
@@ -351,12 +350,12 @@ await shot('13-viendo-con-tablero');
 await fake(() => { window.__fakeYT.rate = 25; window.__fakeYT.tapPlay(); });
 await waitPly('109');
 assert(/tras 55\.Tf2/.test((await boardInfo()).label), 'Ding juega 55.Tf2 en el vídeo: ' + (await boardInfo()).label);
-while ((await fake(() => window.__fakeYT.last().time)) < 200) await sleep(40);
+while ((await fake(() => window.__fakeYT.last().time)) < 125) await sleep(40);
 await fake(() => { window.__fakeYT.rate = 1; });
 assert((await boardInfo()).ply === '109', 'antes de la pausa, el tablero no pasa de la posición de la pregunta');
 await waitAttr('phase', 'asking', 25000);
 const syncPause = await fake(() => window.__fakeYT.last().time);
-assert(syncPause >= 214 - 0.13 && syncPause <= 214 + 0.2, `la pausa cayó en ${syncPause}, no junto a 214`);
+assert(syncPause >= 138 - 0.13 && syncPause <= 138 + 0.2, `la pausa cayó en ${syncPause}, no junto a 138`);
 assert((await boardInfo()).kind === 'question', 'en la pausa, el tablero es el de la pregunta');
 await clickText('Seguir viendo sin responder');
 await waitAttr('phase', 'reveal');
@@ -373,10 +372,9 @@ await waitAttr('phase', 'ended', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });
 bi = await boardInfo();
 assert(bi.kind === 'video' && bi.ply === '116' && /tras 58…Re5/.test(bi.label), 'al final, la última jugada marcada: ' + JSON.stringify(bi));
-await page.evaluate(() => localStorage.removeItem('chessome.clipMarks.v1'));
 
 console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
-console.log('Clip marcado con un ancla y los relojes: empieza en', cued.toFixed(2), 's, se para en', syncPause.toFixed(2), 's (marca 214) y el tablero llega a 58…Re5.');
+console.log('Clip con las marcas del paquete (ancla 2:21 y relojes): empieza en', cued.toFixed(2), 's, se para en', syncPause.toFixed(2), 's (marca 138) y el tablero llega a 58…Re5.');
 console.log('Pausa automática en', paused.time.toFixed(2), 's (marca 8,40). Prueba del editor en', tested, 's. Reproductor', Math.round(geom.w) + '×' + Math.round(geom.h), 'px.');
 await browser.close();
 server.close();

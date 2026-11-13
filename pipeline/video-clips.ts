@@ -30,14 +30,30 @@ export const CLIPS: ClipSource[] = [
       official: true,
       checked: '2026-11-13',
       duration: 437,
-      // Sin saber si tiene cortes. La sospecha de cortes salía de unas marcas que Pablo ha dado por erróneas
-      // (13 nov 2026): en su captura, Gukesh aún piensa tras 55.Tf2 cerca de donde estaba el «fin».
+      // Probablemente sin cortes entre 2:21 y 3:53: con el ancla de Pablo, los relojes sitúan 58.Re3 (el rey
+      // blanco avanza una casilla) en 3:30 y 58…Re5 en 3:37, que es lo que Pablo vio en su primer clip (3:20–3:53,
+      // apretón de manos en 3:53). 55.Tf2 en 0:09 sale de los relojes y está sin comprobar.
     },
-    // Marcas retiradas: las primeras (inicio 200,14 s, pausa 215,47 s, fin 233,07 s) estaban mal según Pablo.
-    // Pendiente: un ancla en el editor y «Poner las marcas estimadas», y comprobarlas en el vídeo.
-    start: null,
-    end: null,
+    // Marcas estimadas (13 nov 2026) con un ancla de Pablo, 55…Txf2: Gukesh pulsa el reloj en 2:21 (141 s), y los
+    // relojes de la retransmisión (ver `clocks`). Fin: el apretón de manos que marcó Pablo (233,07 s).
+    // Sin comprobar en el vídeo: 'pending' hasta que Pablo las pruebe.
+    start: 3.5,
+    end: 233.07,
     marks: 'pending',
+    // Tablero sincronizado: cada jugada 0,5 s antes de que se pulse su reloj (suggestSync).
+    sync: {
+      startPly: 108,
+      marks: [
+        { ply: 109, at: 8.5 },
+        { ply: 110, at: 140.5 },
+        { ply: 111, at: 142.5 },
+        { ply: 112, at: 145.5 },
+        { ply: 113, at: 155.5 },
+        { ply: 114, at: 156.5 },
+        { ply: 115, at: 209.5 },
+        { ply: 116, at: 216.5 },
+      ],
+    },
     moves:
       '1. Nf3 d5 2. g3 c5 3. Bg2 Nc6 4. d4 e6 5. O-O cxd4 6. Nxd4 Nge7 7. c4 Nxd4 8. Qxd4 Nc6 9. Qd1 d4 10. e3 Bc5 11. exd4 Bxd4 12. Nc3 O-O 13. Nb5 Bb6 14. b3 a6 15. Nc3 Bd4 16. Bb2 e5 17. Qd2 Be6 18. Nd5 b5 19. cxb5 axb5 20. Nf4 exf4 21. Bxc6 Bxb2 22. Qxb2 Rb8 23. Rfd1 Qb6 24. Bf3 fxg3 25. hxg3 b4 26. a4 bxa3 27. Rxa3 g6 28. Qd4 Qb5 29. b4 Qxb4 30. Qxb4 Rxb4 31. Ra8 Rxa8 32. Bxa8 g5 33. Bd5 Bf5 34. Rc1 Kg7 35. Rc7 Bg6 36. Rc4 Rb1+ 37. Kg2 Re1 38. Rb4 h5 39. Ra4 Re5 40. Bf3 Kh6 41. Kg1 Re6 42. Rc4 g4 43. Bd5 Rd6 44. Bb7 Kg5 45. f3 f5 46. fxg4 hxg4 47. Rb4 Bf7 48. Kf2 Rd2+ 49. Kg1 Kf6 50. Rb6+ Kg5 51. Rb4 Be6 52. Ra4 Rb2 53. Ba8 Kf6 54. Rf4 Ke5 55. Rf2 Rxf2 56. Kxf2 Bd5 57. Bxd5 Kxd5 58. Ke3 Ke5 0-1',
     gameSource: 'Partida pública, cotejada jugada a jugada en dos fuentes: Wikipedia («World Chess Championship 2024») y ChessBase India (análisis de S. Kidambi).',
@@ -46,7 +62,7 @@ export const CLIPS: ClipSource[] = [
       'Singapur, 12 de diciembre de 2024. Última partida del Mundial, con 6,5 a 6,5 en el marcador. El final de torre y alfil parece encaminado a las tablas… hasta que Ding Liren juega 55.Tf2.',
     stops: [
       {
-        at: null,
+        at: 138,
         questions: [
           {
             ply: 110,
@@ -79,6 +95,6 @@ export const CLIPS: ClipSource[] = [
         'Retransmisión oficial en Lichess, «FIDE World Championship 2024», game 14 (lichess.org/broadcast/fide-world-championship-2024/game-14/LtsCRK9D), leída del texto que indexa el buscador: la página no se pudo descargar (robots.txt).',
     },
     notes:
-      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s. Las primeras marcas de Pablo (3:20 a 3:53, pausa en 3:35) resultaron erróneas y se han retirado; está por marcar de nuevo, con el ancla en la pulsación del reloj tras 55…Txf2 y la estimación de los relojes.',
+      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s. Las primeras marcas (3:20 a 3:53, pausa en 3:35) dejaban la pausa antes de 58…Re5 y no antes de 55…Txf2. Marcas actuales estimadas con los relojes y un ancla de Pablo (55…Txf2 en 2:21): 55.Tf2 en 0:09, pausa en 2:18, fin en 3:53. Sin comprobar en el vídeo.',
   },
 ];

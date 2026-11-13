@@ -76,6 +76,14 @@ describe('relojes', () => {
     ]);
   });
 
+  it('Ding–Gukesh: las marcas del clip salen del ancla de Pablo (55…Txf2 en 2:21) y de los relojes', () => {
+    const v = videoTimes(clocks, { ply: 110, at: 141 });
+    expect(ding.stops[0].at).toBe(suggestPause(v, 110));
+    const s = suggestSync(v, { start: null, end: ding.end, minStart: 98, maxStart: 109 })!;
+    expect(ding.start).toBe(s.start);
+    expect(ding.sync).toEqual(s.sync);
+  });
+
   it('tablero estimado: respeta el inicio y el fin ya marcados', () => {
     const v = videoTimes(clocks, { ply: 110, at: 217 });
     const s = suggestSync(v, { start: 200, end: 240, minStart: 98, maxStart: 109 })!;

@@ -81,10 +81,12 @@ describe('paquete de clips de vídeo', () => {
     }
   });
 
-  it('Ding–Gukesh: las marcas erróneas están retiradas y el clip no se para solo hasta marcarlo de nuevo', () => {
+  it('Ding–Gukesh: marcas estimadas con los relojes, pendientes de comprobar en el vídeo', () => {
     expect(ding.marks).toBe('pending');
-    expect(marksOf(ding)).toEqual({ start: null, stops: [null], end: null, duration: 437 });
-    expect(canAutoPause(ding)).toBe(false);
+    expect(marksOf(ding)).toEqual({ start: 3.5, stops: [138], end: 233.07, duration: 437, sync: ding.sync });
+    expect(marksProblems(marksOf(ding))).toEqual([]);
+    expect(syncProblems(ding, ding.sync!, marksOf(ding))).toEqual([]);
+    expect(canAutoPause(ding)).toBe(true);
   });
 
   it('Ding–Gukesh: en las tres preguntas solo gana la jugada de la partida', () => {
@@ -146,7 +148,7 @@ describe('utilidades', () => {
     expect(canAutoPause(unmarked)).toBe(false);
     const marked = withMarks(ding, { start: 0, stops: [8.4], end: 120, duration: 431 });
     expect(canAutoPause(marked)).toBe(true);
-    expect(marksOf(marked)).toEqual({ start: 0, stops: [8.4], end: 120, duration: 431 });
+    expect(marksOf(marked)).toEqual({ start: 0, stops: [8.4], end: 120, duration: 431, sync: ding.sync });
   });
 });
 
@@ -395,6 +397,6 @@ describe('tablero sincronizado', () => {
     const sync = { startPly: q1 - 1, marks: [{ ply: q1, at: pause }] };
     expect(withMarks(ding, { ...marks, sync }).sync).toEqual(sync);
     expect(withMarks({ ...ding, sync }, { ...marks, sync: null }).sync).toBeUndefined();
-    expect(withMarks({ ...ding, sync }, marksOf(ding)).sync).toEqual(sync);
+    expect(withMarks({ ...ding, sync }, marks).sync).toEqual(sync); // marcas sin tablero: se queda el del clip
   });
 });

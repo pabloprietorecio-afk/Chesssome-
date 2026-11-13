@@ -103,7 +103,7 @@ export function VideoCinemaScreen(): JSX.Element {
                 <span className="vc-card-meta">
                   Vídeo: {c.video.channel} · YouTube · {c.stops.reduce((n, s) => n + s.questions.length, 0)} preguntas
                 </span>
-                <span className={`vc-chip ${auto ? 'vc-chip-on' : ''}`}>{auto ? (e.local ? 'Pausa automática · marcas de este dispositivo' : 'Pausa automática') : 'Pausa sin marcar · directo a la pregunta'}</span>
+                <span className={`vc-chip ${auto ? 'vc-chip-on' : ''}`}>{auto ? (e.local ? 'Pausa automática · marcas de este dispositivo' : c.marks === 'pending' ? 'Pausa automática · marcas estimadas' : 'Pausa automática') : 'Pausa sin marcar · directo a la pregunta'}</span>
               </button>
             </li>
           );
@@ -432,6 +432,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
             Ir directo a la pregunta
           </button>
           {local && <p className="vc-warn">La pausa usa marcas hechas en este dispositivo. No están verificadas.</p>}
+          {!local && auto && clip.marks === 'pending' && <p className="cm-quiet cm-small">Marcas estimadas con los relojes de la partida, sin comprobar aún en el vídeo.</p>}
           <p className="cm-quiet cm-small">
             El vídeo se reproduce con YouTube. Al verlo aceptas los{' '}
             <a href={YT_TERMS} target="_blank" rel="noreferrer">
