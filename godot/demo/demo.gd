@@ -14,14 +14,14 @@ const LIGHT := {
 	"accent": Color("ff7a1a"), "accent_ink": Color("1b2540"), "accent_text": Color("b84a0c"),
 	"accent_soft": Color("ffe6d0"), "good": Color("1f7a44"), "bad": Color("c0392b"),
 	"track": Color("c9d5e8"), "field": Color("eef3fb"), "scrim": Color(0.07, 0.1, 0.22, 0.42),
-	"shadow": Color(0.16, 0.3, 0.6, 0.16),
+	"shadow": Color(0.16, 0.3, 0.6, 0.16), "sky": Color("cfe1fb"), "cloud": Color("f7fbff"),
 }
 const DARK := {
 	"bg": Color("0a0f1e"), "surface": Color("161e38"), "ink": Color("edeff7"), "quiet": Color("a3acc4"),
 	"accent": Color("ff7a1a"), "accent_ink": Color("1b2540"), "accent_text": Color("ff9a3c"),
 	"accent_soft": Color("3a2416"), "good": Color("4cbf7a"), "bad": Color("ff7b7f"),
 	"track": Color("2c3759"), "field": Color("1f2946"), "scrim": Color(0.0, 0.0, 0.03, 0.6),
-	"shadow": Color(0.0, 0.0, 0.0, 0.36),
+	"shadow": Color(0.0, 0.0, 0.0, 0.36), "sky": Color("141d44"), "cloud": Color("f4e6b6"),
 }
 ## La vista 3D es algo más alta que el hueco del tablero y se funde con el fondo por arriba y por abajo:
 ## así caben la sombra del tablero y las cabezas de las piezas del fondo, y no se nota dónde acaba la vista.
@@ -44,7 +44,8 @@ var options_open := false
 var top_view := false
 
 var view: BoardView3D
-var bg: ColorRect
+var bg: Sky
+var bar_row: Control
 var chrome: VBoxContainer
 var board_slot: Control
 var counter: Label
@@ -60,6 +61,62 @@ var font_regular: Font
 var font_medium: Font
 var font_semibold: Font
 var font_display: Font
+
+
+## Fondo de la pantalla: cielo. Arriba es algo más intenso y se va fundiendo con el color de fondo; en el
+## hueco que queda sobre el tablero en los móviles altos hay unas nubes (de día) o la luna y estrellas (de noche).
+## Es el sitio previsto para los paisajes con el tiempo real (docs/estilo-2d.md); de momento, un cielo quieto.
+class Sky extends Control:
+	var base := Color.WHITE
+	var top := Color.WHITE
+	var ornament := Color.WHITE
+	var night := false
+	## Franja libre para los adornos: desde debajo de la barra hasta donde empieza la vista del tablero.
+	var band_top := 0.0
+	var band_bottom := 0.0
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), base)
+		var fade_end := clampf(band_bottom, 0.0, size.y)
+		if fade_end > 8.0:
+			draw_polygon(
+				PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0.0), Vector2(size.x, fade_end), Vector2(0.0, fade_end)]),
+				PackedColorArray([top, top, base, base]))
+		var band := band_bottom - band_top
+		if band < 220.0:
+			return
+		if night:
+			_stars(band)
+			_moon(Vector2(size.x * 0.2, band_top + band * 0.42))
+		else:
+			_cloud(Vector2(size.x * 0.24, band_top + band * 0.4), 1.0)
+			_cloud(Vector2(size.x * 0.73, band_top + band * 0.68), 0.7)
+			_cloud(Vector2(size.x * 0.58, band_top + band * 0.16), 0.46)
+
+	func _sky_at(y: float) -> Color:
+		return top.lerp(base, clampf(y / maxf(band_bottom, 1.0), 0.0, 1.0))
+
+	func _cloud(c: Vector2, k: float) -> void:
+		var body := StyleBoxFlat.new()
+		body.bg_color = ornament
+		body.set_corner_radius_all(int(24.0 * k))
+		draw_style_box(body, Rect2(c + Vector2(-96.0, -8.0) * k, Vector2(196.0, 48.0) * k))
+		for puff: Vector3 in [Vector3(-56.0, -4.0, 32.0), Vector3(-14.0, -22.0, 46.0), Vector3(36.0, -10.0, 38.0), Vector3(70.0, 8.0, 26.0)]:
+			draw_circle(c + Vector2(puff.x, puff.y) * k, puff.z * k, ornament, true, -1.0, true)
+
+	func _moon(c: Vector2) -> void:
+		draw_circle(c, 30.0, ornament, true, -1.0, true)
+		# El mordisco de la luna: un círculo del color del cielo en ese punto.
+		draw_circle(c + Vector2(13.0, -9.0), 26.0, _sky_at(c.y - 9.0), true, -1.0, true)
+
+	func _stars(band: float) -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 20261113
+		for i in 26:
+			var p := Vector2(rng.randf_range(36.0, size.x - 36.0), band_top + rng.randf_range(0.02, 0.86) * band)
+			var r := rng.randf_range(1.6, 3.4)
+			var a := rng.randf_range(0.28, 0.9)
+			draw_circle(p, r, Color(0.86, 0.91, 1.0, a), true, -1.0, true)
 
 
 ## Botón redondo con un icono dibujado a mano (sin archivos de imagen).
@@ -119,7 +176,7 @@ func _ready() -> void:
 	font_display = _load_font("InterDisplay-Bold.woff2")
 	_load_puzzles()
 
-	bg = ColorRect.new()
+	bg = Sky.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -271,7 +328,11 @@ func _build_chrome() -> void:
 		th.default_font = font_regular
 	th.default_font_size = 32
 	theme = th
-	bg.color = _c("bg")
+	bg.base = _c("bg")
+	bg.top = _c("sky")
+	bg.ornament = _c("cloud")
+	bg.night = dark
+	bg.queue_redraw()
 	view.set_board_theme("dark" if dark else "light", _c("bg"))
 
 	var inset := _insets()
@@ -287,6 +348,7 @@ func _build_chrome() -> void:
 	chrome.add_child(_spacer(maxf(inset.x, 60.0) + 18.0))
 	var bar_pad := _pad(40, 0, 36, 0)
 	chrome.add_child(bar_pad)
+	bar_row = bar_pad
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 16)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -406,6 +468,10 @@ func _place_board() -> void:
 	var h := maxf(view.size.y, 1.0)
 	view.board.fit_pad = Vector4(0.012, (top + 6.0) / h, 0.012, (bottom + 6.0) / h)
 	view.board.apply_camera()
+	# El cielo se funde con el fondo justo antes de la vista del tablero; sus adornos van entre la barra y ella.
+	bg.band_top = bar_row.get_global_rect().end.y + 16.0 if bar_row != null and is_instance_valid(bar_row) else 0.0
+	bg.band_bottom = view.position.y
+	bg.queue_redraw()
 
 
 ## Pone los textos y los botones que corresponden a la fase del problema.

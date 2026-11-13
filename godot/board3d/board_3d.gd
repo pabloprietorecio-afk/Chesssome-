@@ -189,7 +189,7 @@ func _build() -> void:
 			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5 + 0.385 * sgn, 0.012, 3.865 * sgn), yaw, (i + edge) % 2 == 0))
 			# Número de la fila: esquina inferior izquierda de la casilla de la columna de la izquierda, pegado
 			# al borde. Ahí no lo tapan ni la base de la pieza de su casilla ni el cuerpo de la de delante.
-			group.add_child(_make_label(str(i + 1), Vector3(-3.93 * sgn, 0.012, 3.5 - i + 0.365 * sgn), yaw, (edge + i) % 2 == 0))
+			group.add_child(_make_label(str(i + 1), Vector3(-3.922 * sgn, 0.012, 3.5 - i + 0.36 * sgn), yaw, (edge + i) % 2 == 0))
 		add_child(group)
 		_labels.append(group)
 
@@ -224,7 +224,7 @@ func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label
 	if _label_font != null:
 		l.font = _label_font
 	l.font_size = 48
-	l.pixel_size = 0.0036
+	l.pixel_size = 0.004
 	l.outline_size = 0
 	l.shaded = false
 	l.position = pos
