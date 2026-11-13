@@ -41,6 +41,8 @@ export interface VideoRef {
   checked: string;
   /** Duración en segundos. Sirve para detectar anuncios o un vídeo reeditado. null = sin medir. */
   duration: number | null;
+  /** false = vídeo montado con cortes: el tiempo del vídeo no sigue al de la partida y los relojes no sirven para estimar. */
+  continuous?: boolean;
 }
 
 export interface ClipQuestionSource {

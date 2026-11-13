@@ -30,6 +30,9 @@ export const CLIPS: ClipSource[] = [
       official: true,
       checked: '2026-11-13',
       duration: 437,
+      // Montado con cortes: de la pausa (3:35, antes de 55…Txf2) al apretón de manos (3:53) hay 17,6 s de vídeo,
+      // y según los relojes de 55…Txf2 a 58…Re5 pasaron 76 s reales (Ding pensó 53 s 58.Re3).
+      continuous: false,
     },
     // Marcas puestas por Pablo viendo el vídeo (13 nov 2026). Pasarán a 'verified' cuando confirme
     // en el móvil que la pausa automática cae justo antes de 55…Txf2.
@@ -77,6 +80,6 @@ export const CLIPS: ClipSource[] = [
         'Retransmisión oficial en Lichess, «FIDE World Championship 2024», game 14 (lichess.org/broadcast/fide-world-championship-2024/game-14/LtsCRK9D), leída del texto que indexa el buscador: la página no se pudo descargar (robots.txt).',
     },
     notes:
-      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s; el clip va de 3:20 a 3:53 y se para en 3:35, antes de 55…Txf2 (marcas de Pablo).',
+      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s; el clip va de 3:20 a 3:53 (apretón de manos tras 58…Re5) y se para en 3:35, antes de 55…Txf2 (marcas de Pablo). El vídeo está montado con cortes: los relojes no sirven para estimar sus segundos.',
   },
 ];

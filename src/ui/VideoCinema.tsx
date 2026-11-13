@@ -734,6 +734,9 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
       {clip.clocks && labels.length > 0 && (
         <section className="vc-clock" data-clock="on">
           <h3>Estimar con los relojes</h3>
+          {clip.video.continuous === false && (
+            <p className="vc-warn">Este vídeo está montado con cortes: el tiempo del vídeo no sigue al de la partida y la estimación no vale.</p>
+          )}
           <p className="cm-quiet cm-small">
             Marca el segundo en que se pulsa el reloj tras una jugada. Con los relojes de la partida se calcula el de las demás. Solo vale si el vídeo no
             tiene cortes entre medias.

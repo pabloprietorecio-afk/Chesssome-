@@ -114,7 +114,9 @@ Coste estimado: un par de minutos por clip (sin medir).
 | 58.Re3 | 53 s | 286 (4:46) |
 | 58…Re5 | 7 s | 293 (4:53) |
 
-Comparación con las marcas de Pablo (pausa 215,47 s, fin 233,07 s): de la pausa al fin hay 17,6 s, y los relojes dan 16 s de 55…Txf2 a 57…Rxd5. Si Gukesh jugó Txf2 1,6 s después de la pausa, el fin marcado coincide con 57…Rxd5, y entonces 58.Re3 y 58…Re5 quedarían **fuera** del clip, hacia 4:46 y 4:53, salvo que el vídeo tenga un corte. Por comprobar viendo el vídeo.
+Comparación con las marcas de Pablo (pausa 215,47 s, fin 233,07 s): en 3:53 los jugadores ya se dan la mano (Pablo), así que todo, de 55…Txf2 a 58…Re5, ocurre en menos de 17,6 s de vídeo, cuando según los relojes pasaron 76 s reales. **El vídeo de FIDE está montado con cortes**: los relojes no sirven para estimar sus segundos (queda marcado con `continuous: false` y el editor lo avisa).
+
+Conclusión: los resúmenes editados se marcan a mano. La estimación por relojes es para retransmisiones completas sin cortes (por ejemplo, el directo entero de una partida), donde una sola marca da todas las demás. Riesgo en esas retransmisiones: los comentaristas pueden adelantar la jugada antes de la pausa.
 
 **Idea para escalar (hipótesis):** pedir permiso por escrito a FIDE o a los canales permitiría automatizar la búsqueda del segundo exacto mirando el tablero en el vídeo. Sin permiso, las condiciones de YouTube prohíben descargar el vídeo y acceder por medios automatizados.
 
