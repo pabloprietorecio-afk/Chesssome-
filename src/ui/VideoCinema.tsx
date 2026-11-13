@@ -136,7 +136,7 @@ export function VideoCinemaScreen(): JSX.Element {
                   ? e.local
                     ? 'Se para solo · marcas de este dispositivo'
                     : c.marks === 'pending'
-                      ? 'Se para solo · marcas estimadas, sin comprobar'
+                      ? 'Se para solo · marcas sin comprobar'
                       : 'Se para solo antes de la jugada'
                   : 'Sin pausa marcada: el vídeo se ve entero'}
               </span>
@@ -528,7 +528,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             </button>
             {local && <p className="vc-warn">La pausa usa marcas hechas en este dispositivo. No están verificadas.</p>}
             {stale && <p className="cm-quiet cm-small">Las marcas guardadas en este dispositivo eran de una versión anterior del clip: ya no se usan.</p>}
-            {!local && auto && clip.marks === 'pending' && <p className="cm-quiet cm-small">Marcas estimadas con los relojes de la partida, sin comprobar aún en el vídeo.</p>}
+            {!local && auto && clip.marks === 'pending' && <p className="cm-quiet cm-small">Marcas sin comprobar aún en el vídeo.</p>}
             <p className="cm-quiet cm-small">
               El vídeo se reproduce con YouTube. Al verlo aceptas los{' '}
               <a href={YT_TERMS} target="_blank" rel="noreferrer">
