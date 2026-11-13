@@ -184,6 +184,9 @@ export const marksOf = (clip: Clip): ClipMarks => ({
   ...(clip.sync ? { sync: clip.sync } : {}),
 });
 
+/** Huella de unas marcas: sirve para saber si las de un dispositivo se hicieron sobre las marcas actuales del clip. */
+export const marksKey = (m: ClipMarks): string => JSON.stringify([m.start, m.end, m.stops, m.duration, m.sync ?? null]);
+
 /** Aplica unas marcas (p. ej. las hechas en este dispositivo con el editor) sobre un clip. */
 export function withMarks(clip: Clip, m: ClipMarks): Clip {
   return {

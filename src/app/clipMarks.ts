@@ -7,22 +7,25 @@ import type { ClipMarks } from '../core/videoCine';
 
 const KEY = 'chessome.clipMarks.v1';
 
-function all(): Record<string, ClipMarks> {
+/** Marcas guardadas y la huella (`marksKey`) de las marcas del clip sobre las que se hicieron. */
+export type StoredMarks = ClipMarks & { base?: string };
+
+function all(): Record<string, StoredMarks> {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Record<string, ClipMarks>) : {};
+    return raw ? (JSON.parse(raw) as Record<string, StoredMarks>) : {};
   } catch {
     return {};
   }
 }
 
-export function loadMarks(clipId: string): ClipMarks | null {
+export function loadMarks(clipId: string): StoredMarks | null {
   return all()[clipId] ?? null;
 }
 
-export function saveMarks(clipId: string, marks: ClipMarks): boolean {
+export function saveMarks(clipId: string, marks: ClipMarks, base: string): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...all(), [clipId]: marks }));
+    localStorage.setItem(KEY, JSON.stringify({ ...all(), [clipId]: { ...marks, base } }));
     return true;
   } catch {
     return false;

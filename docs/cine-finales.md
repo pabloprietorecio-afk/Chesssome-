@@ -89,7 +89,7 @@ Nadie puede saber en qué segundo se hace una jugada sin ver el vídeo. Claude n
 
 **Editor de marcas** (en la app, dentro de cada clip): se carga el vídeo, se reproduce y se pulsa «= ahora» para el inicio, cada pausa y el fin. Ajustes de ±0,1 y ±1 s y un botón «Probar» que reproduce desde 4 s antes y comprueba dónde se para.
 
-- «Guardar en este dispositivo»: el clip ya se para solo en ese navegador, marcado como «sin verificar».
+- «Guardar en este dispositivo»: el clip ya se para solo en ese navegador, marcado como «sin verificar». Si después cambian las marcas del clip en el proyecto, las del dispositivo dejan de usarse (se guarda la huella de las marcas sobre las que se hicieron) y la app lo avisa.
 - «Copiar las marcas»: texto para pegar en el chat o en `pipeline/video-clips.ts`.
 
 Coste estimado: un par de minutos por clip (sin medir).

@@ -272,8 +272,12 @@ assert(await page.evaluate(() => /no permite ver este vídeo fuera de YouTube/.t
 assert(await page.evaluate(() => !!document.querySelector('.vc-poster a[href*="youtube.com/watch?v=W9JtcW_0Sr8"]')), 'debe haber enlace a YouTube');
 await shot('12-video-no-disponible');
 
-// ── E. Como lo verá cualquiera: marcas del paquete, estimadas con los relojes y aún sin comprobar. ──
-await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
+// ── E. Marcas del paquete, estimadas con los relojes y aún sin comprobar. En este dispositivo quedan las marcas
+// antiguas de Pablo (inicio 3:20), guardadas sobre otra versión del clip: deben ignorarse. ──
+await page.evaluate(() => {
+  localStorage.removeItem('chessome.dev.localMarks');
+  localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'ding-gukesh-2024-g14': { start: 200.14, end: 233.07, stops: [215.47], duration: 437 } }));
+});
 await clickText('Volver a la cartelera');
 await page.waitForSelector('.vc-card');
 assert(/Pausa automática · marcas estimadas/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"]', (e) => e.textContent)), 'el clip debe figurar con marcas estimadas');
@@ -281,6 +285,7 @@ await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
 await page.waitForSelector('.vc[data-phase="idle"]');
 assert(await hasButton('Ver el vídeo: se para'), 'con marcas estimadas debe ofrecerse la pausa automática');
 assert(/sin comprobar/.test(await panel()), 'debe decir que las marcas están sin comprobar: ' + (await panel()));
+assert(/versión anterior del clip/.test(await panel()), 'debe avisar de que las marcas antiguas del dispositivo ya no se usan: ' + (await panel()));
 assert(await hasButton('Editor de marcas'), 'un clip pendiente debe ofrecer el editor');
 
 // ── F. El ancla de Pablo (55…Txf2: reloj en 2:21) reproduce las marcas del paquete; el tablero sigue al vídeo. ──

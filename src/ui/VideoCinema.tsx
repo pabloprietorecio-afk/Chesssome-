@@ -19,6 +19,7 @@ import {
   direct,
   initialDirector,
   judgeAnswer,
+  marksKey,
   marksOf,
   marksProblems,
   run,
@@ -60,13 +61,26 @@ const canEditTiming = (clip: Clip) => clip.marks !== 'verified' || devFlag(LOCAL
 /** ¿Hay algo que marcar? Las pausas si no están verificadas; el tablero sincronizado si el clip aún no lo trae. */
 const canEditMarks = (clip: Clip) => canEditTiming(clip) || !clip.sync;
 
+/**
+ * Marcas de este dispositivo que siguen valiendo: las hechas sobre las marcas actuales del clip. Si el clip ha
+ * cambiado desde entonces (p. ej. se publicaron marcas nuevas), las de este dispositivo se ignoran: `stale`.
+ * Con el interruptor de desarrollo se usan siempre.
+ */
+function deviceMarks(clip: Clip): { marks: ClipMarks | null; stale: boolean } {
+  const stored = loadMarks(clip.id);
+  if (!stored) return { marks: null, stale: false };
+  const { base, ...marks } = stored;
+  if (base === marksKey(marksOf(clip)) || devFlag(LOCAL_MARKS_FLAG)) return { marks, stale: false };
+  return { marks: null, stale: true };
+}
+
 /** Clip con las marcas hechas en este dispositivo. En un clip verificado solo cuenta el tablero sincronizado local. */
-function effective(clip: Clip): { clip: Clip; local: boolean } {
-  const local = loadMarks(clip.id);
-  if (!local) return { clip, local: false };
-  if (canEditTiming(clip)) return { clip: withMarks(clip, local), local: true };
-  if (!clip.sync && local.sync) return { clip: withMarks(clip, { ...marksOf(clip), sync: local.sync }), local: true };
-  return { clip, local: false };
+function effective(clip: Clip): { clip: Clip; local: boolean; stale: boolean } {
+  const { marks: local, stale } = deviceMarks(clip);
+  if (!local) return { clip, local: false, stale };
+  if (canEditTiming(clip)) return { clip: withMarks(clip, local), local: true, stale };
+  if (!clip.sync && local.sync) return { clip: withMarks(clip, { ...marksOf(clip), sync: local.sync }), local: true, stale };
+  return { clip, local: false, stale };
 }
 
 /** Lo que muestra el tablero sincronizado en el segundo `t`, sin pasar de la media jugada `cap`. */
@@ -218,7 +232,7 @@ const OUTCOME_LABEL: Record<ClipAnswer['outcome'], string> = {
 
 function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => void; onEdit: () => void }): JSX.Element {
   const s = useAppState();
-  const { clip, local } = useMemo(() => effective(packed), [packed]);
+  const { clip, local, stale } = useMemo(() => effective(packed), [packed]);
   const auto = canAutoPause(clip);
   const mount = useRef<HTMLDivElement>(null);
   const videoBox = useRef<HTMLDivElement>(null);
@@ -432,6 +446,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
             Ir directo a la pregunta
           </button>
           {local && <p className="vc-warn">La pausa usa marcas hechas en este dispositivo. No están verificadas.</p>}
+          {stale && <p className="cm-quiet cm-small">Las marcas guardadas en este dispositivo eran de una versión anterior del clip: ya no se usan.</p>}
           {!local && auto && clip.marks === 'pending' && <p className="cm-quiet cm-small">Marcas estimadas con los relojes de la partida, sin comprobar aún en el vídeo.</p>}
           <p className="cm-quiet cm-small">
             El vídeo se reproduce con YouTube. Al verlo aceptas los{' '}
@@ -639,7 +654,7 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
   const [snap, setSnap] = useState<{ time: number; duration: number; playing: boolean } | null>(null);
   const [raw, setRaw] = useState<number | null>(null);
   const [standardHost, setStandardHost] = useState(() => devFlag(HOST_FLAG));
-  const [marks, setMarks] = useState<ClipMarks>(() => loadMarks(clip.id) ?? marksOf(clip));
+  const [marks, setMarks] = useState<ClipMarks>(() => deviceMarks(clip).marks ?? marksOf(clip));
   const [test, setTest] = useState<{ at: number; pausedAt: number | null } | null>(null);
   const testRef = useRef(test);
   testRef.current = test;
@@ -887,7 +902,7 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
           className="cm-primary"
           disabled={problems.length > 0}
           onClick={() => {
-            const ok = saveMarks(clip.id, marks);
+            const ok = saveMarks(clip.id, marks, marksKey(marksOf(clip)));
             setNote(ok ? 'Guardado en este dispositivo. El clip ya puede pararse solo aquí.' : 'No se ha podido guardar en este dispositivo.');
           }}
         >
