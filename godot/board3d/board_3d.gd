@@ -13,12 +13,21 @@ enum Anim { FULL, FAST, MINIMAL, NONE }
 const PIECE_FILES := {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen", 6: "king"}
 ## Altura de cada pieza en casillas (para elegirla al tocar).
 const PIECE_HEIGHT := {1: 0.84, 2: 1.09, 3: 1.25, 4: 0.99, 5: 1.53, 6: 1.76}
-const PIECE_SCALE := 0.94
-const PICK_RADIUS := 0.34
+const PIECE_SCALE := 1.0
+## Las piezas van algo más anchas que el modelo: llenan mejor la casilla sin tapar más las de detrás.
+const PIECE_GIRTH := 1.06
+const PICK_RADIUS := 0.38
+## Semilado y grosor del marco (tools/pieces/board.mjs).
+const FRAME_HALF := 4.14
+const FRAME_THICK := 0.36
+## Altura que se reserva para las piezas al encuadrar (un rey en una casilla de esquina).
+const FIT_HEIGHT := 1.8
+## Grosor del contorno de las piezas, en casillas.
+const OUTLINE_WIDTH := 0.02
 const START_FEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const PITCH_MIN := 36.0
 const PITCH_MAX := 90.0
-const DEFAULT_PITCH := 58.0
+const DEFAULT_PITCH := 62.0
 
 var chess: Chess = Chess.from_fen(START_FEN)
 ## 0 = blancas abajo, 1 = negras abajo.
@@ -30,7 +39,11 @@ var show_coordinates := true
 var camera: Camera3D
 var cam_pitch := DEFAULT_PITCH
 var cam_yaw := 0.0
-var cam_fov := 26.0
+## Campo de visión horizontal: estrecho, para que las casillas del fondo no se encojan.
+var cam_fov := 20.0
+## Margen libre alrededor del tablero al encuadrar, en fracción del ancho o del alto de la vista:
+## izquierda, arriba, derecha, abajo.
+var fit_pad := Vector4(0.012, 0.02, 0.012, 0.02)
 
 var last_from := -1
 var last_to := -1
@@ -40,9 +53,12 @@ var _targets := PackedInt32Array()
 var _pieces := {}
 var _meshes := {}
 var _mats: Array[ShaderMaterial] = []
+var _outline_mats: Array[ShaderMaterial] = []
+var _disc_mats: Array[ShaderMaterial] = []
+var _disc_mesh: ArrayMesh
+var _label_font: Font
 var _squares_mat: ShaderMaterial
 var _frame_mat: StandardMaterial3D
-var _backdrop_mat: ShaderMaterial
 var _shadow_mat: ShaderMaterial
 var _env: Environment
 var _key: DirectionalLight3D
@@ -67,13 +83,17 @@ func _ready() -> void:
 	set_theme(_theme_name)
 	set_fen(chess.fen())
 	set_orientation(orientation)
+	# El encuadre depende de la forma de la vista: se rehace cada vez que cambia de tamaño.
+	get_viewport().size_changed.connect(apply_camera)
 
 
 # ---------------------------------------------------------------- construcción
 
 func _build() -> void:
 	_env = Environment.new()
-	_env.background_mode = Environment.BG_COLOR
+	# Sin fondo propio: la vista es transparente y el fondo lo pinta la interfaz (ver BoardView3D),
+	# así no hay costura entre el tablero y el resto de la pantalla.
+	_env.background_mode = Environment.BG_CLEAR_COLOR
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	var world_env := WorldEnvironment.new()
@@ -83,11 +103,13 @@ func _build() -> void:
 	_light_rig = Node3D.new()
 	add_child(_light_rig)
 	_key = DirectionalLight3D.new()
-	_key.rotation = Vector3(deg_to_rad(-56.0), deg_to_rad(-34.0), 0.0)
+	# Luz alta: sombras cortas, que no ensucian las casillas vecinas.
+	_key.rotation = Vector3(deg_to_rad(-66.0), deg_to_rad(-34.0), 0.0)
 	_key.shadow_enabled = true
 	_key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	_key.directional_shadow_max_distance = 42.0
-	_key.shadow_blur = 1.6
+	_key.shadow_blur = 1.8
+	_key.shadow_opacity = 0.72
 	_key.light_angular_distance = 1.0
 	_light_rig.add_child(_key)
 	_fill = DirectionalLight3D.new()
@@ -98,21 +120,11 @@ func _build() -> void:
 	camera = Camera3D.new()
 	camera.fov = cam_fov
 	camera.near = 0.5
-	camera.far = 120.0
+	camera.far = 160.0
+	# El campo de visión es el horizontal: el tablero se encuadra a lo ancho sea cual sea el alto de la vista.
+	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	add_child(camera)
 	camera.make_current()
-
-	# Fondo: un plano lejano pegado a la cámara.
-	var quad := QuadMesh.new()
-	quad.size = Vector2(60.0, 60.0)
-	var backdrop := MeshInstance3D.new()
-	backdrop.mesh = quad
-	_backdrop_mat = ShaderMaterial.new()
-	_backdrop_mat.shader = load("res://board3d/shaders/backdrop.gdshader") as Shader
-	backdrop.material_override = _backdrop_mat
-	backdrop.position = Vector3(0.0, 0.0, -100.0)
-	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	camera.add_child(backdrop)
 
 	# Sombra de contacto.
 	var shadow_plane := PlaneMesh.new()
@@ -121,8 +133,10 @@ func _build() -> void:
 	shadow.mesh = shadow_plane
 	_shadow_mat = ShaderMaterial.new()
 	_shadow_mat.shader = load("res://board3d/shaders/soft_shadow.gdshader") as Shader
+	_shadow_mat.set_shader_parameter("half_size", FRAME_HALF - 0.12)
+	_shadow_mat.set_shader_parameter("spread", 1.1)
 	shadow.material_override = _shadow_mat
-	shadow.position = Vector3(0.0, -0.43, 0.0)
+	shadow.position = Vector3(0.0, -FRAME_THICK - 0.03, 0.0)
 	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(shadow)
 
@@ -151,14 +165,20 @@ func _build() -> void:
 	squares.material_override = _squares_mat
 	add_child(squares)
 
-	# Coordenadas: un juego para cada lado, se enseña el del lado que juega abajo.
+	# Coordenadas dentro de las casillas del borde, como en los tableros en pantalla: así el marco puede ser
+	# fino y el tablero ocupa casi todo el ancho. Un juego para cada lado; se enseña el del lado que juega abajo.
+	if ResourceLoader.exists("res://fonts/Inter-SemiBold.woff2"):
+		_label_font = load("res://fonts/Inter-SemiBold.woff2") as Font
 	for side in 2:
 		var group := Node3D.new()
 		var sgn := 1.0 if side == 0 else -1.0
 		var yaw := 0.0 if side == 0 else PI
+		var edge := 0 if side == 0 else 7
 		for i in 8:
-			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5, 0.012, 4.26 * sgn), yaw))
-			group.add_child(_make_label(str(i + 1), Vector3(-4.26 * sgn, 0.012, 3.5 - i), yaw))
+			# Letra de la columna: esquina inferior derecha de la casilla de la fila más cercana.
+			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5 + 0.37 * sgn, 0.012, 3.84 * sgn), yaw, (i + edge) % 2 == 0))
+			# Número de la fila: esquina superior izquierda de la casilla de la columna de la izquierda.
+			group.add_child(_make_label(str(i + 1), Vector3(-3.87 * sgn, 0.012, 3.5 - i - 0.34 * sgn), yaw, (edge + i) % 2 == 0))
 		add_child(group)
 		_labels.append(group)
 
@@ -168,25 +188,53 @@ func _build() -> void:
 	add_child(_pieces_root)
 
 	var piece_shader := load("res://board3d/shaders/piece.gdshader") as Shader
+	var outline_shader := load("res://board3d/shaders/outline.gdshader") as Shader
+	var disc_shader := load("res://board3d/shaders/outline_disc.gdshader") as Shader
 	for side in 2:
 		var m := ShaderMaterial.new()
 		m.shader = piece_shader
 		_mats.append(m)
+		var om := ShaderMaterial.new()
+		om.shader = outline_shader
+		om.set_shader_parameter("width", OUTLINE_WIDTH)
+		_outline_mats.append(om)
+		var dm := ShaderMaterial.new()
+		dm.shader = disc_shader
+		_disc_mats.append(dm)
+	_disc_mesh = _make_disc()
 	for t: int in PIECE_FILES:
 		_meshes[t] = _load_mesh("res://sets/%s/%s.glb" % [set_id, PIECE_FILES[t]])
 	_built = true
 
 
-func _make_label(text: String, pos: Vector3, yaw: float) -> Label3D:
+func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label3D:
 	var l := Label3D.new()
 	l.text = text
-	l.font_size = 44
-	l.pixel_size = 0.0046
+	if _label_font != null:
+		l.font = _label_font
+	l.font_size = 48
+	l.pixel_size = 0.0036
 	l.outline_size = 0
 	l.shaded = false
 	l.position = pos
 	l.rotation = Vector3(-PI / 2.0, yaw, 0.0)
+	# Sobre casilla oscura va en el color de las claras y al revés.
+	l.set_meta("on_dark", on_dark)
 	return l
+
+
+## Disco de radio 1 en el plano del tablero, para el contorno de la base de cada pieza.
+func _make_disc() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var steps := 40
+	for i in steps:
+		var a0 := TAU * float(i) / float(steps)
+		var a1 := TAU * float(i + 1) / float(steps)
+		for v: Vector3 in [Vector3.ZERO, Vector3(cos(a1), 0.0, sin(a1)), Vector3(cos(a0), 0.0, sin(a0))]:
+			st.set_normal(Vector3.UP)
+			st.add_vertex(v)
+	return st.commit()
 
 
 static func _load_mesh(path: String) -> Mesh:
@@ -218,34 +266,34 @@ func set_theme(theme_name: String) -> void:
 	if not _built:
 		return
 	var dark := theme_name == "dark"
-	_env.background_color = Color("0c1224") if dark else Color("e6eef9")
 	_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
-	_env.ambient_light_energy = 0.4 if dark else 0.4
+	_env.ambient_light_energy = 0.42 if dark else 0.42
 	_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
-	_key.light_energy = 0.92 if dark else 0.74
+	_key.light_energy = 0.9 if dark else 0.76
 	_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
 	_fill.light_energy = 0.2 if dark else 0.16
-	# El fondo es el de la app (docs/estilo-2d.md) con un halo suave detrás del tablero.
-	_backdrop_mat.set_shader_parameter("top_color", Color("0a0f1e") if dark else Color("eaf1fb"))
-	_backdrop_mat.set_shader_parameter("bottom_color", Color("0a0f1e") if dark else Color("eaf1fb"))
-	_backdrop_mat.set_shader_parameter("halo_color", Color("24325e") if dark else Color("ffffff"))
-	_backdrop_mat.set_shader_parameter("halo", 0.6 if dark else 0.55)
-	_shadow_mat.set_shader_parameter("shadow_color", Color("02040c") if dark else Color("1f2d55"))
-	_shadow_mat.set_shader_parameter("strength", 0.55 if dark else 0.32)
-	_frame_mat.albedo_color = Color("222d4d") if dark else Color("2b3859")
-	_squares_mat.set_shader_parameter("light_sq", Color("d3deef") if dark else Color("d2ddec"))
-	_squares_mat.set_shader_parameter("dark_sq", Color("7d94b8") if dark else Color("8299be"))
-	# Claras: marfil con el borde algo más oscuro. Oscuras: azul tinta con el borde más claro.
-	_mats[0].set_shader_parameter("base_color", Color("efe4cf"))
-	_mats[0].set_shader_parameter("rim_color", Color("7f6c52"))
-	_mats[0].set_shader_parameter("rim_amount", 0.62)
-	_mats[1].set_shader_parameter("base_color", Color("2a3554"))
-	_mats[1].set_shader_parameter("rim_color", Color("8ea4d2"))
-	_mats[1].set_shader_parameter("rim_amount", 0.5)
-	var label_color := Color("93a4c8") if dark else Color("aebcd8")
+	_shadow_mat.set_shader_parameter("shadow_color", Color("010309") if dark else Color("1f2d55"))
+	_shadow_mat.set_shader_parameter("strength", 0.6 if dark else 0.34)
+	_frame_mat.albedo_color = Color("202b4e") if dark else Color("27335a")
+	# Casillas con cuerpo: las claras no llegan al blanco, para que las piezas de marfil destaquen sobre ellas.
+	var light_sq := Color("c6d4ec") if dark else Color("c4d3ec")
+	var dark_sq := Color("6d88b8") if dark else Color("7089ba")
+	_squares_mat.set_shader_parameter("light_sq", light_sq)
+	_squares_mat.set_shader_parameter("dark_sq", dark_sq)
+	# Claras: marfil limpio. Oscuras: azul tinta con el canto más claro. Las dos con contorno de tinta.
+	_mats[0].set_shader_parameter("base_color", Color("f8f0e0"))
+	_mats[0].set_shader_parameter("rim_color", Color("94846c"))
+	_mats[0].set_shader_parameter("rim_amount", 0.36)
+	_mats[1].set_shader_parameter("base_color", Color("2a3557"))
+	_mats[1].set_shader_parameter("rim_color", Color("9db2e0"))
+	_mats[1].set_shader_parameter("rim_amount", 0.56)
+	var outline_colors: Array[Color] = [Color("262e4c"), Color("0a0f22")]
+	for i in 2:
+		_outline_mats[i].set_shader_parameter("outline_color", outline_colors[i])
+		_disc_mats[i].set_shader_parameter("outline_color", outline_colors[i])
 	for group in _labels:
 		for l in group.get_children():
-			(l as Label3D).modulate = label_color
+			(l as Label3D).modulate = light_sq.lightened(0.25) if l.get_meta("on_dark", false) else dark_sq.darkened(0.12)
 
 
 # ---------------------------------------------------------------- posición y piezas
@@ -271,16 +319,49 @@ func _yaw_for(p: int) -> float:
 
 func _make_piece(p: int, s: int) -> Node3D:
 	var node := Node3D.new()
+	var mesh: Mesh = _meshes[Chess.type_of(p)]
+	var side := Chess.color_of(p)
 	var mi := MeshInstance3D.new()
 	mi.name = "Malla"
-	mi.mesh = _meshes[Chess.type_of(p)]
-	mi.material_override = _mats[Chess.color_of(p)]
+	mi.mesh = mesh
+	mi.material_override = _mats[side]
 	node.add_child(mi)
+	# Contorno: la misma malla con el material de casco invertido. No proyecta sombra.
+	var hull := MeshInstance3D.new()
+	hull.name = "Contorno"
+	hull.mesh = mesh
+	hull.material_override = _outline_mats[side]
+	hull.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.add_child(hull)
+	# Y un disco bajo la base, que cierra el contorno donde la pieza toca el tablero.
+	var disc := MeshInstance3D.new()
+	disc.name = "Peana"
+	disc.mesh = _disc_mesh
+	disc.material_override = _disc_mats[side]
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	disc.position = Vector3(0.0, 0.007, 0.0)
+	node.add_child(disc)
+	_fit_disc(node, mesh)
 	node.set_meta("piece", p)
 	node.set_meta("yaw", _yaw_for(p))
 	_pieces_root.add_child(node)
 	_rest(node, s)
 	return node
+
+
+## El disco de la base mide lo que la base de la malla más el grosor del contorno.
+func _fit_disc(node: Node3D, mesh: Mesh) -> void:
+	var radius := 0.33
+	if mesh != null:
+		radius = mesh.get_aabb().size.x * 0.5
+	var r := radius + OUTLINE_WIDTH
+	(node.get_node("Peana") as MeshInstance3D).scale = Vector3(r, 1.0, r)
+
+
+## Selección: el contorno de la pieza se vuelve del color de acento.
+func _set_glow(node: Node3D, amount: float) -> void:
+	for part: String in ["Malla", "Contorno", "Peana"]:
+		(node.get_node(part) as MeshInstance3D).set_instance_shader_parameter("glow", amount)
 
 
 ## Deja la pieza en reposo en su casilla.
@@ -300,7 +381,7 @@ func _pose(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: floa
 	if absf(angle) > 0.0001 and axis.length_squared() > 0.25:
 		bas = Basis(axis.normalized(), angle) * bas
 	var sc := PIECE_SCALE * maxf(size, 0.001)
-	var wide := sc / sqrt(maxf(squash, 0.05))
+	var wide := sc * PIECE_GIRTH / sqrt(maxf(squash, 0.05))
 	node.transform = Transform3D(bas * Basis.from_scale(Vector3(wide, sc * squash, wide)), pos)
 
 
@@ -362,6 +443,14 @@ func _refresh_state() -> void:
 	_state_tex.update(_state_img)
 
 
+## Marca una jugada como la última sin moverla: para recuperar el resaltado al volver a una posición anterior.
+func mark_last_move(from: int, to: int) -> void:
+	last_from = from
+	last_to = to
+	if _built:
+		_refresh_state()
+
+
 ## Flechas de las explicaciones: lista de diccionarios {from: int, to: int, tone: "good" | "bad" | "info"}.
 func set_arrows(arrows: Array) -> void:
 	for n in _arrows_root.get_children():
@@ -403,20 +492,65 @@ func _arrow_mesh(a: Vector3, b: Vector3, occupied: bool) -> ArrayMesh:
 # ---------------------------------------------------------------- cámara
 
 func apply_camera() -> void:
-	if camera == null:
+	if camera == null or not is_inside_tree():
+		return
+	var vp := get_viewport().get_visible_rect().size
+	if vp.x < 2.0 or vp.y < 2.0:
 		return
 	var yaw := deg_to_rad(cam_yaw + (180.0 if orientation == 1 else 0.0))
 	var pitch := deg_to_rad(clampf(cam_pitch, PITCH_MIN, PITCH_MAX))
 	var back := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
 	var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 	var up := back.cross(right)
-	# Distancia para que el tablero con su marco quepa a lo ancho en el borde más cercano.
-	var half := tan(deg_to_rad(cam_fov) * 0.5)
-	var dist := 4.85 / half + 4.5 * cos(pitch)
-	# El punto de mira baja un poco con la cámara inclinada: las piezas del fondo sobresalen hacia arriba.
-	var target := Vector3(0.0, 0.25, 0.0) - Vector3(sin(yaw), 0.0, cos(yaw)) * (0.55 * cos(pitch))
+	# Encuadre: la cámara se coloca a la menor distancia a la que caben, dentro de la vista y con su margen,
+	# las esquinas del marco y la altura de las piezas. En un móvil en vertical manda el ancho: el tablero
+	# va de lado a lado. Si la vista es baja (o se gira el tablero), manda el alto y la cámara se aleja.
+	var th := tan(deg_to_rad(cam_fov) * 0.5)
+	var tv := th * vp.y / vp.x
+	var lim_l := -1.0 + 2.0 * fit_pad.x
+	var lim_r := 1.0 - 2.0 * fit_pad.z
+	var lim_t := 1.0 - 2.0 * fit_pad.y
+	var lim_b := -1.0 + 2.0 * fit_pad.w
+	var pa := PackedFloat32Array()
+	var pb := PackedFloat32Array()
+	var pc := PackedFloat32Array()
+	for ix: int in [-1, 1]:
+		for iz: int in [-1, 1]:
+			var fx := float(ix)
+			var fz := float(iz)
+			for q: Vector3 in [Vector3(fx * FRAME_HALF, 0.0, fz * FRAME_HALF), Vector3(fx * FRAME_HALF, -FRAME_THICK, fz * FRAME_HALF), Vector3(fx * 3.5, FIT_HEIGHT, fz * 3.5)]:
+				pa.append(q.dot(right))
+				pb.append(q.dot(up))
+				pc.append(q.dot(back))
+	var n := pa.size()
+	var sx := 0.0
+	var sy := 0.0
+	var dist := 10.0
+	for _pass in 8:
+		dist = -1.0e9
+		for i in n:
+			dist = maxf(dist, (pa[i] - sx) / (lim_r * th) + pc[i])
+			dist = maxf(dist, (pa[i] - sx) / (lim_l * th) + pc[i])
+			dist = maxf(dist, (pb[i] - sy) / (lim_t * tv) + pc[i])
+			dist = maxf(dist, (pb[i] - sy) / (lim_b * tv) + pc[i])
+		# Con esa distancia, se centra lo que sobra a cada lado.
+		var x_min := 1.0e9
+		var x_max := -1.0e9
+		var y_min := 1.0e9
+		var y_max := -1.0e9
+		for i in n:
+			var depth := dist - pc[i]
+			var xn := (pa[i] - sx) / (depth * th)
+			var yn := (pb[i] - sy) / (depth * tv)
+			x_min = minf(x_min, xn)
+			x_max = maxf(x_max, xn)
+			y_min = minf(y_min, yn)
+			y_max = maxf(y_max, yn)
+		sx -= ((lim_r - x_max) - (x_min - lim_l)) * 0.5 * th * dist
+		sy -= ((lim_t - y_max) - (y_min - lim_b)) * 0.5 * tv * dist
 	camera.fov = cam_fov
-	camera.transform = Transform3D(Basis(right, up, back), target + back * dist)
+	camera.transform = Transform3D(Basis(right, up, back), right * sx + up * sy + back * dist)
+	_key.directional_shadow_max_distance = dist + 12.0
 
 
 func set_view(pitch: float, yaw: float) -> void:
@@ -517,7 +651,7 @@ func select(s: int) -> void:
 		if q >= 0 and _pieces.has(q):
 			var node: Node3D = _pieces[q]
 			_rest(node, q)
-			(node.get_node("Malla") as MeshInstance3D).set_instance_shader_parameter("glow", 1.0 if q == s else 0.0)
+			_set_glow(node, 1.0 if q == s else 0.0)
 	_refresh_state()
 
 
@@ -628,7 +762,10 @@ func _apply_promotion(node: Node3D) -> void:
 	node.remove_meta("promote_to")
 	node.set_meta("piece", p)
 	node.set_meta("yaw", _yaw_for(p))
-	(node.get_node("Malla") as MeshInstance3D).mesh = _meshes[Chess.type_of(p)]
+	var mesh: Mesh = _meshes[Chess.type_of(p)]
+	(node.get_node("Malla") as MeshInstance3D).mesh = mesh
+	(node.get_node("Contorno") as MeshInstance3D).mesh = mesh
+	_fit_disc(node, mesh)
 
 
 ## Juega una jugada legal: actualiza la posición al instante y anima según el modo.
@@ -652,7 +789,7 @@ func play_move(m: int, dropped: bool = false) -> void:
 	# Estado lógico primero: nada de lo que sigue puede bloquear el juego.
 	chess.apply(m)
 	if selected >= 0 and _pieces.has(selected):
-		(_pieces[selected].get_node("Malla") as MeshInstance3D).set_instance_shader_parameter("glow", 0.0)
+		_set_glow(_pieces[selected], 0.0)
 	selected = -1
 	_drag_sq = -1
 	_targets = PackedInt32Array()

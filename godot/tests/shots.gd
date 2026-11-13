@@ -24,9 +24,11 @@ func _ready() -> void:
 	bg.color = Color("eaf1fb")
 	bg.size = size
 	add_child(bg)
+	# El tablero es transparente: el color de este fondo debe verse a su alrededor.
 	view = BoardView3D.new()
-	view.position = Vector2(0.0, (size.y - size.x) * 0.5)
-	view.size = Vector2(size.x, size.x)
+	var h := minf(size.y, size.x * 1.1)
+	view.position = Vector2(0.0, (size.y - h) * 0.5)
+	view.size = Vector2(size.x, h)
 	add_child(view)
 	print("SHOTS driver=%s pantalla=%s lienzo=%s" % [DisplayServer.get_name(), str(DisplayServer.window_get_size()), str(size)])
 	await _run()
@@ -85,11 +87,11 @@ func _run() -> void:
 	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
 
 	# Tema oscuro.
-	board.set_theme("dark")
+	view.set_board_theme("dark")
 	bg.color = Color("0a0f1e")
 	await _frames(3)
 	await _shot("06_oscuro")
-	board.set_theme("light")
+	view.set_board_theme("light")
 	bg.color = Color("eaf1fb")
 
 	# Con negras.
@@ -119,19 +121,19 @@ func _run() -> void:
 	await _shot("10_salto_del_caballo")
 	await _frames(6)
 	await _shot("11_captura")
-	await _frames(20)
+	await _frames(2)
 	view.set_fen(MID_FEN)
 	await _frames(2)
 	if view.show_move("e1c1"):
 		await _frames(11)
 		await _shot("12_enroque")
-		await _frames(20)
+		await _frames(2)
 	view.set_fen(PROMO_FEN)
 	await _frames(2)
 	view.show_move("e7e8q")
 	await _frames(13)
 	await _shot("13_promocion")
-	await _frames(20)
+	await _frames(2)
 	view.set_fen(MATE_FEN)
 	await _frames(2)
 	view.show_move("a1a8")
@@ -145,8 +147,7 @@ func _run() -> void:
 	view.set_fen(Board3D.START_FEN)
 	board.select(_sq("g1"))
 	await _frames(2)
-	var canvas := get_viewport().get_visible_rect().size
-	board.drag_piece(_sq("g1"), Vector2(canvas.x * 0.62, canvas.x * 0.6))
+	board.drag_piece(_sq("g1"), board.camera.unproject_position(Board3D.sq_pos(_sq("f3")) + Vector3(0.0, 0.3, 0.0)))
 	await _frames(3)
 	await _shot("16_arrastre")
 
@@ -154,28 +155,53 @@ func _run() -> void:
 
 
 ## La demo de verdad (escena principal del APK), jugada con toques simulados por el mismo camino que un dedo.
+## El tiempo corre al doble para no alargar la CI: aquí no se juzgan animaciones, sino la pantalla.
 func _demo_shots() -> void:
 	view.visible = false
 	bg.visible = false
+	Engine.time_scale = 2.0
 	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
 	add_child(demo)
-	await _frames(55)
+	await _frames(30)
 	await _shot("20_demo")
 	var dview: BoardView3D = demo.view
 	var moves: Array = demo.puzzle["moves"]
 	var solution := str(moves[1])
 	_tap(dview, _sq(solution.substr(0, 2)))
-	await _frames(4)
+	await _frames(3)
 	await _shot("21_demo_pieza_tocada")
 	print("DEMO seleccionada=%d (esperada %d)" % [dview.board.selected, _sq(solution.substr(0, 2))])
 	_tap(dview, _sq(solution.substr(2, 2)))
-	await _frames(45)
-	await _shot("22_demo_jugada_hecha")
+	await _frames(3)
+	await _shot("22_demo_bien")
 	print("DEMO titulo=«%s» paso=%d" % [demo.title.text, demo.step])
-	demo._on_toggle_theme()
-	demo._on_center()
-	await _frames(20)
-	await _shot("23_demo_oscuro_centrado")
+	await _frames(24)
+	await _shot("23_demo_sigue")
+	print("DEMO titulo=«%s» paso=%d" % [demo.title.text, demo.step])
+	# «Ver solución» y, al acabar, «Repetir» y «Siguiente».
+	demo._on_left()
+	await _frames(50)
+	await _shot("24_demo_solucion")
+	print("DEMO titulo=«%s» izquierda=«%s» derecha=«%s»" % [demo.title.text, demo.left_button.text, demo.right_button.text])
+	# Opciones en hoja inferior, en claro y en oscuro.
+	demo._open_options()
+	await _frames(6)
+	await _shot("25_demo_opciones")
+	demo._set_dark(true)
+	await _frames(5)
+	await _shot("26_demo_opciones_oscuro")
+	demo._close_options()
+	await _frames(3)
+	await _shot("27_demo_oscuro")
+	demo._on_toggle_view()
+	await _frames(12)
+	await _shot("28_demo_oscuro_picado")
+	# «Repetir»: el mismo problema desde el principio.
+	demo._on_left()
+	await _frames(30)
+	await _shot("29_demo_repetido")
+	print("DEMO titulo=«%s» paso=%d problema=%d" % [demo.title.text, demo.step, demo.index])
+	Engine.time_scale = 1.0
 
 
 func _tap(v: BoardView3D, square: int) -> void:

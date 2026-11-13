@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { writeGlb } from './glb.mjs';
 
 const setId = process.argv[2] ?? 'clasico';
-const H = 4.5; // semilado exterior: 8 casillas + 0,5 de marco por lado
-const RC = 0.5; // radio de las esquinas
-const T = 0.4; // grosor
-const RT = 0.1; // radio del canto superior
+// Marco fino: en un móvil cada milímetro de ancho cuenta, y las coordenadas van dentro de las casillas.
+const H = 4.14; // semilado exterior: 8 casillas + 0,14 de marco por lado
+const RC = 0.26; // radio de las esquinas
+const T = 0.36; // grosor
+const RT = 0.045; // radio del canto superior
 const RB = 0.07; // radio del canto inferior
 
 // Contorno (vista desde arriba), en sentido antihorario.

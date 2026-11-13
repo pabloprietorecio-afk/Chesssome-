@@ -126,7 +126,7 @@ jobs:
         run: |
           mkdir -p build/shots
           export SHOTS_DIR=$GITHUB_WORKSPACE/build/shots
-          timeout 1500 xvfb-run -a -s "-screen 0 720x1280x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 720x1280 res://tests/shots.tscn > shots.log 2>&1 || true
+          timeout 1500 xvfb-run -a -s "-screen 0 720x1600x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 720x1600 res://tests/shots.tscn > shots.log 2>&1 || true
           grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|^   at:" shots.log | head -80 || true
           ls -la build/shots
 
@@ -135,12 +135,15 @@ jobs:
         run: |
           mkdir -p build/shots
           cp shots.log import.log test_chess.log build/shots/ 2>/dev/null || true
+          # main publica en ci-shots; las demás ramas, en ci-shots-<rama>, para que dos trabajos en paralelo no se pisen.
+          SHOTS_BRANCH=ci-shots
+          if [ "$GITHUB_REF_NAME" != "main" ]; then SHOTS_BRANCH="ci-shots-${GITHUB_REF_NAME//\//-}"; fi
           cd build/shots
           git init -q
-          git checkout -q -b ci-shots
+          git checkout -q -b "$SHOTS_BRANCH"
           git add -A
           git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Capturas de ${GITHUB_SHA::7}"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$SHOTS_BRANCH"
 
       - name: Las capturas terminaron y sin errores de guiones ni shaders
         run: |

@@ -31,6 +31,8 @@ var _press_pos := Vector2.ZERO
 var _dragging := false
 var _press_same := false
 var _promo_panel: PanelContainer
+var _promo_title: Label
+var _promo_buttons: Array[Button] = []
 var _promo_moves := PackedInt32Array()
 var _promo_dropped := false
 var _tilt_ref_set := false
@@ -48,6 +50,12 @@ func _init() -> void:
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
 	_viewport.msaa_3d = Viewport.MSAA_4X
+	# Vista transparente: el fondo lo pinta la pantalla que contiene el tablero, sin costuras.
+	# El 3D sale con el alfa premultiplicado; se mezcla como tal para que los bordes no se oscurezcan.
+	_viewport.transparent_bg = true
+	var blend := CanvasItemMaterial.new()
+	blend.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
+	material = blend
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_viewport)
 	board = Board3D.new()
@@ -79,6 +87,18 @@ func show_move(uci: String) -> bool:
 		return false
 	board.play_move(m)
 	return true
+
+
+## Tema claro u oscuro ("light" | "dark") del tablero y de sus ventanas.
+## (No se llama set_theme: ese nombre ya es de Control.)
+func set_board_theme(theme_name: String) -> void:
+	board.set_theme(theme_name)
+	_style_promotion(theme_name == "dark")
+
+
+## La vista actual es (casi) en picado.
+func is_top_view() -> bool:
+	return board.cam_pitch > 84.0
 
 
 ## Botón «Centrar»: vista en picado sobre el tablero.
@@ -238,28 +258,58 @@ func _commit(m: int, dropped: bool) -> void:
 func _build_promotion_panel() -> void:
 	_promo_panel = PanelContainer.new()
 	_promo_panel.visible = false
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 1.0, 1.0, 0.96)
-	style.set_corner_radius_all(36)
-	style.set_content_margin_all(24.0)
-	style.shadow_color = Color(0.18, 0.36, 0.66, 0.25)
-	style.shadow_size = 18
-	_promo_panel.add_theme_stylebox_override("panel", style)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 14)
+	_promo_panel.add_child(column)
+	_promo_title = Label.new()
+	_promo_title.text = "¿En qué pieza se convierte?"
+	_promo_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_promo_title.add_theme_font_size_override("font_size", 32)
+	column.add_child(_promo_title)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	_promo_panel.add_child(row)
+	row.add_theme_constant_override("separation", 12)
+	column.add_child(row)
 	var names := {Chess.QUEEN: "Dama", Chess.ROOK: "Torre", Chess.BISHOP: "Alfil", Chess.KNIGHT: "Caballo"}
 	for t: int in names:
 		var b := Button.new()
 		b.text = names[t]
-		b.custom_minimum_size = Vector2(190.0, 120.0)
-		b.add_theme_font_size_override("font_size", 38)
+		b.custom_minimum_size = Vector2(196.0, 116.0)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 36)
 		b.pressed.connect(_on_promotion_chosen.bind(t))
 		row.add_child(b)
+		_promo_buttons.append(b)
 	add_child(_promo_panel)
 	_promo_panel.set_anchors_preset(Control.PRESET_CENTER)
 	_promo_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_promo_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_style_promotion(false)
+
+
+func _style_promotion(dark: bool) -> void:
+	if _promo_panel == null:
+		return
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color("151d36") if dark else Color.WHITE
+	panel.set_corner_radius_all(40)
+	panel.set_content_margin_all(26.0)
+	panel.shadow_color = Color(0.0, 0.0, 0.0, 0.45) if dark else Color(0.12, 0.2, 0.42, 0.28)
+	panel.shadow_size = 28
+	panel.shadow_offset = Vector2(0.0, 8.0)
+	_promo_panel.add_theme_stylebox_override("panel", panel)
+	_promo_title.add_theme_color_override("font_color", Color("a9b1c7") if dark else Color("5b6782"))
+	var fg := Color("edeff7") if dark else Color("1b2540")
+	for b in _promo_buttons:
+		for state: String in ["normal", "hover", "pressed", "focus"]:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color("222c4e") if dark else Color("eaf1fb")
+			if state == "pressed":
+				sb.bg_color = Color("3a2416") if dark else Color("ffebd9")
+			sb.set_corner_radius_all(30)
+			sb.set_content_margin_all(14.0)
+			b.add_theme_stylebox_override(state, sb)
+		for c: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(c, fg)
 
 
 func _hide_promotion() -> void:
