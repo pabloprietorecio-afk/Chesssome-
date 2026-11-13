@@ -24,12 +24,16 @@ func _ready() -> void:
 	bg.color = Color("eaf1fb")
 	bg.size = size
 	add_child(bg)
-	# El tablero es transparente: el color de este fondo debe verse a su alrededor.
+	# La vista 3D pinta su fondo con el color de la pantalla: no debe notarse dónde acaba.
 	view = BoardView3D.new()
-	var h := minf(size.y, size.x * 1.1)
+	var h := minf(size.y, size.x * 1.25)
 	view.position = Vector2(0.0, (size.y - h) * 0.5)
 	view.size = Vector2(size.x, h)
+	view.edge_fade = 40.0
+	view.set_board_theme("light", bg.color)
 	add_child(view)
+	view.board.fit_pad = Vector4(0.012, 0.09, 0.012, 0.09)
+	view.board.apply_camera()
 	print("SHOTS driver=%s pantalla=%s lienzo=%s" % [DisplayServer.get_name(), str(DisplayServer.window_get_size()), str(size)])
 	await _run()
 	print("SHOTS DONE")
@@ -87,12 +91,12 @@ func _run() -> void:
 	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
 
 	# Tema oscuro.
-	view.set_board_theme("dark")
 	bg.color = Color("0a0f1e")
+	view.set_board_theme("dark", bg.color)
 	await _frames(3)
 	await _shot("06_oscuro")
-	view.set_board_theme("light")
 	bg.color = Color("eaf1fb")
+	view.set_board_theme("light", bg.color)
 
 	# Con negras.
 	view.set_orientation(1)
@@ -205,8 +209,8 @@ func _demo_shots() -> void:
 
 
 func _tap(v: BoardView3D, square: int) -> void:
-	var local := v.board.camera.unproject_position(Board3D.sq_pos(square) + Vector3(0.0, 0.3, 0.0))
-	var canvas_pos: Vector2 = v.get_global_transform() * local
+	var in_view := v.board.camera.unproject_position(Board3D.sq_pos(square) + Vector3(0.0, 0.3, 0.0))
+	var canvas_pos: Vector2 = v.get_global_transform() * v.view_to_local(in_view)
 	for pressed: bool in [true, false]:
 		var e := InputEventScreenTouch.new()
 		e.index = 0

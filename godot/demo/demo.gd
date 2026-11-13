@@ -14,15 +14,20 @@ const LIGHT := {
 	"accent": Color("ff7a1a"), "accent_ink": Color("1b2540"), "accent_text": Color("b84a0c"),
 	"accent_soft": Color("ffe6d0"), "good": Color("1f7a44"), "bad": Color("c0392b"),
 	"track": Color("c9d5e8"), "field": Color("eef3fb"), "scrim": Color(0.07, 0.1, 0.22, 0.42),
-	"shadow": Color(0.16, 0.3, 0.6, 0.16), "halo": Color(1.0, 1.0, 1.0, 0.9),
+	"shadow": Color(0.16, 0.3, 0.6, 0.16),
 }
 const DARK := {
 	"bg": Color("0a0f1e"), "surface": Color("161e38"), "ink": Color("edeff7"), "quiet": Color("a3acc4"),
 	"accent": Color("ff7a1a"), "accent_ink": Color("1b2540"), "accent_text": Color("ff9a3c"),
 	"accent_soft": Color("3a2416"), "good": Color("4cbf7a"), "bad": Color("ff7b7f"),
 	"track": Color("2c3759"), "field": Color("1f2946"), "scrim": Color(0.0, 0.0, 0.03, 0.6),
-	"shadow": Color(0.0, 0.0, 0.0, 0.36), "halo": Color(0.2, 0.29, 0.6, 0.5),
+	"shadow": Color(0.0, 0.0, 0.0, 0.36),
 }
+## La vista 3D es algo más alta que el hueco del tablero y se funde con el fondo por arriba y por abajo:
+## así caben la sombra del tablero y las cabezas de las piezas del fondo, y no se nota dónde acaba la vista.
+const VIEW_BLEED_TOP := 64.0
+const VIEW_BLEED_BOTTOM := 110.0
+const VIEW_FADE := 48.0
 
 var puzzles: Array = []
 var index := 0
@@ -40,14 +45,13 @@ var top_view := false
 
 var view: BoardView3D
 var bg: ColorRect
-var halo: TextureRect
 var chrome: VBoxContainer
 var board_slot: Control
 var counter: Label
 var title: Label
 var subtitle: Label
 var turn_dot: Panel
-var meta: Label
+var meta_row: HBoxContainer
 var left_button: Button
 var right_button: Button
 var overlay: Control
@@ -119,12 +123,7 @@ func _ready() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
-	# Resplandor suave detrás del tablero. El tablero 3D es transparente: todo el fondo es de esta pantalla.
-	halo = TextureRect.new()
-	halo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	halo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	halo.stretch_mode = TextureRect.STRETCH_SCALE
-	add_child(halo)
+	# El tablero 3D pinta su propio fondo con el color de esta pantalla (ver BoardView3D.set_board_theme).
 	view = BoardView3D.new()
 	view.move_played.connect(_on_move_played)
 	add_child(view)
@@ -212,6 +211,32 @@ func _style_button(b: Button, fill: Color, fg: Color, radius: int, font_size: in
 		b.add_theme_font_override("font", font)
 
 
+## Etiqueta en forma de píldora.
+func _chip(text: String, fill: Color, fg: Color) -> PanelContainer:
+	var chip := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(32)
+	sb.content_margin_left = 24.0
+	sb.content_margin_right = 24.0
+	sb.content_margin_top = 10.0
+	sb.content_margin_bottom = 10.0
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 8
+	sb.shadow_offset = Vector2(0.0, 3.0)
+	chip.add_theme_stylebox_override("panel", sb)
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 27)
+	l.add_theme_color_override("font_color", fg)
+	if font_medium != null:
+		l.add_theme_font_override("font", font_medium)
+	chip.add_child(l)
+	return chip
+
+
 func _icon_button(kind: String, on_press: Callable) -> IconButton:
 	var b := IconButton.new()
 	b.kind = kind
@@ -250,8 +275,7 @@ func _build_chrome() -> void:
 	th.default_font_size = 32
 	theme = th
 	bg.color = _c("bg")
-	_paint_halo()
-	view.set_board_theme("dark" if dark else "light")
+	view.set_board_theme("dark" if dark else "light", _c("bg"))
 
 	var inset := _insets()
 	chrome = VBoxContainer.new()
@@ -261,7 +285,9 @@ func _build_chrome() -> void:
 	add_child(chrome)
 
 	# Barra superior: contador y botones redondos (vista y opciones).
-	chrome.add_child(_spacer(inset.x + 22.0))
+	# En pantalla completa la zona de la barra de estado sigue teniendo la cámara y los avisos del sistema:
+	# se deja siempre un margen arriba, aunque el sistema no informe de ninguno.
+	chrome.add_child(_spacer(maxf(inset.x, 60.0) + 18.0))
 	var bar_pad := _pad(40, 0, 36, 0)
 	chrome.add_child(bar_pad)
 	var bar := HBoxContainer.new()
@@ -275,7 +301,9 @@ func _build_chrome() -> void:
 	bar.add_child(_icon_button("view", _on_toggle_view))
 	bar.add_child(_icon_button("options", _open_options))
 
-	chrome.add_child(_spacer(0.0, true))
+	var top_gap := _spacer(0.0, true)
+	top_gap.size_flags_stretch_ratio = 0.8
+	chrome.add_child(top_gap)
 
 	# Titular, pegado al tablero.
 	var head_pad := _pad(40, 0, 40, 10)
@@ -305,14 +333,19 @@ func _build_chrome() -> void:
 	board_slot.item_rect_changed.connect(_place_board)
 	chrome.add_child(board_slot)
 
-	# Ficha del problema.
-	var meta_pad := _pad(40, 6, 40, 0)
+	# Ficha del problema: etiquetas bajo el tablero.
+	var meta_pad := _pad(36, 14, 36, 0)
 	chrome.add_child(meta_pad)
-	meta = _text("", 28, _c("quiet"), font_medium)
-	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	meta_pad.add_child(meta)
+	meta_row = HBoxContainer.new()
+	meta_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	meta_row.add_theme_constant_override("separation", 12)
+	meta_row.custom_minimum_size = Vector2(0.0, 64.0)
+	meta_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meta_pad.add_child(meta_row)
 
-	chrome.add_child(_spacer(0.0, true))
+	var bottom_gap := _spacer(0.0, true)
+	bottom_gap.size_flags_stretch_ratio = 1.2
+	chrome.add_child(bottom_gap)
 
 	# Acciones, abajo.
 	var actions_pad := _pad(36, 0, 36, 0)
@@ -356,27 +389,15 @@ func _place_board() -> void:
 	if board_slot == null or not is_instance_valid(board_slot):
 		return
 	var rect := board_slot.get_global_rect()
-	view.position = rect.position
-	view.size = rect.size
-	var side := rect.size.x * 1.55
-	halo.size = Vector2(side, side)
-	halo.position = rect.get_center() - halo.size * 0.5
-
-
-func _paint_halo() -> void:
-	var g := Gradient.new()
-	var inner := _c("halo")
-	g.set_color(0, inner)
-	g.set_color(1, Color(inner.r, inner.g, inner.b, 0.0))
-	g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CUBIC
-	var tex := GradientTexture2D.new()
-	tex.gradient = g
-	tex.width = 256
-	tex.height = 256
-	tex.fill = GradientTexture2D.FILL_RADIAL
-	tex.fill_from = Vector2(0.5, 0.5)
-	tex.fill_to = Vector2(1.0, 0.5)
-	halo.texture = tex
+	var top := clampf(rect.position.y, 0.0, VIEW_BLEED_TOP)
+	var bottom := clampf(size.y - rect.end.y, 0.0, VIEW_BLEED_BOTTOM)
+	view.position = Vector2(rect.position.x, rect.position.y - top)
+	view.size = Vector2(rect.size.x, rect.size.y + top + bottom)
+	view.edge_fade = VIEW_FADE
+	# El tablero se encuadra dentro del hueco; lo que sobra por arriba y por abajo es solo fondo y sombra.
+	var h := maxf(view.size.y, 1.0)
+	view.board.fit_pad = Vector4(0.012, (top + 6.0) / h, 0.012, (bottom + 6.0) / h)
+	view.board.apply_camera()
 
 
 ## Pone los textos y los botones que corresponden a la fase del problema.
@@ -434,14 +455,16 @@ func _refresh() -> void:
 	turn_dot.add_theme_stylebox_override("panel", dot)
 	turn_dot.visible = show_dot
 
-	# El tema del problema es una pista: solo se dice cuando ya está resuelto o mostrado.
+	# Etiquetas. El tema del problema es una pista: solo se enseña cuando ya está resuelto o mostrado.
 	var done := phase == Phase.SOLVED or phase == Phase.SHOWN
-	if total == 0:
-		meta.text = ""
-	elif done and theme_name != "":
-		meta.text = "%s · dificultad %d · problema real de Lichess" % [theme_name, rating]
-	else:
-		meta.text = "Dificultad %d · problema real de Lichess" % rating
+	for old_chip in meta_row.get_children():
+		meta_row.remove_child(old_chip)
+		old_chip.queue_free()
+	if total > 0:
+		if done and theme_name != "":
+			meta_row.add_child(_chip(theme_name, _c("accent_soft"), _c("accent_text")))
+		meta_row.add_child(_chip("Dificultad %d" % rating, _c("surface"), _c("ink")))
+		meta_row.add_child(_chip("Problema real de Lichess", _c("surface"), _c("quiet")))
 
 	left_button.text = "Repetir" if done else "Ver solución"
 	right_button.text = "Siguiente" if done else "Saltar"

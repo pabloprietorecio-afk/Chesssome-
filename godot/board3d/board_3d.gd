@@ -23,11 +23,11 @@ const FRAME_THICK := 0.36
 ## Altura que se reserva para las piezas al encuadrar (un rey en una casilla de esquina).
 const FIT_HEIGHT := 1.8
 ## Grosor del contorno de las piezas, en casillas.
-const OUTLINE_WIDTH := 0.02
+const OUTLINE_WIDTH := 0.026
 const START_FEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const PITCH_MIN := 36.0
 const PITCH_MAX := 90.0
-const DEFAULT_PITCH := 62.0
+const DEFAULT_PITCH := 64.0
 
 var chess: Chess = Chess.from_fen(START_FEN)
 ## 0 = blancas abajo, 1 = negras abajo.
@@ -60,6 +60,7 @@ var _label_font: Font
 var _squares_mat: ShaderMaterial
 var _frame_mat: StandardMaterial3D
 var _shadow_mat: ShaderMaterial
+var _shadow_node: MeshInstance3D
 var _env: Environment
 var _key: DirectionalLight3D
 var _fill: DirectionalLight3D
@@ -74,6 +75,8 @@ var _running := 0
 var _dying: Array[Node3D] = []
 var _cam_tween: Tween
 var _theme_name := "light"
+## Color (tal como debe verse) del fondo de la pantalla que contiene el tablero.
+var _backdrop := Color("eaf1fb")
 var _drag_sq := -1
 var _built := false
 
@@ -91,11 +94,15 @@ func _ready() -> void:
 
 func _build() -> void:
 	_env = Environment.new()
-	# Sin fondo propio: la vista es transparente y el fondo lo pinta la interfaz (ver BoardView3D),
-	# así no hay costura entre el tablero y el resto de la pantalla.
-	_env.background_mode = Environment.BG_CLEAR_COLOR
+	# Fondo liso del mismo color que la pantalla que contiene el tablero (ver set_backdrop): la vista es opaca
+	# y, aun así, no se nota dónde acaba. (Una vista transparente no sirve aquí: el renderizador «Mobile»
+	# solo guarda 2 bits de transparencia y las sombras suaves salen a franjas.)
+	_env.background_mode = Environment.BG_COLOR
+	_env.background_color = pre_tonemap(_backdrop)
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	_env.tonemap_exposure = 1.0
+	_env.tonemap_white = 1.0
 	var world_env := WorldEnvironment.new()
 	world_env.environment = _env
 	add_child(world_env)
@@ -133,10 +140,12 @@ func _build() -> void:
 	shadow.mesh = shadow_plane
 	_shadow_mat = ShaderMaterial.new()
 	_shadow_mat.shader = load("res://board3d/shaders/soft_shadow.gdshader") as Shader
-	_shadow_mat.set_shader_parameter("half_size", FRAME_HALF - 0.12)
-	_shadow_mat.set_shader_parameter("spread", 1.1)
+	# Sombra que nace bajo el marco y se pierde en media casilla: asienta el tablero sin parecer otra losa.
+	_shadow_mat.set_shader_parameter("half_size", FRAME_HALF - 0.45)
+	_shadow_mat.set_shader_parameter("spread", 1.05)
 	shadow.material_override = _shadow_mat
-	shadow.position = Vector3(0.0, -FRAME_THICK - 0.03, 0.0)
+	shadow.position = Vector3(0.0, -FRAME_THICK - 0.02, 0.0)
+	_shadow_node = shadow
 	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(shadow)
 
@@ -177,8 +186,9 @@ func _build() -> void:
 		for i in 8:
 			# Letra de la columna: esquina inferior derecha de la casilla de la fila más cercana.
 			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5 + 0.37 * sgn, 0.012, 3.84 * sgn), yaw, (i + edge) % 2 == 0))
-			# Número de la fila: esquina superior izquierda de la casilla de la columna de la izquierda.
-			group.add_child(_make_label(str(i + 1), Vector3(-3.87 * sgn, 0.012, 3.5 - i - 0.34 * sgn), yaw, (edge + i) % 2 == 0))
+			# Número de la fila: esquina inferior izquierda de la casilla de la columna de la izquierda
+			# (la esquina de delante: las piezas tapan hacia atrás, no hacia delante).
+			group.add_child(_make_label(str(i + 1), Vector3(-3.86 * sgn, 0.012, 3.5 - i + 0.33 * sgn), yaw, (edge + i) % 2 == 0))
 		add_child(group)
 		_labels.append(group)
 
@@ -213,7 +223,7 @@ func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label
 	if _label_font != null:
 		l.font = _label_font
 	l.font_size = 48
-	l.pixel_size = 0.0036
+	l.pixel_size = 0.0042
 	l.outline_size = 0
 	l.shaded = false
 	l.position = pos
@@ -261,6 +271,40 @@ static func _find_mesh(n: Node) -> MeshInstance3D:
 
 # ---------------------------------------------------------------- tema
 
+## Color de fondo de la pantalla que contiene el tablero, tal como debe verse.
+func set_backdrop(color: Color) -> void:
+	_backdrop = Color(color.r, color.g, color.b, 1.0)
+	if _built:
+		_env.background_color = pre_tonemap(_backdrop)
+
+
+## Color que hay que dar a un fondo sin iluminar para que, después del tonemapper fílmico de la escena
+## (blanco = 1, exposición = 1), se vea en pantalla como «color».
+static func pre_tonemap(color: Color) -> Color:
+	var lin := color.srgb_to_linear()
+	return Color(_inverse_filmic(lin.r), _inverse_filmic(lin.g), _inverse_filmic(lin.b), 1.0).linear_to_srgb()
+
+
+## Inversa de la curva fílmica de Godot (constantes de su tonemapper, con el sesgo de exposición ya aplicado).
+static func _inverse_filmic(y: float) -> float:
+	var a := 0.88
+	var b := 0.6
+	var c := 0.1
+	var d := 0.2
+	var e := 0.01
+	var f := 0.3
+	var white := (a + c * b + d * e) / (a + b + d * f) - e / f
+	var t := clampf(y, 0.0, 1.0) * white + e / f
+	# t·(a·x² + b·x + d·f) = a·x² + c·b·x + d·e
+	var qa := a * (t - 1.0)
+	var qb := b * (t - c)
+	var qc := d * (t * f - e)
+	if absf(qa) < 0.000001:
+		return maxf(-qc / qb, 0.0)
+	var disc := maxf(qb * qb - 4.0 * qa * qc, 0.0)
+	return maxf((-qb - sqrt(disc)) / (2.0 * qa), 0.0)
+
+
 func set_theme(theme_name: String) -> void:
 	_theme_name = theme_name
 	if not _built:
@@ -272,12 +316,12 @@ func set_theme(theme_name: String) -> void:
 	_key.light_energy = 0.9 if dark else 0.76
 	_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
 	_fill.light_energy = 0.2 if dark else 0.16
-	_shadow_mat.set_shader_parameter("shadow_color", Color("010309") if dark else Color("1f2d55"))
-	_shadow_mat.set_shader_parameter("strength", 0.6 if dark else 0.34)
+	_shadow_mat.set_shader_parameter("shadow_color", Color("000208") if dark else Color("203060"))
+	_shadow_mat.set_shader_parameter("strength", 0.75 if dark else 0.36)
 	_frame_mat.albedo_color = Color("202b4e") if dark else Color("27335a")
 	# Casillas con cuerpo: las claras no llegan al blanco, para que las piezas de marfil destaquen sobre ellas.
-	var light_sq := Color("c6d4ec") if dark else Color("c4d3ec")
-	var dark_sq := Color("6d88b8") if dark else Color("7089ba")
+	var light_sq := Color("bfcfea") if dark else Color("bdcdea")
+	var dark_sq := Color("6481b5") if dark else Color("6683b7")
 	_squares_mat.set_shader_parameter("light_sq", light_sq)
 	_squares_mat.set_shader_parameter("dark_sq", dark_sq)
 	# Claras: marfil limpio. Oscuras: azul tinta con el canto más claro. Las dos con contorno de tinta.
@@ -293,7 +337,7 @@ func set_theme(theme_name: String) -> void:
 		_disc_mats[i].set_shader_parameter("outline_color", outline_colors[i])
 	for group in _labels:
 		for l in group.get_children():
-			(l as Label3D).modulate = light_sq.lightened(0.25) if l.get_meta("on_dark", false) else dark_sq.darkened(0.12)
+			(l as Label3D).modulate = light_sq.lightened(0.65) if l.get_meta("on_dark", false) else dark_sq.darkened(0.3)
 
 
 # ---------------------------------------------------------------- posición y piezas
@@ -411,6 +455,8 @@ func set_orientation(o: int) -> void:
 	if not _built:
 		return
 	_light_rig.rotation.y = PI if o == 1 else 0.0
+	# La sombra del tablero cae un poco hacia el lado del jugador.
+	_shadow_node.position.z = -0.16 if o == 1 else 0.16
 	_labels[0].visible = show_coordinates and o == 0
 	_labels[1].visible = show_coordinates and o == 1
 	for s: int in _pieces:

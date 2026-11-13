@@ -1,10 +1,13 @@
 class_name BoardView3D
-extends SubViewportContainer
+extends Control
 ## El tablero 3D como control de interfaz: se coloca en cualquier pantalla, recibe los toques y avisa de las
 ## jugadas. Ofrece lo mismo que el tablero 2D (misma información, mismos avisos) para poder compararlos.
 ##
 ## Toque: tocar una pieza y luego su destino, o arrastrarla. Con dos dedos se gira la vista.
 ## Opcional: la vista sigue la inclinación del móvil (giroscopio); se puede fijar o desactivar.
+##
+## El 3D se dibuja en una vista opaca con el mismo color de fondo que la pantalla y a los píxeles reales
+## del dispositivo (no a las unidades del lienzo): así el tablero sale nítido en cualquier móvil.
 
 ## La jugada ya se ha hecho en el tablero (texto UCI, p. ej. «e2e4»).
 signal move_played(uci: String)
@@ -15,6 +18,23 @@ const DRAG_THRESHOLD := 18.0
 ## Sentido del giro con el móvil. Sin verificar en un dispositivo real: si gira al revés, cambiar el signo.
 const ROLL_SIGN := 1.0
 const TWIST_SIGN := 1.0
+## Fundido de los bordes de arriba y de abajo con el fondo de la pantalla.
+const FADE_SHADER := """
+shader_type canvas_item;
+uniform float fade_top = 0.0;
+uniform float fade_bottom = 0.0;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	float a = 1.0;
+	if (fade_top > 0.0) {
+		a *= smoothstep(0.0, fade_top, UV.y);
+	}
+	if (fade_bottom > 0.0) {
+		a *= smoothstep(0.0, fade_bottom, 1.0 - UV.y);
+	}
+	COLOR = vec4(c.rgb, a);
+}
+"""
 
 var board: Board3D
 var interactive := true
@@ -22,8 +42,18 @@ var interactive := true
 var tilt_enabled := false
 ## Vista fijada: ni el móvil ni los dedos la cambian.
 var view_locked := false
+## Franja (en unidades del lienzo), arriba y abajo, en la que la vista se funde con el fondo de la pantalla.
+## Sirve para colocar el control algo más alto que el hueco del tablero sin que se note dónde acaba.
+var edge_fade := 0.0:
+	set(value):
+		edge_fade = maxf(value, 0.0)
+		_sync_surface()
 
+var _surface: SubViewportContainer
 var _viewport: SubViewport
+var _fade: ShaderMaterial
+## Píxeles de la vista 3D por cada unidad de este control.
+var _ratio := Vector2.ONE
 var _touches := {}
 var _orbiting := false
 var _drag_from := -1
@@ -46,18 +76,24 @@ var _tilt_yaw := 0.0
 
 
 func _init() -> void:
-	stretch = true
+	_surface = SubViewportContainer.new()
+	# Sin estirar: la vista 3D tiene el tamaño en píxeles reales y el contenedor se escala para ocupar el control.
+	_surface.stretch = false
+	_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fade_shader := Shader.new()
+	fade_shader.code = FADE_SHADER
+	_fade = ShaderMaterial.new()
+	_fade.shader = fade_shader
+	_surface.material = _fade
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
 	_viewport.msaa_3d = Viewport.MSAA_4X
-	# Vista transparente: el fondo lo pinta la pantalla que contiene el tablero, sin costuras.
-	# El 3D sale con el alfa premultiplicado; se mezcla como tal para que los bordes no se oscurezcan.
-	_viewport.transparent_bg = true
-	var blend := CanvasItemMaterial.new()
-	blend.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
-	material = blend
+	_viewport.transparent_bg = false
+	_viewport.gui_disable_input = true
+	_viewport.size = Vector2i(64, 64)
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	add_child(_viewport)
+	_surface.add_child(_viewport)
+	add_child(_surface)
 	board = Board3D.new()
 	_viewport.add_child(board)
 
@@ -65,6 +101,42 @@ func _init() -> void:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_promotion_panel()
+	get_viewport().size_changed.connect(_sync_surface)
+	_sync_surface()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_sync_surface()
+
+
+## Ajusta la vista 3D al tamaño del control en píxeles reales de la pantalla.
+func _sync_surface() -> void:
+	if _surface == null or not is_inside_tree() or size.x < 1.0 or size.y < 1.0:
+		return
+	var canvas := get_viewport_rect().size
+	var window := get_window().size
+	var px := 1.0
+	if canvas.x > 0.0 and window.x > 0:
+		px = clampf(float(window.x) / canvas.x, 0.25, 4.0)
+	var want := Vector2i(maxi(int(round(size.x * px)), 8), maxi(int(round(size.y * px)), 8))
+	if _viewport.size != want:
+		_viewport.size = want
+	_ratio = Vector2(want) / size
+	_surface.position = Vector2.ZERO
+	_surface.size = Vector2(want)
+	_surface.scale = Vector2.ONE / _ratio
+	_fade.set_shader_parameter("fade_top", edge_fade / size.y)
+	_fade.set_shader_parameter("fade_bottom", edge_fade / size.y)
+
+
+## De un punto de este control (unidades del lienzo) al mismo punto en la vista 3D (píxeles), y al revés.
+func local_to_view(p: Vector2) -> Vector2:
+	return p * _ratio
+
+
+func view_to_local(p: Vector2) -> Vector2:
+	return p / _ratio
 
 
 # ---------------------------------------------------------------- interfaz pública
@@ -89,9 +161,12 @@ func show_move(uci: String) -> bool:
 	return true
 
 
-## Tema claro u oscuro ("light" | "dark") del tablero y de sus ventanas.
+## Tema claro u oscuro ("light" | "dark") del tablero y de sus ventanas, y color de fondo de la pantalla
+## que lo contiene (la vista 3D se pinta de ese color para que no se note dónde acaba).
 ## (No se llama set_theme: ese nombre ya es de Control.)
-func set_board_theme(theme_name: String) -> void:
+func set_board_theme(theme_name: String, backdrop: Color = Color(0, 0, 0, 0)) -> void:
+	if backdrop.a > 0.0:
+		board.set_backdrop(backdrop)
 	board.set_theme(theme_name)
 	_style_promotion(theme_name == "dark")
 
@@ -177,7 +252,7 @@ func _on_press(pos: Vector2) -> void:
 	if not interactive:
 		return
 	board.finish_animations()
-	var pk := board.pick(pos)
+	var pk := board.pick(local_to_view(pos))
 	var sel := board.selected
 	if sel >= 0:
 		var dest := -1
@@ -214,7 +289,7 @@ func _on_drag(pos: Vector2) -> void:
 	if not _dragging and pos.distance_to(_press_pos) > DRAG_THRESHOLD:
 		_dragging = true
 	if _dragging:
-		board.drag_piece(_drag_from, pos)
+		board.drag_piece(_drag_from, local_to_view(pos))
 
 
 func _on_release(_pos: Vector2) -> void:
