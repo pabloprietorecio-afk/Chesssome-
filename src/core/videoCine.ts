@@ -272,7 +272,8 @@ export type Phase = 'idle' | 'watching' | 'asking' | 'reveal' | 'ended';
 
 export interface DirectorState {
   phase: Phase;
-  mode: 'film' | 'direct';
+  /** film: se para en las marcas · direct: pregunta primero · free: vídeo entero, sin marcas que lo paren. */
+  mode: 'film' | 'direct' | 'free';
   /** Parada actual (preguntando o revelada) o próxima (viendo). */
   stop: number;
   /** El reproductor se ha pedido ya. En modo directo no se pide hasta la revelación. */
@@ -290,7 +291,7 @@ export interface DirectorState {
 export type Command = { type: 'cue'; at: number } | { type: 'play' } | { type: 'pause' } | { type: 'seek'; at: number };
 
 export type DirectorEvent =
-  | { type: 'start'; mode: 'film' | 'direct' }
+  | { type: 'start'; mode: 'film' | 'direct' | 'free' }
   /** Lectura periódica del reproductor. `now` en milisegundos (reloj monótono). */
   | { type: 'tick'; time: number; duration: number; playing: boolean; now: number }
   /** El jugador quiere ver cómo sigue el vídeo. `time` es la última lectura, si la hay. */
@@ -323,8 +324,12 @@ export function direct(clip: Pick<Clip, 'start' | 'end' | 'stops' | 'video'>, s:
   switch (e.type) {
     case 'start': {
       const base = { ...initialDirector(), errorCode: null };
-      if (e.mode === 'film' && canAutoPause(clip)) {
+      if ((e.mode === 'film' || e.mode === 'free') && canAutoPause(clip)) {
         return { state: { ...base, phase: 'watching', mode: 'film', videoOn: true }, commands: [{ type: 'cue', at: clip.start! }] };
+      }
+      if (e.mode === 'free') {
+        // Sin marcas no hay dónde pararse: se ve el vídeo entero y la pregunta queda a un toque («Volver a la pregunta»).
+        return { state: { ...base, phase: 'reveal', mode: 'free', stop: 0, videoOn: true, missed: 'skipped' }, commands: [{ type: 'cue', at: clip.start ?? 0 }] };
       }
       return stay({ ...base, phase: 'asking', mode: 'direct' });
     }

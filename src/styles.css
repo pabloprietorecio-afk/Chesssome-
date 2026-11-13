@@ -1554,3 +1554,22 @@ a {
   cursor: pointer;
   min-height: 32px;
 }
+
+.vc-play {
+  width: 68px;
+  height: 68px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 1.7rem;
+  color: #1b2540; /* tinta oscura en los dos temas: sobre este naranja da 5,0–7,2:1 */
+  background: linear-gradient(90deg, var(--accent-light), var(--accent-deep));
+  box-shadow: var(--glow);
+}
+.vc-poster-small {
+  font-size: 0.85rem;
+  color: #d8cfb8;
+}
+/* En el tema oscuro la tinta es casi blanca y sobre el naranja daba 1,8–2,7:1: los botones naranjas llevan tinta oscura. */
+:root[data-theme='dark'] .cm-primary {
+  color: #1b2540;
+}

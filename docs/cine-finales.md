@@ -63,7 +63,7 @@ Sin verificar: qué exige exactamente la normativa española de cookies para inc
 | La duración que da el reproductor no es la del vídeo (probable anuncio, o vídeo reeditado) | No actúa hasta que la duración vuelve a coincidir |
 | El vídeo da error (retirado, privado, no incrustable, sin `Referer`) | La pregunta sigue funcionando sin vídeo, con enlace «Ver en YouTube» |
 | Se llega a `end` | Pausa y muestra el cierre |
-| Clip sin marcas | Solo modo directo; al revelar, el vídeo empieza por el principio |
+| Clip sin marcas | El ▶ del cartel carga el vídeo entero, sin pausa, con «Ir a la pregunta» a mano. También modo directo; al revelar, el vídeo empieza por el principio |
 
 **Reproductor** (`src/ui/youtubePlayer.ts`): crea el iframe en `youtube-nocookie.com` con `enablejsapi=1` y lo controla con la API oficial. El vídeo se carga parado en el segundo exacto y lo arranca el jugador.
 
@@ -173,6 +173,8 @@ El flujo `.github/workflows/pages.yml` construye el prototipo en cada empuje a `
 - El cine se abre sin hacer el test de nivel (botón en la bienvenida o `#cine`).
 - En el editor de marcas, «Diagnóstico» muestra la versión publicada, el dominio del reproductor y su estado, y permite cambiar a `youtube.com` si `youtube-nocookie.com` diera problemas.
 - La CI de esta rama publica las capturas del 3D en `ci-shots-cine-video`, como hace `tablero-v2`, para no pisar `ci-shots`.
+
+**Primera prueba en el móvil (13 nov, Pablo):** la web carga y el reproductor de YouTube aparece desde `youtube-nocookie.com`. El cartel negro sin botón parecía un vídeo que no cargaba: ahora lleva un ▶ que carga el vídeo aunque no haya marcas.
 
 **Prueba en el móvil, por orden:**
 1. Abrir el cine y el clip; pulsar «Ir directo a la pregunta», responder y «Ver cómo ocurrió en el vídeo». Comprueba que el vídeo carga y se controla.

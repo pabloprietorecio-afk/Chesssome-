@@ -295,7 +295,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
     send({ type: 'reveal', time: time() });
   };
 
-  const start = (mode: 'film' | 'direct') => {
+  const start = (mode: 'film' | 'direct' | 'free') => {
     clearTimers();
     setBoard(null);
     setAnswer(null);
@@ -343,7 +343,18 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
                 </a>
               </>
             ) : (
-              <p>{st.phase === 'idle' ? 'Vídeo oficial · se ve con el reproductor de YouTube' : 'El vídeo aparecerá aquí cuando quieras ver cómo ocurrió.'}</p>
+              st.phase === 'idle' ? (
+                // Aún no hay reproductor: el botón carga el de YouTube (nada se pide a YouTube antes).
+                <>
+                  <button className="vc-play" onClick={() => start(auto ? 'film' : 'free')} aria-label="Ver el vídeo">
+                    ▶
+                  </button>
+                  <p>Ver el vídeo</p>
+                  <p className="vc-poster-small">{auto ? 'Se parará solo antes de la jugada clave' : 'Aún sin pausa marcada: se verá entero'}</p>
+                </>
+              ) : (
+                <p>El vídeo aparecerá aquí cuando quieras ver cómo ocurrió.</p>
+              )
             )}
           </div>
         )}
@@ -462,7 +473,26 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
 
       {st.phase === 'reveal' && (
         <div className="cm-hint vc-panel" aria-live="polite">
-          {st.missed === 'none' ? (
+          {st.mode === 'free' && st.missed !== 'none' ? (
+            <>
+              <p className="cm-kicker">Vídeo sin pausas</p>
+              <p>Este clip aún no tiene marcado el segundo de la pausa, así que el vídeo no se parará solo.</p>
+              {!playing && player === 'ready' && (
+                <p>
+                  <strong>Pulsa ▶ en el vídeo</strong> para verlo.
+                </p>
+              )}
+              {player === 'loading' && <p className="cm-quiet">Cargando el reproductor de YouTube…</p>}
+              <div className="cm-row">
+                <button className="cm-why" onClick={() => send({ type: 'back', now: performance.now() })}>
+                  Ir a la pregunta
+                </button>
+                <button className="cm-link" onClick={onEdit}>
+                  Marcar la pausa
+                </button>
+              </div>
+            </>
+          ) : st.missed === 'none' ? (
             <>
               <p className="cm-kicker">Así ocurrió</p>
               {!playing && player !== 'none' && (

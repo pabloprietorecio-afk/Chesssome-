@@ -271,6 +271,18 @@ describe('director', () => {
     expect(drive(mini(), [{ type: 'finish' }], r.state).state.phase).toBe('ended');
   });
 
+  it('ver el vídeo sin marcas: se carga entero y la pregunta queda a un toque', () => {
+    const noMarks = mini({ start: null, end: null, stops: [{ at: null, questions: ding.stops[0].questions }] });
+    const r = drive(noMarks, [{ type: 'start', mode: 'free' }, tick(30, 0), tick(90, 5000)]);
+    expect(r.commands).toEqual([[{ type: 'cue', at: 0 }], [], []]);
+    expect(r.state).toMatchObject({ phase: 'reveal', mode: 'free', stop: 0, videoOn: true, missed: 'skipped' });
+    const back = drive(noMarks, [{ type: 'back', now: 6000 }], r.state);
+    expect(back.state.phase).toBe('asking');
+    expect(back.commands).toEqual([[{ type: 'pause' }]]);
+    // Con marcas, «ver el vídeo» es el modo película.
+    expect(drive(mini(), [{ type: 'start', mode: 'free' }]).state).toMatchObject({ phase: 'watching', mode: 'film' });
+  });
+
   it('si el vídeo falla, la pregunta sigue funcionando', () => {
     const watching = drive(mini(), [{ type: 'start', mode: 'film' }]).state;
     const err = drive(mini(), [{ type: 'error', code: 150 }], watching);
