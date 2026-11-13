@@ -3,7 +3,7 @@
  */
 import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
 import type { Feedback } from '../core/experiment';
-import { PLACEMENT } from '../core/training';
+import { levelBand, PLACEMENT } from '../core/training';
 import type { AnalyzedPuzzle } from '../core/types';
 import { currentBoard, feedbackFor, noteFeedbackTime, noteWhy, pickNextTraining, pickPlacement, recordResult, trainingCount } from '../app/session';
 import { getState, go, log, useAppState } from '../app/store';
@@ -146,6 +146,8 @@ export function TrainScreen(): JSX.Element {
         if (level > startLevel) log({ type: 'why_open', puzzleId: current.puzzle.id, data: { level }, phase: current.phase, feedback });
       }}
       onLinePlay={() => log({ type: 'line_play', puzzleId: current.puzzle.id, phase: current.phase, feedback })}
+      levelLabel={s.rating ? `${levelBand(s.rating.r).name} (${Math.round(s.rating.r)} en Chessome)` : undefined}
+      onAssist={(tool, data) => log({ type: 'assist', puzzleId: current.puzzle.id, phase: current.phase, feedback, data: { tool, ...data } })}
       onTap={(k) => log({ type: k === 'illegal' ? 'illegal_target' : k, puzzleId: current.puzzle.id, phase: current.phase, board })}
       onNext={() => {
         noteFeedbackTime(trialIdx.current, performance.now() - resultAt.current);

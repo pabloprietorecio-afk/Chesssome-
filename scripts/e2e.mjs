@@ -25,7 +25,7 @@ const clickText = async (text) => {
   }, text);
   if (!ok) throw new Error('No encuentro el botón: ' + text);
 };
-const shot = (name) => page.screenshot({ path: `${out}${prefix}-${name}.png` });
+const shot = (name, fullPage = false) => page.screenshot({ path: `${out}${prefix}-${name}.png`, fullPage });
 
 async function clickSquare(sq, orientation) {
   const box = await page.evaluate(() => { const r = document.querySelector('.cm-board svg').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; });
@@ -43,6 +43,41 @@ async function playMove(uci, orientation) {
     await page.evaluate((p) => { const b = document.querySelector(`.cm-promo button[aria-label="${p}"]`); if (b) b.click(); }, { q: 'dama', r: 'torre', b: 'alfil', n: 'caballo' }[uci[4]]);
   }
 }
+
+/** Ayudas tras el problema: «¿Y si juego…?», enlace a Lichess y texto para una IA. */
+async function checkAssist(k) {
+  const info = await page.evaluate(() => {
+    const el = document.querySelector('.cm-puzzle');
+    const p = window.__chessome.puzzle(el.dataset.puzzleId);
+    const solved = document.querySelector('.cm-turn').textContent.startsWith('Resuelto');
+    const pt = p.points[solved ? 0 : Number(el.dataset.point)];
+    const others = pt.evals.map((e) => e.uci).filter((u) => u !== pt.solution);
+    return { fen: pt.fen, turn: p.points[0].fen.split(' ')[1], tries: [others[0], others[others.length - 1]], href: document.querySelector('.cm-tools a').href };
+  });
+  if (!info.href.startsWith('https://lichess.org/analysis/')) throw new Error('Enlace a Lichess inesperado: ' + info.href);
+  await clickText('¿Y si juego'); await sleep(300); await shot(`09-whatif-${k}-a`);
+  const heads = [];
+  for (const uci of info.tries) {
+    await playMove(uci, info.turn); await sleep(400);
+    heads.push(await page.evaluate(() => document.querySelector('.cm-explain')?.textContent?.slice(0, 160) ?? ''));
+    const fen = await page.evaluate(() => document.querySelector('.cm-puzzle').dataset.boardFen);
+    if (fen.split(' ')[0] !== info.fen.split(' ')[0]) throw new Error('El tablero no volvió a la posición de decisión');
+  }
+  await shot(`09-whatif-${k}-b`, true);
+  if (heads.some((h) => !h) || heads[0] === heads[1]) throw new Error('«¿Y si juego…?» no explicó las jugadas probadas: ' + JSON.stringify(heads));
+  await clickText('Volver a la explicación'); await sleep(250);
+  await clickText('Pregunta a una IA'); await sleep(250);
+  await page.evaluate(() => { const d = document.querySelector('.cm-ai-preview'); if (d) d.open = true; });
+  await sleep(150); await shot(`10-ai-${k}`, true);
+  const pre = await page.evaluate(() => document.querySelector('.cm-ai-preview pre')?.textContent ?? '');
+  if (!pre.includes('Posición (FEN): ' + info.fen)) throw new Error('El texto para la IA no lleva la posición');
+  await clickText('Copiar texto'); await sleep(250);
+  const status = await page.evaluate(() => document.querySelector('.cm-ai [role="status"]')?.textContent ?? '');
+  if (!status) throw new Error('Copiar no dio ningún aviso');
+  await clickText('Pregunta a una IA'); await sleep(150);
+  assistChecks.push({ k, heads, status });
+}
+const assistChecks = [];
 
 /** Resuelve el problema visible. Si `fail` es true, juega la peor jugada legal en el primer punto. */
 async function solveCurrent(fail) {
@@ -78,6 +113,7 @@ let i = 0;
 while (await page.evaluate(() => !!document.querySelector('.cm-puzzle'))) {
   await solveCurrent(i % 3 === 2);
   if (i === 2) await shot('04-placement-fail');
+  if (await page.evaluate(() => !!document.querySelector('.cm-assist'))) throw new Error('Las ayudas no deben salir en el test inicial');
   await clickText('Siguiente');
   await sleep(300);
   i++;
@@ -97,8 +133,10 @@ for (let k = 0; k < 6; k++) {
     await page.evaluate(() => { const b = document.querySelector('.cm-stepper button[aria-label="Jugada siguiente"]'); b && b.click(); });
     await sleep(450); await shot(`06-train-${k}-n3`);
     await clickText('Ver el análisis'); await sleep(250); await shot(`06-train-${k}-n4`);
+    if (k < 2) await checkAssist(k);
   } else {
     await shot(`06-train-${k}-plain`);
+    if (await page.evaluate(() => !!document.querySelector('.cm-assist'))) throw new Error('Las ayudas no deben salir en la condición de control');
   }
   await clickText('Siguiente');
   await sleep(500);
@@ -106,7 +144,7 @@ for (let k = 0; k < 6; k++) {
 const state = await page.evaluate(() => { const s = window.__chessome.getState(); return { rating: s.rating, trials: s.trials.length, events: s.events.length, placement: s.placement.attempts.length, fb: s.trials.map((t) => t.phase[0] + (t.correct ? '+' : '-') + t.feedback[0] + t.whyDepth).join(' ') }; });
 await clickText('Progreso'); await sleep(300); await shot('07-profile');
 await clickText('Estudio'); await sleep(300); await shot('08-study');
-console.log(JSON.stringify({ state, errors }, null, 1));
+console.log(JSON.stringify({ state, assistChecks, errors }, null, 1));
 } catch (e) {
   console.log('FALLO:', e.message);
   console.log(JSON.stringify(errors, null, 1).slice(0, 3000));

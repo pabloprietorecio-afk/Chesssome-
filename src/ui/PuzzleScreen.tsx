@@ -11,6 +11,7 @@ import type { AnalyzedPuzzle } from '../core/types';
 import { BoardView } from './BoardView';
 import type { MoveAnim, TapKind } from './boardTypes';
 import { ExplanationPanel, type BoardOverride } from './ExplanationPanel';
+import { AssistTools, type AssistTool } from './AssistTools';
 
 export interface PuzzleResult {
   correct: boolean;
@@ -30,6 +31,9 @@ interface Props {
   coordinates: boolean;
   startLevel: 1 | 2 | 3 | 4;
   header?: JSX.Element;
+  /** Nivel del jugador en palabras, para el texto que se comparte con una IA. */
+  levelLabel?: string;
+  onAssist?: (tool: AssistTool, data?: Record<string, string>) => void;
   onResult: (r: PuzzleResult) => void;
   onWhy: (level: number) => void;
   onLinePlay: () => void;
@@ -58,6 +62,9 @@ export function PuzzleScreen(p: Props): JSX.Element {
   const [result, setResult] = useState<PuzzleResult | null>(null);
   const [override, setOverride] = useState<BoardOverride | null>(null);
   const [plainArrows, setPlainArrows] = useState<Arrow[]>([]);
+  // «¿Y si juego…?»: el jugador prueba jugadas en la posición de decisión y recibe su explicación verificada.
+  const [whatIf, setWhatIf] = useState(false);
+  const [whatIfExp, setWhatIfExp] = useState<Explanation | null>(null);
   const t0 = useRef(0);
   const firstMove = useRef<number | null>(null);
   const misTaps = useRef(0);
@@ -80,6 +87,8 @@ export function PuzzleScreen(p: Props): JSX.Element {
     setResult(null);
     setOverride(null);
     setPlainArrows([]);
+    setWhatIf(false);
+    setWhatIfExp(null);
     firstMove.current = null;
     misTaps.current = 0;
     later(() => {
@@ -113,6 +122,11 @@ export function PuzzleScreen(p: Props): JSX.Element {
   );
 
   const onMove = (uci: string) => {
+    if (stage === 'feedback' && whatIf) {
+      setWhatIfExp(explain(puzzle, result?.failedAt ?? 0, uci));
+      p.onAssist?.('whatif_move', { uci });
+      return;
+    }
     if (stage !== 'solving') return;
     if (firstMove.current === null) firstMove.current = performance.now();
     const pt = puzzle.points[point];
@@ -177,6 +191,18 @@ export function PuzzleScreen(p: Props): JSX.Element {
 
   const board = override && stage === 'feedback' ? override : { fen, lastMove, arrows: [] as Arrow[], animate };
 
+  // Las ayudas no se ofrecen durante el test inicial ni en los temas de control del estudio (H1).
+  const assistOn = p.feedback === 'explained' && p.phase !== 'placement';
+  // En «¿Y si juego…?» solo se puede mover desde la posición de decisión, no mientras se ve una variante.
+  const whatIfMovable = stage === 'feedback' && whatIf && board.fen === decisionFen;
+
+  const toggleWhatIf = (on: boolean) => {
+    setWhatIf(on);
+    setWhatIfExp(null);
+    if (on) setOverride({ fen: decisionFen, lastMove: null, arrows: [], animate: null });
+    p.onAssist?.(on ? 'whatif' : 'whatif_exit');
+  };
+
   const solutionLine = useMemo(() => {
     const k = result?.failedAt ?? 0;
     return buildLine(puzzle.points[k].fen, puzzle.moves.slice(1 + 2 * k), 'La solución', 'good');
@@ -201,7 +227,7 @@ export function PuzzleScreen(p: Props): JSX.Element {
   const theme = themeName(primaryTheme(puzzle.themes));
 
   return (
-    <div className="cm-puzzle" data-puzzle-id={puzzle.id} data-point={point} data-stage={stage}>
+    <div className="cm-puzzle" data-puzzle-id={puzzle.id} data-point={point} data-stage={stage} data-board-fen={board.fen}>
       <div className="cm-board-wrap">
         {p.header}
         <div className={`cm-turn cm-turn-${solverColor}`}>
@@ -212,7 +238,7 @@ export function PuzzleScreen(p: Props): JSX.Element {
           mode={p.board}
           fen={board.fen}
           orientation={solverColor}
-          interactive={stage === 'solving'}
+          interactive={stage === 'solving' || whatIfMovable}
           lastMove={board.lastMove}
           arrows={board.arrows}
           animate={board.animate}
@@ -229,7 +255,30 @@ export function PuzzleScreen(p: Props): JSX.Element {
             <p className="cm-quiet">Problema real de Lichess · rating {puzzle.rating}</p>
           </div>
         )}
-        {stage === 'feedback' && explanation && (
+        {stage === 'feedback' && explanation && whatIf && (
+          <>
+            {whatIfExp ? (
+              <ExplanationPanel
+                key={`whatif-${whatIfExp.played}`}
+                exp={whatIfExp}
+                startLevel={p.startLevel}
+                baseFen={decisionFen}
+                onBoard={onBoard}
+                onLevel={() => undefined}
+                onLinePlay={p.onLinePlay}
+              />
+            ) : (
+              <div className="cm-hint cm-whatif">
+                <p>
+                  Mueve cualquier pieza de las {solverColor === 'w' ? 'blancas' : 'negras'} y te explico qué pasaría con esa jugada.
+                </p>
+                <p className="cm-quiet">Las explicaciones salen del mismo análisis verificado del motor.</p>
+              </div>
+            )}
+            {whatIfExp && <p className="cm-quiet cm-meta">Prueba otra jugada en el tablero o vuelve a la explicación.</p>}
+          </>
+        )}
+        {stage === 'feedback' && explanation && !whatIf && (
           <>
             <ExplanationPanel
               key={`${puzzle.id}-${result?.played}`}
@@ -247,6 +296,18 @@ export function PuzzleScreen(p: Props): JSX.Element {
               </a>
             </p>
           </>
+        )}
+        {stage === 'feedback' && explanation && assistOn && (
+          <AssistTools
+            puzzle={puzzle}
+            exp={whatIfExp ?? explanation}
+            decisionFen={decisionFen}
+            whatIf={whatIf}
+            tried={whatIfExp !== null}
+            levelLabel={p.levelLabel}
+            onWhatIf={toggleWhatIf}
+            onAssist={(t) => p.onAssist?.(t)}
+          />
         )}
         {stage === 'feedback' && plain && (
           <section className={`cm-explain cm-tone-${plain.correct ? 'good' : 'bad'}`}>

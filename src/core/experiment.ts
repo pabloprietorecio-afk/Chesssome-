@@ -54,6 +54,8 @@ export type EventType =
   | 'move'
   | 'why_open'
   | 'line_play'
+  /** Ayudas tras el problema: «¿Y si juego…?», Lichess, IA (data.tool). */
+  | 'assist'
   | 'anim_skip'
   | 'setting'
   | 'survey'
