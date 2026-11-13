@@ -99,7 +99,7 @@ Coste estimado: un par de minutos por clip (sin medir).
 - Tiempo pensado = reloj anterior del mismo bando − reloj actual + incremento (y + 30 min al completar la jugada 40 en el Mundial 2024).
 - El error no crece con la distancia al ancla: la suma se telescopa por bando (solo cuentan la primera y la última lectura de cada jugador). Queda ±2 s por redondeo más lo que tarde el jugador en pulsar el reloj.
 - Pausa sugerida: 3 s antes de que se pulse el reloj de la jugada, pero al menos 1 s después de la anterior; si están más juntas, a mitad de camino.
-- En el editor de marcas: elegir la jugada ancla, pulsar «= ahora» cuando se pulsa su reloj, revisar la lista de segundos estimados (con «Ir» a cada uno) y «Poner las pausas estimadas».
+- En el editor de marcas: elegir la jugada ancla, pulsar «= ahora» cuando se pulsa su reloj, revisar la lista de segundos estimados (con «Ir» a cada uno) y «Poner las marcas estimadas» (inicio si falta, pausas y tablero).
 - Limitación: los vídeos con cortes o repeticiones rompen la estimación a partir del corte.
 
 **Ding–Gukesh.** Relojes de la retransmisión oficial en Lichess, leídos del texto indexado por el buscador (la página no se puede descargar por su robots.txt). Gukesh pensó **2 min 12 s** antes de 55…Txf2; el resto fue casi inmediato salvo 58.Re3 (53 s):
