@@ -98,7 +98,9 @@ await page.evaluate(() => {
     placement: { done: true }, rating: { r: 1450, rd: 90, vol: 0.06 }, trials: [], events: [], reviews: [], themeFeedback: {},
     settings: { theme: 'auto', board: '2d', anim: 'fast', studyAlternateBoard: false, coordinates: true, sound: false }, surveysDone: [],
   }));
-  // Para probar los caminos «sin marcas», el clip se deja sin marcas en este dispositivo.
+  // Para probar los caminos «sin marcas» y el editor, se permiten marcas locales aunque el clip esté verificado
+  // y el clip se deja sin marcas en este dispositivo.
+  localStorage.setItem('chessome.dev.localMarks', '1');
   localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'ding-gukesh-2024-g14': { start: null, end: null, stops: [null], duration: null } }));
 });
 await page.reload();
@@ -265,11 +267,12 @@ assert(await page.evaluate(() => /no permite ver este vídeo fuera de YouTube/.t
 assert(await page.evaluate(() => !!document.querySelector('.vc-poster a[href*="youtube.com/watch?v=W9JtcW_0Sr8"]')), 'debe haber enlace a YouTube');
 await shot('12-video-no-disponible');
 
-// ── E. Con las marcas del paquete (sin marcas locales): se para en 215,47 s, antes de 55…Txf2. ──
-await page.evaluate(() => localStorage.removeItem('chessome.clipMarks.v1'));
+// ── E. Como lo verá cualquiera (sin interruptor ni marcas locales): se para en 215,47 s, antes de 55…Txf2. ──
+await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
 await clickText('Volver a la cartelera');
 await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
 await page.waitForSelector('.vc[data-phase="idle"]');
+assert(!(await hasButton('Editor de marcas')), 'con marcas verificadas no debe ofrecerse el editor');
 await clickText('Ver el vídeo: se para');
 await waitAttr('phase', 'watching');
 await waitAttr('player', 'ready');

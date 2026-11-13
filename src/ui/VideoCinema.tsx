@@ -45,9 +45,13 @@ const GOOGLE_PRIVACY = 'https://policies.google.com/privacy';
 
 type View = { kind: 'list' } | { kind: 'clip'; id: string } | { kind: 'editor'; id: string } | { kind: 'generated' };
 
+/** Interruptor de desarrollo: localStorage['chessome.dev.localMarks'] = '1' deja usar marcas locales también en clips verificados. */
+const LOCAL_MARKS_FLAG = 'localMarks';
+const canEditMarks = (clip: Clip) => clip.marks !== 'verified' || devFlag(LOCAL_MARKS_FLAG);
+
 /** Clip con las marcas hechas en este dispositivo, si el paquete aún no trae marcas verificadas. */
 function effective(clip: Clip): { clip: Clip; local: boolean } {
-  if (clip.marks === 'verified') return { clip, local: false };
+  if (!canEditMarks(clip)) return { clip, local: false };
   const local = loadMarks(clip.id);
   return local ? { clip: withMarks(clip, local), local: true } : { clip, local: false };
 }
@@ -543,7 +547,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
         <button className="cm-link" onClick={onClose}>
           Volver a la cartelera
         </button>
-        {packed.marks !== 'verified' && (
+        {canEditMarks(packed) && (
           <button className="cm-link" onClick={onEdit}>
             Editor de marcas
           </button>
