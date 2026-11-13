@@ -1,0 +1,25 @@
+name: Sonidos candidatos (CC0)
+
+# Solo se ejecuta al empujar a la rama «sonidos-fetch»: descarga grabaciones candidatas y las deja en «assets-snd».
+on:
+  push:
+    branches: [sonidos-fetch]
+
+jobs:
+  fetch:
+    name: Descargar grabaciones de Kenney y OpenGameArt
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar
+        run: bash tools/assets/fetch-sounds.sh
+      - name: Publicar en la rama assets-snd
+        run: |
+          cd build/sounds
+          git init -q
+          git checkout -q -b assets-snd
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Sonidos candidatos (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" assets-snd
