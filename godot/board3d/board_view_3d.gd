@@ -3,7 +3,10 @@ extends Control
 ## El tablero 3D como control de interfaz: se coloca en cualquier pantalla, recibe los toques y avisa de las
 ## jugadas. Ofrece lo mismo que el tablero 2D (misma información, mismos avisos) para poder compararlos.
 ##
-## Toque: tocar una pieza y luego su destino, o arrastrarla. Con dos dedos se gira la vista.
+## Toque: tocar una pieza y luego su destino, o arrastrarla.
+## Dos dedos: pellizcar amplía el tablero (puede hacerse más ancho que la pantalla); arrastrarlos gira la
+## vista o, si el tablero está ampliado, lo desplaza. Con el tablero ampliado también se desplaza con un
+## dedo, arrastrando desde donde no haya una pieza propia.
 ## Opcional: la vista sigue la inclinación del móvil (giroscopio); se puede fijar o desactivar.
 ##
 ## El 3D se dibuja en una vista opaca con el mismo color de fondo que la pantalla y a los píxeles reales
@@ -15,6 +18,8 @@ signal move_played(uci: String)
 signal tapped(kind: String)
 
 const DRAG_THRESHOLD := 18.0
+## Recorrido de los dos dedos a partir del cual se decide qué gesto es.
+const GESTURE_THRESHOLD := 14.0
 ## Sentido del giro con el móvil. Sin verificar en un dispositivo real: si gira al revés, cambiar el signo.
 const ROLL_SIGN := 1.0
 const TWIST_SIGN := 1.0
@@ -54,8 +59,20 @@ var _viewport: SubViewport
 var _fade: ShaderMaterial
 ## Píxeles de la vista 3D por cada unidad de este control.
 var _ratio := Vector2.ONE
+enum Gesture { NONE, PENDING, ZOOM, ORBIT }
+
 var _touches := {}
-var _orbiting := false
+## Hay (o ha habido, hasta que se levanten todos) dos dedos en la pantalla: no se tocan piezas.
+var _multi := false
+var _gesture := Gesture.NONE
+var _g_start_dist := 0.0
+var _g_start_mid := Vector2.ZERO
+var _g_dist := 0.0
+var _g_mid := Vector2.ZERO
+## Toque de un dedo donde no hay nada que seleccionar: al arrastrar, desplaza el tablero ampliado.
+var _empty_press := false
+var _panning := false
+var _pan_last := Vector2.ZERO
 var _drag_from := -1
 var _press_pos := Vector2.ZERO
 var _dragging := false
@@ -176,16 +193,26 @@ func is_top_view() -> bool:
 	return board.cam_pitch > 84.0
 
 
-## Botón «Centrar»: vista en picado sobre el tablero.
+## Botón «Centrar»: vista en picado sobre el tablero, entero (deshace la ampliación).
 func center_view() -> void:
 	board.animate_view(90.0, 0.0)
 	_tilt_ref_set = false
 
 
-## Vuelve a la vista inclinada de siempre.
+## Vuelve a la vista inclinada de siempre, con el tablero entero.
 func default_view() -> void:
 	board.animate_view(Board3D.DEFAULT_PITCH, 0.0)
 	_tilt_ref_set = false
+
+
+## El jugador ha ampliado el tablero con los dedos.
+func is_zoomed() -> bool:
+	return board.zoom > 1.02
+
+
+## Deshace la ampliación sin cambiar la inclinación ni el giro.
+func reset_zoom() -> void:
+	board.animate_view(board.cam_pitch, board.cam_yaw, 0.3)
 
 
 func set_tilt_enabled(on: bool) -> void:
@@ -208,33 +235,84 @@ func _gui_input(event: InputEvent) -> void:
 			if _touches.size() == 1:
 				_on_press(e.position)
 			else:
-				# Segundo dedo: se pasa a girar la vista y se suelta la pieza.
+				# Segundo dedo: se suelta la pieza y empieza un gesto de dos dedos.
 				_cancel_piece_drag()
-				_orbiting = true
+				_multi = true
+				_start_gesture()
 		else:
-			var single := _touches.size() == 1 and not _orbiting
+			var single := _touches.size() == 1 and not _multi
 			_touches.erase(e.index)
 			if single:
 				_on_release(e.position)
+			if _touches.size() < 2:
+				_gesture = Gesture.NONE
 			if _touches.is_empty():
-				_orbiting = false
+				_multi = false
 				_tilt_ref_set = false
 		accept_event()
 	elif event is InputEventScreenDrag:
 		var e := event as InputEventScreenDrag
 		_touches[e.index] = e.position
-		if _orbiting:
-			if not view_locked:
-				board.set_view(board.cam_pitch + e.relative.y * 0.12, board.cam_yaw - e.relative.x * 0.16)
+		if _multi:
+			_two_finger_update()
 		else:
 			_on_drag(e.position)
 		accept_event()
 
 
+# ---------------------------------------------------------------- dos dedos: ampliar, desplazar y girar
+
+func _two_fingers() -> PackedVector2Array:
+	var keys := _touches.keys()
+	keys.sort()
+	return PackedVector2Array([_touches[keys[0]], _touches[keys[1]]])
+
+
+func _start_gesture() -> void:
+	var f := _two_fingers()
+	_gesture = Gesture.PENDING
+	_g_start_dist = f[0].distance_to(f[1])
+	_g_start_mid = (f[0] + f[1]) * 0.5
+	_g_dist = _g_start_dist
+	_g_mid = _g_start_mid
+
+
+func _two_finger_update() -> void:
+	if _touches.size() < 2 or view_locked or _gesture == Gesture.NONE:
+		return
+	var f := _two_fingers()
+	var dist := f[0].distance_to(f[1])
+	var mid := (f[0] + f[1]) * 0.5
+	if _gesture == Gesture.PENDING:
+		var spread := absf(dist - _g_start_dist)
+		var travel := mid.distance_to(_g_start_mid)
+		if maxf(spread, travel) < GESTURE_THRESHOLD:
+			return
+		# Si los dedos se separan o se juntan, es ampliar. Si van a la par: con el tablero ampliado es
+		# desplazarlo (y el pellizco sigue ampliando); sin ampliar, es girar la vista.
+		_gesture = Gesture.ZOOM if (spread >= travel or board.zoom > 1.02) else Gesture.ORBIT
+		_g_dist = dist
+		_g_mid = mid
+		return
+	if _gesture == Gesture.ZOOM:
+		if _g_dist > 1.0 and dist > 1.0:
+			board.zoom_at(dist / _g_dist, local_to_view(mid))
+		board.pan_by((mid - _g_mid) * _ratio)
+	elif _gesture == Gesture.ORBIT:
+		var d := mid - _g_mid
+		board.set_view(board.cam_pitch + d.y * 0.24, board.cam_yaw - d.x * 0.32)
+	_g_dist = dist
+	_g_mid = mid
+
+
+# ---------------------------------------------------------------- un dedo: piezas (y desplazar si está ampliado)
+
 func _reset_touch() -> void:
 	_drag_from = -1
 	_dragging = false
 	_press_same = false
+	_empty_press = false
+	_panning = false
 
 
 func _cancel_piece_drag() -> void:
@@ -249,41 +327,50 @@ func _on_press(pos: Vector2) -> void:
 		board.cancel_drag()
 		board.deselect()
 		return
-	if not interactive:
-		return
-	board.finish_animations()
-	var pk := board.pick(local_to_view(pos))
-	var sel := board.selected
-	if sel >= 0:
-		var dest := -1
-		if pk.y >= 0 and board.is_target(pk.y):
-			dest = pk.y
-		elif pk.x >= 0 and board.is_target(pk.x):
-			dest = pk.x
-		if dest >= 0:
-			_try_move(dest, false)
+	_reset_touch()
+	if interactive:
+		board.finish_animations()
+		var pk := board.pick(local_to_view(pos))
+		var sel := board.selected
+		if sel >= 0:
+			var dest := -1
+			if pk.y >= 0 and board.is_target(pk.y):
+				dest = pk.y
+			elif pk.x >= 0 and board.is_target(pk.x):
+				dest = pk.x
+			if dest >= 0:
+				_try_move(dest, false)
+				return
+		var own := -1
+		if pk.y >= 0 and board.is_own(pk.y):
+			own = pk.y
+		elif pk.x >= 0 and board.is_own(pk.x):
+			own = pk.x
+		if own >= 0:
+			_press_same = own == sel
+			if not _press_same:
+				board.select(own)
+				tapped.emit("select")
+			_drag_from = own
+			_press_pos = pos
+			_dragging = false
 			return
-	var own := -1
-	if pk.y >= 0 and board.is_own(pk.y):
-		own = pk.y
-	elif pk.x >= 0 and board.is_own(pk.x):
-		own = pk.x
-	if own >= 0:
-		_press_same = own == sel
-		if not _press_same:
-			board.select(own)
-			tapped.emit("select")
-		_drag_from = own
-		_press_pos = pos
-		_dragging = false
-		return
-	if sel >= 0:
-		board.shake(sel)
-		board.deselect()
-		tapped.emit("illegal")
+	# Aquí no hay nada que seleccionar (o ahora no se puede jugar). Qué era el toque se decide al soltar:
+	# si el tablero está ampliado y el dedo se arrastra, lo desplaza; si no, es un toque en vacío.
+	_empty_press = true
+	_press_pos = pos
+	_pan_last = pos
 
 
 func _on_drag(pos: Vector2) -> void:
+	if _empty_press:
+		if not _panning and not view_locked and board.zoom > 1.02 and pos.distance_to(_press_pos) > DRAG_THRESHOLD:
+			_panning = true
+			_pan_last = pos
+		if _panning:
+			board.pan_by((pos - _pan_last) * _ratio)
+			_pan_last = pos
+		return
 	if _drag_from < 0:
 		return
 	if not _dragging and pos.distance_to(_press_pos) > DRAG_THRESHOLD:
@@ -293,6 +380,14 @@ func _on_drag(pos: Vector2) -> void:
 
 
 func _on_release(_pos: Vector2) -> void:
+	if _empty_press:
+		# Toque en vacío con una pieza seleccionada: «ahí no» y se suelta la selección.
+		if not _panning and interactive and board.selected >= 0:
+			board.shake(board.selected)
+			board.deselect()
+			tapped.emit("illegal")
+		_reset_touch()
+		return
 	if _drag_from < 0:
 		return
 	if _dragging:

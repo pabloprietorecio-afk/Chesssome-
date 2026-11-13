@@ -205,7 +205,58 @@ func _demo_shots() -> void:
 	await _frames(30)
 	await _shot("29_demo_repetido")
 	print("DEMO titulo=«%s» paso=%d problema=%d" % [demo.title.text, demo.step, demo.index])
+
+	# Pellizco con dos dedos: el tablero se amplía y puede ser más ancho que la pantalla.
+	var c := dview.get_global_rect().get_center()
+	_touch(0, c + Vector2(-90.0, 0.0), true)
+	_touch(1, c + Vector2(90.0, 0.0), true)
+	for i in 8:
+		var off := 90.0 + 13.0 * float(i + 1)
+		_drag(0, c + Vector2(-off, 0.0), Vector2(-13.0, 0.0))
+		_drag(1, c + Vector2(off, 0.0), Vector2(13.0, 0.0))
+		await _frames(1)
+	_touch(0, c + Vector2(-194.0, 0.0), false)
+	_touch(1, c + Vector2(194.0, 0.0), false)
+	await _frames(3)
+	await _shot("30_demo_ampliado")
+	print("DEMO ampliado zoom=%.2f desplazamiento=%s" % [dview.board.zoom, str(dview.board.pan)])
+	# Con el tablero ampliado, un dedo que arrastra desde una casilla sin pieza propia lo desplaza.
+	var empty := -1
+	for s in 64:
+		if dview.board.chess.b[s] == 0 and (s & 7) >= 2 and (s & 7) <= 5 and (s >> 3) >= 2 and (s >> 3) <= 5:
+			empty = s
+			break
+	var from: Vector2 = dview.get_global_transform() * dview.view_to_local(dview.board.camera.unproject_position(Board3D.sq_pos(empty)))
+	_touch(0, from, true)
+	for i in 10:
+		_drag(0, from + Vector2(26.0 * float(i + 1), 12.0 * float(i + 1)), Vector2(26.0, 12.0))
+		await _frames(1)
+	_touch(0, from + Vector2(260.0, 120.0), false)
+	await _frames(3)
+	await _shot("31_demo_desplazado")
+	print("DEMO desplazado zoom=%.2f desplazamiento=%s seleccionada=%d" % [dview.board.zoom, str(dview.board.pan), dview.board.selected])
+	# El botón de vista devuelve el tablero a su tamaño.
+	demo._on_toggle_view()
+	await _frames(16)
+	await _shot("32_demo_entero_otra_vez")
+	print("DEMO entero zoom=%.2f desplazamiento=%s picado=%s" % [dview.board.zoom, str(dview.board.pan), str(demo.top_view)])
 	Engine.time_scale = 1.0
+
+
+func _touch(index: int, canvas_pos: Vector2, pressed: bool) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = index
+	e.position = canvas_pos
+	e.pressed = pressed
+	get_viewport().push_input(e, true)
+
+
+func _drag(index: int, canvas_pos: Vector2, relative: Vector2) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.position = canvas_pos
+	e.relative = relative
+	get_viewport().push_input(e, true)
 
 
 func _tap(v: BoardView3D, square: int) -> void:

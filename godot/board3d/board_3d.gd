@@ -27,6 +27,8 @@ const OUTLINE_WIDTH := 0.026
 const START_FEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const PITCH_MIN := 36.0
 const PITCH_MAX := 90.0
+## Ampliación máxima con el pellizco de dos dedos (1 = el tablero encuadrado a lo ancho).
+const ZOOM_MAX := 3.0
 const DEFAULT_PITCH := 64.0
 
 var chess: Chess = Chess.from_fen(START_FEN)
@@ -45,6 +47,10 @@ var cam_fov := 14.0
 ## Margen libre alrededor del tablero al encuadrar, en fracción del ancho o del alto de la vista:
 ## izquierda, arriba, derecha, abajo.
 var fit_pad := Vector4(0.012, 0.02, 0.012, 0.02)
+## Ampliación elegida por el jugador: 1 = tablero encuadrado; más = el tablero no cabe entero en la vista.
+var zoom := 1.0
+## Desplazamiento de la vista cuando está ampliada, en casillas sobre el plano de la cámara (derecha, arriba).
+var pan := Vector2.ZERO
 
 var last_from := -1
 var last_to := -1
@@ -80,6 +86,10 @@ var _theme_name := "light"
 var _backdrop := Color("eaf1fb")
 var _drag_sq := -1
 var _built := false
+## Datos del último encuadre, para ampliar y desplazar: tangentes del medio campo de visión y distancia.
+var _fit_th := 0.1
+var _fit_tv := 0.1
+var _fit_dist := 30.0
 
 
 func _ready() -> void:
@@ -595,12 +605,68 @@ func apply_camera() -> void:
 			y_max = maxf(y_max, yn)
 		sx -= ((lim_r - x_max) - (x_min - lim_l)) * 0.5 * th * dist
 		sy -= ((lim_t - y_max) - (y_min - lim_b)) * 0.5 * tv * dist
-	camera.fov = cam_fov
+	# Lo que ocupa el tablero en la vista con ese encuadre (coordenadas de −1 a 1).
+	var ext_l := 1.0e9
+	var ext_r := -1.0e9
+	var ext_b := 1.0e9
+	var ext_t := -1.0e9
+	for i in n:
+		var d := dist - pc[i]
+		ext_l = minf(ext_l, (pa[i] - sx) / (d * th))
+		ext_r = maxf(ext_r, (pa[i] - sx) / (d * th))
+		ext_b = minf(ext_b, (pb[i] - sy) / (d * tv))
+		ext_t = maxf(ext_t, (pb[i] - sy) / (d * tv))
+	_fit_th = th
+	_fit_tv = tv
+	_fit_dist = dist
+	# Ampliación: se estrecha el campo de visión (la perspectiva no cambia) y la cámara se desplaza de lado.
+	# El desplazamiento se limita para que el tablero siga cubriendo la zona que ocupaba sin ampliar.
+	zoom = clampf(zoom, 1.0, ZOOM_MAX)
+	var hx := th * dist / zoom
+	var hy := tv * dist / zoom
+	var lo_x := ext_l * th * dist - lim_l * hx
+	var hi_x := ext_r * th * dist - lim_r * hx
+	pan.x = clampf(pan.x, lo_x, hi_x) if lo_x <= hi_x else (lo_x + hi_x) * 0.5
+	var lo_y := ext_b * tv * dist - lim_b * hy
+	var hi_y := ext_t * tv * dist - lim_t * hy
+	pan.y = clampf(pan.y, lo_y, hi_y) if lo_y <= hi_y else (lo_y + hi_y) * 0.5
+	camera.fov = rad_to_deg(2.0 * atan(th / zoom))
 	# Planos de recorte ceñidos al tablero: con la cámara lejos, así no se pierde precisión de profundidad.
 	camera.near = maxf(0.5, dist - 16.0)
 	camera.far = dist + 30.0
-	camera.transform = Transform3D(Basis(right, up, back), right * sx + up * sy + back * dist)
+	camera.transform = Transform3D(Basis(right, up, back), right * (sx + pan.x) + up * (sy + pan.y) + back * dist)
 	_key.directional_shadow_max_distance = dist + 12.0
+
+
+## Amplía o reduce alrededor de un punto de la vista (en píxeles): lo que está bajo los dedos se queda bajo ellos.
+func zoom_at(factor: float, view_pos: Vector2) -> void:
+	var vp := get_viewport().get_visible_rect().size
+	var before := zoom
+	var after := clampf(zoom * factor, 1.0, ZOOM_MAX)
+	if vp.x < 2.0 or vp.y < 2.0 or is_equal_approx(before, after):
+		return
+	var m := Vector2(view_pos.x / vp.x * 2.0 - 1.0, 1.0 - view_pos.y / vp.y * 2.0)
+	var k := 1.0 / before - 1.0 / after
+	pan += Vector2(m.x * _fit_th, m.y * _fit_tv) * _fit_dist * k
+	zoom = after
+	apply_camera()
+
+
+## Desplaza la vista ampliada siguiendo al dedo (en píxeles de la vista).
+func pan_by(delta: Vector2) -> void:
+	var vp := get_viewport().get_visible_rect().size
+	if vp.x < 2.0 or vp.y < 2.0 or zoom <= 1.0:
+		return
+	pan.x -= delta.x * 2.0 * _fit_th * _fit_dist / (zoom * vp.x)
+	pan.y += delta.y * 2.0 * _fit_tv * _fit_dist / (zoom * vp.y)
+	apply_camera()
+
+
+## Vuelve al tablero encuadrado, sin ampliar.
+func reset_zoom() -> void:
+	zoom = 1.0
+	pan = Vector2.ZERO
+	apply_camera()
 
 
 func set_view(pitch: float, yaw: float) -> void:
@@ -609,19 +675,26 @@ func set_view(pitch: float, yaw: float) -> void:
 	apply_camera()
 
 
-func _view_step(t: float, p0: float, y0: float, p1: float, y1: float) -> void:
+func _view_step(t: float, p0: float, y0: float, p1: float, y1: float, z0: float, pan0: Vector2, unzoom: bool) -> void:
+	if unzoom:
+		zoom = lerpf(z0, 1.0, t)
+		pan = pan0.lerp(Vector2.ZERO, t)
 	set_view(lerpf(p0, p1, t), lerpf(y0, y1, t))
 
 
-## Lleva la cámara con suavidad a una vista (por ejemplo, en picado: pitch = 90).
-func animate_view(pitch: float, yaw: float, seconds: float = 0.4) -> void:
+## Lleva la cámara con suavidad a una vista (por ejemplo, en picado: pitch = 90). Por defecto, además,
+## deshace la ampliación: el tablero vuelve a verse entero.
+func animate_view(pitch: float, yaw: float, seconds: float = 0.4, unzoom: bool = true) -> void:
 	if _cam_tween != null and _cam_tween.is_valid():
 		_cam_tween.kill()
 	if seconds <= 0.0 or anim_mode == Anim.NONE:
+		if unzoom:
+			zoom = 1.0
+			pan = Vector2.ZERO
 		set_view(pitch, yaw)
 		return
 	_cam_tween = create_tween()
-	_cam_tween.tween_method(_view_step.bind(cam_pitch, cam_yaw, pitch, yaw), 0.0, 1.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_method(_view_step.bind(cam_pitch, cam_yaw, pitch, yaw, zoom, pan, unzoom), 0.0, 1.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 # ---------------------------------------------------------------- toque

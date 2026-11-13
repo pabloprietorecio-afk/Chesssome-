@@ -647,8 +647,8 @@ func _build_sheet() -> void:
 	box.add_child(_segments(["Inclinada", "En picado"], 1 if top_view else 0, _set_top_view))
 	box.add_child(_switch_row("Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
 	box.add_child(_switch_row("Fijar la vista", "Ni el móvil ni los dedos la mueven.", view.view_locked, _set_lock))
-	var tip := _text("Con dos dedos sobre el tablero se gira la vista.", 26, _c("quiet"), font_regular)
-	box.add_child(tip)
+	box.add_child(_text("Pellizca el tablero con dos dedos para ampliarlo; el botón de vista lo deja entero.", 26, _c("quiet"), font_regular))
+	box.add_child(_text("Arrastra con dos dedos para girar la vista o, si está ampliado, para moverte por él.", 26, _c("quiet"), font_regular))
 	box.add_child(_caption("Tema"))
 	box.add_child(_segments(["Claro", "Oscuro"], 1 if dark else 0, _set_theme_index))
 
@@ -717,7 +717,11 @@ func _set_top_view(i: int) -> void:
 	_sync_sheet()
 
 
+## Botón de vista: si el tablero está ampliado, lo devuelve a su tamaño; si no, cambia entre inclinada y en picado.
 func _on_toggle_view() -> void:
+	if view.is_zoomed():
+		view.reset_zoom()
+		return
 	_set_top_view(0 if top_view else 1)
 
 
