@@ -267,6 +267,12 @@ func _demo_shots() -> void:
 	add_child(demo)
 	await _frames(30)
 	await _shot("20_demo")
+	var missing: Array[String] = []
+	for icon_name: String in ["bulb", "step", "eye", "skip", "retry", "next", "why", "line", "chart", "tap", "sliders", "pin", "pin_on", "view", "search", "spark", "copy", "open", "close", "sound", "phone", "sun", "moon", "outline", "info", "whatif", "book", "back", "zoom", "play", "first", "piece_knight", "token_pawn"]:
+		if UiIcons.texture(icon_name) == null:
+			missing.append(icon_name)
+	print("ICONOS %d en el atlas, faltan=%s emblema=%s" % [UiIcons.names().size(), str(missing), str(UiIcons.emblem() != null)])
+	print("DEMO pista de gestos visible=%s botones=«%s» «%s» «%s» «%s»" % [str(demo.gesture_tip.visible), demo.button_label(demo.hint_button), demo.button_label(demo.step_button), demo.button_label(demo.left_button), demo.button_label(demo.right_button)])
 	var dview: BoardView3D = demo.view
 	var moves: Array = demo.puzzle["moves"]
 	var solution := str(moves[1])
@@ -309,7 +315,7 @@ func _demo_shots() -> void:
 	demo._on_left()
 	await _frames(50)
 	await _shot("24_demo_solucion")
-	print("DEMO titulo=«%s» izquierda=«%s» derecha=«%s»" % [demo.title.text, demo.left_button.text, demo.right_button.text])
+	print("DEMO titulo=«%s» izquierda=«%s» derecha=«%s»" % [demo.title.text, demo.button_label(demo.left_button), demo.button_label(demo.right_button)])
 	# La explicación, nivel a nivel: el concepto, la variante (jugada en el tablero) y las cifras del motor.
 	for deeper in 3:
 		demo._on_why()
@@ -435,7 +441,11 @@ func _demo_shots() -> void:
 	demo._open_options()
 	await _frames(8)
 	await _shot("37_demo_opciones_fichas")
+	demo.sheet_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("37b_demo_opciones_final")
 	demo._close_options()
+	await _help_shots(demo)
 	demo._open_welcome()
 	await _frames(6)
 	await _shot("38_demo_bienvenida")
@@ -446,6 +456,75 @@ func _demo_shots() -> void:
 	await _shot("39_demo_bienvenida_oscuro")
 	demo._close_welcome()
 	Engine.time_scale = 1.0
+
+
+## Pista, «Un paso», la chincheta del giro y el giro con dos dedos.
+func _help_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._set_pieces_index(0)
+	demo._on_right()
+	await _frames(40)
+	# Pista: primero el tema; después, además, la pieza (queda elegida en el tablero).
+	demo._on_hint()
+	await _frames(10)
+	await _shot("40_demo_pista")
+	demo._on_hint()
+	await _frames(10)
+	await _shot("41_demo_pista_pieza")
+	var expected := str(demo.puzzle["moves"][demo.ask_step]).substr(0, 2)
+	print("AYUDA pista nivel=%d pieza elegida=%d (esperada %d) fase=%d" % [demo.hint_level, dview.board.selected, _sq(expected), demo.phase])
+	# Un paso: se juega solo esa jugada, con su explicación; «Seguir» devuelve el turno al jugador.
+	var before_step: int = demo.step
+	demo._on_step()
+	await _frames(26)
+	await _shot("42_demo_un_paso")
+	print("AYUDA un paso: fase=%d titulo=«%s» paso %d→%d botones=«%s» «%s»" % [demo.phase, demo.title.text, before_step, demo.step, demo.button_label(demo.left_button), demo.button_label(demo.right_button)])
+	if demo.phase == 7:
+		demo._on_why()
+		await _frames(10)
+		await _shot("43_demo_un_paso_por_que")
+		demo._on_right()
+		await _frames(40)
+		await _shot("44_demo_tras_el_paso")
+		print("AYUDA tras seguir: fase=%d titulo=«%s» paso=%d interactivo=%s" % [demo.phase, demo.title.text, demo.step, str(dview.interactive)])
+	# Chincheta: con el giro fijado, girar dos dedos no mueve el tablero; al soltarla, sí (y hacia el mismo lado).
+	demo._set_gesture_hint(true)
+	await _frames(4)
+	demo._on_toggle_pin()
+	await _frames(6)
+	await _shot("45_demo_giro_fijado")
+	var c := dview.get_global_rect().get_center()
+	await _twist(c, 150.0, 0.0, 30.0)
+	print("AYUDA giro fijado=%s: tras girar dos dedos 30°, giro=%.1f pista de gestos=%s" % [str(dview.view_locked), dview.board.cam_yaw, str(demo.gesture_hint)])
+	demo._on_toggle_pin()
+	await _frames(4)
+	await _twist(c, 150.0, 0.0, 30.0)
+	await _frames(4)
+	await _shot("46_demo_girado_con_dos_dedos")
+	print("AYUDA giro libre: tras girar dos dedos 30° a la derecha, giro=%.1f inclinación=%.1f pista de gestos=%s" % [dview.board.cam_yaw, dview.board.cam_pitch, str(demo.gesture_hint)])
+	# Casi derecho al soltar: se endereza solo.
+	await _twist(c, 150.0, 30.0, 5.0)
+	await _frames(12)
+	print("AYUDA casi derecho al soltar: giro=%.1f" % dview.board.cam_yaw)
+	await _shot("47_demo_enderezado")
+
+
+## Dos dedos que giran alrededor de un punto, de un ángulo a otro (grados; positivo = a la derecha, como las agujas del reloj).
+func _twist(c: Vector2, radius: float, from_deg: float, to_deg: float) -> void:
+	var at := func(deg: float, side: float) -> Vector2:
+		return c + Vector2(cos(deg_to_rad(deg)), sin(deg_to_rad(deg))) * radius * side
+	_touch(0, at.call(from_deg, -1.0), true)
+	_touch(1, at.call(from_deg, 1.0), true)
+	var steps := 10
+	var prev := from_deg
+	for i in steps:
+		var deg := lerpf(from_deg, to_deg, float(i + 1) / float(steps))
+		_drag(0, at.call(deg, -1.0), at.call(deg, -1.0) - at.call(prev, -1.0))
+		_drag(1, at.call(deg, 1.0), at.call(deg, 1.0) - at.call(prev, 1.0))
+		prev = deg
+		await _frames(1)
+	_touch(0, at.call(to_deg, -1.0), false)
+	_touch(1, at.call(to_deg, 1.0), false)
 
 
 func _touch(index: int, canvas_pos: Vector2, pressed: bool) -> void:

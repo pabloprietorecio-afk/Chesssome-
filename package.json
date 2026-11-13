@@ -17,6 +17,7 @@
     "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts",
     "pieces": "node tools/pieces/generate.mjs",
     "pieces:fichas": "node tools/pieces/fichas.mjs",
+    "ui:icons": "node tools/ui/icons.mjs",
     "godot:demo": "tsx scripts/export-godot-demo.ts"
   },
   "dependencies": {
@@ -26,6 +27,8 @@
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
