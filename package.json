@@ -14,7 +14,8 @@
     "pipeline:import": "tsx pipeline/import-lichess.ts",
     "pipeline:analyze": "tsx pipeline/analyze.ts",
     "pipeline:report": "tsx pipeline/build-pack.ts",
-    "golden": "tsx scripts/export-golden.ts"
+    "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts",
+    "pieces": "node tools/pieces/generate.mjs"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vista previa de piezas</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #e3edf9; }
+      canvas { display: block; }
+    </style>
+    <script type="importmap">
+      { "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      // Vista previa rápida de las piezas generadas (solo para diseñar las formas; el aspecto final es el de Godot).
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+      const q = new URLSearchParams(location.search);
+      const set = q.get('set') ?? 'clasico';
+      const view = q.get('view') ?? 'lineup';
+      const NAMES = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+      const IVORY = 0xf3ead8, NAVY = 0x26324f, LIGHT = 0xdbe6f4, DARK = 0x8fa6c8;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xe9f1fb);
+      scene.add(new THREE.HemisphereLight(0xdfeaff, 0x8c97ad, 1.15));
+      const sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
+      sun.position.set(-3.5, 9, 5);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+      sun.shadow.bias = -0.0005;
+      sun.shadow.normalBias = 0.02;
+      sun.shadow.radius = 4;
+      scene.add(sun);
+
+      const loader = new GLTFLoader();
+      const geo = {};
+      await Promise.all(NAMES.map(async (n) => {
+        const g = await loader.loadAsync(`/godot/sets/${set}/${n}.glb?${Date.now()}`);
+        geo[n] = [];
+        g.scene.traverse((o) => { if (o.isMesh) geo[n].push({ geometry: o.geometry, name: o.material.name }); });
+      }));
+      const mat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0, vertexColors: true });
+      const accent = new THREE.MeshStandardMaterial({ color: 0xff8a2a, roughness: 0.35, vertexColors: true });
+      const sides = { w: mat(IVORY), b: mat(NAVY) };
+      function piece(name, side, x, z, yaw = 0) {
+        const grp = new THREE.Group();
+        for (const s of geo[name]) {
+          const m = new THREE.Mesh(s.geometry, s.name === 'cuerpo' ? sides[side] : accent);
+          m.castShadow = m.receiveShadow = true;
+          grp.add(m);
+        }
+        grp.position.set(x, 0, z);
+        grp.rotation.y = yaw;
+        scene.add(grp);
+        return grp;
+      }
+      function board(cols, rows) {
+        const g = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+        for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+          const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: (i + j) % 2 ? LIGHT : DARK, roughness: 0.8 }));
+          m.position.set(i - cols / 2 + 0.5, 0, j - rows / 2 + 0.5);
+          m.receiveShadow = true;
+          scene.add(m);
+        }
+      }
+      const cam = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.1, 100);
+      const look = (pitchDeg, dist, yawDeg = 0, target = [0, 0.5, 0]) => {
+        const p = (pitchDeg * Math.PI) / 180, y = (yawDeg * Math.PI) / 180;
+        cam.position.set(target[0] + dist * Math.cos(p) * Math.sin(y), target[1] + dist * Math.sin(p), target[2] + dist * Math.cos(p) * Math.cos(y));
+        cam.lookAt(...target);
+      };
+
+      if (view === 'lineup' || view === 'side' || view === 'top' || view === 'back') {
+        board(6, 2);
+        const yaw = Number(q.get('yaw') ?? 0) * Math.PI / 180;
+        NAMES.forEach((n, i) => { piece(n, 'w', i - 2.5, 0.5, yaw); piece(n, 'b', i - 2.5, -0.5, yaw + Math.PI); });
+        if (view === 'lineup') look(24, 7.4, 0, [0, 0.72, 0]);
+        if (view === 'side') look(6, 7.4, 90, [0, 0.8, 0]);
+        if (view === 'back') look(24, 7.4, 180, [0, 0.72, 0]);
+        if (view === 'top') look(89.9, 7.4, 0, [0, 0, 0]);
+      } else if (view === 'one') {
+        const n = q.get('piece') ?? 'knight';
+        board(4, 2);
+        [0, 55, 90, 180].forEach((deg, i) => piece(n, i % 2 ? 'b' : 'w', i - 1.5, 0, (deg * Math.PI) / 180));
+        look(Number(q.get('pitch') ?? 14), 5.2, 0, [0, 0.62, 0]);
+      } else {
+        board(8, 8);
+        const back = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+        const ky = Number(q.get('knightYaw') ?? 0) * Math.PI / 180;
+        back.forEach((n, i) => {
+          piece(n, 'w', i - 3.5, 3.5, n === 'knight' ? Math.PI + ky : Math.PI);
+          piece(n, 'b', i - 3.5, -3.5, n === 'knight' ? -ky : 0);
+          piece('pawn', 'w', i - 3.5, 2.5);
+          piece('pawn', 'b', i - 3.5, -2.5);
+        });
+        look(Number(q.get('pitch') ?? 60), 22, 0, [0, 0, 0.2]);
+      }
+      renderer.render(scene, cam);
+      window.__ready = true;
+    </script>
+  </body>
+</html>

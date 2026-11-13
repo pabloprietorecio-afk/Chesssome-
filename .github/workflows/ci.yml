@@ -5,6 +5,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Un empuje nuevo a la misma rama cancela la comprobación anterior, que ya no sirve.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GODOT_VERSION: "4.7.2"
 
@@ -34,8 +39,10 @@ jobs:
           retention-days: 14
 
   godot:
-    name: Godot (tests sin pantalla y APK de depuración)
+    name: Godot (reglas, capturas del 3D y APK de depuración)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +77,11 @@ jobs:
           rm $TPZ
           ls -la ~/godot-dl ~/godot-dl/templates
 
+      - name: Renderizador por software (Vulkan) y pantalla virtual
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 libgl1-mesa-dri > /dev/null
+
       - name: Instalar plantillas, firma de depuración y ajustes del editor
         run: |
           set -euo pipefail
@@ -94,20 +106,46 @@ jobs:
           export/android/debug_keystore_pass = "android"
           EOF
           done
-          cat ~/.config/godot/editor_settings-$V.tres
 
       - name: Importar el proyecto
         run: |
-          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tail -20 || true
+          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tee import.log | tail -15 || true
 
-      - name: Prueba de oro de Glicko-2 (GDScript frente al núcleo TypeScript)
+      - name: Pruebas de oro (Glicko-2 y reglas, frente al núcleo TypeScript y chess.js)
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          timeout 300 $G --headless --path godot -s tests/test_glicko2.gd 2>&1 | tee /tmp/test_glicko2.log
-          # un error de guion no siempre cambia el código de salida: se busca también en la salida
-          ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" /tmp/test_glicko2.log
-          grep -q "TODO OK" /tmp/test_glicko2.log
+          for T in test_glicko2 test_chess; do
+            timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
+            # un error de guion no siempre cambia el código de salida: se busca también en la salida
+            ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
+            grep -q "TODO OK" $T.log
+          done
+
+      - name: Capturas del tablero 3D
+        run: |
+          mkdir -p build/shots
+          export SHOTS_DIR=$GITHUB_WORKSPACE/build/shots
+          timeout 1500 xvfb-run -a -s "-screen 0 720x1280x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 720x1280 res://tests/shots.tscn > shots.log 2>&1 || true
+          grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|^   at:" shots.log | head -80 || true
+          ls -la build/shots
+
+      - name: Publicar capturas en la rama ci-shots
+        if: always()
+        run: |
+          mkdir -p build/shots
+          cp shots.log import.log test_chess.log build/shots/ 2>/dev/null || true
+          cd build/shots
+          git init -q
+          git checkout -q -b ci-shots
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Capturas de ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
+
+      - name: Las capturas terminaron y sin errores de guiones ni shaders
+        run: |
+          grep -q "SHOTS DONE" shots.log || { echo "Las capturas no terminaron"; tail -40 shots.log; exit 1; }
+          if grep -E "SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error|Failed to load script" shots.log import.log; then exit 1; fi
 
       - name: APK de depuración (arm64)
         env:
@@ -118,9 +156,9 @@ jobs:
           set -o pipefail
           mkdir -p build/android
           A=$GITHUB_WORKSPACE/build/android/Chessome-debug.apk
-          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-debug "Android Debug" $A 2>&1 | tail -40
+          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-debug "Android Debug" $A 2>&1 | tail -30
           ls -lh $A
-          unzip -l $A | tail -3
+          for f in assets/data/demo_puzzles.json; do unzip -l $A | grep -q " $f$" && echo "OK $f" || echo "FALTA $f"; done
 
       - name: Subir el APK
         uses: actions/upload-artifact@v4
@@ -129,3 +167,16 @@ jobs:
           path: build/android/Chessome-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      # Enlace fijo de descarga directa del último APK de la rama principal (sin entrar en Actions).
+      - name: APK en la versión preliminar «ultimo-apk»
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ultimo-apk
+          name: "Chessome · último APK de prueba"
+          prerelease: true
+          make_latest: false
+          body: "APK de depuración de la demo 3D (versión ${{ github.run_number }}, commit ${{ github.sha }})."
+          files: build/android/Chessome-debug.apk
+          overwrite_files: true
