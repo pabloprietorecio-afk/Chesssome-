@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { Chess, validateFen, type Move } from 'chess.js';
 import { COURSE, toFen, type Accept, type Exercise } from '../src/course/course';
 import { VALUE } from '../src/core/chessx';
-import { pieceName, sanEs, the } from '../src/core/lang';
+import { sanEs, the } from '../src/core/lang';
 import type { PieceType } from '../src/core/types';
 
 const OUT = fileURLToPath(new URL('../godot/data/curso.json', import.meta.url));
@@ -64,7 +64,7 @@ export function solveCollect(fen: string, hero: string, stars: string[], safe: b
         if (gi >= 0) mask |= 1 << gi;
         const path = [...node.path, uciOf(m)];
         if (mask === full) return { par: path.length, solution: path };
-        const key = `${m.to}:${mask}:${blacks.filter((b, i) => !(mask & (1 << (stars.length + i)))).join('')}`;
+        const key = `${m.to}:${mask}:${blacks.filter((_, i) => !(mask & (1 << (stars.length + i)))).join('')}`;
         if (seen.has(key)) continue;
         seen.add(key);
         next.push({ fen: afterFen, sq: m.to, mask, path });
