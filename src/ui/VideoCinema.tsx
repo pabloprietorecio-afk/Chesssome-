@@ -463,7 +463,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
   return (
     <section className="vc" data-clip={clip.id} data-phase={st.phase} data-stop={st.stop} data-question={qi} data-player={player} data-video={st.videoOn ? 'on' : 'off'}>
-      <div className="vc-stage" ref={stage} data-fit={compact ? 'on' : 'off'}>
+      <div className="vc-stage" ref={stage} data-fit={compact && shown ? 'on' : 'off'}>
         {compact ? (
           <p className="cm-kicker vc-compact-head">{clip.subtitle}</p>
         ) : (
