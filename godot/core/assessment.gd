@@ -51,6 +51,28 @@ const FAMILY_NAME := {
 const ERROR_KINDS := ["mate", "hangMoved", "hangOther", "material", "worse", "missed", "slower"]
 
 
+## Niveles del 0 al 10 por dificultad: el suelo de cada uno (ver LEVEL_FLOORS en src/core/assessment.ts).
+const LEVEL_FLOORS := [0.0, 600.0, 750.0, 900.0, 1050.0, 1200.0, 1350.0, 1500.0, 1650.0, 1800.0, 2000.0]
+
+
+static func level_of(rating: float) -> int:
+	var level := 0
+	for i in LEVEL_FLOORS.size():
+		if rating >= float(LEVEL_FLOORS[i]):
+			level = i
+	return level
+
+
+## «900–1049»: el tramo de un nivel.
+static func level_span(level: int) -> String:
+	var lo := int(LEVEL_FLOORS[level])
+	if level + 1 >= LEVEL_FLOORS.size():
+		return "%d o más" % lo
+	if level == 0:
+		return "menos de %d" % int(LEVEL_FLOORS[1])
+	return "%d–%d" % [lo, int(LEVEL_FLOORS[level + 1]) - 1]
+
+
 ## Lo que la evaluación necesita saber de un problema de data/demo_puzzles.json.
 static func item_of(p: Dictionary) -> Dictionary:
 	return {

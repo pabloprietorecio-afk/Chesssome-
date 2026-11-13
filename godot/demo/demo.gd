@@ -1158,7 +1158,7 @@ func _refresh(animate: bool = true) -> void:
 	if mode == "learn":
 		counter.text = "Aprende a jugar"
 	elif level_pill.visible:
-		(level_pill.get_meta("label_node") as Label).text = "Nivel %d" % int(round(float(player["rating"]["r"])))
+		(level_pill.get_meta("label_node") as Label).text = "Nivel %d" % Assessment.level_of(float(player["rating"]["r"]))
 		counter.text = ""
 	elif mode == "test":
 		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
@@ -1372,8 +1372,12 @@ func _build_card() -> void:
 			if done and _rating_shown.size() == 2:
 				var up := float(_rating_shown[1]) >= float(_rating_shown[0])
 				var chip_tint := _tint("mint" if up else "peach")
-				chips.add_child(_chip("Nivel %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
-			chips.add_child(_chip("Dificultad %d" % rating, _c("field"), _c("ink")))
+				var lv0 := Assessment.level_of(float(_rating_shown[0]))
+				var lv1 := Assessment.level_of(float(_rating_shown[1]))
+				if lv1 > lv0:
+					chips.add_child(_chip("¡Subes al nivel %d!" % lv1, chip_tint[0], chip_tint[1]))
+				chips.add_child(_chip("Puntuación %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
+			chips.add_child(_chip("Nivel %d · %d" % [Assessment.level_of(float(rating)), rating], _c("field"), _c("ink")))
 			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet")))
 		var chips_pad := _pad(0, 8, 0, 0)
 		chips_pad.add_child(chips)
@@ -3318,15 +3322,14 @@ func _open_progress(kind: String = "progress") -> void:
 	# El nivel.
 	body.add_child(_spacer(4.0))
 	body.add_child(_centered(_para("TU NIVEL" if kind != "result" else "RESULTADO DEL TEST", F_CAP, _c("quiet"), font_semibold)))
-	var level_text := str(int(round(r)))
+	var level := Assessment.level_of(r)
+	var level_text := "Nivel %d" % level
 	var limit_note := ""
 	if r < float(limits["min"]):
-		level_text = "Menos de %d" % int(limits["min"])
-		limit_note = "Esta muestra de problemas casi no tiene otros más fáciles: por debajo de ese nivel el número no es fiable."
+		limit_note = "Casi no hay problemas más fáciles que los de este nivel: tu puntuación exacta aún no es fiable."
 	elif r > float(limits["max"]):
-		level_text = "Más de %d" % int(limits["max"])
-		limit_note = "Esta muestra de problemas casi no tiene otros más difíciles: por encima de ese nivel el número no es fiable."
-	var number := _centered(_para(level_text, F_LARGE + 44 if limit_note == "" else F_LARGE, _c("ink"), font_display))
+		limit_note = "Casi no hay problemas más difíciles que los de este nivel: tu puntuación exacta aún no es fiable."
+	var number := _centered(_para(level_text, F_LARGE + 44, _c("ink"), font_display))
 	number.add_theme_constant_override("line_spacing", -8)
 	body.add_child(number)
 	var band_row := CenterContainer.new()
@@ -3338,7 +3341,7 @@ func _open_progress(kind: String = "progress") -> void:
 	body.add_child(_centered(_para(str(band["blurb"]), F_BODY, _c("ink"), font_regular)))
 	body.add_child(_spacer(10.0))
 	var margin := int(round(2.0 * float(rating["rd"]) / 10.0)) * 10
-	var small := "Margen: ±%d. Se afina con cada problema. Es la escala de los problemas de Lichess, no Elo." % margin
+	var small := "Puntuación %d (margen ±%d). Se afina con cada problema. Es la escala de los problemas de Lichess, no Elo." % [int(round(r)), margin]
 	if limit_note != "":
 		small = limit_note + " " + small
 	if test_skipped:
@@ -3394,6 +3397,41 @@ func _open_progress(kind: String = "progress") -> void:
 	if not few.is_empty():
 		rows.add_child(_profile_row("chart", "sky", "Con pocos datos todavía", _sentence("; ".join(few) + ".")))
 	rows.add_child(_profile_row("info", "mint", "Sin medir todavía", "Desarrollo, seguridad del rey y estrategia. Los problemas tácticos no las miden: hacen falta posiciones de otro tipo."))
+
+	# Los niveles: dónde está y cuántos problemas de cada uno ha resuelto.
+	body.add_child(_spacer(40.0))
+	body.add_child(_text("NIVELES", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(12.0))
+	var levels_made := _panel()
+	body.add_child(levels_made[0])
+	var solved := {}
+	for t: Dictionary in tries:
+		if bool(t["correct"]):
+			solved[str(t["id"])] = true
+	var per_level := {}
+	var done_level := {}
+	for item: Dictionary in pool:
+		var lv := Assessment.level_of(float(item["rating"]))
+		per_level[lv] = int(per_level.get(lv, 0)) + 1
+		if solved.has(str(item["id"])):
+			done_level[lv] = int(done_level.get(lv, 0)) + 1
+	var tints := ["peach", "mint", "lilac", "sky", "butter", "rose"]
+	for lv in Assessment.LEVEL_FLOORS.size():
+		if not per_level.has(lv):
+			continue
+		var line := "%d de %d problemas resueltos · puntuación %s" % [int(done_level.get(lv, 0)), int(per_level[lv]), Assessment.level_span(lv)]
+		var state := ""
+		if lv == level:
+			state = "here"
+		var row := _profile_row("flag" if lv == level else "check", str(tints[lv % tints.size()]), "Nivel %d" % lv, line)
+		if state == "here":
+			var here := _chip("Estás aquí", _tint("lilac")[0], _tint("lilac")[1])
+			here.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			var line_box := HBoxContainer.new()
+			line_box.add_child(_spacer_w(116.0))
+			line_box.add_child(here)
+			row.add_child(line_box)
+		(levels_made[1] as VBoxContainer).add_child(row)
 
 	# El plan.
 	body.add_child(_spacer(40.0))

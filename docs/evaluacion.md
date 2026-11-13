@@ -55,7 +55,7 @@ desaprovechada 1.094, pérdida de material 771 y ganaba igual 7.
 | Tipo de error | Sí | Clase de la primera jugada equivocada |
 | Capacidad táctica | Sí, por familias | Aciertos frente a los previstos en cada familia de motivos |
 | Visión de mate | Sí | Problemas cuya solución acaba en mate; el test incluye al menos dos |
-| Cálculo de variantes | Sí | Problemas de tres jugadas o más (al menos dos en el test) y si se falla tras acertar la primera |
+| Cálculo de variantes | Sí, desde el nivel 3 | Problemas de tres jugadas o más (al menos dos en el test) y si se falla tras acertar la primera. Por debajo de unos 900 casi no hay problemas largos (4 de 96 en los niveles 0–2): ahí queda «Pocos datos» |
 | Reconocimiento de amenazas | En parte | Cuántos fallos castiga la respuesta inmediata del rival (mate o pieza a tiro) |
 | Piezas desprotegidas | En parte | Las dos clases de error de pieza a tiro. Problemas específicos casi no hay (2 en la muestra) |
 | Tiempo empleado | Sí | Mediana hasta la primera jugada; fallos hechos en menos de la mitad del tiempo de los aciertos |
@@ -67,6 +67,14 @@ Las tres que no se miden necesitan posiciones de otro tipo (aperturas y medio ju
 desarrollar, cuál es la peor pieza, cambiar o no). No existen en una base libre que podamos usar tal cual:
 habría que construirlas a partir de partidas reales y validarlas con el motor y con un entrenador. La app lo
 dice («Sin medir todavía») en lugar de inventar una cifra.
+
+## Niveles
+
+Los problemas y el jugador se agrupan en niveles del 0 al 10 por dificultad (`LEVEL_FLOORS` en
+`src/core/assessment.ts`): 0 por debajo de 600, después tramos de 150 puntos hasta 1650 y más anchos arriba
+(1650, 1800, 2000). El jugador ve «Nivel 3», no un número suelto; la puntuación exacta queda en la página de
+progreso. La app lleva hasta 32 problemas de cada nivel, repartidos por dificultad dentro del nivel, y la página
+de progreso cuenta cuántos de cada nivel ha resuelto. Saltar el test empieza en el nivel 0.
 
 ## Cómo se califica una dimensión
 
@@ -93,10 +101,11 @@ dice («Sin medir todavía») en lugar de inventar una cifra.
 
 ## Límites conocidos
 
-- **La muestra no llega a quien empieza.** De sus 420 problemas solo 2 están por debajo de 1000 y 29 por
-  debajo de 1200 (la app lleva esos 29 y 121 más). Por debajo de unos 1080 el test no puede dar un número
-  fiable y la pantalla dice «Menos de 1078». Hace falta importar problemas fáciles del volcado oficial de
-  Lichess y analizarlos.
+- **Problemas fáciles (resuelto el 13 nov).** La muestra inicial casi no tenía problemas por debajo de 1100. Se
+  descargó el volcado oficial de Lichess en la CI (`.github/workflows/problemas.yml`), se eligieron 1.330 problemas
+  por debajo de 1300 (popularidad ≥ 80 y jugados al menos 1.000 veces, 70 por cada tramo de 50 puntos) y se
+  analizaron con Stockfish: 1.219 verificados (un trabajo de análisis se colgó y se descartó). Con los anteriores,
+  el paquete tiene 1.639 problemas, de 399 a 2.147.
 - **Los umbrales son decisiones de diseño sin validar**: las cuotas del test, el −0,08, el mínimo de tres
   intentos, la mitad del tiempo, la probabilidad 0,75. Hay que contrastarlos con jugadores reales.
 - El nivel está en la escala de problemas de Lichess. **No es Elo** ni hay una tabla de conversión verificada.

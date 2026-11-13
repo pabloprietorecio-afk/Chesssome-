@@ -107,7 +107,7 @@ El paquete de datos está marcado como `provisional: true`: es una muestra de de
 - Diseñado, sin implementar: fondos de escena con piezas de ajedrez bajo el tiempo del usuario (MET Norway, opcional; ver `docs/estilo-2d.md`).
 - Diseñado, sin implementar: «Cine de finales», películas generadas por la app con filtro de cine antiguo (ver `docs/cine-finales.md`). Va después de las piezas 3D.
 - Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor» con contorno de tinta, tablero 3D de lado a lado con toque y arrastre, zoom con dos dedos, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista (`docs/sistema-3d.md`).
-- Hecho (Godot): pantalla de problema para móvil con 150 problemas reales: tarjeta del entrenador bajo el tablero, ayudas graduadas y opciones en una hoja inferior.
+- Hecho (Godot): pantalla de problema para móvil con 330 problemas reales (niveles 0 a 10): tarjeta del entrenador bajo el tablero, ayudas graduadas y opciones en una hoja inferior.
 - Hecho (Godot): test de nivel enriquecido (tipo de error, visión de mate, cálculo, tiempo), perfil, plan y entrenamiento adaptado. Qué mide y qué no, en `docs/evaluacion.md`.
 - Hecho (Godot): cuatro acabados a elegir: madera, mármol y metal (realistas, con texturas fotográficas CC0 y reflejos de estudio) e ilustrado.
 - Sin verificar: el APK en un teléfono real (rendimiento, tacto y sentido del giro con los sensores).

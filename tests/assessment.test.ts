@@ -53,7 +53,9 @@ describe('Evaluación enriquecida', () => {
         expect(n).toBeLessThanOrEqual(TEST.maxItems);
         expect(new Set(state.tries.map((t) => t.id)).size).toBe(n);
         expect(state.tries.filter((t) => t.mate).length).toBeGreaterThanOrEqual(TEST.mateItems);
-        expect(state.tries.filter((t) => t.steps >= 3).length).toBeGreaterThanOrEqual(TEST.longItems);
+        // Por debajo de unos 900 casi no hay problemas de tres jugadas (los fáciles de Lichess son cortos):
+        // ahí el cálculo queda sin medir («Pocos datos»), en vez de poner problemas muy por encima del nivel.
+        if (state.rating.r >= 900) expect(state.tries.filter((t) => t.steps >= 3).length).toBeGreaterThanOrEqual(TEST.longItems);
       }
     }
   });

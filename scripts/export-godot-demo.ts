@@ -12,28 +12,37 @@
  * incertidumbre de su rating, la clave y la familia de su tema, si acaba en mate y cuántas jugadas pide.
  * Y cada jugada equivocada, su clase de error (ErrorKind).
  *
- * Uso: npx tsx scripts/export-godot-demo.ts [cuántos]   (npm run godot:demo)
+ * Uso: npx tsx scripts/export-godot-demo.ts [problemas por nivel]   (npm run godot:demo)
  * Después hay que regenerar los datos de oro (npm run golden): la prueba de la evaluación usa esta lista.
  */
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Chess } from 'chess.js';
-import { itemOf } from '../src/core/assessment';
+import { itemOf, levelOf } from '../src/core/assessment';
 import { explain, explainSolved, type Explanation, type Line } from '../src/core/explain';
 import { unpackPuzzle } from '../src/core/pack';
 import { primaryTheme, themeName } from '../src/core/themes';
 import type { AnalyzedPuzzle, PuzzlePack } from '../src/core/types';
 
 const DATA = fileURLToPath(new URL('../godot/data/', import.meta.url));
-const n = Number(process.argv[2] ?? 150);
+/** Problemas por nivel (0–10) que lleva la app. */
+const perLevel = Number(process.argv[2] ?? 32);
 const pack = JSON.parse(readFileSync(new URL('../src/data/puzzles.pack.json', import.meta.url), 'utf8')) as PuzzlePack;
 const all = pack.puzzles.map((p) => unpackPuzzle(p, pack.engine)).sort((a, b) => a.rating - b.rating);
-// De fácil a difícil. La muestra de desarrollo tiene muy pocos problemas fáciles (29 por debajo de 1200 y solo
-// 2 por debajo de 1000): van todos, para medir lo mejor posible a quien empieza. El resto, repartidos por dificultad.
-const easy = all.filter((p) => p.rating < 1200);
-const rest = all.filter((p) => p.rating >= 1200);
-const m = Math.max(2, n - easy.length);
-const picked = [...easy, ...Array.from({ length: m }, (_, i) => rest[Math.floor((i * (rest.length - 1)) / (m - 1))])].slice(0, Math.max(n, 2));
+// Por niveles (src/core/assessment.ts, LEVEL_FLOORS): de cada nivel, hasta `perLevel` problemas repartidos por
+// dificultad dentro del nivel. Así hay problemas para todos, también para quien empieza.
+const byLevel = new Map<number, AnalyzedPuzzle[]>();
+for (const p of all) {
+  const lv = levelOf(p.rating);
+  if (!byLevel.has(lv)) byLevel.set(lv, []);
+  byLevel.get(lv)!.push(p);
+}
+const picked: AnalyzedPuzzle[] = [];
+for (const lv of [...byLevel.keys()].sort((x, y) => x - y)) {
+  const list = byLevel.get(lv)!;
+  const k = Math.min(perLevel, list.length);
+  for (let i = 0; i < k; i++) picked.push(list[k === 1 ? 0 : Math.floor((i * (list.length - 1)) / (k - 1))]);
+}
 
 const list = {
   provisional: true,
@@ -52,6 +61,7 @@ const list = {
       family: item.family,
       mate: item.mate,
       steps: item.steps,
+      level: levelOf(p.rating),
       game: p.gameUrl,
     };
   }),

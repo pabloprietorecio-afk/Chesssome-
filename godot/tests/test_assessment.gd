@@ -27,6 +27,8 @@ func _init() -> void:
 	_cerca("rango mínimo", rango["min"], datos["range"]["min"], 1e-9)
 	_cerca("rango máximo", rango["max"], datos["range"]["max"], 1e-9)
 
+	for c: Dictionary in datos["levels"]:
+		_igual("nivel de %d" % int(c["r"]), Assessment.level_of(float(c["r"])), int(c["level"]))
 	var pruebas := 0
 	var entrenos := 0
 	for run: Dictionary in datos["runs"]:

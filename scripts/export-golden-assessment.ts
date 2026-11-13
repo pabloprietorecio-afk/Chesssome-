@@ -13,6 +13,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  levelOf,
   measurableRange,
   nextTestItem,
   pickReviewItem,
@@ -123,7 +124,8 @@ export function buildAssessmentGolden(): object {
       },
     });
   }
-  return { generatedBy: 'scripts/export-golden-assessment.ts (núcleo TypeScript, src/core/assessment.ts)', poolSize: pool.length, range: measurableRange(pool), runs };
+  const levels = [0, 399, 599, 600, 749, 750, 1049, 1050, 1499, 1500, 1999, 2000, 2500].map((r) => ({ r, level: levelOf(r) }));
+  return { generatedBy: 'scripts/export-golden-assessment.ts (núcleo TypeScript, src/core/assessment.ts)', poolSize: pool.length, range: measurableRange(pool), levels, runs };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

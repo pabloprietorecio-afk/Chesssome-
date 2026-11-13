@@ -18,7 +18,7 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | Texturas | `godot/textures/` | Fotografías de madera, mármol y metal (CC0), con su procedencia en `LEEME.md` |
 | Colecciones | `godot/sets/clasico/`, `godot/sets/fichas/` | Figuras (seis piezas y el marco, en GLB) y fichas planas (una ficha y el atlas de iconos) |
 | Modelado | `tools/pieces/` | Genera los GLB y los iconos desde campos de distancia (código propio) |
-| Pantalla | `godot/demo/` | La app: bienvenida, experiencia, test de nivel, resultado y plan, entrenamiento adaptado y progreso, sobre 150 problemas reales (`godot/data/demo_puzzles.json`) |
+| Pantalla | `godot/demo/` | La app: bienvenida, experiencia, test de nivel, resultado y plan, entrenamiento adaptado y progreso, sobre 330 problemas reales, hasta 32 por nivel (`godot/data/demo_puzzles.json`) |
 | Iconos | `godot/ui/` | Atlas de iconos (Phosphor, MIT, y piezas propias) y emblema; los genera `tools/ui/icons.mjs` |
 | Tipografía | `godot/fonts/` | Inter e Inter Display (OFL 1.1) |
 | Capturas | `godot/tests/shots.gd` | 98 capturas: tablero, fichas, la pantalla de problema y el test de nivel, con toques y gestos simulados |
@@ -149,7 +149,7 @@ límites de estas grabaciones, en `godot/sounds/LEEME.md`.
 
 - **Las explicaciones viajan redactadas.** `npm run godot:demo` (`scripts/export-godot-demo.ts`) genera, con la
   misma capa explicativa del prototipo web, una explicación por cada jugada legal de cada punto de decisión
-  (11.575 para los 150 problemas, 11,3 MB) y la del problema resuelto. La app no redacta ni calcula ajedrez
+  (21.134 para los 330 problemas, 20,3 MB) y la del problema resuelto. La app no redacta ni calcula ajedrez
   nuevo. Tras regenerarlas hay que regenerar también los datos de oro (`npm run golden`).
 - **Test de nivel, perfil y plan**: ver `docs/evaluacion.md`. La app arranca por la bienvenida, la pregunta de
   experiencia y el test; después entrena con problemas elegidos por el nivel y los puntos flojos. El jugador
@@ -230,7 +230,7 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
   `npm run golden` regenera los datos y `tests/golden-godot.test.ts` falla si quedan desfasados.
 - `godot/tests/test_explain.gd`: cada jugada legal de cada punto de decisión tiene su explicación (ni una más ni
   una menos), con sus cuatro niveles y su clase de error, y todas las variantes se pueden jugar legalmente con
-  las reglas en GDScript (11.575 explicaciones).
+  las reglas en GDScript (21.134 explicaciones).
 - `godot/tests/test_assessment.gd`: el test de nivel, el perfil y el plan dan lo mismo que el núcleo TypeScript
   (ocho jugadores simulados).
 - Capturas: la CI dibuja con Vulkan por software (lavapipe) a 1080 × 2400 y las publica en la rama `ci-shots`

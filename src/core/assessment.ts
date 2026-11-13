@@ -72,6 +72,22 @@ export function itemOf(p: { id: string; rating: number; rd: number; themes: stri
   return { id: p.id, rating: p.rating, rd: p.rd, theme, family: familyOf(theme), mate: p.themes.includes('mate'), steps: Math.floor(p.moves.length / 2) };
 }
 
+// ---------- Niveles ----------
+
+/**
+ * Niveles del 0 al 10, por dificultad (escala de problemas de Lichess). Sirven para ordenar los problemas y
+ * para decirle al jugador dónde está sin enseñarle un número suelto. Suelo de cada nivel: el nivel 0 es todo
+ * lo que queda por debajo de 600 (los problemas más fáciles que hay, desde unos 400).
+ * Decisión de diseño: tramos de 150 puntos abajo, donde se aprende deprisa, y más anchos arriba.
+ */
+export const LEVEL_FLOORS = [0, 600, 750, 900, 1050, 1200, 1350, 1500, 1650, 1800, 2000];
+
+export function levelOf(rating: number): number {
+  let level = 0;
+  for (let i = 0; i < LEVEL_FLOORS.length; i++) if (rating >= LEVEL_FLOORS[i]) level = i;
+  return level;
+}
+
 // ---------- Intentos ----------
 
 export type Help = '' | 'hint' | 'step' | 'solution' | 'giveup';
