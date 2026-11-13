@@ -407,7 +407,7 @@ assert(bi.kind === 'video' && bi.ply === '116' && /tras 58…Re5/.test(bi.label)
 assert((await page.evaluate(() => document.documentElement.dataset.immersive)) === undefined, 'al acabar, vuelve la barra de secciones');
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
 
-// ── G. Gukesh–Carlsen: el tablero se gira hacia quien juega y un error histórico se enseña como tal. ──
+// ── G. Gukesh–Carlsen: el tablero no se gira y un error histórico se enseña como tal. ──
 // Para probar el caso «sin marcas», este dispositivo deja el clip sin marcas (interruptor de desarrollo).
 await page.evaluate(() => {
   localStorage.setItem('chessome.dev.localMarks', '1');
@@ -431,7 +431,7 @@ await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]'
 await openGC('Ir directo');
 await waitAttr('phase', 'asking');
 await sleep(400);
-await move('f4e2', 'b'); // 52…Ce2+??, lo que jugó Carlsen (negras abajo)
+await move('f4e2', 'w'); // 52…Ce2+??, lo que jugó Carlsen (el tablero no gira)
 assert(/Fue un error en la partida/.test(await panel()), 'Ce2+ debe presentarse como error de la partida: ' + (await panel()));
 await clickText('Repetir');
 await sleep(300);

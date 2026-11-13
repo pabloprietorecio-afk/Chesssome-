@@ -183,6 +183,6 @@ export const CLIPS: ClipSource[] = [
     ],
     outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
     notes:
-      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s, 52…Ce2+ en ~281 s (pausa en 277,5), y el final fechado al segundo (60.Cb2 365,9; 60…e3 371,2; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). Las jugadas 53–59 no se pueden fechar con fiabilidad, así que el vídeo se reanuda en 364,4 s y el tablero salta a la posición de 60.Cb2. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt). En las preguntas, el tablero se orienta hacia quien juega (negras en la primera, blancas en las otras dos).',
+      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s, 52…Ce2+ en ~281 s (pausa en 277,5), y el final fechado al segundo (60.Cb2 365,9; 60…e3 371,2; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). Las jugadas 53–59 no se pueden fechar con fiabilidad, así que el vídeo se reanuda en 364,4 s y el tablero salta a la posición de 60.Cb2. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
   },
 ];

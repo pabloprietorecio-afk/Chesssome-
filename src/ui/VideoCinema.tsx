@@ -124,7 +124,7 @@ export function VideoCinemaScreen(): JSX.Element {
               <div className="vc-card-top">
                 {q0 && (
                   <div className="vc-card-board" aria-hidden="true">
-                    <Board2D fen={q0.fen} orientation={q0.mover} interactive={false} lastMove={q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null} animMode="none" coordinates={false} />
+                    <Board2D fen={q0.fen} orientation={c.orientation} interactive={false} lastMove={q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null} animMode="none" coordinates={false} />
                   </div>
                 )}
                 <div className="vc-card-text">
@@ -436,8 +436,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     if (cur.key >= 0 && m) syncedAnim = { from: m.from, to: m.to, key: cur.key, captured: m.captured };
   } else prevSynced.current = null;
   const shown = synced ? { fen: synced.fen, last: synced.last, anim: syncedAnim } : board;
-  // En las preguntas, el tablero se orienta hacia quien juega; el tablero del vídeo, como el clip.
-  const boardSide = !synced && st.phase === 'asking' && q ? q.mover : clip.orientation;
+  // El tablero no se gira: siempre la orientación del clip.
+  const boardSide = clip.orientation;
 
   // Mientras se ve o se responde, la cabecera y el crédito se encogen para que vídeo, pregunta y tablero quepan en un móvil.
   const compact = st.phase === 'watching' || st.phase === 'asking' || st.phase === 'reveal';
