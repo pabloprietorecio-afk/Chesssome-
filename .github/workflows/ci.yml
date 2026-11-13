@@ -126,7 +126,7 @@ jobs:
         run: |
           mkdir -p build/shots
           export SHOTS_DIR=$GITHUB_WORKSPACE/build/shots
-          timeout 1500 xvfb-run -a -s "-screen 0 720x1600x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 720x1600 res://tests/shots.tscn > shots.log 2>&1 || true
+          timeout 1500 xvfb-run -a -s "-screen 0 1080x2400x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 1080x2400 res://tests/shots.tscn > shots.log 2>&1 || true
           grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|^   at:" shots.log | head -80 || true
           ls -la build/shots
 

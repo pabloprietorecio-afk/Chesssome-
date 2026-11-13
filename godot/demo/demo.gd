@@ -3,9 +3,9 @@ extends Control
 ## Todavía no es el entrenamiento completo (sin test de nivel ni explicaciones): sirve para juzgar el 3D
 ## y la pantalla de problema en un móvil. El estilo sigue docs/estilo-2d.md (inspirado en WakeAgenda).
 ##
-## Composición en un móvil alto: barra arriba, botones abajo (zona del pulgar) y, centrado entre ambos,
-## un bloque con el titular, el tablero de lado a lado y la ficha del problema. Las opciones no ocupan
-## pantalla: se abren en una hoja inferior.
+## Composición en un móvil alto: barra arriba, el tablero de lado a lado, debajo la tarjeta del entrenador
+## (qué toca, qué ha pasado y la ficha del problema: ahí irá la explicación) y, al pie, los botones, en la
+## zona del pulgar. Las opciones no ocupan pantalla: se abren en una hoja inferior.
 
 enum Phase { INTRO, SOLVING, WRONG, REPLY, SOLVED, SHOWING, SHOWN }
 
@@ -221,9 +221,6 @@ func _chip(text: String, fill: Color, fg: Color) -> PanelContainer:
 	sb.content_margin_right = 24.0
 	sb.content_margin_top = 10.0
 	sb.content_margin_bottom = 10.0
-	sb.shadow_color = _c("shadow")
-	sb.shadow_size = 8
-	sb.shadow_offset = Vector2(0.0, 3.0)
 	chip.add_theme_stylebox_override("panel", sb)
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -301,31 +298,10 @@ func _build_chrome() -> void:
 	bar.add_child(_icon_button("view", _on_toggle_view))
 	bar.add_child(_icon_button("options", _open_options))
 
+	# El espacio que sobra en un móvil alto va sobre todo arriba: el tablero queda más cerca del pulgar.
 	var top_gap := _spacer(0.0, true)
-	top_gap.size_flags_stretch_ratio = 0.8
+	top_gap.size_flags_stretch_ratio = 1.0
 	chrome.add_child(top_gap)
-
-	# Titular, pegado al tablero.
-	var head_pad := _pad(40, 0, 40, 10)
-	chrome.add_child(head_pad)
-	var head := VBoxContainer.new()
-	head.add_theme_constant_override("separation", 0)
-	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	head_pad.add_child(head)
-	var title_row := HBoxContainer.new()
-	title_row.add_theme_constant_override("separation", 18)
-	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	head.add_child(title_row)
-	turn_dot = Panel.new()
-	turn_dot.custom_minimum_size = Vector2(40.0, 40.0)
-	turn_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	turn_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_row.add_child(turn_dot)
-	title = _text("", 68, _c("ink"), font_display)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_row.add_child(title)
-	subtitle = _text("", 34, _c("quiet"), font_regular)
-	head.add_child(subtitle)
 
 	# Hueco del tablero: el tablero 3D se coloca encima de este hueco (ver _place_board).
 	board_slot = Control.new()
@@ -333,18 +309,50 @@ func _build_chrome() -> void:
 	board_slot.item_rect_changed.connect(_place_board)
 	chrome.add_child(board_slot)
 
-	# Ficha del problema: etiquetas bajo el tablero.
-	var meta_pad := _pad(36, 14, 36, 0)
-	chrome.add_child(meta_pad)
+	# Tarjeta del entrenador, bajo el tablero: titular, una línea de apoyo y la ficha del problema.
+	var card_pad := _pad(28, 20, 28, 0)
+	chrome.add_child(card_pad)
+	var card := PanelContainer.new()
+	var card_style := StyleBoxFlat.new()
+	card_style.bg_color = _c("surface")
+	card_style.set_corner_radius_all(48)
+	card_style.content_margin_left = 40.0
+	card_style.content_margin_right = 40.0
+	card_style.content_margin_top = 30.0
+	card_style.content_margin_bottom = 34.0
+	card_style.shadow_color = _c("shadow")
+	card_style.shadow_size = 30
+	card_style.shadow_offset = Vector2(0.0, 12.0)
+	card.add_theme_stylebox_override("panel", card_style)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_pad.add_child(card)
+	var head := VBoxContainer.new()
+	head.add_theme_constant_override("separation", 2)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(head)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 18)
+	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(title_row)
+	turn_dot = Panel.new()
+	turn_dot.custom_minimum_size = Vector2(38.0, 38.0)
+	turn_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	turn_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_row.add_child(turn_dot)
+	title = _text("", 58, _c("ink"), font_display)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title)
+	subtitle = _text("", 33, _c("quiet"), font_regular)
+	head.add_child(subtitle)
+	head.add_child(_spacer(20.0))
 	meta_row = HBoxContainer.new()
-	meta_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	meta_row.add_theme_constant_override("separation", 12)
-	meta_row.custom_minimum_size = Vector2(0.0, 64.0)
+	meta_row.custom_minimum_size = Vector2(0.0, 58.0)
 	meta_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	meta_pad.add_child(meta_row)
+	head.add_child(meta_row)
 
-	var bottom_gap := _spacer(0.0, true)
-	bottom_gap.size_flags_stretch_ratio = 1.2
+	var bottom_gap := _spacer(28.0, true)
+	bottom_gap.size_flags_stretch_ratio = 0.45
 	chrome.add_child(bottom_gap)
 
 	# Acciones, abajo.
@@ -463,8 +471,8 @@ func _refresh() -> void:
 	if total > 0:
 		if done and theme_name != "":
 			meta_row.add_child(_chip(theme_name, _c("accent_soft"), _c("accent_text")))
-		meta_row.add_child(_chip("Dificultad %d" % rating, _c("surface"), _c("ink")))
-		meta_row.add_child(_chip("Problema real de Lichess", _c("surface"), _c("quiet")))
+		meta_row.add_child(_chip("Dificultad %d" % rating, _c("field"), _c("ink")))
+		meta_row.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet")))
 
 	left_button.text = "Repetir" if done else "Ver solución"
 	right_button.text = "Siguiente" if done else "Saltar"

@@ -39,8 +39,9 @@ var show_coordinates := true
 var camera: Camera3D
 var cam_pitch := DEFAULT_PITCH
 var cam_yaw := 0.0
-## Campo de visión horizontal: estrecho, para que las casillas del fondo no se encojan.
-var cam_fov := 20.0
+## Campo de visión horizontal: muy estrecho, para que las casillas del fondo apenas se encojan
+## (con 14° y la vista inclinada, la fila del fondo mide un 90 % de la de delante).
+var cam_fov := 14.0
 ## Margen libre alrededor del tablero al encuadrar, en fracción del ancho o del alto de la vista:
 ## izquierda, arriba, derecha, abajo.
 var fit_pad := Vector4(0.012, 0.02, 0.012, 0.02)
@@ -185,10 +186,10 @@ func _build() -> void:
 		var edge := 0 if side == 0 else 7
 		for i in 8:
 			# Letra de la columna: esquina inferior derecha de la casilla de la fila más cercana.
-			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5 + 0.37 * sgn, 0.012, 3.84 * sgn), yaw, (i + edge) % 2 == 0))
-			# Número de la fila: esquina inferior izquierda de la casilla de la columna de la izquierda
-			# (la esquina de delante: las piezas tapan hacia atrás, no hacia delante).
-			group.add_child(_make_label(str(i + 1), Vector3(-3.86 * sgn, 0.012, 3.5 - i + 0.33 * sgn), yaw, (edge + i) % 2 == 0))
+			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5 + 0.385 * sgn, 0.012, 3.865 * sgn), yaw, (i + edge) % 2 == 0))
+			# Número de la fila: esquina inferior izquierda de la casilla de la columna de la izquierda, pegado
+			# al borde. Ahí no lo tapan ni la base de la pieza de su casilla ni el cuerpo de la de delante.
+			group.add_child(_make_label(str(i + 1), Vector3(-3.93 * sgn, 0.012, 3.5 - i + 0.365 * sgn), yaw, (edge + i) % 2 == 0))
 		add_child(group)
 		_labels.append(group)
 
@@ -223,7 +224,7 @@ func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label
 	if _label_font != null:
 		l.font = _label_font
 	l.font_size = 48
-	l.pixel_size = 0.0042
+	l.pixel_size = 0.0036
 	l.outline_size = 0
 	l.shaded = false
 	l.position = pos
@@ -595,6 +596,9 @@ func apply_camera() -> void:
 		sx -= ((lim_r - x_max) - (x_min - lim_l)) * 0.5 * th * dist
 		sy -= ((lim_t - y_max) - (y_min - lim_b)) * 0.5 * tv * dist
 	camera.fov = cam_fov
+	# Planos de recorte ceñidos al tablero: con la cámara lejos, así no se pierde precisión de profundidad.
+	camera.near = maxf(0.5, dist - 16.0)
+	camera.far = dist + 30.0
 	camera.transform = Transform3D(Basis(right, up, back), right * sx + up * sy + back * dist)
 	_key.directional_shadow_max_distance = dist + 12.0
 
