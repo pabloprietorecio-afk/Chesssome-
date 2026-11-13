@@ -22,7 +22,7 @@ head -c 600 "$OUT/polyhaven_textures.json"; echo
 head -c 900 "$OUT/ambientcg_wood.json"; echo
 
 # 2. Miniaturas de las maderas y de los entornos de estudio de Poly Haven.
-if [ "${STAGE:-thumbs}" = "thumbs" ]; then
+if [ "${STAGE:-thumbs}" = "thumbs" ] && [ ! -f tools/assets/want.txt ]; then
   jq -r 'to_entries[] | select(((.value.categories // []) | map(ascii_downcase) | index("wood")) != null) | "\(.key)\t\(.value.thumbnail_url // "")"' "$OUT/polyhaven_textures.json" > "$OUT/wood_ids.tsv" || true
   jq -r 'to_entries[] | select(((.value.categories // []) | map(ascii_downcase) | index("studio")) != null) | "\(.key)\t\(.value.thumbnail_url // "")"' "$OUT/polyhaven_hdris.json" > "$OUT/studio_ids.tsv" || true
   wc -l "$OUT"/*.tsv
