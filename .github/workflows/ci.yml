@@ -135,12 +135,15 @@ jobs:
         run: |
           mkdir -p build/shots
           cp shots.log import.log test_chess.log build/shots/ 2>/dev/null || true
+          # main publica en ci-shots; las demás ramas, en ci-shots-<rama>, para que dos trabajos en paralelo no se pisen.
+          SHOTS_BRANCH=ci-shots
+          if [ "$GITHUB_REF_NAME" != "main" ]; then SHOTS_BRANCH="ci-shots-${GITHUB_REF_NAME//\//-}"; fi
           cd build/shots
           git init -q
-          git checkout -q -b ci-shots
+          git checkout -q -b "$SHOTS_BRANCH"
           git add -A
           git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Capturas de ${GITHUB_SHA::7}"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$SHOTS_BRANCH"
 
       - name: Las capturas terminaron y sin errores de guiones ni shaders
         run: |

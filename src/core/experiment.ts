@@ -45,6 +45,7 @@ export function assignThemes(themesByFrequency: string[], userSeed: string): Rec
 // ---------- Registro de eventos ----------
 
 export type EventType =
+  | 'cine'
   | 'placement_start'
   | 'placement_done'
   | 'puzzle_shown'

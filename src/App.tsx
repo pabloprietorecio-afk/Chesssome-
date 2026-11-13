@@ -2,6 +2,7 @@ import { useEffect, type JSX } from 'react';
 import { go, useAppState, type Screen } from './app/store';
 import { PlacementScreen, TrainScreen } from './ui/Play';
 import { PieceSvg } from './ui/pieces';
+import { VideoCinemaScreen } from './ui/VideoCinema';
 import { ExperienceScreen, Home, PlacementResult, Profile, SettingsScreen, StudyScreen, Welcome } from './ui/screens';
 
 /** Iconos propios de la barra de secciones (trazo de 2 px, como los de WakeAgenda). */
@@ -55,6 +56,10 @@ function useTheme(mode: 'auto' | 'light' | 'dark'): void {
 
 export function App(): JSX.Element {
   const s = useAppState();
+  // Enlace directo al cine: …/#cine
+  useEffect(() => {
+    if (window.location.hash === '#cine') go('cinema');
+  }, []);
   const placed = !!s.rating && !!s.placement?.done;
   useTheme(s.settings.theme ?? 'auto');
   const view = ((): JSX.Element => {
@@ -75,6 +80,9 @@ export function App(): JSX.Element {
         return <SettingsScreen />;
       case 'study':
         return <StudyScreen />;
+      case 'cinema':
+        // El cine no necesita el test de nivel: se puede probar directamente (también con la dirección #cine).
+        return <VideoCinemaScreen />;
       default:
         return placed ? <Home /> : <Welcome />;
     }

@@ -1,0 +1,702 @@
+{
+ "engine": "Stockfish 19 Lite WASM",
+ "depth": 20,
+ "reports": [
+  {
+   "id": "oposicion",
+   "ok": true,
+   "errors": [],
+   "warnings": [
+    "1…Kf7: el rival no elige la defensa más tenaz (Kd8); el resultado no cambia.",
+    "2…Kf6: el rival no elige la defensa más tenaz (Ke8); el resultado no cambia.",
+    "4…Kf8: el rival no elige la defensa más tenaz (Kg6); el resultado no cambia."
+   ],
+   "plies": [
+    {
+     "n": "1.",
+     "san": "Ke5",
+     "mover": "hero",
+     "score": {
+      "cp": 649
+     },
+     "best": "Ke5",
+     "bestScore": {
+      "cp": 649
+     }
+    },
+    {
+     "n": "1…",
+     "san": "Kf7",
+     "mover": "rival",
+     "score": {
+      "cp": -9165
+     },
+     "best": "Kd8",
+     "bestScore": {
+      "cp": -978
+     }
+    },
+    {
+     "n": "2.",
+     "san": "Kd6",
+     "mover": "hero",
+     "score": {
+      "cp": 1018
+     },
+     "best": "Kf5",
+     "bestScore": {
+      "cp": 4120
+     }
+    },
+    {
+     "n": "2…",
+     "san": "Kf6",
+     "mover": "rival",
+     "score": {
+      "cp": -991
+     },
+     "best": "Ke8",
+     "bestScore": {
+      "cp": -652
+     }
+    },
+    {
+     "n": "3.",
+     "san": "e5+",
+     "mover": "hero",
+     "score": {
+      "cp": 632
+     },
+     "best": "e5+",
+     "bestScore": {
+      "cp": 632
+     }
+    },
+    {
+     "n": "3…",
+     "san": "Kf7",
+     "mover": "rival",
+     "score": {
+      "mate": -13
+     },
+     "best": "Kg5",
+     "bestScore": {
+      "mate": -14
+     }
+    },
+    {
+     "n": "4.",
+     "san": "Kd7",
+     "mover": "hero",
+     "score": {
+      "cp": 966
+     },
+     "best": "e6+",
+     "bestScore": {
+      "mate": 12
+     }
+    },
+    {
+     "n": "4…",
+     "san": "Kf8",
+     "mover": "rival",
+     "score": {
+      "mate": -10
+     },
+     "best": "Kg6",
+     "bestScore": {
+      "cp": -988
+     }
+    },
+    {
+     "n": "5.",
+     "san": "e6",
+     "mover": "hero",
+     "score": {
+      "mate": 10
+     },
+     "best": "e6",
+     "bestScore": {
+      "mate": 10
+     }
+    },
+    {
+     "n": "5…",
+     "san": "Kg7",
+     "mover": "rival",
+     "score": {
+      "mate": -9
+     },
+     "best": "Kg7",
+     "bestScore": {
+      "mate": -9
+     }
+    },
+    {
+     "n": "6.",
+     "san": "e7",
+     "mover": "hero",
+     "score": {
+      "mate": 11
+     },
+     "best": "e7",
+     "bestScore": {
+      "mate": 11
+     }
+    },
+    {
+     "n": "6…",
+     "san": "Kf7",
+     "mover": "rival",
+     "score": {
+      "mate": -5
+     },
+     "best": "Kf6",
+     "bestScore": {
+      "mate": -10
+     }
+    },
+    {
+     "n": "7.",
+     "san": "e8=Q+",
+     "mover": "hero",
+     "score": {
+      "mate": 5
+     },
+     "best": "e8=Q+",
+     "bestScore": {
+      "mate": 5
+     }
+    }
+   ],
+   "pauses": [
+    {
+     "step": 1,
+     "answer": "Ke5",
+     "keeps": [
+      "Ke5"
+     ],
+     "spoils": [
+      "Kg5",
+      "Kg4",
+      "e5",
+      "Kf4",
+      "Kg6"
+     ],
+     "unclear": []
+    }
+   ],
+   "certificate": {
+    "kind": "mate",
+    "ply": 6,
+    "mateIn": 13
+   }
+  },
+  {
+   "id": "saavedra",
+   "ok": true,
+   "errors": [],
+   "warnings": [
+    "1.c7: dudosa a profundidad 20; a 28: {\"cp\":302}.",
+    "2.Kb5: dudosa a profundidad 20; a 28: {\"cp\":657}.",
+    "3.Kb4: dudosa a profundidad 20; a 28: {\"cp\":664}.",
+    "3…Rd4+: el rival no elige la defensa más tenaz (Kb2); el resultado no cambia.",
+    "4…Rd3+: el rival no elige la defensa más tenaz (Kb1); el resultado no cambia.",
+    "5…Rd4: el rival no elige la defensa más tenaz (Rg3); el resultado no cambia."
+   ],
+   "plies": [
+    {
+     "n": "1.",
+     "san": "c7",
+     "mover": "hero",
+     "score": {
+      "cp": 302
+     },
+     "best": "c7",
+     "bestScore": {
+      "cp": 302
+     }
+    },
+    {
+     "n": "1…",
+     "san": "Rd6+",
+     "mover": "rival",
+     "score": {
+      "cp": -645
+     },
+     "best": "Rd1",
+     "bestScore": {
+      "cp": -519
+     }
+    },
+    {
+     "n": "2.",
+     "san": "Kb5",
+     "mover": "hero",
+     "score": {
+      "cp": 657
+     },
+     "best": "Kb5",
+     "bestScore": {
+      "cp": 657
+     }
+    },
+    {
+     "n": "2…",
+     "san": "Rd5+",
+     "mover": "rival",
+     "score": {
+      "cp": -642
+     },
+     "best": "Kb2",
+     "bestScore": {
+      "cp": -566
+     }
+    },
+    {
+     "n": "3.",
+     "san": "Kb4",
+     "mover": "hero",
+     "score": {
+      "cp": 664
+     },
+     "best": "Kb4",
+     "bestScore": {
+      "cp": 664
+     }
+    },
+    {
+     "n": "3…",
+     "san": "Rd4+",
+     "mover": "rival",
+     "score": {
+      "cp": -588
+     },
+     "best": "Kb2",
+     "bestScore": {
+      "cp": -359
+     }
+    },
+    {
+     "n": "4.",
+     "san": "Kb3",
+     "mover": "hero",
+     "score": {
+      "cp": 440
+     },
+     "best": "Kc3",
+     "bestScore": {
+      "cp": 616
+     }
+    },
+    {
+     "n": "4…",
+     "san": "Rd3+",
+     "mover": "rival",
+     "score": {
+      "cp": -856
+     },
+     "best": "Kb1",
+     "bestScore": {
+      "cp": -594
+     }
+    },
+    {
+     "n": "5.",
+     "san": "Kc2",
+     "mover": "hero",
+     "score": {
+      "cp": 613
+     },
+     "best": "Kc2",
+     "bestScore": {
+      "cp": 613
+     }
+    },
+    {
+     "n": "5…",
+     "san": "Rd4",
+     "mover": "rival",
+     "score": {
+      "mate": -10
+     },
+     "best": "Rg3",
+     "bestScore": {
+      "cp": -815
+     }
+    },
+    {
+     "n": "6.",
+     "san": "c8=R",
+     "mover": "hero",
+     "score": {
+      "mate": 10
+     },
+     "best": "c8=R",
+     "bestScore": {
+      "mate": 10
+     }
+    },
+    {
+     "n": "6…",
+     "san": "Ra4",
+     "mover": "rival",
+     "score": {
+      "mate": -7
+     },
+     "best": "Rd2+",
+     "bestScore": {
+      "mate": -10
+     }
+    },
+    {
+     "n": "7.",
+     "san": "Kb3",
+     "mover": "hero",
+     "score": {
+      "mate": 7
+     },
+     "best": "Kb3",
+     "bestScore": {
+      "mate": 7
+     }
+    }
+   ],
+   "pauses": [
+    {
+     "step": 3,
+     "answer": "Kb5",
+     "keeps": [
+      "Kb5"
+     ],
+     "spoils": [
+      "Kb7",
+      "Ka7",
+      "Kc5",
+      "Ka5"
+     ],
+     "unclear": []
+    },
+    {
+     "step": 12,
+     "answer": "c8=R",
+     "keeps": [
+      "c8=R"
+     ],
+     "spoils": [
+      "c8=Q",
+      "c8=N",
+      "c8=B",
+      "Kc1"
+     ],
+     "unclear": [
+      "Kc3",
+      "Kb3"
+     ]
+    }
+   ],
+   "certificate": {
+    "kind": "mate",
+    "ply": 10,
+    "mateIn": 10
+   }
+  },
+  {
+   "id": "lucena",
+   "ok": true,
+   "errors": [],
+   "warnings": [
+    "1…Ra1: el rival no elige la defensa más tenaz (Kf6); el resultado no cambia."
+   ],
+   "plies": [
+    {
+     "n": "1.",
+     "san": "Rd4",
+     "mover": "hero",
+     "score": {
+      "cp": 494
+     },
+     "best": "Kc7",
+     "bestScore": {
+      "cp": 533
+     }
+    },
+    {
+     "n": "1…",
+     "san": "Ra1",
+     "mover": "rival",
+     "score": {
+      "cp": -2510
+     },
+     "best": "Kf6",
+     "bestScore": {
+      "cp": -1027
+     }
+    },
+    {
+     "n": "2.",
+     "san": "Kc7",
+     "mover": "hero",
+     "score": {
+      "cp": 674
+     },
+     "best": "Rg4",
+     "bestScore": {
+      "cp": 721
+     }
+    },
+    {
+     "n": "2…",
+     "san": "Rc1+",
+     "mover": "rival",
+     "score": {
+      "cp": -620
+     },
+     "best": "Rc1+",
+     "bestScore": {
+      "cp": -620
+     }
+    },
+    {
+     "n": "3.",
+     "san": "Kb6",
+     "mover": "hero",
+     "score": {
+      "cp": 609
+     },
+     "best": "Kb6",
+     "bestScore": {
+      "cp": 609
+     }
+    },
+    {
+     "n": "3…",
+     "san": "Rb1+",
+     "mover": "rival",
+     "score": {
+      "cp": -605
+     },
+     "best": "Rh1",
+     "bestScore": {
+      "cp": -586
+     }
+    },
+    {
+     "n": "4.",
+     "san": "Kc6",
+     "mover": "hero",
+     "score": {
+      "cp": 610
+     },
+     "best": "Kc7",
+     "bestScore": {
+      "cp": 612
+     }
+    },
+    {
+     "n": "4…",
+     "san": "Rc1+",
+     "mover": "rival",
+     "score": {
+      "cp": -997
+     },
+     "best": "Ke6",
+     "bestScore": {
+      "cp": -906
+     }
+    },
+    {
+     "n": "5.",
+     "san": "Kb5",
+     "mover": "hero",
+     "score": {
+      "cp": 680
+     },
+     "best": "Kb5",
+     "bestScore": {
+      "cp": 680
+     }
+    },
+    {
+     "n": "5…",
+     "san": "Rb1+",
+     "mover": "rival",
+     "score": {
+      "cp": -1202
+     },
+     "best": "Rb1+",
+     "bestScore": {
+      "cp": -1202
+     }
+    },
+    {
+     "n": "6.",
+     "san": "Rb4",
+     "mover": "hero",
+     "score": {
+      "cp": 761
+     },
+     "best": "Rb4",
+     "bestScore": {
+      "cp": 761
+     }
+    }
+   ],
+   "pauses": [
+    {
+     "step": 11,
+     "answer": "Rb4",
+     "keeps": [
+      "Rb4",
+      "Kc6",
+      "Ka6"
+     ],
+     "spoils": [
+      "Ka4",
+      "Ka5",
+      "Kc5",
+      "Kc4"
+     ],
+     "unclear": []
+    }
+   ],
+   "certificate": {
+    "kind": "mate",
+    "ply": 12,
+    "mateIn": 12
+   }
+  },
+  {
+   "id": "philidor",
+   "ok": true,
+   "errors": [],
+   "warnings": [],
+   "plies": [
+    {
+     "n": "1.",
+     "san": "e6",
+     "mover": "rival",
+     "score": {
+      "cp": 0
+     },
+     "best": "Rc7",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "1…",
+     "san": "Rb1",
+     "mover": "hero",
+     "score": {
+      "cp": 0
+     },
+     "best": "Rb1",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "2.",
+     "san": "Kd6",
+     "mover": "rival",
+     "score": {
+      "cp": 0
+     },
+     "best": "Rh7",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "2…",
+     "san": "Rd1+",
+     "mover": "hero",
+     "score": {
+      "cp": 0
+     },
+     "best": "Rd1+",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "3.",
+     "san": "Ke5",
+     "mover": "rival",
+     "score": {
+      "cp": 0
+     },
+     "best": "Kc5",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "3…",
+     "san": "Re1+",
+     "mover": "hero",
+     "score": {
+      "cp": 0
+     },
+     "best": "Rh1",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "4.",
+     "san": "Kd6",
+     "mover": "rival",
+     "score": {
+      "cp": 0
+     },
+     "best": "Kf6",
+     "bestScore": {
+      "cp": 0
+     }
+    },
+    {
+     "n": "4…",
+     "san": "Rd1+",
+     "mover": "hero",
+     "score": {
+      "cp": 0
+     },
+     "best": "Rd1+",
+     "bestScore": {
+      "cp": 0
+     }
+    }
+   ],
+   "pauses": [
+    {
+     "step": 2,
+     "answer": "Rb1",
+     "keeps": [
+      "Rb1",
+      "Kf8",
+      "Rb3",
+      "Kd8",
+      "Rb5+",
+      "Rb8",
+      "Rb2",
+      "Rb4"
+     ],
+     "spoils": [
+      "Rxe6",
+      "Ra6",
+      "Rb7",
+      "Rd6+",
+      "Rc6"
+     ],
+     "unclear": []
+    }
+   ],
+   "certificate": {
+    "kind": "engine-draw",
+    "depth": 20
+   }
+  }
+ ]
+}

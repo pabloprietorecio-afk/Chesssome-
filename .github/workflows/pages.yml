@@ -1,0 +1,49 @@
+name: Web de pruebas (rama gh-pages)
+
+# Construye el prototipo web y lo deja en la rama gh-pages, lista para GitHub Pages.
+# Sirve para probar en el móvil lo que no se puede probar sin una web real, como el «Cine de finales»
+# con YouTube (su reproductor exige una página servida por https).
+#
+# La web solo se hace pública cuando el dueño del repositorio activa Pages a mano:
+# Settings → Pages → Build and deployment → Source: «Deploy from a branch» → rama gh-pages, carpeta / (root).
+on:
+  push:
+    branches: [cine-video]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Construir y dejar en gh-pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Prototipo en un solo archivo
+        env:
+          # Se muestra en el editor de marcas (Diagnóstico) para saber qué versión se está viendo.
+          VITE_BUILD: ${{ github.ref_name }}@${{ github.sha }}
+        run: npm run build:single
+      - name: Publicar en la rama gh-pages
+        run: |
+          mkdir -p _site
+          cp dist/chessome.html _site/index.html
+          touch _site/.nojekyll
+          cd _site
+          git init -q
+          git checkout -q -b gh-pages
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Web de pruebas: ${GITHUB_REF_NAME}@${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" gh-pages
+          echo "Rama gh-pages actualizada con ${GITHUB_REF_NAME}@${GITHUB_SHA::7}"

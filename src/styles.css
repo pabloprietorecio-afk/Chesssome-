@@ -1071,3 +1071,486 @@ a {
     box-shadow: inset 0 0 0 1px rgba(42, 53, 88, 0.9), 0 12px 32px -6px rgba(0, 0, 0, 0.6);
   }
 }
+
+/* ───────────── Cine de finales ─────────────
+   El filtro de película antigua solo afecta a la «pantalla» (tablero y rótulos).
+   Parpadeo y vaivén solo con animaciones completas o rápidas y sin «reducir movimiento».
+   El parpadeo es de ±3 % de luminosidad y a menos de 3 cambios por segundo (por debajo del umbral de destellos de WCAG 2.3.1). */
+.cine {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.cine-screen {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #0b0b0b;
+  padding: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  filter: grayscale(1) sepia(0.16) contrast(1.12);
+}
+.cine-board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cine-grain,
+.cine-scratches,
+.cine-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cine-grain {
+  opacity: 0.2;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.cine-vignette {
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.55) 100%);
+}
+.cine-scratches {
+  opacity: 0;
+}
+.cine-motion {
+  animation: cine-weave 3.3s ease-in-out infinite;
+}
+.cine-motion .cine-board {
+  animation: cine-flicker 2.4s steps(1) infinite;
+}
+.cine-motion .cine-grain {
+  animation: cine-grain 0.5s steps(1) infinite;
+}
+.cine-motion .cine-scratches {
+  opacity: 0.55;
+  background:
+    linear-gradient(90deg, transparent 0, transparent calc(var(--x1, 23%) - 0.5px), rgba(245, 240, 225, 0.7) var(--x1, 23%), transparent calc(var(--x1, 23%) + 0.5px)),
+    linear-gradient(90deg, transparent 0, transparent calc(var(--x2, 71%) - 0.5px), rgba(20, 20, 20, 0.6) var(--x2, 71%), transparent calc(var(--x2, 71%) + 0.6px));
+  animation: cine-scratch 2.9s steps(1) infinite;
+}
+@keyframes cine-weave {
+  0%, 100% { transform: translate(0, 0); }
+  30% { transform: translate(0.4px, -0.5px); }
+  60% { transform: translate(-0.3px, 0.4px); }
+}
+@keyframes cine-flicker {
+  0% { opacity: 1; }
+  17% { opacity: 0.97; }
+  33% { opacity: 1; }
+  58% { opacity: 0.975; }
+  75% { opacity: 1; }
+}
+@keyframes cine-grain {
+  0% { background-position: 0 0; }
+  50% { background-position: -47px 31px; }
+}
+@keyframes cine-scratch {
+  0% { --x1: 23%; --x2: 71%; opacity: 0.5; }
+  35% { --x1: 64%; --x2: 12%; opacity: 0.25; }
+  70% { --x1: 41%; --x2: 88%; opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cine-motion,
+  .cine-motion .cine-board,
+  .cine-motion .cine-grain,
+  .cine-motion .cine-scratches {
+    animation: none;
+  }
+}
+
+/* Rótulos de cine mudo: crema sobre negro (15:1), tipografía con remate y doble marco. */
+.cine-card,
+.cine-sub,
+.cine-poster {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #efe6cf;
+}
+.cine-card {
+  position: absolute;
+  inset: 12% 8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 22px 20px;
+  background: #0d0d0d;
+  border: 2px solid #d9cfb3;
+  outline: 1px solid #d9cfb3;
+  outline-offset: -9px;
+  border-radius: 6px;
+  font-size: clamp(1.02rem, 4.4vw, 1.4rem);
+  line-height: 1.45;
+}
+.cine-card p {
+  margin: 0;
+}
+.cine-card strong {
+  font-size: clamp(1.5rem, 7vw, 2.2rem);
+  letter-spacing: 0.04em;
+}
+.cine-card-kind {
+  font-size: 0.78em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.cine-card-end {
+  inset: auto 10px 10px 10px;
+  padding: 10px;
+  outline-offset: -6px;
+}
+.cine-card-end strong {
+  letter-spacing: 0.3em;
+  font-size: 1.4rem;
+}
+.cine-sub {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: center;
+  align-items: baseline;
+  padding: 8px 12px;
+  background: rgba(8, 8, 8, 0.82);
+  font-size: 1rem;
+  text-align: center;
+}
+.cine-move {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.cine-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.cine-controls button {
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.cine-controls button:disabled {
+  opacity: 0.45;
+}
+.cine-controls .cine-play {
+  min-width: 64px;
+  background: linear-gradient(90deg, var(--accent-light), var(--accent-deep));
+  border: 0;
+  box-shadow: var(--glow);
+}
+.cine-question {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 2px 0 4px;
+}
+.cine-hint-text {
+  margin: 0;
+  color: var(--on-amber);
+  background: var(--soft-amber);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.cine-ask,
+.cine-answer {
+  border-left: 0;
+  border-top: 5px solid var(--info);
+}
+.cine-o-answer,
+.cine-o-also-good {
+  border-top-color: var(--good-fill);
+}
+.cine-o-spoils {
+  border-top-color: var(--bad-fill);
+}
+.cine-o-unclear,
+.cine-o-unknown {
+  border-top-color: var(--mid-fill);
+}
+
+/* Cartelera */
+.cine-bill {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.cine-poster {
+  width: 100%;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 18px 12px;
+  background: radial-gradient(ellipse at center, #222 0%, #0b0b0b 80%);
+  border: 2px solid #d9cfb3;
+  outline: 1px solid #d9cfb3;
+  outline-offset: -8px;
+  border-radius: 10px;
+}
+.cine-poster-kind {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.cine-poster-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.cine-poster-sub,
+.cine-poster-meta {
+  font-size: 0.85rem;
+  color: #d8cfb8;
+}
+.cine-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px 18px;
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--tint);
+  color: var(--ink);
+}
+.cine-entry-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* ───────────── Cine con vídeo real ─────────────
+   El reproductor de YouTube ocupa .vc-player entero. Normas que se reflejan aquí:
+   - mínimo 200 × 200 px;
+   - nada delante del reproductor (el cartel .vc-poster solo existe cuando aún no hay reproductor);
+   - sin esquinas redondeadas ni recortes sobre el reproductor. */
+.vc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.vc-head h2 {
+  margin: 2px 0 4px;
+}
+.vc-compact-head {
+  margin: 0;
+}
+.vc-video,
+.vc-ask {
+  scroll-margin-top: 8px;
+}
+.vc-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+  background: #0b0b0b;
+}
+.vc-player,
+.vc-player iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.vc-poster {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 20px;
+  color: #efe6cf;
+  background: radial-gradient(ellipse at center, #242424 0%, #0b0b0b 80%);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+.vc-poster p {
+  margin: 0;
+}
+.vc-yt-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.vc-credit,
+.vc-loading {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--quiet);
+}
+.vc-panel {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-left: 0;
+}
+.vc-panel p {
+  margin: 0;
+}
+.vc-board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.vc-question {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.vc-hint {
+  color: var(--on-amber);
+  background: var(--soft-amber);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.vc-warn {
+  color: var(--mid);
+  font-size: 0.92rem;
+}
+.vc-ask,
+.vc-answer {
+  border-top: 5px solid var(--info);
+}
+.vc-o-answer,
+.vc-o-also-good {
+  border-top-color: var(--good-fill);
+}
+.vc-o-spoils,
+.vc-o-played-error {
+  border-top-color: var(--bad-fill);
+}
+.vc-o-unclear,
+.vc-o-unknown {
+  border-top-color: var(--mid-fill);
+}
+.vc-foot {
+  justify-content: space-between;
+}
+
+/* Cartelera de clips */
+.vc-bill {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+  display: grid;
+  gap: 12px;
+}
+.vc-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--tint);
+  color: var(--ink);
+}
+.vc-card-year {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  color: var(--quiet);
+}
+.vc-card-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.vc-card-sub,
+.vc-card-meta {
+  font-size: 0.9rem;
+  color: var(--quiet);
+}
+.vc-chip {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--soft-amber);
+  color: var(--on-amber);
+}
+.vc-chip-on {
+  background: var(--soft-green);
+  color: var(--good);
+}
+
+/* Editor de marcas */
+.vc-time {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.vc-marks {
+  display: grid;
+  gap: 10px;
+}
+.vc-mark {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  padding: 10px 12px;
+}
+.vc-mark-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.vc-mark-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.vc-mark-tools .cm-chip {
+  min-width: 48px;
+}
+.vc-json {
+  width: 100%;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--ink);
+  background: var(--line-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.vc-diag {
+  font-size: 0.85rem;
+  color: var(--quiet);
+}
+.vc-diag summary {
+  cursor: pointer;
+  min-height: 32px;
+}

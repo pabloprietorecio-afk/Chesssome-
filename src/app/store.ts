@@ -11,7 +11,7 @@ import type { Experience, PlacementState, ReviewItem } from '../core/training';
 import { THEMES_BY_FREQUENCY } from './data';
 import { BOARD_3D_READY } from '../ui/boardTypes';
 
-export type Screen = 'welcome' | 'experience' | 'placement' | 'placementResult' | 'home' | 'train' | 'profile' | 'settings' | 'study';
+export type Screen = 'welcome' | 'experience' | 'placement' | 'placementResult' | 'home' | 'train' | 'profile' | 'settings' | 'study' | 'cinema';
 
 /** Tema de color: el del sistema, claro u oscuro (como en WakeAgenda). */
 export type ThemeMode = 'auto' | 'light' | 'dark';

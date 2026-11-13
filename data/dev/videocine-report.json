@@ -1,0 +1,95 @@
+{
+ "engine": "Stockfish 19 Lite WASM",
+ "depth": 24,
+ "reports": [
+  {
+   "id": "ding-gukesh-2024-g14",
+   "ok": true,
+   "errors": [],
+   "warnings": [
+    "Sin marcas de tiempo: el clip no pausa solo; solo funciona «directo a la pregunta»."
+   ],
+   "questions": [
+    {
+     "ply": 110,
+     "played": "55…Rxf2",
+     "target": "win",
+     "playedCls": "keeps",
+     "proof": "engine",
+     "keeps": [
+      "Rxf2"
+     ],
+     "spoils": [
+      "Rb1+",
+      "Rb8",
+      "Rb6",
+      "Rb4",
+      "Rb3",
+      "Rb5",
+      "Ra2",
+      "Bd5",
+      "f4",
+      "Bd7",
+      "Bc4",
+      "Rc2",
+      "Rd2",
+      "Kd4",
+      "Rb7",
+      "Re2",
+      "Bf7",
+      "Bb3",
+      "Ba2",
+      "Kf6",
+      "Bg8",
+      "Bc8",
+      "Kd6"
+     ],
+     "unclear": []
+    },
+    {
+     "ply": 112,
+     "played": "56…Bd5",
+     "target": "win",
+     "playedCls": "keeps",
+     "proof": "engine",
+     "keeps": [
+      "Bd5"
+     ],
+     "spoils": [
+      "f4",
+      "Kf6",
+      "Bb3",
+      "Ba2",
+      "Bc4",
+      "Bf7",
+      "Bg8",
+      "Bc8",
+      "Kd6",
+      "Kd4",
+      "Bd7"
+     ],
+     "unclear": []
+    },
+    {
+     "ply": 116,
+     "played": "58…Ke5",
+     "target": "win",
+     "playedCls": "keeps",
+     "proof": "engine",
+     "keeps": [
+      "Ke5"
+     ],
+     "spoils": [
+      "Kd6",
+      "Ke6",
+      "Kc6",
+      "Kc5",
+      "f4+",
+      "Kc4"
+     ],
+     "unclear": []
+    }
+   ]
+  }
+ ]
+}

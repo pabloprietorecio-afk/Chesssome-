@@ -25,6 +25,10 @@ export function Welcome(): JSX.Element {
       <button className="cm-primary cm-big" onClick={() => go('experience')}>
         Empezar
       </button>
+      <button className="cine-entry" onClick={() => go('cinema')}>
+        <span className="cine-entry-title">Cine de finales</span>
+        <span className="cm-quiet">Finales reales en vídeo: se para antes de la jugada y te pregunta qué jugarías</span>
+      </button>
       <p className="cm-quiet cm-small">
         Prototipo de investigación. Sin registro: tu progreso y tus respuestas se guardan solo en este navegador. Problemas de la base abierta de
         Lichess (CC0), analizados con {PACK.engine.name}.
@@ -143,6 +147,10 @@ export function Home(): JSX.Element {
         </ul>
       )}
       {tips.length === 0 && <p className="cm-quiet">El entrenador comentará tus puntos fuertes y débiles cuando tenga al menos 5 intentos por tema.</p>}
+      <button className="cine-entry" onClick={() => go('cinema')}>
+        <span className="cine-entry-title">Cine de finales</span>
+        <span className="cm-quiet">Finales reales en vídeo: se para antes de la jugada y te pregunta qué jugarías</span>
+      </button>
     </section>
   );
 }

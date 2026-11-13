@@ -35,7 +35,7 @@ npm run pipeline:report -- --max 420   # escribe src/data/puzzles.pack.json y da
 ```
 
 `scripts/show-explanations.ts` y `scripts/one.ts` imprimen explicaciones para revisarlas a ojo.
-`scripts/e2e.mjs` recorre la app en Chrome sin interfaz y guarda capturas en `shots/`.
+`scripts/e2e.mjs` recorre la app en Chrome sin interfaz y guarda capturas en `shots/`; `scripts/e2e-videocine.mjs` hace lo mismo con el «Cine de finales» (con la API de YouTube simulada) y `scripts/e2e-cine.mjs`, con las películas generadas.
 
 ## Versión Godot (Android)
 
@@ -97,7 +97,7 @@ El paquete de datos está marcado como `provisional: true`: es una muestra de de
 - Hecho: estilo 2D inspirado en WakeAgenda (tokens, componentes, barra flotante y tablero «cielo»; ver `docs/estilo-2d.md`).
 - Hecho: tema claro, oscuro o automático (Ajustes).
 - Diseñado, sin implementar: fondos de escena con piezas de ajedrez bajo el tiempo del usuario (MET Norway, opcional; ver `docs/estilo-2d.md`).
-- Diseñado, sin implementar: «Cine de finales», películas generadas por la app con filtro de cine antiguo (ver `docs/cine-finales.md`). Va después de las piezas 3D.
+- Prototipo (web 2D): «Cine de finales» con vídeo real de YouTube que se para solo antes de la jugada y pregunta «¿Qué jugarías?», con editor de marcas de tiempo. Probado con un reproductor simulado; falta la prueba con YouTube real y marcar el primer clip. Web de pruebas en la rama `gh-pages` (ver `docs/cine-finales.md`). Las películas generadas sin vídeo quedan aparcadas.
 - Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor», tablero 3D con toque y arrastre, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista, y demo con 60 problemas reales (`docs/sistema-3d.md`).
 - Sin verificar: el APK en un teléfono real (rendimiento, tacto y sentido del giro con los sensores).
 - Pendiente (Godot): tablero 2D y alternancia 2D/3D para medir H3, explicaciones y entrenamiento, niveles de calidad, sonido y partículas.
