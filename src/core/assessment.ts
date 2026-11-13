@@ -324,6 +324,18 @@ export function trainingWeight(item: Item, pr: Profile, boost = 1.5): number {
   return 1 + boost * lack * 5;
 }
 
+/** Elige uno al azar, con más probabilidad cuanto mayor es su peso. */
+function weightedPick(cands: Item[], pr: Profile, rand: Rand): Item {
+  const weights = cands.map((p) => trainingWeight(p, pr));
+  const total = weights.reduce((s, w) => s + w, 0);
+  let x = rand() * total;
+  for (let i = 0; i < cands.length; i++) {
+    x -= weights[i];
+    if (x <= 0) return cands[i];
+  }
+  return cands[cands.length - 1];
+}
+
 /**
  * Siguiente problema del entrenamiento: no visto, cerca de la dificultad objetivo y, entre los que cumplen,
  * con más probabilidad los de las dimensiones flojas. null si ya no quedan problemas sin ver.
@@ -334,19 +346,17 @@ export function pickTrainingItem(rating: Rating, tries: Try[], pool: Item[], ran
   if (unseen.length === 0) return null;
   const target = ratingForSuccess(rating.r, TARGET_SUCCESS);
   const pr = profile(tries);
-  for (const window of [60, 120, 200, 400, 5000]) {
+  for (const window of [60, 120, 200, 400]) {
     const cands = unseen.filter((p) => Math.abs(p.rating - target) <= window);
-    if (cands.length < Math.min(6, unseen.length)) continue;
-    const weights = cands.map((p) => trainingWeight(p, pr));
-    const total = weights.reduce((s, w) => s + w, 0);
-    let x = rand() * total;
-    for (let i = 0; i < cands.length; i++) {
-      x -= weights[i];
-      if (x <= 0) return cands[i];
-    }
-    return cands[cands.length - 1];
+    if (cands.length >= Math.min(6, unseen.length)) return weightedPick(cands, pr, rand);
   }
-  return unseen[0];
+  // No hay bastantes cerca (le pasa a quien queda por debajo o por encima de la muestra): los seis más próximos.
+  const nearest = unseen
+    .map((p, i) => ({ p, i, d: Math.abs(p.rating - target) }))
+    .sort((a, b) => a.d - b.d || a.i - b.i)
+    .slice(0, 6)
+    .map((x) => x.p);
+  return weightedPick(nearest, pr, rand);
 }
 
 /**

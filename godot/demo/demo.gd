@@ -2941,12 +2941,15 @@ func _open_progress(kind: String = "progress") -> void:
 	var made := _panel()
 	var rows: VBoxContainer = made[1]
 	body.add_child(made[0])
-	var shown := 0
+	# Las familias con datos para calificarlas van cada una en su fila; las demás, juntas al final.
+	var few := PackedStringArray()
 	for f: Dictionary in pr["families"]:
-		if shown >= 5:
-			break
-		shown += 1
-		rows.add_child(_profile_row("whatif", "sky", str(Assessment.FAMILY_NAME.get(f["family"], f["family"])), "%d de %d acertados" % [int(f["correct"]), int(f["n"])], Assessment.status(f)))
+		var family_name := str(Assessment.FAMILY_NAME.get(f["family"], f["family"]))
+		var family_state := Assessment.status(f)
+		if family_state == "few":
+			few.append("%s, %d de %d" % [family_name.to_lower(), int(f["correct"]), int(f["n"])])
+		else:
+			rows.add_child(_profile_row("whatif", "sky", family_name, "%d de %d acertados" % [int(f["correct"]), int(f["n"])], family_state))
 	var mate: Dictionary = pr["mate"]
 	if int(mate["n"]) > 0:
 		rows.add_child(_profile_row("target", "rose", "Visión de mate", "%d de %d problemas que acaban en mate" % [int(mate["correct"]), int(mate["n"])], Assessment.status(mate)))
@@ -2973,6 +2976,8 @@ func _open_progress(kind: String = "progress") -> void:
 		if int(time["rushed"]) > 0:
 			pace += " %d fallos llegaron en menos de la mitad de lo que tardas cuando aciertas." % int(time["rushed"])
 		rows.add_child(_profile_row("clock", "butter", "Ritmo", pace))
+	if not few.is_empty():
+		rows.add_child(_profile_row("chart", "sky", "Con pocos datos todavía", _sentence("; ".join(few) + ".")))
 	rows.add_child(_profile_row("info", "mint", "Sin medir todavía", "Desarrollo, seguridad del rey y estrategia. Los problemas tácticos no las miden: hacen falta posiciones de otro tipo."))
 
 	# El plan.
@@ -3019,6 +3024,11 @@ func _open_progress(kind: String = "progress") -> void:
 		footer.add_child(keep)
 		footer.add_child(_spacer(8.0))
 		footer.add_child(_button("retry", "Repetir el test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+
+
+## La frase, con su primera letra en mayúscula.
+func _sentence(text: String) -> String:
+	return text.substr(0, 1).to_upper() + text.substr(1) if text != "" else ""
 
 
 ## Clase de una jugada equivocada, como nombre corto para la lista del perfil.

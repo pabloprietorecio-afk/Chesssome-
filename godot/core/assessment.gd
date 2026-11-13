@@ -326,6 +326,28 @@ static func training_weight(item: Dictionary, pr: Dictionary, boost: float = 1.5
 	return 1.0 + boost * lack * 5.0
 
 
+## Elige uno al azar (rand, de 0 a 1), con más probabilidad cuanto mayor es su peso.
+static func _weighted_pick(cands: Array, pr: Dictionary, rand: float) -> Dictionary:
+	var weights: Array[float] = []
+	var total := 0.0
+	for p: Dictionary in cands:
+		var w := training_weight(p, pr)
+		weights.append(w)
+		total += w
+	var x := rand * total
+	for i in cands.size():
+		x -= weights[i]
+		if x <= 0.0:
+			return cands[i]
+	return cands[cands.size() - 1]
+
+
+static func _nearer(a: Array, b: Array) -> bool:
+	if float(a[0]) != float(b[0]):
+		return float(a[0]) < float(b[0])
+	return int(a[1]) < int(b[1])
+
+
 ## Siguiente problema del entrenamiento: no visto, cerca de la dificultad objetivo y, entre los que cumplen,
 ## con más probabilidad los de las dimensiones flojas. {} si ya no quedan problemas sin ver. rand: de 0 a 1.
 static func pick_training_item(rating: Dictionary, tries: Array, pool: Array, rand: float) -> Dictionary:
@@ -340,26 +362,22 @@ static func pick_training_item(rating: Dictionary, tries: Array, pool: Array, ra
 		return {}
 	var target := Glicko2.rating_for_success(float(rating["r"]), TARGET_SUCCESS)
 	var pr := profile(tries)
-	for window: float in [60.0, 120.0, 200.0, 400.0, 5000.0]:
+	for window: float in [60.0, 120.0, 200.0, 400.0]:
 		var cands: Array = []
 		for p: Dictionary in unseen:
 			if absf(float(p["rating"]) - target) <= window:
 				cands.append(p)
-		if cands.size() < mini(6, unseen.size()):
-			continue
-		var weights: Array[float] = []
-		var total := 0.0
-		for p: Dictionary in cands:
-			var w := training_weight(p, pr)
-			weights.append(w)
-			total += w
-		var x := rand * total
-		for i in cands.size():
-			x -= weights[i]
-			if x <= 0.0:
-				return cands[i]
-		return cands[cands.size() - 1]
-	return unseen[0]
+		if cands.size() >= mini(6, unseen.size()):
+			return _weighted_pick(cands, pr, rand)
+	# No hay bastantes cerca (le pasa a quien queda por debajo o por encima de la muestra): los seis más próximos.
+	var order: Array = []
+	for i in unseen.size():
+		order.append([absf(float(unseen[i]["rating"]) - target), i])
+	order.sort_custom(Assessment._nearer)
+	var nearest: Array = []
+	for i in mini(6, order.size()):
+		nearest.append(unseen[int(order[i][1])])
+	return _weighted_pick(nearest, pr, rand)
 
 
 ## Repaso: cuando no quedan problemas sin ver, vuelve el que se falló hace más tiempo y no se ha resuelto
