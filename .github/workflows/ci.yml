@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     # «assets-fetch» y «sonidos-fetch» solo sirven para descargar candidatas (assets.yml, sonidos.yml).
-    branches-ignore: [assets-fetch, assets-src, sonidos-fetch, assets-snd]
+    branches-ignore: [assets-fetch, assets-src, sonidos-fetch, assets-snd, problemas-fetch, problemas-src]
   pull_request:
   workflow_dispatch:
 
