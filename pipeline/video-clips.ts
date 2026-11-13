@@ -188,6 +188,51 @@ export const CLIPS: ClipSource[] = [
     orientation: 'w',
     intro:
       'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Tras el error de Carlsen en la jugada 52, Gukesh tiene un caballo contra dos peones negros que avanzan, y a los dos les quedan segundos en el reloj.',
+    // Lección comprobada con Stockfish 19 Lite (profundidad 26, 13 nov 2026): tras 61.h6? e2 ganan las negras; tras 61.Cc4+
+    // pierden todas las jugadas de rey negro; tras 61…Re2, 62.Rf4 es la mejor (62.h6? queda igualada); tras 62.Rf4, la mejor
+    // defensa es 62…d2 63.Cxe3 Rd3 64.b4 d1=D 65.Cxd1, con ventaja decisiva de las blancas.
+    lesson: {
+      title: 'Por qué 61.Cc4+ gana y por qué abandonó Carlsen',
+      from: 120,
+      steps: [
+        {
+          moves: '',
+          text: 'Los peones negros de d3 y e3 están a dos pasos de coronar. Si las blancas no los frenan ya, …e2 y no hay forma de pararlos: por ejemplo, tras 61.h6? e2, según el motor ganan las negras.',
+          arrows: [
+            { from: 'e3', to: 'e1', tone: 'bad' },
+            { from: 'd3', to: 'd1', tone: 'bad' },
+          ],
+        },
+        {
+          moves: 'Nc4+',
+          text: '61.Cc4+ hace tres cosas a la vez. Da jaque, así que las negras tienen que mover el rey y no pueden avanzar un peón. Ataca el peón de e3. Y vigila d2, la casilla por la que tiene que pasar el peón de d3.',
+          arrows: [
+            { from: 'c4', to: 'e3', tone: 'good' },
+            { from: 'c4', to: 'd2', tone: 'good' },
+          ],
+        },
+        {
+          moves: 'Nc4+ Ke2',
+          text: 'Carlsen apartó el rey a e2, desde donde defiende los dos peones. Según el motor, cualquier jugada de rey pierde aquí.',
+          arrows: [
+            { from: 'e2', to: 'e3', tone: 'info' },
+            { from: 'e2', to: 'd3', tone: 'info' },
+          ],
+        },
+        {
+          moves: 'Nc4+ Ke2 Kf4',
+          text: '62.Rf4: el rey blanco también ataca e3. Ahora ese peón está atacado dos veces (rey y caballo) y defendido una sola (rey negro). Ojo: correr con el peón, 62.h6?, habría dejado la posición igualada según el motor.',
+          arrows: [
+            { from: 'f4', to: 'e3', tone: 'good' },
+            { from: 'c4', to: 'e3', tone: 'good' },
+          ],
+        },
+        {
+          moves: 'Nc4+ Ke2 Kf4 d2 Nxe3 Kd3 b4 d1=Q Nxd1',
+          text: 'Por qué abandonó Carlsen: la mejor defensa es 62…d2, pero 63.Cxe3 se come el peón y desde e3 vigila d1, la casilla de coronación. Tras 63…Rd3 64.b4 d1=D 65.Cxd1, las blancas quedan con caballo y dos peones contra el rey solo.',
+        },
+      ],
+    },
     stops: [
       {
         at: 371.4,

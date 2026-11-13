@@ -66,6 +66,23 @@ export interface ClipStopSource {
   questions: ClipQuestionSource[];
 }
 
+/** Paso de una lección: la posición sale de jugar `moves` (SAN en inglés, separadas por espacios) desde la de partida. */
+export interface LessonStep {
+  /** Jugadas desde la posición de partida de la lección hasta este paso, acumuladas. Vacío = la posición de partida. */
+  moves: string;
+  /** Texto propio, comprobado contra el motor. */
+  text: string;
+  arrows?: { from: string; to: string; tone: 'good' | 'bad' | 'info' }[];
+}
+
+/** Lección sobre la jugada clave del clip: se abre al acabar, paso a paso en el tablero. */
+export interface ClipLesson {
+  title: string;
+  /** La lección empieza en la posición tras esta media jugada de la partida. */
+  from: number;
+  steps: LessonStep[];
+}
+
 /** Clip tal como lo escribimos (fuente). */
 export interface ClipSource {
   id: string;
@@ -97,6 +114,8 @@ export interface ClipSource {
   clocks?: ClockData;
   /** Tablero sincronizado con el vídeo: posición al empezar y segundo en que aparece cada jugada. */
   sync?: ClipSync;
+  /** Lección sobre la jugada clave, para después del clip. */
+  lesson?: ClipLesson;
 }
 
 /** Segundo del vídeo en que el tablero 2D debe mostrar hecha la media jugada `ply`. */
@@ -630,4 +649,28 @@ export function run(adapter: PlayerAdapter, commands: Command[]): void {
     else if (c.type === 'pause') adapter.pause();
     else adapter.seek(c.at);
   }
+}
+
+/** Posiciones de cada paso de una lección, o el error si alguna jugada no es legal. */
+export function lessonPositions(clip: Pick<Clip, 'timeline'> & { lesson?: ClipLesson }): { fen: string; last: { from: string; to: string } | null }[] {
+  const lesson = clip.lesson;
+  if (!lesson) return [];
+  const start = fenAfter(clip, lesson.from);
+  if (!start) throw new Error(`La lección empieza fuera de las jugadas disponibles (${lesson.from}).`);
+  return lesson.steps.map((st, i) => {
+    const c = new Chess(start);
+    let last: { from: string; to: string } | null = null;
+    for (const san of st.moves.split(/\s+/).filter(Boolean)) {
+      const m = (() => {
+        try {
+          return c.move(san);
+        } catch {
+          return null;
+        }
+      })();
+      if (!m) throw new Error(`Lección, paso ${i + 1}: ${san} no es legal.`);
+      last = { from: m.from, to: m.to };
+    }
+    return { fen: c.fen(), last };
+  });
 }

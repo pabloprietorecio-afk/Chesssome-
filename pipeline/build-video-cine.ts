@@ -22,7 +22,7 @@ import { UciEngine } from './uci';
 import { CLIPS } from './video-clips';
 import { analyseAll, neg, ranked, toVerdicts } from './cine-engine';
 import { classify, DRAW_KEEPS_CP, WIN_SPOILS_CP, type FilmResult } from '../src/core/cinema';
-import { canAutoPause, defaultStartPly, marksProblems, replay, syncProblems, type Clip, type ClipQuestion, type ClipSource, type ClipStop, type VideoCinePack } from '../src/core/videoCine';
+import { canAutoPause, defaultStartPly, lessonPositions, marksProblems, replay, syncProblems, type Clip, type ClipQuestion, type ClipSource, type ClipStop, type VideoCinePack } from '../src/core/videoCine';
 import { pressTimes } from '../src/core/clockSync';
 import { sanEs } from '../src/core/lang';
 import type { Color } from '../src/core/types';
@@ -174,6 +174,13 @@ async function buildClip(engine: UciEngine, src: ClipSource): Promise<{ clip?: C
     if (src.sync.marks.length === 0) warn('Tablero sincronizado sin jugadas marcadas: solo mostrará la posición inicial.');
   } else warn(`Sin tablero sincronizado: mientras se ve el vídeo se mostrará la posición de la primera pregunta (tras la media jugada ${defaultStartPly(src)}).`);
 
+  if (src.lesson) {
+    try {
+      lessonPositions({ timeline, lesson: src.lesson });
+    } catch (e) {
+      fail((e as Error).message);
+    }
+  }
   report.ok = report.errors.length === 0;
   if (!report.ok) return { report };
   const { moves: _moves, stops: _stops, ...rest } = src;

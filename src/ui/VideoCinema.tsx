@@ -39,6 +39,7 @@ import {
   type DirectorState,
   type VideoCinePack,
   gapPlies,
+  lessonPositions,
   syncGapAt,
 } from '../core/videoCine';
 import { sanEs } from '../core/lang';
@@ -46,6 +47,7 @@ import { go, log, useAppState } from '../app/store';
 import { clearMarks, devFlag, loadMarks, saveMarks, setDevFlag } from '../app/clipMarks';
 import { Board2D } from './Board2D';
 import type { MoveAnim } from './boardTypes';
+import type { Arrow } from '../core/explain';
 import { CinemaScreen } from './Cinema';
 import { HOST_FLAG, YouTubeAdapter, embedHost, errorText } from './youtubePlayer';
 import { suggestPause, suggestSync, videoTimes } from '../core/clockSync';
@@ -302,6 +304,13 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const [hint, setHint] = useState(false);
   const [board, setBoard] = useState<BoardState | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Paso de la lección abierto al acabar el clip; null = cerrada. */
+  const [lessonStep, setLessonStep] = useState<number | null>(null);
+  const lessonPos = useMemo(() => lessonPositions(clip), [clip]);
+  const lessonRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (lessonStep != null) lessonRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [lessonStep]);
   const animKey = useRef(0);
   const timers = useRef<number[]>([]);
   const clearTimers = () => {
@@ -448,7 +457,13 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     const m = moveAt(clip, synced.ply);
     if (cur.key >= 0 && m) syncedAnim = { from: m.from, to: m.to, key: cur.key, captured: m.captured };
   } else prevSynced.current = null;
-  const shown = synced ? { fen: synced.fen, last: synced.last, anim: syncedAnim } : board;
+  const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
+  const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
+  const shown = lessonNow
+    ? { fen: lessonNow.pos.fen, last: lessonNow.pos.last, anim: null }
+    : synced
+      ? { fen: synced.fen, last: synced.last, anim: syncedAnim }
+      : board;
   // En un tramo sin seguimiento (cortes de cámara), el tablero no finge: se atenúa y dice qué jugadas se están haciendo.
   const gap = synced && Number.isFinite(syncTime) ? syncGapAt(sync, syncTime!) : null;
   const gapMoves = gap ? (({ first, last }) => movesText(clip, first, Math.min(last, syncCap(clip, st))))(gapPlies(sync, gap)) : '';
@@ -602,9 +617,35 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </div>
         )}
 
+        {lessonNow && (
+          <div ref={lessonRef} className="cm-hint vc-panel vc-lesson" data-step={lessonStep}>
+            <p className="cm-kicker">
+              Lección · paso {lessonStep! + 1} de {clip.lesson!.steps.length}
+            </p>
+            {lessonStep === 0 && <h3 className="vc-lesson-title">{clip.lesson!.title}</h3>}
+            <p>{lessonNow.step.text}</p>
+            <div className="cm-row">
+              {lessonStep! > 0 && (
+                <button className="cm-why" onClick={() => setLessonStep(lessonStep! - 1)}>
+                  Anterior
+                </button>
+              )}
+              {lessonStep! < clip.lesson!.steps.length - 1 ? (
+                <button className="cm-primary" onClick={() => setLessonStep(lessonStep! + 1)}>
+                  Siguiente
+                </button>
+              ) : (
+                <button className="cm-primary" onClick={() => setLessonStep(null)}>
+                  Terminar la lección
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {shown && st.phase !== 'idle' && (
           <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
-            {synced && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
+            {synced && !lessonNow && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
             <div className="vc-board-fit" data-gap={gap ? 'on' : undefined}>
               <div className="vc-board-box">
                 <Board2D
@@ -612,7 +653,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                   orientation={boardSide}
                   interactive={st.phase === 'asking' && !answer && !busy}
                   lastMove={shown.last}
-                  animate={shown.anim}
+                  arrows={lessonNow?.step.arrows as Arrow[] | undefined}
+                  animate={shown.anim ?? undefined}
                   animMode={s.settings.anim}
                   coordinates={s.settings.coordinates}
                   onMove={onMove}
@@ -718,7 +760,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         </div>
       )}
 
-      {st.phase === 'ended' && (
+      {st.phase === 'ended' && !lessonNow && (
         <div className="cm-hint vc-panel">
           <p className="cm-kicker">Fin del clip</p>
           <p>{clip.outro}</p>
@@ -730,7 +772,12 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           )}
           <p className="cm-quiet cm-small">{clip.gameSource}</p>
           <div className="cm-row">
-            <button className="cm-why" onClick={() => start(auto && st.errorCode == null ? 'film' : 'direct')}>
+            {clip.lesson && (
+              <button className="cm-primary" onClick={() => setLessonStep(0)}>
+                Ver la lección
+              </button>
+            )}
+            <button className="cm-why" onClick={() => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); }}>
               Otra vez
             </button>
           </div>

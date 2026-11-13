@@ -8,6 +8,7 @@ import {
   direct,
   fenAfter,
   gapPlies,
+  lessonPositions,
   initialDirector,
   judgeAnswer,
   marksOf,
@@ -505,5 +506,27 @@ describe('tramos sin seguimiento del tablero', () => {
     expect(syncGapAt(sy, 282)).toBeNull();
     expect(gapPlies(sy, syncGapAt(sy, 300)!)).toEqual({ first: 105, last: 118 });
     expect(syncGapAt(sy, 364.4)).toBeNull();
+  });
+});
+
+describe('lección de «El golpe en la mesa»', () => {
+  const bang = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  const pos = lessonPositions(bang);
+  it('empieza en la posición de la pregunta y todas las jugadas son legales', () => {
+    expect(pos.length).toBe(bang.lesson!.steps.length);
+    expect(pos[0].fen).toBe(bang.stops[0].questions[0].fen);
+    expect(pos[1].fen).toBe(bang.stops[0].questions[0].played.fenAfter); // 61.Cc4+
+    expect(pos[3].fen).toBe(bang.tail[1].fenAfter); // 62.Rf4, como en la partida
+  });
+  it('las flechas salen de casillas con pieza', () => {
+    bang.lesson!.steps.forEach((st, i) => {
+      const board = new Map<string, boolean>();
+      const rows = pos[i].fen.split(' ')[0].split('/');
+      rows.forEach((r, ri) => { let f = 0; for (const ch of r) { if (/\d/.test(ch)) f += Number(ch); else { board.set('abcdefgh'[f] + (8 - ri), true); f++; } } });
+      for (const a of st.arrows ?? []) expect(board.has(a.from)).toBe(true);
+    });
+  });
+  it('una jugada ilegal se detecta', () => {
+    expect(() => lessonPositions({ ...bang, lesson: { ...bang.lesson!, steps: [{ moves: 'Nc4+ Kd1 Kxh5', text: '' }] } })).toThrow();
   });
 });

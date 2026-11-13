@@ -1830,3 +1830,8 @@ a {
   font-weight: 700;
   color: var(--good);
 }
+
+.vc-lesson-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
