@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    # «assets-fetch» solo sirve para descargar texturas candidatas (assets.yml).
+    branches-ignore: [assets-fetch, assets-src]
   pull_request:
   workflow_dispatch:
 
