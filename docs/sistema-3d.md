@@ -33,7 +33,8 @@ view.board.anim_mode = Board3D.Anim.FULL  # FULL, FAST (por defecto), MINIMAL, N
 view.set_board_theme("dark", Color("0a0f1e"))  # tema y color de fondo de la pantalla que lo contiene
 view.edge_fade = 48.0                   # franja en la que la vista se funde con ese fondo, arriba y abajo
 view.board.fit_pad = Vector4(0.012, 0.06, 0.012, 0.08)  # margen del encuadre: izquierda, arriba, derecha, abajo
-view.center_view()                      # vista en picado; default_view() vuelve a la inclinada
+view.center_view()                      # vista en picado; default_view() vuelve a la inclinada (las dos deshacen el zoom)
+view.reset_zoom()                       # tablero entero otra vez, sin cambiar inclinación ni giro
 view.set_tilt_enabled(true)             # seguir la inclinación y el giro del móvil
 view.set_view_locked(true)              # fijar la vista actual
 ```
@@ -54,6 +55,22 @@ view.set_view_locked(true)              # fijar la vista actual
   invertido»), más un disco bajo la base: una línea de tinta de grosor constante. Al seleccionar, la línea se
   vuelve del color de acento.
 - **Coordenadas dentro de las casillas del borde**, pegadas al canto, para que el marco pueda ser fino.
+
+## Gestos
+
+| Gesto | Qué hace |
+| --- | --- |
+| Un dedo sobre una pieza propia | Seleccionar; tocar el destino o arrastrarla para jugar |
+| Pellizco con dos dedos | Ampliar o reducir alrededor de los dedos, de ×1 (tablero entero) a ×3. El tablero puede ser más ancho que la pantalla |
+| Dos dedos a la par | Con el tablero ampliado, desplazarlo. Sin ampliar, girar la vista (inclinación y giro) |
+| Un dedo desde donde no hay pieza propia | Con el tablero ampliado, desplazarlo |
+| Botón de vista | Si está ampliado, lo deja entero. Si no, alterna entre inclinada y en picado |
+
+- La ampliación estrecha el campo de visión (no acerca la cámara), así la perspectiva no cambia.
+- El desplazamiento se limita: el tablero siempre cubre la zona que ocupaba sin ampliar.
+- El gesto de dos dedos se decide en los primeros 14 px: si los dedos se separan, es ampliar; si van a la par, girar.
+- «Fijar la vista» bloquea también la ampliación y el desplazamiento.
+- La ampliación se conserva de un problema al siguiente.
 
 ## Reglas del sistema
 
@@ -94,11 +111,13 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 
 - Rendimiento, batería y tacto en un teléfono real.
 - Sentido del giro al seguir al móvil (`ROLL_SIGN` y `TWIST_SIGN` en `board_view_3d.gd`): si va al revés, se cambia el signo.
+- El tacto del pellizco y del arrastre con dedos de verdad (en la CI se simulan los toques).
 - Comportamiento en teléfonos sin Vulkan.
 
 ## Pendiente
 
 - Tablero 2D en Godot con la misma interfaz y alternancia 2D/3D para medir H3.
+- Con el tablero ampliado, llevar la vista a la jugada del rival si cae fuera de la pantalla.
 - Paisaje con el tiempo real en el cielo de la pantalla de problema (hoy es un cielo quieto).
 - Mostrar explicaciones y flujo de entrenamiento en Godot.
 - Niveles de calidad y pausa del dibujo en reposo.

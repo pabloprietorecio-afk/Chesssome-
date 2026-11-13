@@ -207,6 +207,11 @@ func _demo_shots() -> void:
 	print("DEMO titulo=«%s» paso=%d problema=%d" % [demo.title.text, demo.step, demo.index])
 
 	# Pellizco con dos dedos: el tablero se amplía y puede ser más ancho que la pantalla.
+	# (Antes, de vuelta al tema claro y a la vista inclinada.)
+	demo._set_dark(false)
+	demo._on_toggle_view()
+	await _frames(20)
+	dview.board.deselect()
 	var c := dview.get_global_rect().get_center()
 	_touch(0, c + Vector2(-90.0, 0.0), true)
 	_touch(1, c + Vector2(90.0, 0.0), true)
@@ -226,6 +231,7 @@ func _demo_shots() -> void:
 		if dview.board.chess.b[s] == 0 and (s & 7) >= 2 and (s & 7) <= 5 and (s >> 3) >= 2 and (s >> 3) <= 5:
 			empty = s
 			break
+	dview.board.deselect()
 	var from: Vector2 = dview.get_global_transform() * dview.view_to_local(dview.board.camera.unproject_position(Board3D.sq_pos(empty)))
 	_touch(0, from, true)
 	for i in 10:

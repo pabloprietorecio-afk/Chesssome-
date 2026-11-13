@@ -51,7 +51,7 @@ var board_slot: Control
 var counter: Label
 var title: Label
 var subtitle: Label
-var turn_dot: Panel
+var turn_dot: TurnMark
 var meta_row: HBoxContainer
 var left_button: Button
 var right_button: Button
@@ -147,6 +147,27 @@ class IconButton extends Button:
 			"close":
 				draw_line(c + Vector2(-13.0, -13.0), c + Vector2(13.0, 13.0), ink, 4.5, true)
 				draw_line(c + Vector2(13.0, -13.0), c + Vector2(-13.0, 13.0), ink, 4.5, true)
+
+
+## Marca del turno: un peón pequeño con el color del bando que juega.
+class TurnMark extends Control:
+	var fill := Color.WHITE
+	var line := Color.BLACK
+
+	func _draw() -> void:
+		var o := Vector2((size.x - 40.0) * 0.5, (size.y - 44.0) * 0.5)
+		# Primero la silueta engordada, en el color de la línea; encima, el relleno.
+		for pass_index in 2:
+			var grow := 3.0 if pass_index == 0 else 0.0
+			var color := line if pass_index == 0 else fill
+			var base := StyleBoxFlat.new()
+			base.bg_color = color
+			base.set_corner_radius_all(int(4.0 + grow))
+			draw_style_box(base, Rect2(o + Vector2(6.0 - grow, 33.0 - grow), Vector2(28.0 + grow * 2.0, 8.0 + grow * 2.0)))
+			draw_colored_polygon(PackedVector2Array([
+				o + Vector2(14.0 - grow, 18.0 - grow), o + Vector2(26.0 + grow, 18.0 - grow),
+				o + Vector2(30.0 + grow, 35.0), o + Vector2(10.0 - grow, 35.0)]), color)
+			draw_circle(o + Vector2(20.0, 12.0), 9.0 + grow, color, true, -1.0, true)
 
 
 ## Interruptor de dos posiciones.
@@ -396,8 +417,8 @@ func _build_chrome() -> void:
 	title_row.add_theme_constant_override("separation", 18)
 	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(title_row)
-	turn_dot = Panel.new()
-	turn_dot.custom_minimum_size = Vector2(38.0, 38.0)
+	turn_dot = TurnMark.new()
+	turn_dot.custom_minimum_size = Vector2(46.0, 50.0)
 	turn_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	turn_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_row.add_child(turn_dot)
@@ -519,15 +540,11 @@ func _refresh() -> void:
 	title.add_theme_color_override("font_color", tone)
 	subtitle.text = sub
 
-	# Punto con el color del bando que juega.
+	# Peón con el color del bando que juega. En el tema oscuro, las negras llevan el canto claro, como en el tablero.
 	var white_to_move := view.board.chess.turn == 0
-	var dot := StyleBoxFlat.new()
-	# En el tema oscuro la tarjeta ya es azul tinta: el punto de las negras va casi negro, con el canto claro.
-	dot.bg_color = Color("f8f0e0") if white_to_move else (Color("070b18") if dark else Color("2a3557"))
-	dot.set_corner_radius_all(20)
-	dot.set_border_width_all(4)
-	dot.border_color = Color("262e4c") if white_to_move else (Color("9db2e0") if dark else Color("0a0f22"))
-	turn_dot.add_theme_stylebox_override("panel", dot)
+	turn_dot.fill = Color("f8f0e0") if white_to_move else Color("2a3557")
+	turn_dot.line = (Color("0a0f22") if dark else Color("262e4c")) if white_to_move else (Color("9db2e0") if dark else Color("0a0f22"))
+	turn_dot.queue_redraw()
 	turn_dot.visible = show_dot
 
 	# Etiquetas. El tema del problema es una pista: solo se enseña cuando ya está resuelto o mostrado.
