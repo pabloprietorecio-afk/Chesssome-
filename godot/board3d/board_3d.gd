@@ -151,6 +151,11 @@ var _state_img: Image
 var _state_tex: ImageTexture
 var _pieces_root: Node3D
 var _arrows_root: Node3D
+## Lecciones: estrellas que recoger (casilla → nodo) y la única pieza que se puede mover (−1 = cualquiera propia).
+var _goals_root: Node3D
+var _goals := {}
+var _goal_t := 0.0
+var only_square := -1
 var _labels: Array[Node3D] = []
 var _tweens: Array[Tween] = []
 var _running := 0
@@ -302,6 +307,8 @@ func _build() -> void:
 
 	_arrows_root = Node3D.new()
 	add_child(_arrows_root)
+	_goals_root = Node3D.new()
+	add_child(_goals_root)
 	_pieces_root = Node3D.new()
 	add_child(_pieces_root)
 
@@ -1091,7 +1098,118 @@ func pick(screen_pos: Vector2) -> Vector2i:
 
 
 func is_own(s: int) -> bool:
+	if only_square >= 0 and s != only_square:
+		return false
 	return s >= 0 and chess.b[s] != 0 and Chess.color_of(chess.b[s]) == chess.turn
+
+
+# ---------------------------------------------------------------- estrellas de las lecciones
+
+## Pone una estrella dorada, flotando, en cada casilla de la lista (las de antes se quitan).
+func set_goals(squares: Array) -> void:
+	for n in _goals_root.get_children():
+		_goals_root.remove_child(n)
+		n.queue_free()
+	_goals = {}
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("ffc93c")
+	mat.emission_enabled = true
+	mat.emission = Color("ffb300")
+	mat.emission_energy_multiplier = 0.45
+	mat.roughness = 0.35
+	mat.metallic = 0.2
+	var mesh := _star_mesh()
+	for sq: Variant in squares:
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mi.position = sq_pos(int(sq)) + Vector3(0.0, 0.32, 0.0)
+		_goals_root.add_child(mi)
+		_goals[int(sq)] = mi
+	set_process(true)
+
+
+func has_goal(s: int) -> bool:
+	return _goals.has(s)
+
+
+func goals_left() -> int:
+	return _goals.size()
+
+
+## Las estrellas miran a la cámara, se balancean un poco y flotan.
+func _process(delta: float) -> void:
+	if _goals.is_empty():
+		set_process(false)
+		return
+	_goal_t += delta
+	var yaw := deg_to_rad(cam_yaw + (180.0 if orientation == 1 else 0.0))
+	var pitch := deg_to_rad(clampf(cam_pitch, PITCH_MIN, PITCH_MAX))
+	var back := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
+	var i := 0
+	for sq: int in _goals:
+		var mi: Node3D = _goals[sq]
+		var phase := _goal_t * 2.2 + float(i) * 0.9
+		var face := back.rotated(Vector3.UP, sin(phase) * 0.45)
+		var up := Vector3.UP if absf(face.y) < 0.98 else Vector3.FORWARD
+		mi.basis = Basis.looking_at(-face, up)
+		mi.position.y = 0.34 + 0.05 * sin(phase * 0.8)
+		i += 1
+
+
+## Recoge la estrella de una casilla: sube, crece un poco y desaparece.
+func take_goal(s: int) -> void:
+	if not _goals.has(s):
+		return
+	var mi: Node3D = _goals[s]
+	_goals.erase(s)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "position:y", mi.position.y + 0.6, 0.35).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mi, "scale", Vector3.ONE * 1.5, 0.35)
+	tw.chain().tween_callback(mi.queue_free)
+	sound.emit("place", 0.6)
+
+
+## Estrella de cinco puntas con algo de grosor, de pie, para que se vea desde la cámara inclinada.
+func _star_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var outer := 0.3
+	var inner := 0.13
+	var depth := 0.06
+	var pts: Array[Vector2] = []
+	for i in 10:
+		var r := outer if i % 2 == 0 else inner
+		var a := PI * 0.5 + TAU * float(i) / 10.0
+		pts.append(Vector2(cos(a), sin(a)) * r)
+	for side: float in [-1.0, 1.0]:
+		var n := Vector3(0.0, 0.0, side)
+		for i in 10:
+			var p0 := pts[i]
+			var p1 := pts[(i + 1) % 10]
+			st.set_normal(n)
+			st.add_vertex(Vector3(0.0, 0.0, depth * side))
+			if side > 0.0:
+				st.add_vertex(Vector3(p0.x, p0.y, depth * 0.4 * side))
+				st.add_vertex(Vector3(p1.x, p1.y, depth * 0.4 * side))
+			else:
+				st.add_vertex(Vector3(p1.x, p1.y, depth * 0.4 * side))
+				st.add_vertex(Vector3(p0.x, p0.y, depth * 0.4 * side))
+	for i in 10:
+		var p0 := pts[i]
+		var p1 := pts[(i + 1) % 10]
+		var e := (p1 - p0).normalized()
+		var n := Vector3(e.y, -e.x, 0.0)
+		var a0 := Vector3(p0.x, p0.y, depth * 0.4)
+		var a1 := Vector3(p1.x, p1.y, depth * 0.4)
+		var b0 := Vector3(p0.x, p0.y, -depth * 0.4)
+		var b1 := Vector3(p1.x, p1.y, -depth * 0.4)
+		for v: Vector3 in [a0, b0, a1, a1, b0, b1]:
+			st.set_normal(n)
+			st.add_vertex(v)
+	return st.commit()
 
 
 func is_target(s: int) -> bool:

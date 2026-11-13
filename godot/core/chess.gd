@@ -159,6 +159,9 @@ func king_sq(color: int) -> int:
 
 ## ¿Ataca el bando `by` la casilla `s`?
 func attacked(s: int, by: int) -> bool:
+	# Sin esa casilla (por ejemplo, el rey de una posición de lección que no lo tiene), nada la ataca.
+	if s < 0 or s > 63:
+		return false
 	var f := s & 7
 	var r := s >> 3
 	var off := BLACK_BIT if by == 1 else 0

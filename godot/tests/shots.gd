@@ -447,6 +447,7 @@ func _demo_shots() -> void:
 	demo._close_options()
 	await _help_shots(demo)
 	await _level_shots(demo)
+	await _course_shots(demo)
 	demo._open_welcome()
 	await _frames(6)
 	await _shot("38_demo_bienvenida")
@@ -639,6 +640,74 @@ func _level_shots(demo: Control) -> void:
 	print("NIVEL saltar test: modo=%s nivel=%.0f saltado=%s anotados=%d→%d dificultad del problema=%d" % [demo.mode, float(demo.player["rating"]["r"]), str(demo.test_skipped), before, (demo.player["tries"] as Array).size(), int(demo.puzzle["rating"])])
 	demo._set_dark(false)
 	await _frames(6)
+
+
+## El curso «Aprende a jugar»: el mapa, una lección con estrellas resuelta con toques, una captura que deja la
+## pieza a tiro, un mate con un intento fallido y el enroque.
+func _course_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_course()
+	await _frames(8)
+	await _shot("60_curso")
+	print("CURSO lecciones=%d página=%s" % [demo._course_lessons().size(), demo.progress_kind])
+	demo._start_lesson("torre")
+	await _frames(12)
+	await _shot("61_leccion_intro")
+	demo._next_lesson_step()
+	demo._next_lesson_step()
+	await _frames(12)
+	await _shot("62_leccion_estrellas")
+	for uci: String in demo.ex["solution"]:
+		_tap(dview, _sq(uci.substr(0, 2)))
+		await _frames(3)
+		_tap(dview, _sq(uci.substr(2, 2)))
+		await _frames(20)
+	await _frames(10)
+	await _shot("63_leccion_estrellas_hecho")
+	print("CURSO estrellas: estado=%s jugadas=%d mínimo=%d quedan=%d texto=«%s»" % [demo.ex_state, demo.ex_moves, int(demo.ex["par"]), dview.board.goals_left(), demo.ex_text])
+	# Captura a salvo: capturar primero la pieza defendida acaba en fallo.
+	demo._start_lesson("a-salvo")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a6"))
+	await _frames(24)
+	await _shot("64_leccion_a_salvo_fallo")
+	print("CURSO a salvo: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	# Jaque mate: primero una jugada que no es mate y después la buena.
+	demo._start_lesson("mate")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a7"))
+	await _frames(14)
+	await _shot("65_leccion_mate_fallo")
+	print("CURSO mate fallo: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	await _frames(60)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a8"))
+	await _frames(40)
+	await _shot("66_leccion_mate")
+	print("CURSO mate: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	# Enroque: mover el rey dos casillas.
+	demo._start_lesson("enroque")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("e1"))
+	await _frames(3)
+	_tap(dview, _sq("g1"))
+	await _frames(40)
+	await _shot("67_leccion_enroque")
+	print("CURSO enroque: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	# Fin de lección.
+	demo.lesson_ex = (demo.lesson["exercises"] as Array).size()
+	demo._show_lesson_step()
+	await _frames(10)
+	await _shot("68_leccion_fin")
+	print("CURSO fin: estado=%s hecha=%s" % [demo.ex_state, str(demo.course_done)])
 
 
 ## Dos dedos que giran alrededor de un punto, de un ángulo a otro (grados; positivo = a la derecha, como las agujas del reloj).

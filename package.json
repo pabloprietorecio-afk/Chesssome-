@@ -18,7 +18,8 @@
     "pieces": "node tools/pieces/generate.mjs",
     "pieces:fichas": "node tools/pieces/fichas.mjs",
     "ui:icons": "node tools/ui/icons.mjs",
-    "godot:demo": "tsx scripts/export-godot-demo.ts"
+    "godot:demo": "tsx scripts/export-godot-demo.ts",
+    "course": "tsx scripts/export-course.ts"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
