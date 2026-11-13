@@ -15,7 +15,9 @@
     "pipeline:analyze": "tsx pipeline/analyze.ts",
     "pipeline:report": "tsx pipeline/build-pack.ts",
     "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts",
-    "pieces": "node tools/pieces/generate.mjs"
+    "pieces": "node tools/pieces/generate.mjs",
+    "pieces:fichas": "node tools/pieces/fichas.mjs",
+    "godot:demo": "tsx scripts/export-godot-demo.ts"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

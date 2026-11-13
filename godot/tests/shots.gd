@@ -174,8 +174,85 @@ func _run() -> void:
 	board.drag_piece(_sq("g1"), board.camera.unproject_position(Board3D.sq_pos(_sq("f3")) + Vector3(0.0, 0.3, 0.0)))
 	await _frames(3)
 	await _shot("16_arrastre")
+	board.cancel_drag()
+	board.deselect()
 
+	await _token_shots()
 	await _demo_shots()
+
+
+## Fichas planas con el icono de la pieza en relieve, en los cuatro acabados; de cerca, en picado, con negras y en el mate.
+func _token_shots() -> void:
+	var board := view.board
+	board.anim_mode = Board3D.Anim.NONE
+	view.set_fen(Board3D.START_FEN)
+	view.set_piece_set("fichas")
+	for finish: String in ["madera", "marmol", "metal", "ilustrado"]:
+		view.set_board_style(finish)
+		await _frames(4)
+		await _shot("17_fichas_" + finish)
+	view.set_board_style("madera")
+	view.set_fen(MID_FEN)
+	view.show_move("b5d6")
+	board.select(_sq("e8"))
+	await _frames(3)
+	await _shot("17_fichas_jaque_y_seleccion")
+	board.deselect()
+	board.set_view(90.0, 0.0)
+	await _frames(3)
+	await _shot("17_fichas_cenital")
+	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
+	view.set_orientation(1)
+	await _frames(3)
+	await _shot("17_fichas_negras")
+	view.set_orientation(0)
+	# De cerca, para juzgar el relieve de los iconos.
+	view.set_fen(Board3D.START_FEN)
+	board.camera.fov = 26.0
+	board.camera.near = 0.2
+	var eye := Vector3(1.6, 2.6, 5.6)
+	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.3, 0.0, 2.9) - eye, Vector3.UP), eye)
+	for finish: String in ["madera", "marmol", "metal", "ilustrado"]:
+		view.set_board_style(finish)
+		await _frames(4)
+		await _shot("18_fichas_de_cerca_" + finish)
+	view.set_board_style("madera")
+	eye = Vector3(-1.2, 2.4, -1.4)
+	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.4, 0.0, -3.1) - eye, Vector3.UP), eye)
+	await _frames(3)
+	await _shot("18_fichas_de_cerca_oscuras")
+	board.apply_camera()
+	# Mate: la ficha del rey se da la vuelta. Y los avisos de sonido de una jugada con captura y de un mate.
+	var heard: Array[String] = []
+	var listen := func(kind: String, _amount: float) -> void: heard.append(kind)
+	board.sound.connect(listen)
+	board.anim_mode = Board3D.Anim.FULL
+	view.set_fen(MID_FEN)
+	await _frames(2)
+	view.show_move("b5d4")
+	await _frames(24)
+	view.set_fen(MATE_FEN)
+	await _frames(2)
+	view.show_move("a1a8")
+	await _frames(14)
+	await _shot("19_fichas_mate")
+	await _frames(24)
+	await _shot("19_fichas_mate_final")
+	board.sound.disconnect(listen)
+	print("SONIDOS avisos=%s grabaciones: arrastre=%s posar=%s captura=%s jaque=%s caida=%s" % [str(heard), str(view.sounds.has_sound("slide")), str(view.sounds.has_sound("place")), str(view.sounds.has_sound("capture")), str(view.sounds.has_sound("check")), str(view.sounds.has_sound("fall"))])
+	board.anim_mode = Board3D.Anim.FAST
+	view.set_piece_set("clasico")
+	view.set_fen(Board3D.START_FEN)
+	await _frames(2)
+
+
+## Primera jugada legal que no es la de la solución (para fallar a propósito).
+func _wrong_move(chess: Chess, solution: String) -> String:
+	for m in chess.legal_moves():
+		var uci := Chess.uci(m)
+		if uci != solution and not chess.after(m).is_checkmate() and uci.length() == 4:
+			return uci
+	return ""
 
 
 ## La demo de verdad (escena principal del APK), jugada con toques simulados por el mismo camino que un dedo.
@@ -185,12 +262,38 @@ func _demo_shots() -> void:
 	bg.visible = false
 	Engine.time_scale = 2.0
 	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
+	# Sin ajustes guardados ni bienvenida automática: las capturas salen siempre del mismo estado.
+	demo.use_settings = false
 	add_child(demo)
 	await _frames(30)
 	await _shot("20_demo")
 	var dview: BoardView3D = demo.view
 	var moves: Array = demo.puzzle["moves"]
 	var solution := str(moves[1])
+	print("DEMO explicaciones=%s puntos=%d" % [str(demo.explain.ok), demo.explain.point_count()])
+	# Un fallo a propósito: la tarjeta cuenta qué hace la jugada y qué permite, sin decir cuál era la mejor.
+	var wrong := _wrong_move(dview.board.chess, solution)
+	if wrong != "":
+		_tap(dview, _sq(wrong.substr(0, 2)))
+		await _frames(3)
+		_tap(dview, _sq(wrong.substr(2, 2)))
+		await _frames(22)
+		await _shot("20b_demo_fallo")
+		print("DEMO fallo=%s titulo=«%s» fase=%d parcial=%s interactivo=%s" % [wrong, demo.title.text, demo.phase, str(demo.exp_partial), str(dview.interactive)])
+		var levels: Array = demo.expl.get("levels", [])
+		if levels.size() == 4:
+			print("DEMO fallo dice: %s" % " | ".join(PackedStringArray(levels[0]["paragraphs"])))
+			for line: Dictionary in levels[2]["lines"]:
+				if str(line["tone"]) == "bad":
+					demo._step_line(line, 0)
+					await _frames(10)
+					demo._step_line(line, 1)
+					await _frames(12)
+					await _shot("20c_demo_fallo_variante")
+					demo._leave_line()
+					await _frames(4)
+					break
+		print("DEMO tras la variante: fase=%d interactivo=%s" % [demo.phase, str(dview.interactive)])
 	_tap(dview, _sq(solution.substr(0, 2)))
 	await _frames(3)
 	await _shot("21_demo_pieza_tocada")
@@ -207,6 +310,44 @@ func _demo_shots() -> void:
 	await _frames(50)
 	await _shot("24_demo_solucion")
 	print("DEMO titulo=«%s» izquierda=«%s» derecha=«%s»" % [demo.title.text, demo.left_button.text, demo.right_button.text])
+	# La explicación, nivel a nivel: el concepto, la variante (jugada en el tablero) y las cifras del motor.
+	for deeper in 3:
+		demo._on_why()
+		await _frames(8)
+		await _shot("24%s_demo_nivel_%d" % ["bcd"[deeper], deeper + 2])
+	print("DEMO nivel=%d flechas=%d alto de la tarjeta=%d" % [demo.exp_level, dview.board._arrows_root.get_child_count(), int(demo.card.size.y)])
+	demo.card_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("24e_demo_nivel_4_final")
+	demo.card_scroll.scroll_vertical = 0
+	var shown_levels: Array = demo.expl.get("levels", [])
+	if shown_levels.size() == 4 and not (shown_levels[2]["lines"] as Array).is_empty():
+		demo._step_line(shown_levels[2]["lines"][0], 0)
+		await _frames(12)
+		await _shot("24f_demo_variante")
+		demo._leave_line()
+		await _frames(3)
+	# «¿Y si juego…?»: se prueba otra jugada en la posición de la decisión.
+	demo._toggle_whatif()
+	await _frames(6)
+	await _shot("24g_demo_y_si_juego")
+	var other := _wrong_move(dview.board.chess, demo.explain.point_solution(demo.exp_point))
+	if other != "":
+		_tap(dview, _sq(other.substr(0, 2)))
+		await _frames(3)
+		_tap(dview, _sq(other.substr(2, 2)))
+		await _frames(22)
+		await _shot("24h_demo_y_si_juego_jugada")
+		print("DEMO y si juego %s: titulo=«%s» interactivo=%s" % [other, demo.title.text, str(dview.interactive)])
+	# «Pregunta a una IA»: el texto que se lleva, con la posición y el análisis.
+	demo._open_ai()
+	await _frames(8)
+	await _shot("24i_demo_pregunta_a_una_ia")
+	print("DEMO texto para la IA: %d caracteres, empieza «%s»" % [demo._ai_text().length(), demo._ai_text().substr(0, 60)])
+	demo._close_options()
+	demo._toggle_whatif()
+	await _frames(4)
+	print("DEMO lichess=%s" % demo._lichess_url(demo._decision_fen()))
 	# Opciones en hoja inferior, en claro y en oscuro.
 	demo._open_options()
 	await _frames(6)
@@ -266,6 +407,44 @@ func _demo_shots() -> void:
 	await _frames(16)
 	await _shot("32_demo_entero_otra_vez")
 	print("DEMO entero zoom=%.2f desplazamiento=%s picado=%s" % [dview.board.zoom, str(dview.board.pan), str(demo.top_view)])
+	# Problema resuelto: la explicación de la solución. Se resuelve entero con toques.
+	demo._on_right()
+	await _frames(34)
+	var guard := 0
+	while demo.phase != 4 and guard < 8:
+		guard += 1
+		if demo.phase == 1 and dview.interactive and demo.step < demo.puzzle["moves"].size():
+			var next_move := str(demo.puzzle["moves"][demo.step])
+			_tap(dview, _sq(next_move.substr(0, 2)))
+			await _frames(3)
+			_tap(dview, _sq(next_move.substr(2, 2)))
+		await _frames(34)
+	await _frames(20)
+	await _shot("33_demo_resuelto")
+	print("DEMO resuelto: fase=%d titulo=«%s» problema=%d" % [demo.phase, demo.title.text, demo.index])
+	demo._on_why()
+	await _frames(10)
+	await _shot("34_demo_resuelto_por_que")
+	# Con fichas, y la bienvenida.
+	demo._set_pieces_index(1)
+	await _frames(6)
+	await _shot("35_demo_fichas")
+	demo._on_right()
+	await _frames(40)
+	await _shot("36_demo_fichas_problema")
+	demo._open_options()
+	await _frames(8)
+	await _shot("37_demo_opciones_fichas")
+	demo._close_options()
+	demo._open_welcome()
+	await _frames(6)
+	await _shot("38_demo_bienvenida")
+	demo._set_dark(true)
+	await _frames(6)
+	demo._open_welcome()
+	await _frames(6)
+	await _shot("39_demo_bienvenida_oscuro")
+	demo._close_welcome()
 	Engine.time_scale = 1.0
 
 

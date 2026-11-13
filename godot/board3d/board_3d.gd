@@ -7,6 +7,9 @@ extends Node3D
 ## (las blancas quedan hacia +Z, que es donde se pone la cámara cuando juegan blancas).
 
 signal animations_finished
+## Momentos de la partida que suenan (los pone en sonido BoardSounds): "slide" (la pieza se arrastra; amount es
+## lo que dura), "place" (se asienta), "capture", "check" y "fall" (cae el rey en el mate).
+signal sound(kind: String, amount: float)
 
 enum Anim { FULL, FAST, MINIMAL, NONE }
 
@@ -24,6 +27,12 @@ const FRAME_THICK := 0.36
 const FIT_HEIGHT := 1.8
 ## Grosor del contorno de las piezas, en casillas.
 const OUTLINE_WIDTH := 0.026
+## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
+const PIECE_SETS := ["clasico", "fichas"]
+## Medidas de la ficha (tools/pieces/fichas.mjs), en casillas.
+const TOKEN := {"radius": 0.4, "height": 0.165, "field_radius": 0.343, "face_height": 0.152, "icon_radius": 0.31, "sd_range": 0.05}
+## Con fichas no hay piezas altas que tapen ni que se salgan por arriba: el tablero puede llenar más la vista.
+const FIT_HEIGHT_TOKENS := 0.3
 ## Acabados realistas: materiales con textura fotográfica (godot/textures) y reflejos del entorno de estudio.
 ## El tablero abarca los tonos medios y las piezas, los extremos: las claras son más claras que las casillas
 ## claras y las oscuras, más oscuras que las casillas oscuras. Así cada pieza destaca sobre las dos casillas.
@@ -88,6 +97,8 @@ var show_coordinates := true
 var style := "madera"
 ## Contorno de tinta alrededor de las piezas (ver set_style y set_outline).
 var outline := false
+## Juego de piezas: "clasico" o "fichas" (ver set_piece_set).
+var piece_set := "clasico"
 
 var camera: Camera3D
 var cam_pitch := DEFAULT_PITCH
@@ -112,6 +123,10 @@ var _pieces := {}
 var _meshes := {}
 var _mats: Array[ShaderMaterial] = []
 var _tex_mats: Array[ShaderMaterial] = []
+var _token_mats: Array[ShaderMaterial] = []
+var _token_mesh: Mesh
+var _icons_tex: Texture2D
+var _sfx_tweens: Array[Tween] = []
 var _squares_tex: ShaderMaterial
 var _frame_tex: ShaderMaterial
 var _textures := {}
@@ -294,6 +309,7 @@ func _build() -> void:
 	var outline_shader := load("res://board3d/shaders/outline.gdshader") as Shader
 	var disc_shader := load("res://board3d/shaders/outline_disc.gdshader") as Shader
 	var textured_shader := load("res://board3d/shaders/piece_textured.gdshader") as Shader
+	var token_shader := load("res://board3d/shaders/piece_token.gdshader") as Shader
 	for side in 2:
 		var m := ShaderMaterial.new()
 		m.shader = piece_shader
@@ -301,6 +317,11 @@ func _build() -> void:
 		var tm := ShaderMaterial.new()
 		tm.shader = textured_shader
 		_tex_mats.append(tm)
+		var km := ShaderMaterial.new()
+		km.shader = token_shader
+		for key: String in ["icon_radius", "field_radius", "face_height", "sd_range"]:
+			km.set_shader_parameter(key, TOKEN[key])
+		_token_mats.append(km)
 		var om := ShaderMaterial.new()
 		om.shader = outline_shader
 		om.set_shader_parameter("width", OUTLINE_WIDTH)
@@ -311,7 +332,24 @@ func _build() -> void:
 	_disc_mesh = _make_disc()
 	for t: int in PIECE_FILES:
 		_meshes[t] = _load_mesh("res://sets/%s/%s.glb" % [set_id, PIECE_FILES[t]])
+	_token_mesh = _load_mesh("res://sets/fichas/token.glb")
+	_icons_tex = _load_icons("res://sets/fichas/iconos.bin")
+	for km in _token_mats:
+		km.set_shader_parameter("icons", _icons_tex)
 	_built = true
+
+
+## Atlas de iconos de las fichas. Es un PNG de datos (normales y distancias, no colores): se carga tal cual,
+## sin pasar por el importador de texturas, para que no lo comprima con pérdida.
+static func _load_icons(path: String) -> Texture2D:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var img := Image.new()
+	if bytes.is_empty() or img.load_png_from_buffer(bytes) != OK:
+		push_error("No se pueden cargar los iconos de las fichas: " + path)
+		img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0.5, 0.5, 0.0, 1.0))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
 
 
 ## Textura de godot/textures por su nombre ("" = ninguna). Se cargan al usarlas por primera vez.
@@ -450,16 +488,67 @@ func set_outline(on: bool) -> void:
 			_dress(node)
 
 
+func is_tokens() -> bool:
+	return piece_set == "fichas"
+
+
+## Cambia el juego de piezas ("clasico" o "fichas") sin tocar la posición.
+func set_piece_set(set_name: String) -> void:
+	var wanted := set_name if PIECE_SETS.has(set_name) else "clasico"
+	if wanted == piece_set:
+		return
+	piece_set = wanted
+	if not _built:
+		return
+	finish_animations()
+	for s: int in _pieces:
+		var node: Node3D = _pieces[s]
+		node.set_meta("yaw", _yaw_for(node.get_meta("piece")))
+		# Un rey volcado por el mate se queda volcado, a la manera de su juego de piezas.
+		if float(node.get_meta("topple", 0.0)) != 0.0:
+			node.set_meta("topple", PI if is_tokens() else 1.5)
+			node.set_meta("topple_lift", TOKEN["height"] if is_tokens() else 0.0)
+		_dress(node)
+		_rest(node, s)
+	apply_camera()
+
+
 func _piece_material(side: int) -> ShaderMaterial:
+	if is_tokens():
+		return _token_mats[side]
 	return _tex_mats[side] if is_realistic() else _mats[side]
 
 
-## Pone a una pieza el material del acabado y enseña u oculta su contorno.
+func _piece_mesh(piece_type: int) -> Mesh:
+	return _token_mesh if is_tokens() else _meshes[piece_type]
+
+
+## Altura de una pieza, para elegirla al tocar.
+func _piece_height(piece_type: int) -> float:
+	if is_tokens():
+		return float(TOKEN["height"])
+	return float(PIECE_HEIGHT[piece_type]) * PIECE_SCALE
+
+
+## Pone a una pieza la malla y el material de su juego y de su acabado, y enseña u oculta su contorno.
 func _dress(node: Node3D) -> void:
-	var side := Chess.color_of(node.get_meta("piece"))
-	(node.get_node("Malla") as MeshInstance3D).material_override = _piece_material(side)
-	(node.get_node("Contorno") as MeshInstance3D).visible = outline
-	(node.get_node("Peana") as MeshInstance3D).visible = outline
+	var piece: int = node.get_meta("piece")
+	var side := Chess.color_of(piece)
+	var piece_type := Chess.type_of(piece)
+	var mesh := _piece_mesh(piece_type)
+	var body := node.get_node("Malla") as MeshInstance3D
+	var hull := node.get_node("Contorno") as MeshInstance3D
+	var disc := node.get_node("Peana") as MeshInstance3D
+	if body.mesh != mesh:
+		body.mesh = mesh
+		hull.mesh = mesh
+		_fit_disc(node, mesh)
+	body.material_override = _piece_material(side)
+	# Icono de la ficha: su casilla en el atlas (tres columnas, dos filas, en el orden de PIECE_FILES).
+	var cell := piece_type - 1
+	body.set_instance_shader_parameter("icon_cell", Vector2(float(cell % 3), floorf(float(cell) / 3.0)))
+	hull.visible = outline
+	disc.visible = outline
 
 
 func _apply_style() -> void:
@@ -493,6 +582,37 @@ func _apply_style() -> void:
 			_tex_mats[side].set_shader_parameter("metallic", piece["metallic"])
 			_tex_mats[side].set_shader_parameter("rim_amount", piece["rim"])
 			_tex_mats[side].set_shader_parameter("rim_color", Color("c9d6f2"))
+	# Fichas: el cuerpo es del material de su bando y el icono, del material del bando contrario.
+	for side in 2:
+		var km := _token_mats[side]
+		if real:
+			var own: Dictionary = FINISHES[style]["pieces"][side]
+			var other: Dictionary = FINISHES[style]["pieces"][1 - side]
+			km.set_shader_parameter("use_textures", 1.0)
+			km.set_shader_parameter("wood", _texture(own["tex"]))
+			km.set_shader_parameter("inlay_tex", _texture(other["tex"]))
+			km.set_shader_parameter("tint", own["tint"])
+			km.set_shader_parameter("inlay_tint", other["tint"])
+			km.set_shader_parameter("grain_scale", own["grain"])
+			km.set_shader_parameter("rough", own["rough"])
+			km.set_shader_parameter("inlay_rough", other["rough"])
+			km.set_shader_parameter("metallic", own["metallic"])
+			km.set_shader_parameter("inlay_metallic", other["metallic"])
+			km.set_shader_parameter("coat", own["coat"])
+			km.set_shader_parameter("rim_amount", own["rim"])
+			km.set_shader_parameter("rim_color", Color("c9d6f2"))
+		else:
+			var flat: Array[Color] = [Color("f8f0e0"), Color("2a3557")]
+			km.set_shader_parameter("use_textures", 0.0)
+			km.set_shader_parameter("tint", flat[side])
+			km.set_shader_parameter("inlay_tint", flat[1 - side])
+			km.set_shader_parameter("rough", 0.42)
+			km.set_shader_parameter("inlay_rough", 0.42)
+			km.set_shader_parameter("metallic", 0.0)
+			km.set_shader_parameter("inlay_metallic", 0.0)
+			km.set_shader_parameter("coat", 0.0)
+			km.set_shader_parameter("rim_amount", 0.36 if side == 0 else 0.56)
+			km.set_shader_parameter("rim_color", Color("94846c") if side == 0 else Color("9db2e0"))
 	_squares_node.material_override = _squares_tex if real else _squares_mat
 	_frame_node.material_override = _frame_tex if real else _frame_mat
 	# Los acabados realistas se iluminan con el entorno de estudio (luz ambiente y reflejos); el ilustrado, con
@@ -573,6 +693,9 @@ static func sq_pos(s: int) -> Vector3:
 ## Giro de cada pieza para que se lea bien desde el lado del jugador:
 ## los caballos miran al rival en tres cuartos y el corte del alfil queda hacia la cámara.
 func _yaw_for(p: int) -> float:
+	if is_tokens():
+		# El icono queda derecho para quien juega abajo, sea del color que sea la ficha.
+		return 0.0 if orientation == 0 else PI
 	var t := Chess.type_of(p)
 	var white := Chess.color_of(p) == 0
 	var yaw := PI if white else 0.0
@@ -587,12 +710,11 @@ func _yaw_for(p: int) -> float:
 
 func _make_piece(p: int, s: int) -> Node3D:
 	var node := Node3D.new()
-	var mesh: Mesh = _meshes[Chess.type_of(p)]
+	var mesh := _piece_mesh(Chess.type_of(p))
 	var side := Chess.color_of(p)
 	var mi := MeshInstance3D.new()
 	mi.name = "Malla"
 	mi.mesh = mesh
-	mi.material_override = _piece_material(side)
 	node.add_child(mi)
 	# Contorno: la misma malla con el material de casco invertido. No proyecta sombra.
 	var hull := MeshInstance3D.new()
@@ -614,6 +736,7 @@ func _make_piece(p: int, s: int) -> Node3D:
 	_fit_disc(node, mesh)
 	node.set_meta("piece", p)
 	node.set_meta("yaw", _yaw_for(p))
+	_dress(node)
 	_pieces_root.add_child(node)
 	_rest(node, s)
 	return node
@@ -640,7 +763,8 @@ func _rest(node: Node3D, s: int) -> void:
 	_pose(node, sq_pos(s) + Vector3(0.0, lift, 0.0), Vector3.UP, 0.0)
 	var topple: float = node.get_meta("topple", 0.0)
 	if topple != 0.0:
-		_pose(node, sq_pos(s), node.get_meta("topple_axis", Vector3.RIGHT), topple)
+		var lift_up: float = node.get_meta("topple_lift", 0.0)
+		_pose(node, sq_pos(s) + Vector3(0.0, lift_up, 0.0), node.get_meta("topple_axis", Vector3.RIGHT), topple)
 
 
 func _pose(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: float = 1.0, size: float = 1.0) -> void:
@@ -787,11 +911,12 @@ func apply_camera() -> void:
 	var pa := PackedFloat32Array()
 	var pb := PackedFloat32Array()
 	var pc := PackedFloat32Array()
+	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() else FIT_HEIGHT
 	for ix: int in [-1, 1]:
 		for iz: int in [-1, 1]:
 			var fx := float(ix)
 			var fz := float(iz)
-			for q: Vector3 in [Vector3(fx * FRAME_HALF, 0.0, fz * FRAME_HALF), Vector3(fx * FRAME_HALF, -FRAME_THICK, fz * FRAME_HALF), Vector3(fx * 3.5, FIT_HEIGHT, fz * 3.5)]:
+			for q: Vector3 in [Vector3(fx * FRAME_HALF, 0.0, fz * FRAME_HALF), Vector3(fx * FRAME_HALF, -FRAME_THICK, fz * FRAME_HALF), Vector3(fx * 3.5, fit_height, fz * 3.5)]:
 				pa.append(q.dot(right))
 				pb.append(q.dot(up))
 				pc.append(q.dot(back))
@@ -928,17 +1053,19 @@ func pick(screen_pos: Vector2) -> Vector2i:
 			plane_sq = f + 8 * r
 	var best := INF
 	var piece_sq := -1
+	# Las fichas son más anchas que el pie de las figuras.
+	var reach := 0.43 if is_tokens() else PICK_RADIUS
 	for s: int in _pieces:
 		var node: Node3D = _pieces[s]
 		var c := sq_pos(s)
-		var h: float = PIECE_HEIGHT[Chess.type_of(node.get_meta("piece"))] * PIECE_SCALE
+		var h := _piece_height(Chess.type_of(node.get_meta("piece")))
 		var ox := o.x - c.x
 		var oz := o.z - c.z
 		var qa := d.x * d.x + d.z * d.z
 		var t := INF
 		if qa > 1e-9:
 			var qb := 2.0 * (ox * d.x + oz * d.z)
-			var qc := ox * ox + oz * oz - PICK_RADIUS * PICK_RADIUS
+			var qc := ox * ox + oz * oz - reach * reach
 			var disc := qb * qb - 4.0 * qa * qc
 			if disc >= 0.0:
 				var t0 := (-qb - sqrt(disc)) / (2.0 * qa)
@@ -950,7 +1077,7 @@ func pick(screen_pos: Vector2) -> Vector2i:
 			var tt := (h - o.y) / d.y
 			var px := o.x + d.x * tt - c.x
 			var pz := o.z + d.z * tt - c.z
-			if tt > 0.0 and px * px + pz * pz <= PICK_RADIUS * PICK_RADIUS:
+			if tt > 0.0 and px * px + pz * pz <= reach * reach:
 				t = tt
 		if t < best:
 			best = t
@@ -1071,6 +1198,21 @@ func _kill_tweens() -> void:
 			tw.kill()
 	_tweens.clear()
 	_running = 0
+	for tw in _sfx_tweens:
+		if tw.is_valid():
+			tw.kill()
+	_sfx_tweens.clear()
+
+
+## Avisa de un sonido ahora o dentro de un rato. Si las animaciones se cortan, los avisos pendientes se pierden.
+func _sfx(kind: String, delay: float = 0.0, amount: float = 0.0) -> void:
+	if delay <= 0.001:
+		sound.emit(kind, amount)
+		return
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(sound.emit.bind(kind, amount))
+	_sfx_tweens.append(tw)
 
 
 ## Termina de golpe cualquier animación en curso: el tablero queda en su estado final.
@@ -1101,10 +1243,7 @@ func _apply_promotion(node: Node3D) -> void:
 	node.remove_meta("promote_to")
 	node.set_meta("piece", p)
 	node.set_meta("yaw", _yaw_for(p))
-	var mesh: Mesh = _meshes[Chess.type_of(p)]
-	(node.get_node("Malla") as MeshInstance3D).mesh = mesh
-	(node.get_node("Contorno") as MeshInstance3D).mesh = mesh
-	_fit_disc(node, mesh)
+	_dress(node)
 
 
 ## Juega una jugada legal: actualiza la posición al instante y anima según el modo.
@@ -1162,6 +1301,17 @@ func play_move(m: int, dropped: bool = false) -> void:
 		return
 
 	var mode := anim_mode
+	var check := chess.in_check()
+	var mate := check and chess.legal_moves().is_empty()
+	var landing := "capture" if victim != null else "place"
+	if mode == Anim.NONE or mode == Anim.MINIMAL:
+		# Sin animación que acompañar: la pieza se posa y, si toca, suena el jaque o la caída del rey.
+		_sfx(landing)
+		if mate:
+			_mark_fallen_king(to)
+			_sfx("fall", 0.12)
+		elif check:
+			_sfx("check", 0.1)
 	if mode == Anim.NONE:
 		_settle()
 		return
@@ -1171,8 +1321,6 @@ func play_move(m: int, dropped: bool = false) -> void:
 	var dir := Vector3(b.x - a.x, 0.0, b.z - a.z)
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
 	var is_knight := Chess.type_of(mover.get_meta("piece")) == Chess.KNIGHT
-	var check := chess.in_check()
-	var mate := check and chess.legal_moves().is_empty()
 
 	if mode == Anim.MINIMAL:
 		var tm := _tw()
@@ -1188,6 +1336,10 @@ func play_move(m: int, dropped: bool = false) -> void:
 		dur = clampf(0.26 + 0.035 * dist, 0.28, 0.46) if full else 0.16
 		if is_knight and full:
 			dur = 0.42
+	# Sonido: las piezas que se deslizan se oyen arrastrarse hasta que llegan; todas se oyen al posarse.
+	if not dropped and not is_knight:
+		_sfx("slide", 0.0, dur)
+	_sfx(landing, dur + (0.02 if dropped else 0.0))
 	var tw := _tw()
 	if dropped:
 		tw.tween_method(_pose_line.bind(mover, a, b), 0.0, 1.0, 0.06)
@@ -1223,6 +1375,7 @@ func play_move(m: int, dropped: bool = false) -> void:
 			tr.tween_interval(maxf(dur * 0.8, 0.01))
 			tr.tween_method(_pose_jump.bind(rook, ra, ra.lerp(rb, 0.5), rb, 0.75), 0.0, 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			tr.tween_method(_pose_land.bind(rook, rb, 0.07), 0.0, 1.0, 0.09)
+			_sfx("place", maxf(dur * 0.8, 0.01) + 0.28)
 		else:
 			tr.tween_method(_pose_slide.bind(rook, ra, rb, (rb - ra).normalized(), 0.05, 0.0), 0.0, 1.0, maxf(dur, 0.12)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
@@ -1233,15 +1386,40 @@ func play_move(m: int, dropped: bool = false) -> void:
 			var tk := _tw()
 			tk.tween_interval(dur + 0.05)
 			if mate:
-				var away := sq_pos(king_sq) - b
-				away.y = 0.0
-				away = away.normalized() if away.length() > 0.01 else Vector3.RIGHT
-				var axis := Vector3.UP.cross(away)
-				king.set_meta("topple_axis", axis)
-				king.set_meta("topple", 1.5)
-				tk.tween_method(_pose_topple.bind(king, sq_pos(king_sq), axis), 0.0, 1.0, 0.7 if full else 0.3).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			elif full:
-				tk.tween_method(_pose_wobble.bind(king, sq_pos(king_sq)), 0.0, 1.0, 0.36)
+				var axis := _mark_fallen_king(to)
+				var fall := 0.7 if full else 0.3
+				if is_tokens():
+					# La ficha del rey se da la vuelta: queda bocabajo.
+					tk.tween_method(_pose_flip.bind(king, sq_pos(king_sq), axis), 0.0, 1.0, fall * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+					_sfx("fall", dur + 0.05 + fall * 0.62)
+				else:
+					tk.tween_method(_pose_topple.bind(king, sq_pos(king_sq), axis), 0.0, 1.0, fall).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+					# El rey toca el tablero por primera vez a un tercio de la caída (primer rebote).
+					_sfx("fall", dur + 0.05 + fall * 0.36)
+			else:
+				_sfx("check", dur + 0.05)
+				if full:
+					tk.tween_method(_pose_wobble.bind(king, sq_pos(king_sq)), 0.0, 1.0, 0.36)
+		elif mate:
+			_sfx("fall", dur + 0.1)
+		else:
+			_sfx("check", dur + 0.05)
+
+
+## Deja anotado que el rey del bando que mueve ha caído (mate) y hacia dónde: así se queda volcado.
+## Devuelve el eje del vuelco.
+func _mark_fallen_king(attacker_sq: int) -> Vector3:
+	var king_sq := chess.king_sq(chess.turn)
+	var away := sq_pos(king_sq) - sq_pos(attacker_sq)
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.01 else Vector3.RIGHT
+	var axis := Vector3.UP.cross(away)
+	var king: Node3D = _pieces.get(king_sq)
+	if king != null:
+		king.set_meta("topple_axis", axis)
+		king.set_meta("topple", PI if is_tokens() else 1.5)
+		king.set_meta("topple_lift", TOKEN["height"] if is_tokens() else 0.0)
+	return axis
 
 
 func _hide(node: Node3D) -> void:
@@ -1284,3 +1462,9 @@ func _pose_wobble(t: float, node: Node3D, pos: Vector3) -> void:
 
 func _pose_topple(t: float, node: Node3D, pos: Vector3, axis: Vector3) -> void:
 	_pose(node, pos, axis, 1.5 * t)
+
+
+## Vuelco de una ficha: salta, gira media vuelta y cae bocabajo.
+func _pose_flip(t: float, node: Node3D, pos: Vector3, axis: Vector3) -> void:
+	var h: float = TOKEN["height"]
+	_pose(node, pos + Vector3(0.0, h * t + 0.5 * sin(PI * t), 0.0), axis, PI * t)

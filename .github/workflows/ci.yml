@@ -2,8 +2,8 @@ name: CI
 
 on:
   push:
-    # «assets-fetch» solo sirve para descargar texturas candidatas (assets.yml).
-    branches-ignore: [assets-fetch, assets-src]
+    # «assets-fetch» y «sonidos-fetch» solo sirven para descargar candidatas (assets.yml, sonidos.yml).
+    branches-ignore: [assets-fetch, assets-src, sonidos-fetch, assets-snd]
   pull_request:
   workflow_dispatch:
 
@@ -96,6 +96,9 @@ jobs:
           # versionCode creciente: Android solo actualiza a un versionCode igual o mayor.
           sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/; s/^version\/name=.*/version\/name=\"0.1.${{ github.run_number }}\"/" godot/export_presets.cfg
           grep -E "^version/(code|name)" godot/export_presets.cfg
+          # La app enseña su versión en Opciones: así se sabe qué APK está instalado.
+          echo "{\"version\": \"0.1.${{ github.run_number }}\", \"commit\": \"${GITHUB_SHA::7}\"}" > godot/data/version.json
+          cat godot/data/version.json
           V=$(echo $GODOT_VERSION | cut -d. -f1,2)
           for F in editor_settings-$V.tres editor_settings-4.tres; do
           cat > ~/.config/godot/$F <<EOF
@@ -113,11 +116,11 @@ jobs:
         run: |
           ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tee import.log | tail -15 || true
 
-      - name: Pruebas de oro (Glicko-2 y reglas, frente al núcleo TypeScript y chess.js)
+      - name: Pruebas de oro (Glicko-2, reglas y explicaciones, frente al núcleo TypeScript y chess.js)
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess; do
+          for T in test_glicko2 test_chess test_explain; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -136,7 +139,7 @@ jobs:
         if: always()
         run: |
           mkdir -p build/shots
-          cp shots.log import.log test_chess.log build/shots/ 2>/dev/null || true
+          cp shots.log import.log test_chess.log test_explain.log build/shots/ 2>/dev/null || true
           # main publica en ci-shots; las demás ramas, en ci-shots-<rama>, para que dos trabajos en paralelo no se pisen.
           SHOTS_BRANCH=ci-shots
           if [ "$GITHUB_REF_NAME" != "main" ]; then SHOTS_BRANCH="ci-shots-${GITHUB_REF_NAME//\//-}"; fi
@@ -163,7 +166,12 @@ jobs:
           A=$GITHUB_WORKSPACE/build/android/Chessome-debug.apk
           ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-debug "Android Debug" $A 2>&1 | tail -30
           ls -lh $A
-          for f in assets/data/demo_puzzles.json; do unzip -l $A | grep -q " $f$" && echo "OK $f" || echo "FALTA $f"; done
+          # Lo que la app lee como archivo suelto tiene que ir dentro del APK.
+          MISSING=0
+          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/explain/1fSFn.json assets/sets/fichas/iconos.bin; do
+            if unzip -l $A | grep -q " $f$"; then echo "OK $f"; else echo "FALTA $f"; MISSING=1; fi
+          done
+          [ "$MISSING" = 0 ]
 
       - name: Subir el APK
         uses: actions/upload-artifact@v4

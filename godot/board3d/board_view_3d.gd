@@ -42,6 +42,8 @@ void fragment() {
 """
 
 var board: Board3D
+## Sonidos de la partida (ver BoardSounds). Se apagan con set_sound_enabled.
+var sounds: BoardSounds
 var interactive := true
 ## La vista sigue al móvil.
 var tilt_enabled := false
@@ -113,6 +115,9 @@ func _init() -> void:
 	add_child(_surface)
 	board = Board3D.new()
 	_viewport.add_child(board)
+	sounds = BoardSounds.new()
+	add_child(sounds)
+	board.sound.connect(sounds.play)
 
 
 func _ready() -> void:
@@ -192,6 +197,19 @@ func set_board_theme(theme_name: String, backdrop: Color = Color(0, 0, 0, 0)) ->
 ## o "ilustrado" (liso, con contorno de tinta).
 func set_board_style(style_name: String, with_outline: Variant = null) -> void:
 	board.set_style(style_name, with_outline)
+
+
+## Juego de piezas: "clasico" (figuras) o "fichas" (fichas planas con el icono de la pieza en relieve).
+func set_piece_set(set_name: String) -> void:
+	_hide_promotion()
+	_reset_touch()
+	board.set_piece_set(set_name)
+
+
+func set_sound_enabled(on: bool) -> void:
+	sounds.enabled = on
+	if not on:
+		sounds.stop_all()
 
 
 ## La vista actual es (casi) en picado.
