@@ -93,7 +93,30 @@ Nadie puede saber en qué segundo se hace una jugada sin ver el vídeo. Claude n
 
 Coste estimado: un par de minutos por clip (sin medir).
 
-**Idea para escalar (hipótesis, sin probar):** las retransmisiones oficiales completas tienen la partida con el reloj de cada jugada (`[%clk]`, que la API de retransmisiones de Lichess exporta). Con un único punto de sincronía por vídeo se podría calcular el segundo de cualquier jugada y dejar al humano solo la comprobación. Hay que medir el error (¿±5 s?) y verificar la licencia de esos PGN. [API de Lichess](https://lichess.org/api).
+**Estimación con los relojes (hecha, pendiente de validar con el vídeo).** Las retransmisiones oficiales guardan el reloj de cada jugador tras cada jugada. Con eso se sabe cuánto pensó cada jugada y, si el vídeo no tiene cortes, basta marcar **una** jugada (el ancla) para estimar el segundo de todas las demás (`src/core/clockSync.ts`).
+
+- Tiempo pensado = reloj anterior del mismo bando − reloj actual + incremento (y + 30 min al completar la jugada 40 en el Mundial 2024).
+- El error no crece con la distancia al ancla: la suma se telescopa por bando (solo cuentan la primera y la última lectura de cada jugador). Queda ±2 s por redondeo más lo que tarde el jugador en pulsar el reloj.
+- Pausa sugerida: 3 s antes de que se pulse el reloj de la jugada, pero al menos 1 s después de la anterior; si están más juntas, a mitad de camino.
+- En el editor de marcas: elegir la jugada ancla, pulsar «= ahora» cuando se pulsa su reloj, revisar la lista de segundos estimados (con «Ir» a cada uno) y «Poner las pausas estimadas».
+- Limitación: los vídeos con cortes o repeticiones rompen la estimación a partir del corte.
+
+**Ding–Gukesh.** Relojes de la retransmisión oficial en Lichess, leídos del texto indexado por el buscador (la página no se puede descargar por su robots.txt). Gukesh pensó **2 min 12 s** antes de 55…Txf2; el resto fue casi inmediato salvo 58.Re3 (53 s):
+
+| Jugada | Pensado | Segundo estimado con el ancla 55…Txf2 = 217 s |
+| --- | --- | --- |
+| 55.Tf2 | — | 85 (1:25) |
+| 55…Txf2 | 132 s | 217 (3:37), ancla |
+| 56.Rxf2 | 2 s | 219 |
+| 56…Ad5 | 3 s | 222 |
+| 57.Axd5 | 10 s | 232 |
+| 57…Rxd5 | 1 s | 233 (3:53) |
+| 58.Re3 | 53 s | 286 (4:46) |
+| 58…Re5 | 7 s | 293 (4:53) |
+
+Comparación con las marcas de Pablo (pausa 215,47 s, fin 233,07 s): de la pausa al fin hay 17,6 s, y los relojes dan 16 s de 55…Txf2 a 57…Rxd5. Si Gukesh jugó Txf2 1,6 s después de la pausa, el fin marcado coincide con 57…Rxd5, y entonces 58.Re3 y 58…Re5 quedarían **fuera** del clip, hacia 4:46 y 4:53, salvo que el vídeo tenga un corte. Por comprobar viendo el vídeo.
+
+**Idea para escalar (hipótesis):** pedir permiso por escrito a FIDE o a los canales permitiría automatizar la búsqueda del segundo exacto mirando el tablero en el vídeo. Sin permiso, las condiciones de YouTube prohíben descargar el vídeo y acceder por medios automatizados.
 
 ## 7. Vídeos
 

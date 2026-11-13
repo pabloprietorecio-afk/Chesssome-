@@ -31,7 +31,7 @@ describe('paquete de clips de vídeo', () => {
     for (const src of CLIPS) {
       const clip = PACK.clips.find((c) => c.id === src.id)!;
       const { moves, stops, ...meta } = src;
-      const { stops: packedStops, tail, plies, ...packedMeta } = clip;
+      const { stops: packedStops, tail, plies, clockLabels: _labels, ...packedMeta } = clip;
       expect(packedMeta).toEqual(meta);
       const game = replay(moves, src.id);
       expect(plies).toBe(game.length);

@@ -68,6 +68,14 @@ export const CLIPS: ClipSource[] = [
       },
     ],
     outro: 'Con esta partida, Gukesh ganó el Mundial por 7,5 a 6,5 y se convirtió, con 18 años, en el campeón del mundo más joven de la historia.',
+    clocks: {
+      timeControl: '40/7200:1800+30',
+      firstPly: 108,
+      // 54…Re5, 55.Tf2, 55…Txf2, 56.Rxf2, 56…Ad5, 57.Axd5, 57…Rxd5, 58.Re3, 58…Re5
+      values: ['1:07:23', '0:09:43', '1:05:41', '0:10:11', '1:06:08', '0:10:31', '1:06:37', '0:10:08', '1:07:00'],
+      source:
+        'Retransmisión oficial en Lichess, «FIDE World Championship 2024», game 14 (lichess.org/broadcast/fide-world-championship-2024/game-14/LtsCRK9D), leída del texto que indexa el buscador: la página no se pudo descargar (robots.txt).',
+    },
     notes:
       'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s; el clip va de 3:20 a 3:53 y se para en 3:35, antes de 55…Txf2 (marcas de Pablo).',
   },

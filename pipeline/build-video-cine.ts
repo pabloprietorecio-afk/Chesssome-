@@ -23,6 +23,7 @@ import { CLIPS } from './video-clips';
 import { analyseAll, neg, ranked, toVerdicts } from './cine-engine';
 import { classify, DRAW_KEEPS_CP, WIN_SPOILS_CP, type FilmResult } from '../src/core/cinema';
 import { canAutoPause, marksProblems, replay, type Clip, type ClipQuestion, type ClipSource, type ClipStop, type VideoCinePack } from '../src/core/videoCine';
+import { pressTimes } from '../src/core/clockSync';
 import { sanEs } from '../src/core/lang';
 import type { Color } from '../src/core/types';
 
@@ -145,10 +146,27 @@ async function buildClip(engine: UciEngine, src: ClipSource): Promise<{ clip?: C
     stops.push({ at: stop.at, resumeAt: stop.resumeAt ?? null, questions });
   }
 
+  // Relojes: tienen que corresponder a jugadas de la partida y dar tiempos de reflexión no negativos.
+  let clockLabels: { ply: number; label: string }[] | undefined;
+  if (src.clocks) {
+    try {
+      const press = pressTimes(src.clocks);
+      const last = src.clocks.firstPly + src.clocks.values.length - 1;
+      if (src.clocks.firstPly < 1 || last > game.length) fail(`Relojes fuera de la partida (medias jugadas ${src.clocks.firstPly}–${last}).`);
+      else {
+        clockLabels = [...press.keys()].sort((a, b) => a - b).map((p) => ({ ply: p, label: `${game[p - 1].number}${sanEs(game[p - 1].san)}` }));
+        for (const st of src.stops) for (const q of st.questions) if (!press.has(q.ply)) warn(`Sin reloj para ${q.ply}: no se podrá estimar su segundo.`);
+        console.log(`   relojes: ${clockLabels.map((l) => `${l.label} ${press.get(l.ply)} s`).join(' · ')}`);
+      }
+    } catch (e) {
+      fail(`Relojes: ${(e as Error).message}`);
+    }
+  }
+
   report.ok = report.errors.length === 0;
   if (!report.ok) return { report };
   const { moves: _moves, stops: _stops, ...rest } = src;
-  return { clip: { ...rest, stops, tail: game.slice(lastPly), plies: game.length }, report };
+  return { clip: { ...rest, stops, tail: game.slice(lastPly), plies: game.length, ...(clockLabels ? { clockLabels } : {}) }, report };
 }
 
 const engine = await UciEngine.start('lite-single', 128);

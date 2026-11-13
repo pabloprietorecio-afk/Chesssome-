@@ -33,6 +33,7 @@ import { Board2D } from './Board2D';
 import type { MoveAnim } from './boardTypes';
 import { CinemaScreen } from './Cinema';
 import { HOST_FLAG, YouTubeAdapter, embedHost, errorText } from './youtubePlayer';
+import { suggestPause, videoTimes } from '../core/clockSync';
 
 /** Versión publicada (la pone el flujo de GitHub Pages); en local, «local». */
 const BUILD = (import.meta.env.VITE_BUILD as string | undefined) || 'local';
@@ -648,6 +649,17 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
     adapter.current?.play();
   };
 
+  // Estimación con los relojes: un ancla (segundo en que se pulsa el reloj tras una jugada) y el resto se calcula.
+  const labels = clip.clockLabels ?? [];
+  const firstQ = clip.stops[0]?.questions[0]?.ply;
+  const [anchorPly, setAnchorPly] = useState<number>(() => (labels.some((l) => l.ply === firstQ) ? firstQ! : labels[0]?.ply ?? 0));
+  const [anchorAt, setAnchorAt] = useState<number | null>(null);
+  const estimates = clip.clocks && anchorAt != null ? videoTimes(clip.clocks, { ply: anchorPly, at: anchorAt }) : null;
+  const goTo = (t: number) => {
+    adapter.current?.seek(Math.max(0, t - 4));
+    adapter.current?.play();
+  };
+
   const problems = marksProblems(marks);
   const json = JSON.stringify({ clip: clip.id, video: clip.video.id, ...marks });
   const rows: { key: MarkKey; label: string }[] = [
@@ -718,6 +730,73 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
           );
         })}
       </div>
+
+      {clip.clocks && labels.length > 0 && (
+        <section className="vc-clock" data-clock="on">
+          <h3>Estimar con los relojes</h3>
+          <p className="cm-quiet cm-small">
+            Marca el segundo en que se pulsa el reloj tras una jugada. Con los relojes de la partida se calcula el de las demás. Solo vale si el vídeo no
+            tiene cortes entre medias.
+          </p>
+          <div className="cm-row">
+            <label className="vc-clock-anchor">
+              Jugada ancla{' '}
+              <select value={anchorPly} onChange={(e) => setAnchorPly(Number(e.target.value))}>
+                {labels.map((l) => (
+                  <option key={l.ply} value={l.ply}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="cm-chip" onClick={() => now != null && setAnchorAt(now)} disabled={now == null}>
+              = ahora
+            </button>
+            <strong>{fmt(anchorAt)}</strong>
+          </div>
+          {estimates && (
+            <>
+              <ul className="vc-clock-list">
+                {labels.map((l) => {
+                  const t = estimates.get(l.ply);
+                  if (t == null) return null;
+                  return (
+                    <li key={l.ply} className={l.ply === anchorPly ? 'vc-clock-anchor-row' : ''} data-ply={l.ply}>
+                      <span>{l.label}</span>
+                      <span className="vc-clock-t">
+                        {t.toFixed(1)} s · {clock(Math.max(0, t))}
+                      </span>
+                      <button className="cm-chip" onClick={() => goTo(t)} disabled={status !== 'ready'} aria-label={`Ir a ${l.label}`}>
+                        Ir
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {clip.stops.map((st, i) => {
+                const sug = suggestPause(estimates, st.questions[0].ply);
+                const mine = marks.stops[i];
+                return (
+                  <p key={i} className="cm-small" data-suggest={i}>
+                    Pausa {i + 1}: estimada {sug == null ? 'sin hueco entre jugadas' : `${sug.toFixed(2)} s`}
+                    {mine != null && sug != null && ` · la marcada: ${mine.toFixed(2)} s (diferencia ${(mine - sug).toFixed(1)} s)`}
+                  </p>
+                );
+              })}
+              <button
+                className="cm-why"
+                onClick={() => {
+                  setMarks((m) => ({ ...m, stops: clip.stops.map((st, i) => suggestPause(estimates, st.questions[0].ply) ?? m.stops[i]) }));
+                  setNote('Pausas estimadas puestas. Pruébalas antes de guardar.');
+                }}
+              >
+                Poner las pausas estimadas
+              </button>
+              <p className="cm-quiet cm-small">Relojes: {clip.clocks.source}</p>
+            </>
+          )}
+        </section>
+      )}
 
       {test && (
         <p className="cm-quiet" aria-live="polite">

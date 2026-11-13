@@ -20,6 +20,7 @@
 import { Chess } from 'chess.js';
 import type { Color } from './types';
 import { DRAW_SPOILS_CP, lineText, type FilmResult, type MoveVerdict, type VerdictClass } from './cinema';
+import type { ClockData } from './clockSync';
 import { sanEs } from './lang';
 
 // ───────────────────────── Modelo de datos ─────────────────────────
@@ -87,6 +88,8 @@ export interface ClipSource {
   outro: string;
   /** Avisos para quien selecciona vídeos (título que destripa, comentaristas…). */
   notes?: string;
+  /** Relojes de la partida (retransmisión oficial), para estimar el segundo de cada jugada. */
+  clocks?: ClockData;
 }
 
 /** Jugada de la partida que el tablero reproduce entre preguntas. */
@@ -130,6 +133,8 @@ export interface Clip extends Omit<ClipSource, 'stops' | 'moves'> {
   tail: GameMove[];
   /** Media jugadas totales de la partida. */
   plies: number;
+  /** Nombre de cada media jugada con reloj («55…Txf2»), para el editor de marcas. */
+  clockLabels?: { ply: number; label: string }[];
 }
 
 export interface VideoCinePack {

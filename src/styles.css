@@ -1573,3 +1573,44 @@ a {
 :root[data-theme='dark'] .cm-primary {
   color: #1b2540;
 }
+
+/* Estimación con los relojes (editor de marcas) */
+.vc-clock {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  padding: 12px 14px;
+}
+.vc-clock h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.vc-clock select {
+  min-height: 40px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+.vc-clock-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  display: grid;
+  gap: 4px;
+}
+.vc-clock-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.vc-clock-anchor-row {
+  font-weight: 700;
+}
+.vc-clock-t {
+  color: var(--quiet);
+}
