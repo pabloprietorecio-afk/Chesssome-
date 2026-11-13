@@ -12,9 +12,9 @@ import type { PieceType } from '../core/types';
 const S = 100; // tamaño de casilla en unidades SVG
 const FILES = 'abcdefgh';
 
-const LIGHT = '#ece3d0';
-const DARK = '#a7896a';
-const TONE: Record<'good' | 'bad' | 'info', string> = { good: '#2f8f5b', bad: '#c2462e', info: '#2f6db0' };
+const LIGHT = '#e6eef8'; // casillas «cielo», a juego con el estilo WakeAgenda
+const DARK = '#93a9c9';
+const TONE: Record<'good' | 'bad' | 'info', string> = { good: '#1f9a52', bad: '#e5484d', info: '#7c5cfa' };
 
 function squareXY(sq: string, orientation: 'w' | 'b'): { x: number; y: number } {
   const f = FILES.indexOf(sq[0]);
@@ -214,9 +214,9 @@ export function Board2D(props: BoardProps): JSX.Element {
           ))}
         </defs>
         {squares}
-        {lastMove && highlight(lastMove.from, '#e8c547', 'lm-f', 0.38)}
-        {lastMove && highlight(lastMove.to, '#e8c547', 'lm-t', 0.5)}
-        {selected && highlight(selected, '#5b8fd1', 'sel', 0.45)}
+        {lastMove && highlight(lastMove.from, '#ff9a2e', 'lm-f', 0.34)}
+        {lastMove && highlight(lastMove.to, '#ff9a2e', 'lm-t', 0.46)}
+        {selected && highlight(selected, '#7c5cfa', 'sel', 0.4)}
         {checkSq && highlight(checkSq, '#d23b2b', 'chk', 0.5)}
         {coords}
         {pieces}
@@ -224,9 +224,9 @@ export function Board2D(props: BoardProps): JSX.Element {
           const { x, y } = squareXY(t, orientation);
           const occupied = !!chess.get(t as never);
           return occupied ? (
-            <circle key={`t${t}`} cx={x + S / 2} cy={y + S / 2} r={S / 2 - 5} fill="none" stroke="#1f3b5c" strokeOpacity="0.45" strokeWidth="7" pointerEvents="none" />
+            <circle key={`t${t}`} cx={x + S / 2} cy={y + S / 2} r={S / 2 - 5} fill="none" stroke="#1b2540" strokeOpacity="0.45" strokeWidth="7" pointerEvents="none" />
           ) : (
-            <circle key={`t${t}`} cx={x + S / 2} cy={y + S / 2} r={14} fill="#1f3b5c" fillOpacity="0.35" pointerEvents="none" />
+            <circle key={`t${t}`} cx={x + S / 2} cy={y + S / 2} r={14} fill="#1b2540" fillOpacity="0.35" pointerEvents="none" />
           );
         })}
         {arrows.map((a, i) => {

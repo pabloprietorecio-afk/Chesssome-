@@ -1,15 +1,28 @@
 :root {
-  --paper: #f4efe6;
-  --card: #fbf8f2;
-  --ink: #1f1c19;
-  --quiet: #6b6359;
-  --line: #ddd3c3;
-  --good: #2f7d52;
-  --bad: #b4432d;
-  --mid: #a77418;
-  --info: #2f6db0;
-  --accent: #23493a;
-  --radius: 14px;
+  /* Estilo 2D inspirado en WakeAgenda (tema claro, acento naranja). Ver docs/estilo-2d.md. */
+  --paper: #f1f7ff; /* fondo cielo */
+  --paper-2: #e3edf9; /* final del degradado del fondo */
+  --card: #ffffff;
+  --tint: #eaf1fb;
+  --ink: #1b2540;
+  --quiet: #5b6782; /* 5,3:1 sobre blanco; el de WakeAgenda (#66728C) no llega a 4,5:1 sobre el fondo */
+  --line: #d9e3f2;
+  --good: #1f7a44; /* tonos para texto (≥ 4,5:1 sobre blanco) */
+  --bad: #c0392b;
+  --mid: #8a5a00;
+  --info: #2f6fd8;
+  --good-fill: #22a559; /* tonos vivos para bordes, barras y flechas */
+  --bad-fill: #e5484d;
+  --mid-fill: #f2a100;
+  --accent-fill: #ff7a1a;
+  --accent-light: #ff9a2e;
+  --accent-deep: #ff5e1a;
+  --accent-soft: #ffebd9;
+  --accent: #b84a0c; /* el naranja como texto: 5,2:1 sobre blanco */
+  --radius: 28px;
+  --radius-s: 18px;
+  --shadow: 0 6px 18px rgba(47, 91, 168, 0.18);
+  --glow: 0 10px 22px -6px rgba(255, 122, 26, 0.55);
   color-scheme: light;
 }
 
@@ -647,4 +660,287 @@ legend {
   padding: 8px;
   max-height: 260px;
   overflow: auto;
+}
+
+
+/* ======================================================================
+   Capa de estilo WakeAgenda: fondo cielo con degradado, tarjetas blancas
+   muy redondeadas con sombra azulada, botones píldora con degradado naranja
+   y halo, insignias de icono circulares con fondo suave.
+   ====================================================================== */
+body {
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%) fixed;
+}
+h1,
+h2,
+h3,
+.cm-brand,
+.cm-rating {
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.cm-brand {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.cm-logo {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  border: 3px solid var(--accent-fill);
+  background: rgba(255, 255, 255, 0.85);
+}
+.cm-logo svg {
+  width: 30px;
+  height: 30px;
+}
+.cm-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-weight: 600;
+}
+.cm-nav svg {
+  width: 20px;
+  height: 20px;
+}
+.cm-nav-on {
+  background: var(--tab-soft, var(--accent-soft));
+  color: var(--tab, var(--accent));
+}
+/* Tablas anchas (progreso, estudio): se desplazan dentro de la tarjeta en vez de salirse. */
+.cm-card table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+/* En el móvil, barra flotante abajo, como la de WakeAgenda. */
+@media (max-width: 700px) {
+  .cm-app {
+    padding-bottom: 112px;
+  }
+  .cm-top nav {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-around;
+    gap: 0;
+    padding: 6px;
+    background: var(--card);
+    border-radius: 32px;
+    box-shadow: 0 12px 32px -6px rgba(27, 37, 64, 0.28);
+  }
+  .cm-nav {
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 2px;
+    border-radius: 22px;
+    font-size: 0.74rem;
+    min-width: 0;
+  }
+  .cm-nav svg {
+    width: 26px;
+    height: 26px;
+  }
+  .cm-nav-on {
+    background: var(--tab-soft);
+  }
+}
+.cm-card,
+.cm-hero,
+.cm-hint,
+.cm-explain,
+.cm-ai {
+  background: var(--card);
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.cm-explain {
+  border-top: 5px solid var(--quiet);
+}
+.cm-tone-good {
+  border-top-color: var(--good-fill);
+}
+.cm-tone-bad {
+  border-top-color: var(--bad-fill);
+}
+.cm-tone-mid {
+  border-top-color: var(--mid-fill);
+}
+.cm-hint.cm-whatif {
+  border-left: 0;
+  border-top: 5px solid var(--info);
+}
+.cm-primary {
+  background: linear-gradient(90deg, var(--accent-light), var(--accent-deep));
+  color: var(--ink); /* el blanco sobre este naranja no llega a 3:1; la tinta da 5,8–7,2:1 */
+  font-weight: 700;
+  border-radius: 30px;
+  min-height: 52px;
+  padding: 12px 26px;
+  box-shadow: var(--glow);
+}
+.cm-big,
+.cm-next {
+  min-height: 60px;
+  font-size: 1.08rem;
+}
+.cm-why {
+  background: var(--accent-soft);
+  border: 0;
+  color: var(--accent);
+  font-weight: 700;
+  min-height: 46px;
+  padding: 8px 20px;
+}
+.cm-link,
+a {
+  color: var(--accent);
+}
+.cm-chip {
+  background: var(--card);
+  border-color: var(--line);
+  min-height: 40px;
+  font-weight: 600;
+}
+.cm-chip-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-fill);
+}
+.cm-choice {
+  border: 0;
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  min-height: 64px;
+  padding: 16px 18px;
+}
+.cm-choice:hover {
+  box-shadow: 0 0 0 2px var(--accent-fill), var(--shadow);
+}
+.cm-bar {
+  height: 8px;
+  background: var(--tint);
+}
+.cm-bar span {
+  background: linear-gradient(90deg, var(--accent-light), var(--accent-deep));
+}
+.cm-board {
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow);
+}
+.cm-promo {
+  background: rgba(241, 247, 255, 0.88);
+}
+.cm-promo button {
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  border: 0;
+}
+.cm-warn {
+  background: #fff0cc;
+  border-left: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+.cm-callout {
+  background: var(--tint);
+  border-radius: 18px;
+}
+.cm-line {
+  background: #f6f9fe;
+  border-left-color: var(--good-fill);
+  border-radius: 12px;
+}
+.cm-line-bad {
+  border-left-color: var(--bad-fill);
+}
+.cm-stepper button:not(.cm-link) {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-width: 40px;
+  min-height: 36px;
+}
+.cm-src-motor {
+  background: #ddebff;
+}
+.cm-src-reglas {
+  background: #e2f6e8;
+}
+.cm-src-lichess {
+  background: #fff0cc;
+}
+.cm-insight {
+  background: var(--card);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+/* Ayudas: tarjetas con insignia de icono circular, como los accesos rápidos de WakeAgenda. */
+.cm-tool {
+  background: var(--card);
+  border: 0;
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  min-height: 92px;
+  gap: 6px;
+  color: var(--ink);
+}
+.cm-tool:hover {
+  box-shadow: 0 0 0 2px var(--accent-fill), var(--shadow);
+}
+.cm-tool .cm-ico {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.cm-tool:nth-child(2) .cm-ico {
+  background: #ddebff;
+  color: #1f5fc4;
+}
+.cm-tool:nth-child(3) .cm-ico {
+  background: #ede7ff;
+  color: #5b3fd0;
+}
+.cm-tool .cm-ico circle[fill='var(--card)'] {
+  fill: currentColor;
+  fill-opacity: 0.12;
+}
+.cm-tool-on {
+  background: linear-gradient(90deg, var(--accent-light), var(--accent-deep));
+  color: var(--ink);
+  box-shadow: var(--glow);
+}
+.cm-tool-on .cm-ico,
+.cm-tool-on:nth-child(n) .cm-ico {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--accent);
+}
+.cm-warn-soft {
+  background: #fff0cc;
+  border-radius: 14px;
+}
+.cm-ai-q textarea {
+  border-radius: 14px;
+  background: #f6f9fe;
+}
+.cm-ai-preview pre {
+  background: #f6f9fe;
+  border-radius: 14px;
 }
