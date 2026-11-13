@@ -13,7 +13,10 @@ import {
   fenAfter,
   moveAt,
   plyAt,
+  quickSteps,
   referenceMove,
+  syncRemoveFrom,
+  syncSetAt,
   syncCap,
   syncProblems,
   canAutoPause,
@@ -31,7 +34,7 @@ import {
   type ClipMarks,
   type ClipQuestion,
   type ClipSync,
-  type SyncMark,
+  type QuickStep,
   type DirectorEvent,
   type DirectorState,
   type VideoCinePack,
@@ -879,6 +882,8 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
         )}
       </p>
 
+      {timing && <QuickMarker clip={clip} marks={marks} sync={sync} now={now} ready={status === 'ready'} setMarks={setMarks} onNote={setNote} />}
+
       {!timing && <p className="cm-quiet cm-small">Las pausas de este clip ya están verificadas. Aquí solo se marca el tablero sincronizado.</p>}
       {timing && (
         <div className="vc-marks">
@@ -1098,21 +1103,8 @@ function SyncEditor({
   const questionPlies = new Set(clip.stops.flatMap((st) => st.questions.map((q) => q.ply)));
 
   // Marcar una jugada: las anteriores sin marcar se ponen en el mismo segundo y el orden se mantiene.
-  const setAt = (p: number, t: number) =>
-    onChange((sy) => {
-      const lastMarked = sy.marks.length ? sy.marks[sy.marks.length - 1].ply : sy.startPly;
-      const out: SyncMark[] = [];
-      for (let q = sy.startPly + 1; q <= Math.max(p, lastMarked); q++) {
-        const old = sy.marks.find((m) => m.ply === q)?.at;
-        let at = q === p ? t : (old ?? (q < p ? t : null));
-        if (at == null) break;
-        if (q < p && at > t) at = t;
-        if (q > p && at < t) at = t;
-        out.push({ ply: q, at: Math.round(at * 100) / 100 });
-      }
-      return { ...sy, marks: out };
-    });
-  const removeFrom = (p: number) => onChange((sy) => ({ ...sy, marks: sy.marks.filter((m) => m.ply < p) }));
+  const setAt = (p: number, t: number) => onChange((sy) => syncSetAt(sy, p, t));
+  const removeFrom = (p: number) => onChange((sy) => syncRemoveFrom(sy, p));
 
   const preview = syncedView(clip, sync, now ?? 0);
 
@@ -1177,6 +1169,105 @@ function SyncEditor({
           <Board2D fen={preview.fen} orientation={clip.orientation} interactive={false} lastMove={preview.last} animMode={s.settings.anim} coordinates={s.settings.coordinates} />
         </div>
       )}
+    </section>
+  );
+}
+
+/**
+ * Marcado rápido: con el vídeo en marcha, un solo botón grande que se pulsa cada vez que pasa algo (empieza el clip,
+ * aparece una jugada, llega el momento de la pausa, acaba). «Saltar» deja una jugada que no se ve para el siguiente
+ * toque y «Deshacer» borra el último.
+ */
+function QuickMarker({ clip, marks, sync, now, ready, setMarks, onNote }: { clip: Clip; marks: ClipMarks; sync: ClipSync; now: number | null; ready: boolean; setMarks: (f: (m: ClipMarks) => ClipMarks) => void; onNote: (s: string) => void }): JSX.Element {
+  const firstQ = clip.stops[0]?.questions[0]?.ply ?? 1;
+  const minStart = clip.timeline.fromPly === 1 ? 0 : clip.timeline.fromPly;
+  const setStartPly = (v: number) => setMarks((m) => ({ ...m, sync: { startPly: v, marks: (m.sync?.marks ?? []).filter((x) => x.ply > v) } }));
+  const steps = useMemo(() => quickSteps(clip, sync.startPly), [clip, sync.startPly]);
+  const [i, setI] = useState(0);
+  // Cada toque o salto guarda cómo estaba todo antes, para que «Deshacer» lo deje exactamente igual.
+  const [hist, setHist] = useState<{ i: number; marks: ClipMarks }[]>([]);
+  // Si cambia la posición inicial del tablero, cambian los pasos: se empieza por el principio.
+  useEffect(() => {
+    setI(0);
+    setHist([]);
+  }, [sync.startPly]);
+  const step: QuickStep | undefined = steps[i];
+  const plyName = (p: number) => {
+    const m = moveAt(clip, p);
+    return m ? `${m.number}${sanEs(m.san)}` : `media jugada ${p}`;
+  };
+  const label = (st: QuickStep): string =>
+    st.kind === 'start' ? 'Empieza el clip' : st.kind === 'end' ? 'Fin del clip' : st.kind === 'pause' ? `Pausa: justo antes de ${plyName(clip.stops[st.stop].questions[0].ply)}` : `Se ve ${plyName(st.ply)}`;
+  const base = (m: ClipMarks): ClipSync => m.sync ?? { startPly: sync.startPly, marks: [] };
+
+  const mark = () => {
+    if (!step || now == null) return;
+    const t = Math.round(now * 100) / 100;
+    setMarks((m) => {
+      if (step.kind === 'start') return { ...m, start: t };
+      if (step.kind === 'end') return { ...m, end: t };
+      if (step.kind === 'pause') return { ...m, stops: m.stops.map((x, k) => (k === step.stop ? t : x)) };
+      return { ...m, sync: syncSetAt(base(m), step.ply, t) };
+    });
+    onNote('');
+    setHist((h) => [...h, { i, marks }]);
+    setI(i + 1);
+  };
+  const skip = () => {
+    if (step?.kind !== 'ply') return;
+    setHist((h) => [...h, { i, marks }]);
+    setI(i + 1);
+  };
+  const undo = () => {
+    const last = hist[hist.length - 1];
+    if (!last) return;
+    setMarks(() => last.marks);
+    setHist((h) => h.slice(0, -1));
+    setI(last.i);
+  };
+  const restart = () => {
+    setMarks((m) => ({ ...m, start: null, end: null, stops: m.stops.map(() => null), sync: { startPly: sync.startPly, marks: [] } }));
+    onNote('Marcas borradas. Vuelve al principio del vídeo y empieza de nuevo.');
+    setHist([]);
+    setI(0);
+  };
+
+  return (
+    <section className="vc-quick" data-step={i} data-steps={steps.length}>
+      <h3>Marcado rápido</h3>
+      <label className="vc-sync-start">
+        Al empezar el clip, el tablero está{' '}
+        <select value={sync.startPly} onChange={(e) => setStartPly(Number(e.target.value))}>
+          {Array.from({ length: Math.max(0, firstQ - minStart) }, (_, k) => minStart + k).map((p) => (
+            <option key={p} value={p}>
+              {p === 0 ? 'en la posición inicial' : `tras ${plyName(p)}`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="cm-quiet cm-small">Reproduce el vídeo y pulsa el botón cada vez que ocurra lo que dice. La pausa, justo antes de que la mano vaya a la pieza. Si una jugada no se ve, «Saltar».</p>
+      {step ? (
+        <button className="cm-primary cm-big vc-quick-mark" onClick={mark} disabled={!ready || now == null}>
+          {label(step)}
+        </button>
+      ) : (
+        <p className="vc-quick-done">Hecho: todo marcado. Prueba la pausa y guarda.</p>
+      )}
+      <p className="cm-quiet cm-small">
+        Paso {Math.min(i + 1, steps.length)} de {steps.length}
+        {step && steps[i + 1] ? ` · después: ${label(steps[i + 1])}` : ''}
+      </p>
+      <div className="cm-row">
+        <button className="cm-chip" onClick={undo} disabled={hist.length === 0}>
+          Deshacer
+        </button>
+        <button className="cm-chip" onClick={skip} disabled={step?.kind !== 'ply'}>
+          Saltar
+        </button>
+        <button className="cm-link cm-danger" onClick={restart}>
+          Empezar de nuevo
+        </button>
+      </div>
     </section>
   );
 }

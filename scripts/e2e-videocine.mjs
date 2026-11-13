@@ -426,7 +426,7 @@ assert(gap < 80, `el aviso queda muy separado del vídeo (${Math.round(gap)} px)
 await shot('15b-sin-marcas-sin-hueco');
 await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
 await clickText('Volver a la cartelera');
-assert(/Se para solo · marcas sin comprobar/.test(await page.$eval('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"] .vc-chip', (e) => e.textContent)), 'con las marcas de Pablo, el clip se para solo (sin comprobar)');
+assert(/Sin pausa marcada/.test(await page.$eval('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"] .vc-chip', (e) => e.textContent)), 'el clip está por marcar');
 await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]');
 await openGC('Ir directo');
 await waitAttr('phase', 'asking');
@@ -450,6 +450,40 @@ await sleep(400);
 await move('b2c4', 'w'); // 61.Cc4+
 assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
 await shot('17-gukesh-carlsen-pregunta-3');
+
+// ── H. Marcado rápido: un botón que se pulsa mientras corre el vídeo; «Saltar» y «Deshacer». ──
+await clickText('Volver a la cartelera');
+await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]');
+await openGC('Comenzar');
+await waitAttr('phase', 'reveal');
+await clickText('Editor de marcas');
+await page.waitForSelector('.vc-quick');
+await clickText('Cargar el vídeo');
+await page.waitForSelector('.vc-editor[data-player="ready"]');
+const quick = () => page.$eval('.vc-quick-mark', (b) => b.textContent.trim()).catch(() => null);
+const tap = async (t) => { await setTime(t); await sleep(260); await page.click('.vc-quick-mark'); await sleep(150); };
+assert((await quick()) === 'Empieza el clip', 'primer paso: ' + (await quick()));
+await tap(2);
+assert(/Pausa: justo antes de 52…Ce2\+/.test(await quick()), 'segundo paso: ' + (await quick()));
+await tap(30);
+await tap(31); // 52…Ce2+
+await clickText('Saltar'); // 53.Txe2+ no se ve
+await tap(33); // 53…Rxe2 (y 53.Txe2+ con ella)
+await clickText('Deshacer');
+await clickText('Deshacer');
+await sleep(150);
+assert(/Se ve 53\.Txe2\+/.test(await quick()), 'tras deshacer dos veces vuelve a 53.Txe2+: ' + (await quick()));
+await tap(32);
+await tap(33);
+const qm = await page.$eval('.vc-json', (e) => JSON.parse(e.value));
+assert(qm.start === 2 && qm.stops[0] === 30 && JSON.stringify(qm.sync.marks) === JSON.stringify([{ ply: 104, at: 31 }, { ply: 105, at: 32 }, { ply: 106, at: 33 }]), 'marcado rápido: ' + JSON.stringify(qm));
+await page.evaluate(() => document.querySelector('.vc-quick')?.scrollIntoView({ block: 'start' }));
+await sleep(200);
+await shot('18-marcado-rapido');
+await clickText('Empezar de nuevo');
+await sleep(150);
+const qr = await page.$eval('.vc-json', (e) => JSON.parse(e.value));
+assert(qr.start === null && qr.stops[0] === null && qr.sync.marks.length === 0 && (await quick()) === 'Empieza el clip', 'empezar de nuevo: ' + JSON.stringify(qr));
 
 console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
 console.log('Clip con las marcas del paquete (ancla 2:21 y relojes): empieza en', cued.toFixed(2), 's, se para en', syncPause.toFixed(2), 's (marca 138) y el tablero llega a 58…Re5.');

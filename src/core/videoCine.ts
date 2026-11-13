@@ -260,6 +260,46 @@ export function syncCap(clip: { stops: { questions: { ply: number }[] }[] }, st:
   return q == null ? Infinity : q - 1;
 }
 
+/**
+ * Marca que la media jugada `p` aparece en el segundo `t`. Las anteriores sin marcar se ponen en el mismo segundo
+ * (jugadas que el vídeo no enseña) y el orden se mantiene: ninguna anterior queda después ni ninguna posterior antes.
+ */
+export function syncSetAt(sy: ClipSync, p: number, t: number): ClipSync {
+  const lastMarked = sy.marks.length ? sy.marks[sy.marks.length - 1].ply : sy.startPly;
+  const out: SyncMark[] = [];
+  for (let q = sy.startPly + 1; q <= Math.max(p, lastMarked); q++) {
+    const old = sy.marks.find((m) => m.ply === q)?.at;
+    let at = q === p ? t : (old ?? (q < p ? t : null));
+    if (at == null) break;
+    if (q < p && at > t) at = t;
+    if (q > p && at < t) at = t;
+    out.push({ ply: q, at: Math.round(at * 100) / 100 });
+  }
+  return { ...sy, marks: out };
+}
+
+/** Quita la marca de la media jugada `p` y las siguientes. */
+export const syncRemoveFrom = (sy: ClipSync, p: number): ClipSync => ({ ...sy, marks: sy.marks.filter((m) => m.ply < p) });
+
+/** Un paso del marcado rápido: lo que hay que marcar con un toque mientras se ve el vídeo. */
+export type QuickStep = { kind: 'start' } | { kind: 'ply'; ply: number } | { kind: 'pause'; stop: number } | { kind: 'end' };
+
+/**
+ * Pasos del marcado rápido, en el orden en que ocurren en el vídeo: inicio, cada jugada desde la posición inicial
+ * del tablero, la pausa justo antes de la primera jugada de cada parada, y el fin.
+ */
+export function quickSteps(clip: { stops: { questions: { ply: number }[] }[]; plies: number }, startPly: number): QuickStep[] {
+  const out: QuickStep[] = [{ kind: 'start' }];
+  const pauseBefore = new Map(clip.stops.map((st, i) => [st.questions[0].ply, i] as const));
+  for (let p = startPly + 1; p <= clip.plies; p++) {
+    const i = pauseBefore.get(p);
+    if (i != null) out.push({ kind: 'pause', stop: i });
+    out.push({ kind: 'ply', ply: p });
+  }
+  out.push({ kind: 'end' });
+  return out;
+}
+
 /** Problemas de un tablero sincronizado; lista vacía si está bien. */
 export function syncProblems(
   clip: Pick<Clip, 'timeline' | 'plies'> & { stops: { questions: { ply: number }[] }[] },

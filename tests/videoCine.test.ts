@@ -13,11 +13,14 @@ import {
   marksProblems,
   moveAt,
   plyAt,
+  quickSteps,
   referenceMove,
   replay,
   run,
   syncCap,
   syncProblems,
+  syncRemoveFrom,
+  syncSetAt,
   watchUrl,
   withMarks,
   youtubeId,
@@ -426,5 +429,27 @@ describe('pregunta en la que la partida tuvo un error (Gukesh–Carlsen, 52…Ce
 
   it('las preguntas se hacen desde el lado de quien juega', () => {
     expect(gc.stops[0].questions.map((x) => x.mover)).toEqual(['b', 'w', 'w']);
+  });
+});
+
+describe('marcado rápido', () => {
+  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+
+  it('los pasos van en el orden del vídeo: inicio, jugadas, pausa antes de la pregunta, fin', () => {
+    const steps = quickSteps(gc, 101);
+    expect(steps.slice(0, 5)).toEqual([{ kind: 'start' }, { kind: 'ply', ply: 102 }, { kind: 'ply', ply: 103 }, { kind: 'pause', stop: 0 }, { kind: 'ply', ply: 104 }]);
+    expect(steps.at(-1)).toEqual({ kind: 'end' });
+    expect(steps.length).toBe(1 + (gc.plies - 101) + 1 + 1);
+  });
+
+  it('una jugada saltada se marca con la siguiente y se puede quitar', () => {
+    let sy = syncSetAt({ startPly: 103, marks: [] }, 104, 10);
+    sy = syncSetAt(sy, 106, 12);
+    expect(sy.marks).toEqual([
+      { ply: 104, at: 10 },
+      { ply: 105, at: 12 },
+      { ply: 106, at: 12 },
+    ]);
+    expect(syncRemoveFrom(sy, 105).marks).toEqual([{ ply: 104, at: 10 }]);
   });
 });

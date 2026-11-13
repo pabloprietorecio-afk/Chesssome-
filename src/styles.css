@@ -1763,3 +1763,23 @@ a {
 .vc-home-legal {
   margin: 0;
 }
+/* Marcado rápido: un botón grande que se pulsa mientras corre el vídeo. */
+.vc-quick {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-s);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.vc-quick h3,
+.vc-quick p {
+  margin: 0;
+}
+.vc-quick-mark {
+  width: 100%;
+}
+.vc-quick-done {
+  font-weight: 700;
+  color: var(--good);
+}
