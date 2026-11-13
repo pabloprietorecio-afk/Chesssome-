@@ -1,7 +1,7 @@
 // Genera los modelos .glb de una colección de piezas a partir de sus campos de distancia.
 // Uso: node tools/pieces/generate.mjs [colección] [pieza…]   (por defecto: clasico, todas)
 import { fileURLToPath } from 'node:url';
-import { mesh } from './sdf.mjs';
+import { mesh, latheMesh, merge } from './sdf.mjs';
 import { writeGlb } from './glb.mjs';
 
 const setName = process.argv[2] ?? 'clasico';
@@ -13,9 +13,31 @@ let total = 0;
 for (const [name, def] of Object.entries(SET.pieces)) {
   if (only.length && !only.includes(name)) continue;
   const t0 = performance.now();
-  const body = mesh(def.field, def.bounds, def.cell, { aoStrength: def.ao ?? 1 });
+  // Por debajo de «cut» la pieza es de revolución y se tornea (malla exacta); por encima, mallado por rejilla.
+  const parts = [];
+  if (def.cut === undefined) {
+    parts.push(latheMesh(def.field, 0.004, def.top));
+  } else {
+    const axial = def.axial ?? def.field;
+    parts.push(latheMesh(axial, 0.004, def.cut));
+    const b = def.bounds.slice();
+    b[1] = def.cut - 3 * def.cell; // se solapa con la parte torneada: el borde abierto del mallado encoge al relajarse
+    parts.push(mesh(def.field, b, def.cell, { dropBottom: false }));
+    // Comprobación: en el corte, el contorno de la pieza completa debe ser un círculo (si no, se vería la costura).
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * 2 * Math.PI;
+      let r0 = 0.02, r1 = 0.45;
+      for (let it = 0; it < 30; it++) {
+        const rm = (r0 + r1) / 2;
+        if (def.field(rm * Math.cos(a), def.cut, rm * Math.sin(a)) < 0) r0 = rm; else r1 = rm;
+      }
+      lo = Math.min(lo, r0); hi = Math.max(hi, r0);
+    }
+    if (hi - lo > 0.002) console.log(`  ¡ojo! ${name}: el corte en y=${def.cut} no es de revolución (radio ${lo.toFixed(4)}–${hi.toFixed(4)})`);
+  }
+  const body = merge(parts);
   const surfaces = [{ name: 'cuerpo', mesh: body }];
-  for (const extra of def.extras ?? []) surfaces.push({ name: extra.name, mesh: mesh(extra.field, extra.bounds ?? def.bounds, extra.cell ?? def.cell, { aoStrength: 0.6 }) });
   writeGlb(`${outDir}${name}.glb`, name, surfaces);
   const tris = surfaces.reduce((n, s) => n + s.mesh.indices.length / 3, 0);
   let top = 0;

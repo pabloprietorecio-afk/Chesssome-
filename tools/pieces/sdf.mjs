@@ -363,7 +363,7 @@ export function mesh(field, bounds, cell, opts = {}) {
       if (!(down && low)) indices.push(a, b, c);
     }
   }
-  return compact({ positions: P, normals: N, colors: C, indices: Uint32Array.from(indices) });
+  return orient(compact({ positions: P, normals: N, colors: C, indices: Uint32Array.from(indices) }));
 }
 
 /** Quita los vértices que ya no usa ningún triángulo. */
@@ -381,4 +381,174 @@ function compact(m) {
     C.set(m.colors.subarray(4 * v, 4 * v + 4), 4 * t);
   }
   return { positions: P, normals: N, colors: C, indices: m.indices.map((i) => map[i]) };
+}
+
+// ---------- Mallado de las partes torneadas ----------
+
+/**
+ * Malla de revolución de un campo que es simétrico respecto al eje Y entre y0 e y1: se saca el contorno en el
+ * plano (r, y), se simplifica y se hace girar. Da superficies perfectamente lisas con pocos triángulos
+ * (el «surface nets» se reserva para lo que no es de revolución: caballo, almenas, corona, cruz…).
+ */
+export function latheMesh(field, y0, y1, opts = {}) {
+  const { rMax = 0.46, step = 0.004, segments = 40, tolerance = 0.0009, maxEdge = 0.045, aoStrength = 1 } = opts;
+  const f = (r, y) => field(r, y, 0);
+  const nr = Math.ceil(rMax / step) + 1, ny = Math.ceil((y1 - y0) / step) + 1;
+  const hy = (y1 - y0) / (ny - 1);
+  const V = new Float32Array(nr * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nr; i++) V[i + nr * j] = f(i * step, y0 + j * hy);
+  // «Marching squares»: cada segmento une dos aristas de la rejilla; se encadenan por el identificador de arista.
+  const edgePoint = new Map();
+  const link = new Map();
+  const hKey = (i, j) => `h${i},${j}`, vKey = (i, j) => `v${i},${j}`;
+  const cross = (key, ax, ay, bx, by, va, vb) => {
+    if (!edgePoint.has(key)) {
+      const t = va / (va - vb);
+      edgePoint.set(key, [ax + (bx - ax) * t, ay + (by - ay) * t]);
+    }
+    return key;
+  };
+  const addSeg = (a, b) => {
+    if (!link.has(a)) link.set(a, []);
+    if (!link.has(b)) link.set(b, []);
+    link.get(a).push(b);
+    link.get(b).push(a);
+  };
+  for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nr - 1; i++) {
+    const a = V[i + nr * j], b = V[i + 1 + nr * j], c = V[i + 1 + nr * (j + 1)], d = V[i + nr * (j + 1)];
+    const x0 = i * step, x1 = (i + 1) * step, ya = y0 + j * hy, yb = y0 + (j + 1) * hy;
+    const pts = [];
+    if (a < 0 !== b < 0) pts.push(cross(hKey(i, j), x0, ya, x1, ya, a, b));
+    if (b < 0 !== c < 0) pts.push(cross(vKey(i + 1, j), x1, ya, x1, yb, b, c));
+    if (d < 0 !== c < 0) pts.push(cross(hKey(i, j + 1), x0, yb, x1, yb, d, c));
+    if (a < 0 !== d < 0) pts.push(cross(vKey(i, j), x0, ya, x0, yb, a, d));
+    if (pts.length === 2) addSeg(pts[0], pts[1]);
+    else if (pts.length === 4) {
+      // Caso ambiguo: se decide con el valor del centro.
+      const mid = (a + b + c + d) / 4;
+      if (a < 0 === mid < 0) { addSeg(pts[0], pts[1]); addSeg(pts[2], pts[3]); } else { addSeg(pts[0], pts[3]); addSeg(pts[1], pts[2]); }
+    }
+  }
+  // Cadenas: se parte de los extremos sueltos (borde de la rejilla o el eje) y se queda la más larga.
+  const used = new Set();
+  const chains = [];
+  const walk = (start) => {
+    const chain = [start];
+    used.add(start);
+    let cur = start;
+    for (;;) {
+      const next = (link.get(cur) ?? []).find((k) => !used.has(k));
+      if (next === undefined) break;
+      used.add(next);
+      chain.push(next);
+      cur = next;
+    }
+    return chain;
+  };
+  for (const [k, n] of link) if (n.length === 1 && !used.has(k)) chains.push(walk(k));
+  for (const k of link.keys()) if (!used.has(k)) chains.push(walk(k));
+  const lengthOf = (ch) => ch.reduce((s, k, i) => (i ? s + Math.hypot(edgePoint.get(k)[0] - edgePoint.get(ch[i - 1])[0], edgePoint.get(k)[1] - edgePoint.get(ch[i - 1])[1]) : 0), 0);
+  chains.sort((p, q) => lengthOf(q) - lengthOf(p));
+  let pts = chains[0].map((k) => edgePoint.get(k).slice());
+  if (pts[0][1] > pts[pts.length - 1][1]) pts.reverse(); // de abajo arriba
+  // Cada punto se lleva al contorno exacto.
+  const g2 = (r, y, e) => [f(r + e, y) - f(r - e, y), f(r, y + e) - f(r, y - e)];
+  for (const p of pts) {
+    for (let it = 0; it < 3; it++) {
+      const d = f(p[0], p[1]);
+      const g = g2(p[0], p[1], 5e-4);
+      const gl = Math.hypot(g[0], g[1]) / 1e-3;
+      if (gl < 1e-6) break;
+      p[0] = Math.max(0, p[0] - (d * g[0]) / (gl * gl * 1e-3));
+      p[1] -= (d * g[1]) / (gl * gl * 1e-3);
+    }
+  }
+  // Simplificación de Douglas–Peucker.
+  const keep = new Uint8Array(pts.length);
+  keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    let worst = 0, at = -1;
+    const ex = pts[b][0] - pts[a][0], ey = pts[b][1] - pts[a][1];
+    const el = Math.hypot(ex, ey) || 1e-9;
+    for (let i = a + 1; i < b; i++) {
+      const dist = Math.abs((pts[i][0] - pts[a][0]) * ey - (pts[i][1] - pts[a][1]) * ex) / el;
+      if (dist > worst) { worst = dist; at = i; }
+    }
+    if (at >= 0 && (worst > tolerance || el > maxEdge)) {
+      keep[at] = 1;
+      stack.push([a, at], [at, b]);
+    }
+  }
+  pts = pts.filter((_, i) => keep[i]);
+  // La pared del pie se prolonga hasta el tablero.
+  if (pts[0][1] < 0.02 && pts[0][0] > 0.05) pts.unshift([pts[0][0], 0]);
+
+  const n = pts.length;
+  const P = new Float32Array(n * segments * 3), N = new Float32Array(n * segments * 3), C = new Float32Array(n * segments * 4);
+  for (let i = 0; i < n; i++) {
+    const [r, y] = pts[i];
+    const g = g2(Math.max(r, 2e-3), y, 2e-3);
+    const gl = Math.hypot(g[0], g[1]) || 1;
+    const nrn = g[0] / gl, nyn = g[1] / gl;
+    let occ = 0, w = 1;
+    for (let s = 1; s <= 5; s++) {
+      const h = 0.035 * s;
+      occ += (w * Math.max(0, h - f(Math.abs(r + nrn * h), y + nyn * h))) / h;
+      w *= 0.62;
+    }
+    const ao = Math.max(0.38, Math.min(1, 1 - 0.5 * aoStrength * occ));
+    for (let s = 0; s < segments; s++) {
+      const a = (s / segments) * 2 * Math.PI, ca = Math.cos(a), sa = Math.sin(a);
+      const v = i * segments + s;
+      P.set([r * ca, y, r * sa], 3 * v);
+      N.set([nrn * ca, nyn, nrn * sa], 3 * v);
+      C.set([ao, ao, ao, 1], 4 * v);
+    }
+  }
+  // La oclusión se suaviza a lo largo del perfil, como en el otro mallado.
+  for (let pass = 0; pass < 2; pass++) {
+    const prev = Float32Array.from({ length: n }, (_, i) => C[4 * i * segments]);
+    for (let i = 0; i < n; i++) {
+      const m = (prev[Math.max(0, i - 1)] + prev[i] * 2 + prev[Math.min(n - 1, i + 1)]) / 4;
+      for (let s = 0; s < segments; s++) for (let k = 0; k < 3; k++) C[4 * (i * segments + s) + k] = m;
+    }
+  }
+  const I = [];
+  for (let i = 0; i < n - 1; i++) {
+    if (pts[i][0] < 1e-5 && pts[i + 1][0] < 1e-5) continue;
+    for (let s = 0; s < segments; s++) {
+      const a = i * segments + s, b = i * segments + ((s + 1) % segments), c = (i + 1) * segments + ((s + 1) % segments), d = (i + 1) * segments + s;
+      I.push(a, c, b, a, d, c);
+    }
+  }
+  return orient({ positions: P, normals: N, colors: C, indices: Uint32Array.from(I) });
+}
+
+/** Deja cada triángulo con la cara frontal (antihoraria en glTF) hacia donde apuntan las normales. */
+export function orient(m) {
+  const { positions: P, normals: N, indices: I } = m;
+  for (let t = 0; t < I.length; t += 3) {
+    const a = I[t], b = I[t + 1], c = I[t + 2];
+    const ux = P[3 * b] - P[3 * a], uy = P[3 * b + 1] - P[3 * a + 1], uz = P[3 * b + 2] - P[3 * a + 2];
+    const vx = P[3 * c] - P[3 * a], vy = P[3 * c + 1] - P[3 * a + 1], vz = P[3 * c + 2] - P[3 * a + 2];
+    const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+    const nx = N[3 * a] + N[3 * b] + N[3 * c], ny = N[3 * a + 1] + N[3 * b + 1] + N[3 * c + 1], nz = N[3 * a + 2] + N[3 * b + 2] + N[3 * c + 2];
+    if (fx * nx + fy * ny + fz * nz < 0) { I[t + 1] = c; I[t + 2] = b; }
+  }
+  return m;
+}
+
+/** Une varias mallas en una sola superficie. */
+export function merge(meshes) {
+  const nv = meshes.reduce((s, m) => s + m.positions.length / 3, 0), ni = meshes.reduce((s, m) => s + m.indices.length, 0);
+  const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), C = new Float32Array(nv * 4), I = new Uint32Array(ni);
+  let v = 0, i = 0;
+  for (const m of meshes) {
+    P.set(m.positions, 3 * v); N.set(m.normals, 3 * v); C.set(m.colors, 4 * v);
+    for (let k = 0; k < m.indices.length; k++) I[i + k] = m.indices[k] + v;
+    v += m.positions.length / 3; i += m.indices.length;
+  }
+  return { positions: P, normals: N, colors: C, indices: I };
 }

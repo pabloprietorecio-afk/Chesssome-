@@ -16,7 +16,7 @@ function pawn() {
   const collar = disc(0.487, 0.178, 0.027);
   const neck = roundCone([0, 0.49, 0], [0, 0.57, 0], 0.098, 0.085);
   const head = sphere(0, 0.682, 0, 0.16);
-  return { field: union(0.04, body, collar, union(0.03, neck, head)), bounds: [-0.36, -0.03, -0.36, 0.36, 0.9, 0.36], cell: 0.029 };
+  return { field: union(0.04, body, collar, union(0.03, neck, head)), top: 0.9 };
 }
 
 function rook() {
@@ -30,7 +30,7 @@ function rook() {
   const hollow = roundCylinder(0.172, 0.87, 1.3, 0.02);
   const slot = radial(roundBox(0.26, 1.0, 0, 0.13, 0.082, 0.047, 0.012), 6, Math.PI / 6);
   const top = subtract(0.03, tower, hollow, slot);
-  return { field: union(0.04, body, collar, top), bounds: [-0.4, -0.03, -0.4, 0.4, 1.05, 0.4], cell: 0.026 };
+  return { field: union(0.04, body, collar, top), cut: 0.686, bounds: [-0.4, 0, -0.4, 0.4, 1.05, 0.4], cell: 0.017 };
 }
 
 function bishop() {
@@ -42,10 +42,10 @@ function bishop() {
   const collars = union(0.03, disc(0.686, 0.192, 0.027), disc(0.74, 0.136, 0.022));
   const mitre = stem([[0, 0.745, 1], [0.1, 0.745, 1], [0.156, 0.84], [0.17, 0.93], [0.135, 1.04], [0.075, 1.125], [0.036, 1.16, 1], [0, 1.16, 1]]);
   const finial = sphere(0, 1.195, 0, 0.052);
-  // Corte del alfil: una lente inclinada (sin aristas vivas, para que el mallado salga limpio).
-  const slit = translate(rotateZ(ellipsoid(0, 0, 0, 0.17, 0.034, 0.26), -0.66), 0.125, 0.99, 0);
-  const head = union(0.02, subtract(0.045, mitre, slit), finial);
-  return { field: union(0.04, body, collars, head), bounds: [-0.39, -0.03, -0.39, 0.39, 1.3, 0.39], cell: 0.021 };
+  // Corte del alfil: una acanaladura redonda en diagonal (sin labios finos, para que el mallado salga limpio).
+  const slit = roundCone([0.135, 0.9, -0.3], [0.135, 1.06, 0.3], 0.042, 0.042);
+  const head = union(0.02, subtract(0.03, mitre, slit), finial);
+  return { field: union(0.04, body, collars, head), cut: 0.768, bounds: [-0.3, 0, -0.3, 0.3, 1.3, 0.3], cell: 0.016 };
 }
 
 function queen() {
@@ -61,7 +61,7 @@ function queen() {
   const dome = ellipsoid(0, 1.335, 0, 0.16, 0.105, 0.16);
   const finial = sphere(0, 1.47, 0, 0.056);
   const crown = union(0.02, cup, pearls, dome, finial);
-  return { field: union(0.04, body, collars, crown), bounds: [-0.42, -0.03, -0.42, 0.42, 1.56, 0.42], cell: 0.022 };
+  return { field: union(0.04, body, collars, crown), cut: 1.012, bounds: [-0.36, 0, -0.36, 0.36, 1.58, 0.36], cell: 0.016 };
 }
 
 function king() {
@@ -75,7 +75,7 @@ function king() {
   const dome = ellipsoid(0, 1.395, 0, 0.205, 0.075, 0.205);
   const cross = union(0.014, roundBox(0, 1.61, 0, 0.047, 0.15, 0.042, 0.018), roundBox(0, 1.635, 0, 0.125, 0.045, 0.042, 0.018));
   const crown = union(0.02, cup, dome, cross);
-  return { field: union(0.04, body, collars, crown), bounds: [-0.44, -0.03, -0.44, 0.44, 1.82, 0.44], cell: 0.021 };
+  return { field: union(0.04, body, collars, crown), cut: 1.075, bounds: [-0.36, 0, -0.36, 0.36, 1.84, 0.36], cell: 0.016 };
 }
 
 function knight() {
@@ -89,11 +89,11 @@ function knight() {
   // que es lo que hace reconocible la pieza, se controla punto a punto.
   const outline = smoothProfile(
     [
-      [0.2, 0.2, 1], [0.205, 0.27], [0.218, 0.36], [0.2, 0.47], [0.15, 0.545], [0.108, 0.6], [0.088, 0.642, 1],
+      [0.185, 0.235, 1], [0.198, 0.29], [0.216, 0.37], [0.2, 0.47], [0.15, 0.545], [0.108, 0.6], [0.088, 0.642, 1],
       [0.135, 0.618], [0.2, 0.602], [0.262, 0.6], [0.302, 0.628], [0.318, 0.675], [0.303, 0.722],
       [0.24, 0.778], [0.152, 0.862], [0.08, 0.935], [0.04, 0.985, 1],
       [0.052, 1.07], [0.036, 1.145, 1], [-0.022, 1.06], [-0.055, 0.99, 1],
-      [-0.125, 0.955], [-0.195, 0.88], [-0.248, 0.76], [-0.27, 0.62], [-0.264, 0.46], [-0.24, 0.34], [-0.225, 0.2, 1],
+      [-0.125, 0.955], [-0.195, 0.88], [-0.248, 0.76], [-0.27, 0.62], [-0.264, 0.46], [-0.236, 0.34], [-0.205, 0.235, 1],
     ],
     8,
     false,
@@ -108,8 +108,8 @@ function knight() {
     [
       [-0.045, 1.0, 1], [-0.11, 1.002], [-0.165, 0.958], [-0.186, 0.905, 1], [-0.236, 0.892], [-0.27, 0.825], [-0.27, 0.768, 1],
       [-0.302, 0.738], [-0.313, 0.665], [-0.297, 0.612, 1], [-0.32, 0.572], [-0.315, 0.492], [-0.292, 0.447, 1],
-      [-0.303, 0.402], [-0.288, 0.322], [-0.262, 0.262, 1],
-      [-0.17, 0.27], [-0.19, 0.46], [-0.195, 0.62], [-0.175, 0.76], [-0.125, 0.87], [-0.06, 0.935],
+      [-0.303, 0.402], [-0.282, 0.33], [-0.245, 0.285, 1],
+      [-0.17, 0.29], [-0.19, 0.46], [-0.195, 0.62], [-0.175, 0.76], [-0.125, 0.87], [-0.06, 0.935],
     ],
     6,
     false,
@@ -125,7 +125,7 @@ function knight() {
     d = -smin(-d, eye(-1)(x, y, z), 0.012);
     return d;
   };
-  return { field: union(0.035, plinth, horse), bounds: [-0.4, -0.03, -0.4, 0.4, 1.2, 0.4], cell: 0.022 };
+  return { field: union(0.03, plinth, horse), axial: plinth, cut: 0.214, bounds: [-0.4, 0, -0.4, 0.4, 1.2, 0.4], cell: 0.019 };
 }
 
 export const SET = {

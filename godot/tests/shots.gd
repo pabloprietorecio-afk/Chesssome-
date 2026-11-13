@@ -149,3 +149,42 @@ func _run() -> void:
 	board.drag_piece(_sq("g1"), Vector2(canvas.x * 0.62, canvas.x * 0.6))
 	await _frames(3)
 	await _shot("16_arrastre")
+
+	await _demo_shots()
+
+
+## La demo de verdad (escena principal del APK), jugada con toques simulados por el mismo camino que un dedo.
+func _demo_shots() -> void:
+	view.visible = false
+	bg.visible = false
+	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
+	add_child(demo)
+	await _frames(55)
+	await _shot("20_demo")
+	var dview: BoardView3D = demo.view
+	var moves: Array = demo.puzzle["moves"]
+	var solution := str(moves[1])
+	_tap(dview, _sq(solution.substr(0, 2)))
+	await _frames(4)
+	await _shot("21_demo_pieza_tocada")
+	print("DEMO seleccionada=%d (esperada %d)" % [dview.board.selected, _sq(solution.substr(0, 2))])
+	_tap(dview, _sq(solution.substr(2, 2)))
+	await _frames(45)
+	await _shot("22_demo_jugada_hecha")
+	print("DEMO titulo=«%s» paso=%d" % [demo.title.text, demo.step])
+	demo._on_toggle_theme()
+	demo._on_center()
+	await _frames(20)
+	await _shot("23_demo_oscuro_centrado")
+
+
+func _tap(v: BoardView3D, square: int) -> void:
+	var local := v.board.camera.unproject_position(Board3D.sq_pos(square) + Vector3(0.0, 0.3, 0.0))
+	var canvas_pos: Vector2 = v.get_global_transform() * local
+	for pressed: bool in [true, false]:
+		var e := InputEventScreenTouch.new()
+		e.index = 0
+		e.position = canvas_pos
+		e.pressed = pressed
+		get_viewport().push_input(e, true)
+

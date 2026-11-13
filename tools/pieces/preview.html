@@ -91,7 +91,7 @@
         const n = q.get('piece') ?? 'knight';
         board(4, 2);
         [0, 55, 90, 180].forEach((deg, i) => piece(n, i % 2 ? 'b' : 'w', i - 1.5, 0, (deg * Math.PI) / 180));
-        look(Number(q.get('pitch') ?? 14), 5.2, 0, [0, 0.62, 0]);
+        look(Number(q.get('pitch') ?? 14), Number(q.get('dist') ?? 5.2), 0, [Number(q.get('tx') ?? 0), Number(q.get('ty') ?? 0.62), 0]);
       } else {
         board(8, 8);
         const back = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];

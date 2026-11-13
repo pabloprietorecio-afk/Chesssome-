@@ -45,7 +45,7 @@ void fragment() {
 	}
 	// Sombra de contacto bajo cada pieza (B = casilla ocupada): la asienta y la separa de la casilla.
 	if (st.b > 0.5) {
-		col *= 1.0 - 0.22 * (1.0 - smoothstep(0.16, 0.5, d));
+		col *= 1.0 - 0.3 * (1.0 - smoothstep(0.18, 0.5, d));
 	}
 	if (mark == 1) {
 		col = mix(col, c_hint.rgb, (1.0 - smoothstep(0.15 - aa, 0.15 + aa, d)) * 0.42);
