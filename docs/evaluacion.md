@@ -14,7 +14,7 @@ el port `godot/core/assessment.gd`, comprobado contra ella con una prueba de oro
 4. **Entrenamiento**: cada problema lo eligen el nivel y los puntos flojos. El nivel se mueve con cada
    problema y el perfil se afina. «Mi nivel y mi plan» está siempre a mano (la píldora de la barra superior).
 
-Se puede saltar el test: se entrena desde un nivel provisional.
+Se puede saltar el test (en la pregunta de experiencia o a mitad del test): se empieza desde el nivel más bajo (600, con los problemas más fáciles) y el nivel se ajusta al jugar. Lo ya contestado se conserva en el perfil.
 
 ## Qué se guarda de cada intento
 

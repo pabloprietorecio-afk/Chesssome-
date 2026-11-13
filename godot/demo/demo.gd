@@ -1169,11 +1169,14 @@ func _build_actions() -> void:
 			if kind == "solve":
 				var quiet := wide.duplicate()
 				quiet["glow"] = _c("shadow")
+				var skip := _button("skip", "Saltar test", _skip_test, _c("field"), _c("quiet"), wide)
 				left_button = _button("why", "No lo sé", _on_left, _c("surface"), _c("ink"), quiet)
+				right_button = left_button
+				row = [skip, left_button]
 			else:
 				left_button = _button("next", "Ver mi nivel" if last_test else "Siguiente", _on_right, _c("accent"), _c("accent_ink"), go)
-			right_button = left_button
-			row = [left_button]
+				right_button = left_button
+				row = [left_button]
 		elif kind == "solve":
 			hint_button = _tool_button("bulb", "Pista", _on_hint, "butter")
 			step_button = _tool_button("step", "Un paso", _on_step, "mint")
@@ -2623,12 +2626,14 @@ func _start_test(exp: String) -> void:
 	_next_test()
 
 
-## Sin test: se entrena desde un nivel provisional, que se va afinando con cada problema.
+## Sin test (desde la pregunta de experiencia o a mitad del test): se empieza desde el nivel más bajo, con
+## los problemas más fáciles, y el nivel se va afinando con cada problema. Lo ya contestado se conserva.
 func _skip_test() -> void:
-	if experience == "":
-		experience = "casual"
+	experience = "never"
 	test_skipped = true
-	player = Assessment.start_test(experience)
+	var kept: Array = player.get("tries", [])
+	player = Assessment.start_test("never")
+	player["tries"] = kept
 	player["done"] = true
 	mode = "train"
 	_close_progress()
@@ -2976,8 +2981,8 @@ func _open_progress(kind: String = "progress") -> void:
 	var small := "Margen: ±%d. Se afina con cada problema. Es la escala de los problemas de Lichess, no Elo." % margin
 	if limit_note != "":
 		small = limit_note + " " + small
-	if tries.is_empty():
-		small = "Has saltado el test: es un nivel provisional. " + small
+	if test_skipped:
+		small = "Has saltado el test: empiezas desde el principio y el nivel se ajusta al jugar. " + small
 	body.add_child(_centered(_para(small, F_FOOT, _c("quiet"), font_regular)))
 
 	# El perfil.

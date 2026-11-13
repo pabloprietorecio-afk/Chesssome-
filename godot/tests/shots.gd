@@ -628,6 +628,15 @@ func _level_shots(demo: Control) -> void:
 	await _frames(8)
 	await _shot("59b_experiencia_oscuro")
 	demo._close_progress()
+	# «Saltar test» a mitad del test: se empieza desde el nivel más bajo y se conserva lo contestado.
+	demo._start_test("regular")
+	await _frames(40)
+	await _shot("59c_test_saltar")
+	demo._on_hint()
+	var before: int = (demo.player["tries"] as Array).size()
+	demo._skip_test()
+	await _frames(40)
+	print("NIVEL saltar test: modo=%s nivel=%.0f saltado=%s anotados=%d→%d dificultad del problema=%d" % [demo.mode, float(demo.player["rating"]["r"]), str(demo.test_skipped), before, (demo.player["tries"] as Array).size(), int(demo.puzzle["rating"])])
 	demo._set_dark(false)
 	await _frames(6)
 
