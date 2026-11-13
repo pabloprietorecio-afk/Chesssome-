@@ -11,14 +11,16 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | Nivel | `godot/core/glicko2.gd` | Glicko-2, igual que `src/core/glicko2.ts` |
 | Escena | `godot/board3d/board_3d.gd` | Cámara, luces, piezas, casillas, flechas, animaciones |
 | Control | `godot/board3d/board_view_3d.gd` | Toque, arrastre, promoción, giro con dos dedos, seguir al móvil |
-| Materiales | `godot/board3d/shaders/` | `piece`, `outline`, `outline_disc`, `squares`, `soft_shadow` |
+| Materiales | `godot/board3d/shaders/` | Realistas: `squares_textured`, `frame_textured`, `piece_textured`, `studio_sky`. Ilustrado: `squares`, `piece`. Comunes: `outline`, `outline_disc`, `soft_shadow` |
+| Texturas | `godot/textures/` | Fotografías de madera, mármol y metal (CC0), con su procedencia en `LEEME.md` |
 | Colección | `godot/sets/clasico/` | Seis piezas y el marco, en GLB |
 | Modelado | `tools/pieces/` | Genera los GLB desde campos de distancia (código propio) |
 | Demo | `godot/demo/` | Pantalla de problema con problemas reales de `godot/data/demo_puzzles.json` |
 | Tipografía | `godot/fonts/` | Inter e Inter Display (OFL 1.1) |
 | Capturas | `godot/tests/shots.gd` | 16 capturas del tablero y 10 de la demo con toques simulados |
 
-Renderizador: «Mobile» (Vulkan). Sin modelos, texturas ni código de modelado de terceros.
+Renderizador: «Mobile» (Vulkan). Modelos y código de modelado propios. Las texturas de los acabados realistas
+son de Poly Haven y ambientCG, las dos bajo CC0.
 
 ## Uso de `BoardView3D`
 
@@ -33,11 +35,32 @@ view.board.anim_mode = Board3D.Anim.FULL  # FULL, FAST (por defecto), MINIMAL, N
 view.set_board_theme("dark", Color("0a0f1e"))  # tema y color de fondo de la pantalla que lo contiene
 view.edge_fade = 48.0                   # franja en la que la vista se funde con ese fondo, arriba y abajo
 view.board.fit_pad = Vector4(0.012, 0.06, 0.012, 0.08)  # margen del encuadre: izquierda, arriba, derecha, abajo
+view.set_board_style("marmol")          # acabado: "madera", "marmol", "metal" o "ilustrado"
+view.board.set_outline(true)            # contorno de tinta (por defecto, solo en el ilustrado)
 view.center_view()                      # vista en picado; default_view() vuelve a la inclinada (las dos deshacen el zoom)
 view.reset_zoom()                       # tablero entero otra vez, sin cambiar inclinación ni giro
 view.set_tilt_enabled(true)             # seguir la inclinación y el giro del móvil
 view.set_view_locked(true)              # fijar la vista actual
 ```
+
+## Acabados
+
+| Acabado | Tablero | Piezas | Notas |
+| --- | --- | --- | --- |
+| Madera (por defecto) | Taracea de arce y nogal, marco de palisandro, barnizado | Boj claro y ébano | Veta en vertical en las piezas |
+| Mármol | Mármol crema y pizarra azulada, pulido | Mármol blanco y negro veteado | Sin barniz: brilla la propia piedra |
+| Metal | Acero cepillado, con el cepillado cruzado entre casillas | Latón y acero oscuro | Las piezas reflejan el entorno de estudio |
+| Ilustrado | Azul cielo liso | Porcelana marfil y azul tinta, con contorno | El estilo de la primera versión |
+
+- Los tres realistas son **datos** (`Board3D.FINISHES`): texturas, tintes, tamaño de la veta, brillo, barniz, metal y
+  luz de cada uno. Añadir otro es añadir una entrada y sus texturas.
+- **Regla de contraste:** el tablero abarca los tonos medios y las piezas, los extremos. Las claras son más claras
+  que las casillas claras y las oscuras, más oscuras que las casillas oscuras.
+- **Reflejos:** un entorno de estudio dibujado por código (`studio_sky.gdshader`: paredes claras, suelo cálido y
+  cuatro cajas de luz) da la luz ambiente y los brillos. No se ve de fondo y gira con el lado del jugador.
+- **Texturas:** se proyectan por los tres ejes en las piezas (no tienen coordenadas de textura); en el tablero,
+  cada casilla toma un trozo distinto. Se importan comprimidas y con mipmaps (`importer_defaults` en `project.godot`).
+- **Contorno de tinta:** opcional en cualquier acabado; por defecto solo lo lleva el ilustrado.
 
 ## Cómo se dibuja
 

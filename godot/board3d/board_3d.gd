@@ -48,7 +48,7 @@ const FINISHES := {
 		"board": {"rough": 0.16, "coat": 0.0, "metallic": 0.0, "normal_depth": 0.0, "joint": 0.42},
 		"frame": {"tex": "marmol_negro", "tint": Color(0.5, 0.5, 0.52), "rough": 0.16, "coat": 0.0, "metallic": 0.0, "grain": 0.3},
 		"pieces": [
-			{"tex": "marmol_blanco", "tint": Color(1.03, 1.03, 1.04), "grain": 0.45, "rough": 0.2, "coat": 0.0, "metallic": 0.0, "rim": 0.0},
+			{"tex": "marmol_blanco", "tint": Color(0.9, 0.9, 0.91), "grain": 0.45, "rough": 0.2, "coat": 0.0, "metallic": 0.0, "rim": 0.0},
 			{"tex": "marmol_negro", "tint": Color(0.55, 0.55, 0.57), "grain": 0.45, "rough": 0.16, "coat": 0.0, "metallic": 0.0, "rim": 0.12},
 		],
 		"labels": [Color("eef2f8"), Color("5a5348")],
@@ -58,12 +58,12 @@ const FINISHES := {
 	},
 	"metal": {
 		"light": {"tex": "acero", "normal": "acero_normal", "tint": Color(1.22, 1.24, 1.28), "grain": 0.3, "turn": 0.0},
-		"dark": {"tex": "acero", "normal": "acero_normal", "tint": Color(0.34, 0.37, 0.43), "grain": 0.3, "turn": 1.0},
+		"dark": {"tex": "acero", "normal": "acero_normal", "tint": Color(0.46, 0.5, 0.58), "grain": 0.3, "turn": 1.0},
 		"board": {"rough": 0.42, "coat": 0.0, "metallic": 1.0, "normal_depth": 1.0, "joint": 0.6},
 		"frame": {"tex": "bronce", "tint": Color(0.7, 0.7, 0.72), "rough": 0.36, "coat": 0.0, "metallic": 1.0, "grain": 0.3},
 		"pieces": [
 			{"tex": "laton", "tint": Color(1.0, 0.86, 0.6), "grain": 0.4, "rough": 0.24, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
-			{"tex": "bronce", "tint": Color(0.62, 0.64, 0.72), "grain": 0.4, "rough": 0.26, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
+			{"tex": "bronce", "tint": Color(0.6, 0.7, 0.95), "grain": 0.4, "rough": 0.26, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
 		],
 		"labels": [Color("eef1f6"), Color("30343c")],
 		"outline": [Color("3a2c10"), Color("040506")],

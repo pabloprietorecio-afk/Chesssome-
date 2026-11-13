@@ -47,5 +47,6 @@ void fragment() {
 	CLEARCOAT_ROUGHNESS = 0.12;
 	AO = ao;
 	AO_LIGHT_AFFECT = 0.4;
-	EMISSION = glow_color.rgb * glow * (0.12 + fres * 0.75);
+	// Selección: solo un filo luminoso; la pieza conserva su color.
+	EMISSION = glow_color.rgb * glow * fres * 0.7;
 }

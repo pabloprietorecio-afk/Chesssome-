@@ -679,7 +679,7 @@ func _build_sheet() -> void:
 	box.add_child(_switch_row("Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
 	box.add_child(_switch_row("Fijar la vista", "Ni el móvil ni los dedos la mueven.", view.view_locked, _set_lock))
 	box.add_child(_text("Pellizca el tablero con dos dedos para ampliarlo; el botón de vista lo deja entero.", 26, _c("quiet"), font_regular))
-	box.add_child(_text("Arrastra con dos dedos para girar la vista o, si está ampliado, para moverte por él.", 26, _c("quiet"), font_regular))
+	box.add_child(_text("Con dos dedos también giras la vista o mueves el tablero ampliado.", 26, _c("quiet"), font_regular))
 	box.add_child(_caption("Tema"))
 	box.add_child(_segments(["Claro", "Oscuro"], 1 if dark else 0, _set_theme_index))
 
