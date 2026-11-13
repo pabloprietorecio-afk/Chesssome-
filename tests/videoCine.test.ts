@@ -81,9 +81,10 @@ describe('paquete de clips de vídeo', () => {
     }
   });
 
-  it('Ding–Gukesh: marcas de Pablo en orden y dentro del vídeo', () => {
-    expect(marksOf(ding)).toEqual({ start: 200.14, stops: [215.47], end: 233.07, duration: 437 });
-    expect(marksProblems(marksOf(ding))).toEqual([]);
+  it('Ding–Gukesh: las marcas erróneas están retiradas y el clip no se para solo hasta marcarlo de nuevo', () => {
+    expect(ding.marks).toBe('pending');
+    expect(marksOf(ding)).toEqual({ start: null, stops: [null], end: null, duration: 437 });
+    expect(canAutoPause(ding)).toBe(false);
   });
 
   it('Ding–Gukesh: en las tres preguntas solo gana la jugada de la partida', () => {
@@ -143,7 +144,6 @@ describe('utilidades', () => {
   it('un clip sin marcas no puede pausar solo; con marcas locales, sí', () => {
     const unmarked = withMarks(ding, { start: null, stops: [null], end: null, duration: null });
     expect(canAutoPause(unmarked)).toBe(false);
-    expect(canAutoPause(ding)).toBe(true);
     const marked = withMarks(ding, { start: 0, stops: [8.4], end: 120, duration: 431 });
     expect(canAutoPause(marked)).toBe(true);
     expect(marksOf(marked)).toEqual({ start: 0, stops: [8.4], end: 120, duration: 431 });
@@ -345,8 +345,9 @@ describe('director', () => {
 
 describe('tablero sincronizado', () => {
   const q1 = ding.stops[0].questions[0].ply;
-  const pause = ding.stops[0].at!;
-  const marks = marksOf(ding);
+  // Marcas de ejemplo (el clip del paquete está por marcar).
+  const marks = { start: 200, end: 240, stops: [215.5], duration: 437 };
+  const pause = marks.stops[0];
 
   it('por defecto empieza en la posición de la primera pregunta', () => {
     expect(defaultStartPly(ding)).toBe(q1 - 1);
@@ -374,8 +375,8 @@ describe('tablero sincronizado', () => {
     const at = (ms: { ply: number; at: number }[], startPly = q1 - 1) => syncProblems(ding, { startPly, marks: ms }, marks).join(' ');
     expect(at([{ ply: q1 + 1, at: pause + 1 }])).toMatch(/sin huecos/);
     expect(at([{ ply: q1, at: pause + 3 }, { ply: q1 + 1, at: pause + 1 }])).toMatch(/orden de tiempo/);
-    expect(at([{ ply: q1, at: ding.end! + 1 }])).toMatch(/después del fin/);
-    expect(at([{ ply: q1, at: ding.start! - 1 }])).toMatch(/antes del inicio/);
+    expect(at([{ ply: q1, at: marks.end + 1 }])).toMatch(/después del fin/);
+    expect(at([{ ply: q1, at: marks.start - 1 }])).toMatch(/antes del inicio/);
     expect(at([{ ply: q1, at: pause - 0.5 }])).toMatch(/antes de la pausa/);
     expect(at([], q1)).toMatch(/destriparía/);
     expect(at([], ding.timeline.fromPly - 1)).toMatch(/fuera de las jugadas/);

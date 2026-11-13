@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLIPS } from '../pipeline/video-clips';
-import { creditAfterMove, parseClock, parseTimeControl, pressTimes, suggestPause, thinkTimes, videoTimes, type ClockData } from '../src/core/clockSync';
+import { creditAfterMove, parseClock, parseTimeControl, pressTimes, suggestPause, suggestSync, thinkTimes, videoTimes, type ClockData } from '../src/core/clockSync';
 
 const ding = CLIPS.find((c) => c.id === 'ding-gukesh-2024-g14')!;
 const clocks = ding.clocks!;
@@ -57,5 +57,33 @@ describe('relojes', () => {
     expect(suggestPause(v, 112)).toBe(220.5); // 56…Ad5 llega 3 s después de 56.Rxf2: a mitad de camino
     expect(suggestPause(v, 114)).toBe(232.5); // 1 s entre jugadas: justo en medio
     expect(suggestPause(v, 999)).toBeNull();
+  });
+
+  it('tablero estimado: sin inicio, empieza 5 s antes de 55.Tf2 y cada jugada aparece 0,5 s antes de su reloj', () => {
+    const v = videoTimes(clocks, { ply: 110, at: 217 });
+    const s = suggestSync(v, { start: null, end: null, minStart: 98, maxStart: 109 })!;
+    expect(s.start).toBe(79.5);
+    expect(s.sync.startPly).toBe(108);
+    expect(s.sync.marks.map((m) => [m.ply, m.at])).toEqual([
+      [109, 84.5],
+      [110, 216.5],
+      [111, 218.5],
+      [112, 221.5],
+      [113, 231.5],
+      [114, 232.5],
+      [115, 285.5],
+      [116, 292.5],
+    ]);
+  });
+
+  it('tablero estimado: respeta el inicio y el fin ya marcados', () => {
+    const v = videoTimes(clocks, { ply: 110, at: 217 });
+    const s = suggestSync(v, { start: 200, end: 240, minStart: 98, maxStart: 109 })!;
+    expect(s.start).toBe(200);
+    expect(s.sync.startPly).toBe(109); // 55.Tf2 ya se ve al empezar
+    expect(s.sync.marks.map((m) => m.ply)).toEqual([110, 111, 112, 113, 114]);
+    // Nunca empieza después de la posición de la primera pregunta.
+    expect(suggestSync(v, { start: 250, end: null, minStart: 98, maxStart: 109 })!.sync.startPly).toBe(109);
+    expect(suggestSync(new Map(), { start: null, end: null, minStart: 98, maxStart: 109 })).toBeNull();
   });
 });

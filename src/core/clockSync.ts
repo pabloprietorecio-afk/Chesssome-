@@ -134,3 +134,33 @@ export function suggestPause(times: Map<number, number>, ply: number, lead = PAU
   }
   return Math.round(t * 100) / 100;
 }
+
+/** La pieza se posa un poco antes de pulsar el reloj: el tablero sincronizado cambia este tiempo antes. */
+export const BOARD_LEAD = 0.5;
+/** Si el clip aún no tiene inicio, empieza este tiempo antes de la primera jugada con reloj. */
+export const START_LEAD = 5;
+
+/**
+ * Tablero sincronizado estimado con los relojes: posición al empezar el clip y segundo en que aparece
+ * cada media jugada siguiente (un poco antes de que se pulse su reloj). Las marcas van seguidas y paran
+ * en la primera media jugada sin reloj o pasado el fin del clip.
+ */
+export function suggestSync(
+  times: Map<number, number>,
+  o: { start: number | null; end: number | null; minStart: number; maxStart: number },
+): { start: number; sync: { startPly: number; marks: { ply: number; at: number }[] } } | null {
+  const plies = [...times.keys()].sort((a, b) => a - b);
+  if (plies.length === 0) return null;
+  const boardAt = (p: number) => Math.round((times.get(p)! - BOARD_LEAD) * 100) / 100;
+  const start = o.start ?? Math.max(0, Math.round((boardAt(plies[0]) - START_LEAD) * 100) / 100);
+  // Posición al empezar: la última jugada que ya se ve en el inicio del clip.
+  const seen = plies.filter((p) => boardAt(p) <= start);
+  const startPly = Math.min(o.maxStart, Math.max(o.minStart, seen.length ? seen[seen.length - 1] : plies[0] - 1));
+  const marks: { ply: number; at: number }[] = [];
+  for (let p = startPly + 1; times.has(p); p++) {
+    const at = Math.max(boardAt(p), start);
+    if (o.end != null && at > o.end) break;
+    marks.push({ ply: p, at });
+  }
+  return { start, sync: { startPly, marks } };
+}

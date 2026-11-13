@@ -41,7 +41,7 @@ import { Board2D } from './Board2D';
 import type { MoveAnim } from './boardTypes';
 import { CinemaScreen } from './Cinema';
 import { HOST_FLAG, YouTubeAdapter, embedHost, errorText } from './youtubePlayer';
-import { suggestPause, videoTimes } from '../core/clockSync';
+import { suggestPause, suggestSync, videoTimes } from '../core/clockSync';
 
 /** Versión publicada (la pone el flujo de GitHub Pages); en local, «local». */
 const BUILD = (import.meta.env.VITE_BUILD as string | undefined) || 'local';
@@ -801,7 +801,7 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
           )}
           <p className="cm-quiet cm-small">
             Marca el segundo en que se pulsa el reloj tras una jugada. Con los relojes de la partida se calcula el de las demás. Solo vale si el vídeo no
-            tiene cortes entre medias.
+            tiene cortes entre medias: compruébalo con «Ir» en dos o tres jugadas.
           </p>
           <div className="cm-row">
             <label className="vc-clock-anchor">
@@ -851,11 +851,16 @@ function MarksEditor({ clip, onClose }: { clip: Clip; onClose: () => void }): JS
               <button
                 className="cm-why"
                 onClick={() => {
-                  setMarks((m) => ({ ...m, stops: clip.stops.map((st, i) => suggestPause(estimates, st.questions[0].ply) ?? m.stops[i]) }));
-                  setNote('Pausas estimadas puestas. Pruébalas antes de guardar.');
+                  const firstQ = clip.stops[0]?.questions[0]?.ply ?? 1;
+                  setMarks((m) => {
+                    const stops = clip.stops.map((st, i) => suggestPause(estimates, st.questions[0].ply) ?? m.stops[i]);
+                    const sug = suggestSync(estimates, { start: m.start, end: m.end, minStart: clip.timeline.fromPly === 1 ? 0 : clip.timeline.fromPly, maxStart: firstQ - 1 });
+                    return sug ? { ...m, start: sug.start, stops, sync: sug.sync } : { ...m, stops };
+                  });
+                  setNote('Marcas estimadas puestas: inicio (si faltaba), pausas y tablero. Compruébalas con «Ir» y «Probar» antes de guardar.');
                 }}
               >
-                Poner las pausas estimadas
+                Poner las marcas estimadas
               </button>
               <p className="cm-quiet cm-small">Relojes: {clip.clocks.source}</p>
             </>

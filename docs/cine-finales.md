@@ -2,7 +2,7 @@
 
 Idea de Pablo: ver finales reales en vídeo y que el vídeo **se pare solo justo antes de la jugada** para preguntar al jugador «¿Qué jugarías?». Después, el vídeo sigue y se ve lo que pasó de verdad.
 
-**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Primer clip terminado (Ding–Gukesh, Mundial 2024): tres preguntas comprobadas con Stockfish y marcas de tiempo puestas por Pablo y verificadas en su móvil: **la pausa automática cae antes de que Gukesh coja la torre**. Nuevo: tablero 2D sincronizado con el vídeo; falta marcar sus segundos en el clip. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
+**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Primer clip (Ding–Gukesh, Mundial 2024): tres preguntas comprobadas con Stockfish. **Sus primeras marcas de tiempo resultaron erróneas (Pablo, 13 nov) y se han retirado**: está por marcar de nuevo con un ancla y la estimación de los relojes. Nuevo: tablero 2D sincronizado con el vídeo. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
 
 ## 1. Cómo es la experiencia
 
@@ -115,19 +115,20 @@ Coste estimado: un par de minutos por clip (sin medir).
 | 58.Re3 | 53 s | 286 (4:46) |
 | 58…Re5 | 7 s | 293 (4:53) |
 
-Comparación con las marcas de Pablo (pausa 215,47 s, fin 233,07 s): en 3:53 los jugadores ya se dan la mano (Pablo), así que todo, de 55…Txf2 a 58…Re5, ocurre en menos de 17,6 s de vídeo, cuando según los relojes pasaron 76 s reales. **El vídeo de FIDE está montado con cortes**: los relojes no sirven para estimar sus segundos (queda marcado con `continuous: false` y el editor lo avisa).
+~~Conclusión anterior: el vídeo de FIDE está montado con cortes.~~ Salía de las primeras marcas de Pablo (apretón de manos en 3:53), que él mismo ha dado por erróneas: en su captura, cerca de ese segundo Gukesh aún piensa tras 55.Tf2. **No se sabe si el vídeo tiene cortes.** Si no los tiene, una sola marca da todas las demás; se comprueba con «Ir» en dos o tres jugadas (por ejemplo 55.Tf2, 2 min 12 s antes del ancla, y 58.Re3).
 
-Conclusión: los resúmenes editados se marcan a mano. La estimación por relojes es para retransmisiones completas sin cortes (por ejemplo, el directo entero de una partida), donde una sola marca da todas las demás. Riesgo en esas retransmisiones: los comentaristas pueden adelantar la jugada antes de la pausa.
+Los resúmenes con cortes se marcan a mano. Riesgo en retransmisiones completas: los comentaristas pueden adelantar la jugada antes de la pausa.
 
 **Tablero sincronizado (13 nov 2026, a petición de Pablo).** Debajo del vídeo, nuestro tablero 2D enseña la posición del tablero del vídeo y la va moviendo.
 
 - Datos: posición al empezar el clip (`sync.startPly`, por defecto la de la primera pregunta) y, para cada media jugada siguiente, el segundo del vídeo en que aparece (`sync.marks`). El paquete lleva la partida desde 12 medias jugadas antes de la primera pregunta hasta el final (`timeline`).
-- Se marca a mano en el editor de marcas, sección «Tablero sincronizado»: «= ahora» en cada jugada (las anteriores sin marcar se ponen en el mismo segundo), ±0,5 s, «Ir» y «Quitar» (borra esa y las siguientes). Una vista previa enseña el tablero en el segundo actual del vídeo. En un clip con pausas verificadas, el editor solo deja tocar el tablero.
+- Con los relojes: tras marcar el ancla, «Poner las marcas estimadas» pone el inicio (si falta: 5 s antes de la primera jugada con reloj), las pausas y el tablero (cada jugada 0,5 s antes de que se pulse su reloj; la posición al empezar sale del inicio). Respeta el inicio y el fin ya marcados (`suggestSync` en `src/core/clockSync.ts`).
+- O a mano, en el editor de marcas, sección «Tablero sincronizado»: «= ahora» en cada jugada (las anteriores sin marcar se ponen en el mismo segundo), ±0,5 s, «Ir» y «Quitar» (borra esa y las siguientes). Una vista previa enseña el tablero en el segundo actual del vídeo. En un clip con pausas verificadas, el editor solo deja tocar el tablero.
 - Jugadas que no salen en cámara (vídeo con cortes): se marcan cuando el vídeo ya las muestra, por ejemplo tras el corte.
 - Sin destripes, por dos vías: (1) la validación (`syncProblems`) no deja guardar ni empaquetar una jugada de pregunta, o posterior, marcada antes de su pausa; (2) mientras se ve el vídeo, el tablero nunca pasa de la posición de la próxima pregunta (`syncCap`), aunque una marca esté mal.
 - Animación solo al avanzar una jugada; al rebobinar o saltar, el tablero cambia sin animación.
 - En la pausa, el tablero es el de la pregunta. Al revelar y al final, vuelve a seguir al vídeo si hay jugadas marcadas.
-- Ding–Gukesh: según Pablo, en el vídeo solo se ve mover el rey blanco una casilla (56.Rxf2). Falta que marque los segundos.
+- Ding–Gukesh: por marcar.
 
 **Idea para escalar (hipótesis):** pedir permiso por escrito a FIDE o a los canales permitiría automatizar la búsqueda del segundo exacto mirando el tablero en el vídeo. Sin permiso, las condiciones de YouTube prohíben descargar el vídeo y acceder por medios automatizados.
 
@@ -137,7 +138,7 @@ Conclusión: los resúmenes editados se marcan a mano. La estimación por reloje
 
 | Vídeo | Canal | Momento | Estado |
 | --- | --- | --- | --- |
-| [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | **Clip terminado y verificado en el móvil.** Vídeo de 437 s, montado con cortes; clip de 3:20 a 3:53 (apretón de manos) con la pausa en 3:35 (215,47 s) |
+| [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | Preguntas terminadas. **Marcas por rehacer** (las primeras eran erróneas). Vídeo de 437 s; no se sabe si tiene cortes |
 | [Final Moments of Gukesh Winning World Championship](https://www.youtube.com/watch?v=HlmhDl_KnOY) | ChessBase India | El mismo momento, grabado a pie de tablero | oEmbed correcto. Alternativa al anterior |
 | [FIDE World Championship Match - TIEBREAK FOR THE TITLE](https://www.youtube.com/watch?v=WkwVXg9a_i0) | FIDE chess | Nepómniashchi–Ding 2023, desempate 4: 46…Tg6 | oEmbed correcto. Retransmisión larga con comentaristas. No es un final técnico |
 | [Instructive Knight vs Rook endgame with a beautiful finish](https://www.youtube.com/watch?v=Y_IV9N5rhhw) | ChessBase India | Final de caballo contra torre entre aficionados | oEmbed correcto. Falta la partida |
@@ -212,11 +213,13 @@ El flujo `.github/workflows/pages.yml` construye el prototipo en cada empuje a `
 
 **Primera prueba en el móvil (13 nov, Pablo):** la web carga y el reproductor de YouTube aparece desde `youtube-nocookie.com`. El cartel negro sin botón parecía un vídeo que no cargaba: ahora lleva un ▶ que carga el vídeo aunque no haya marcas.
 
-**Prueba en el móvil, por orden:**
-1. Abrir el cine y el clip; pulsar «Ir directo a la pregunta», responder y «Ver cómo ocurrió en el vídeo». Comprueba que el vídeo carga y se controla.
-2. «Editor de marcas» → «Cargar el vídeo» → ▶. Pulsar «= ahora» en inicio, justo antes de 55…Txf2 y en el final. «Probar» la pausa. «Guardar en este dispositivo».
-3. Volver al clip → «Ver el vídeo: se para antes de la jugada». Debe pararse solo.
-4. «Copiar las marcas» y pegarlas en el chat para dejarlas en `pipeline/video-clips.ts` con `marks: 'verified'`.
+**Marcar Ding–Gukesh en el móvil, por orden:**
+1. Clip → «Editor de marcas» → «Cargar el vídeo» → ▶. Buscar el momento en que Gukesh captura en f2 y pulsa el reloj.
+2. En «Estimar con los relojes», jugada ancla 55…Txf2 → «= ahora» justo cuando pulsa el reloj.
+3. «Poner las marcas estimadas». Comprobar con «Ir» en 55.Tf2, 56.Rxf2 y 58.Re3 que la pieza se mueve en ese momento. Si no coincide, el vídeo tiene cortes: corregir esas jugadas a mano.
+4. Marcar el fin (apretón de manos) con «= ahora». «Probar» la pausa. «Guardar en este dispositivo».
+5. Volver al clip → «Ver el vídeo: se para antes de la jugada». Debe pararse solo y el tablero de abajo seguir al vídeo.
+6. «Copiar las marcas» y pegarlas en el chat para dejarlas en `pipeline/video-clips.ts` con `marks: 'verified'`.
 
 ## 13. Películas generadas (aparcadas)
 
