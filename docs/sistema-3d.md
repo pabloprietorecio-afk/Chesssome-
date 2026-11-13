@@ -9,7 +9,8 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | --- | --- | --- |
 | Reglas | `godot/core/chess.gd` | Jugadas legales, jaque, mate, enroque, al paso, promoción, FEN |
 | Nivel | `godot/core/glicko2.gd` | Glicko-2, igual que `src/core/glicko2.ts` |
-| Explicaciones | `godot/core/explain_data.gd` | Lee las explicaciones ya redactadas de cada problema (`godot/data/explain/`) |
+| Evaluación | `godot/core/assessment.gd` | Test de nivel, perfil por dimensiones y plan, igual que `src/core/assessment.ts` (ver `docs/evaluacion.md`) |
+| Explicaciones | `godot/core/explain_data.gd` | Lee las explicaciones ya redactadas de cada problema (`godot/data/explain/`) y la clase de error de cada jugada |
 | Escena | `godot/board3d/board_3d.gd` | Cámara, luces, piezas, casillas, flechas, animaciones y avisos de sonido |
 | Control | `godot/board3d/board_view_3d.gd` | Toque, arrastre, promoción, ampliar y girar con dos dedos, fijar el giro, seguir al móvil |
 | Sonido | `godot/board3d/board_sounds.gd` | Reproduce las grabaciones de `godot/sounds/` cuando la escena avisa |
@@ -17,10 +18,10 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | Texturas | `godot/textures/` | Fotografías de madera, mármol y metal (CC0), con su procedencia en `LEEME.md` |
 | Colecciones | `godot/sets/clasico/`, `godot/sets/fichas/` | Figuras (seis piezas y el marco, en GLB) y fichas planas (una ficha y el atlas de iconos) |
 | Modelado | `tools/pieces/` | Genera los GLB y los iconos desde campos de distancia (código propio) |
-| Pantalla | `godot/demo/` | Pantalla de problema: problemas reales de `godot/data/demo_puzzles.json`, explicación, ayudas y opciones |
+| Pantalla | `godot/demo/` | La app: bienvenida, experiencia, test de nivel, resultado y plan, entrenamiento adaptado y progreso, sobre 150 problemas reales (`godot/data/demo_puzzles.json`) |
 | Iconos | `godot/ui/` | Atlas de iconos (Phosphor, MIT, y piezas propias) y emblema; los genera `tools/ui/icons.mjs` |
 | Tipografía | `godot/fonts/` | Inter e Inter Display (OFL 1.1) |
-| Capturas | `godot/tests/shots.gd` | 75 capturas: tablero, fichas y la pantalla de problema con toques y gestos simulados |
+| Capturas | `godot/tests/shots.gd` | 88 capturas: tablero, fichas, la pantalla de problema y el test de nivel, con toques y gestos simulados |
 
 Renderizador: «Mobile» (Vulkan). Modelos, iconos de las piezas y código de modelado propios. Las texturas de
 los acabados realistas son de Poly Haven y ambientCG, y los sonidos de OpenGameArt y Versilian Studios; todo
@@ -148,7 +149,11 @@ límites de estas grabaciones, en `godot/sounds/LEEME.md`.
 
 - **Las explicaciones viajan redactadas.** `npm run godot:demo` (`scripts/export-godot-demo.ts`) genera, con la
   misma capa explicativa del prototipo web, una explicación por cada jugada legal de cada punto de decisión
-  (4.787 para los 60 problemas) y la del problema resuelto. La app no redacta ni calcula ajedrez nuevo.
+  (11.575 para los 150 problemas, 11,3 MB) y la del problema resuelto. La app no redacta ni calcula ajedrez
+  nuevo. Tras regenerarlas hay que regenerar también los datos de oro (`npm run golden`).
+- **Test de nivel, perfil y plan**: ver `docs/evaluacion.md`. La app arranca por la bienvenida, la pregunta de
+  experiencia y el test; después entrena con problemas elegidos por el nivel y los puntos flojos. El jugador
+  se guarda en `user://chessome_jugador.json`.
 - **Si el jugador falla**, la tarjeta cuenta qué hace su jugada y qué permite, con la variante para verla en
   el tablero, pero no dice cuál era la mejor: puede reintentar.
 - **Ayuda graduada mientras se resuelve** (barra del pie, también tras un fallo), de menos a más:
@@ -224,8 +229,10 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Pruebas de oro: `godot/tests/test_chess.gd` (3.944 comprobaciones contra chess.js) y `test_glicko2.gd` (1.033).
   `npm run golden` regenera los datos y `tests/golden-godot.test.ts` falla si quedan desfasados.
 - `godot/tests/test_explain.gd`: cada jugada legal de cada punto de decisión tiene su explicación (ni una más ni
-  una menos), con sus cuatro niveles, y todas las variantes se pueden jugar legalmente con las reglas en
-  GDScript (4.787 explicaciones, 9.292 variantes, 65.661 comprobaciones).
+  una menos), con sus cuatro niveles y su clase de error, y todas las variantes se pueden jugar legalmente con
+  las reglas en GDScript (11.575 explicaciones).
+- `godot/tests/test_assessment.gd`: el test de nivel, el perfil y el plan dan lo mismo que el núcleo TypeScript
+  (ocho jugadores simulados).
 - Capturas: la CI dibuja con Vulkan por software (lavapipe) a 1080 × 2400 y las publica en la rama `ci-shots`
   (las demás ramas, en `ci-shots-<rama>`). `scripts/ci-wait.sh` espera a la CI del último commit y las descarga
   en `shots/ci/`.
@@ -250,7 +257,8 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Tablero 2D en Godot con la misma interfaz y alternancia 2D/3D para medir H3.
 - Con el tablero ampliado, llevar la vista a la jugada del rival si cae fuera de la pantalla.
 - Paisaje con el tiempo real en el cielo de la pantalla de problema (hoy es un cielo quieto).
-- Test de nivel y elección de problemas según el jugador (el flujo de entrenamiento del prototipo web).
+- Problemas fáciles (por debajo de 1100): la muestra casi no tiene y el test no mide bien a quien empieza.
+- Posiciones para medir desarrollo, seguridad del rey y estrategia (hoy «sin medir»).
 - Curso de reglas para quien nunca ha jugado.
 - Pantalla de licencias en la app (Phosphor Icons pide conservar su aviso MIT) antes de publicarla.
 - Icono de la app en el lanzador de Android con el emblema nuevo.

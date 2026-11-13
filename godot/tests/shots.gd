@@ -268,7 +268,7 @@ func _demo_shots() -> void:
 	await _frames(30)
 	await _shot("20_demo")
 	var missing: Array[String] = []
-	for icon_name: String in ["bulb", "step", "eye", "skip", "retry", "next", "why", "line", "chart", "tap", "sliders", "pin", "pin_on", "view", "search", "spark", "copy", "open", "close", "sound", "phone", "sun", "moon", "outline", "info", "whatif", "book", "back", "zoom", "play", "first", "piece_knight", "token_pawn"]:
+	for icon_name: String in ["bulb", "step", "eye", "skip", "retry", "next", "why", "line", "chart", "tap", "sliders", "pin", "pin_on", "view", "search", "spark", "copy", "open", "close", "sound", "phone", "sun", "moon", "outline", "info", "whatif", "book", "back", "zoom", "play", "first", "piece_knight", "token_pawn", "cap", "clock", "flag", "target", "wrong", "piece_pawn", "piece_queen", "check"]:
 		if UiIcons.texture(icon_name) == null:
 			missing.append(icon_name)
 	print("ICONOS %d en el atlas, faltan=%s emblema=%s" % [UiIcons.names().size(), str(missing), str(UiIcons.emblem() != null)])
@@ -446,6 +446,7 @@ func _demo_shots() -> void:
 	await _shot("37b_demo_opciones_final")
 	demo._close_options()
 	await _help_shots(demo)
+	await _level_shots(demo)
 	demo._open_welcome()
 	await _frames(6)
 	await _shot("38_demo_bienvenida")
@@ -507,6 +508,108 @@ func _help_shots(demo: Control) -> void:
 	await _frames(12)
 	print("AYUDA casi derecho al soltar: giro=%.1f" % dview.board.cam_yaw)
 	await _shot("47_demo_enderezado")
+
+
+## El test de nivel, de principio a fin: experiencia, problemas con un solo intento, resultado con perfil y
+## plan, y el entrenamiento adaptado. Dos problemas se contestan con toques de verdad (uno mal y otro bien);
+## el resto del test se completa con respuestas fijas por el mismo camino de anotación.
+func _level_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_experience()
+	await _frames(8)
+	await _shot("50_experiencia")
+	demo._start_test("casual")
+	await _frames(40)
+	await _shot("51_test_problema")
+	print("NIVEL test: modo=%s fase=%d contador=«%s» botón=«%s» problema=%s dificultad=%d" % [demo.mode, demo.phase, demo.counter.text, demo.button_label(demo.left_button), str(demo.puzzle["id"]), int(demo.puzzle["rating"])])
+	# Primer problema: una jugada equivocada. Un solo intento: se explica y se pasa al siguiente.
+	var wrong := _wrong_move(dview.board.chess, str(demo.puzzle["moves"][1]))
+	_tap(dview, _sq(wrong.substr(0, 2)))
+	await _frames(3)
+	_tap(dview, _sq(wrong.substr(2, 2)))
+	await _frames(30)
+	await _shot("52_test_fallo")
+	var first: Dictionary = (demo.player["tries"] as Array).back()
+	print("NIVEL fallo %s: fase=%d anotados=%d error=«%s» paso=%d tiempo=%d ms nivel=%.0f±%.0f botón=«%s»" % [wrong, demo.phase, (demo.player["tries"] as Array).size(), str(first["error"]), int(first["failStep"]), int(first["msFirst"]), float(demo.player["rating"]["r"]), float(demo.player["rating"]["rd"]), demo.button_label(demo.right_button)])
+	# Segundo problema: resuelto entero con toques.
+	demo._on_right()
+	await _frames(40)
+	var guard := 0
+	while demo.phase != 4 and guard < 8:
+		guard += 1
+		if demo.phase == 1 and dview.interactive and demo.step < demo.puzzle["moves"].size():
+			var next_move := str(demo.puzzle["moves"][demo.step])
+			_tap(dview, _sq(next_move.substr(0, 2)))
+			await _frames(3)
+			_tap(dview, _sq(next_move.substr(2, 2)))
+		await _frames(34)
+	await _frames(10)
+	await _shot("53_test_acierto")
+	var second: Dictionary = (demo.player["tries"] as Array).back()
+	print("NIVEL acierto: fase=%d anotados=%d correcto=%s nivel=%.0f±%.0f" % [demo.phase, (demo.player["tries"] as Array).size(), str(second["correct"]), float(demo.player["rating"]["r"]), float(demo.player["rating"]["rd"])])
+	# Tercero: «No lo sé».
+	demo._on_right()
+	await _frames(40)
+	demo._on_left()
+	await _frames(60)
+	await _shot("54_test_no_lo_se")
+	var third: Dictionary = (demo.player["tries"] as Array).back()
+	print("NIVEL no lo sé: fase=%d anotados=%d ayuda=«%s» titulo=«%s»" % [demo.phase, (demo.player["tries"] as Array).size(), str(third["help"]), demo.title.text])
+	# El resto del test, con respuestas fijas: falla los mates y los problemas largos, y acierta lo demás.
+	var kinds := ["mate", "hangMoved", "hangOther", "missed"]
+	var i := 0
+	while not bool(demo.player["done"]):
+		var item: Dictionary = Assessment.next_test_item(demo.player, demo.pool, 0.5)
+		if item.is_empty():
+			break
+		var fails: bool = bool(item["mate"]) or int(item["steps"]) >= 3
+		var outcome := {"correct": not fails, "failStep": (1 if int(item["steps"]) >= 3 else 0) if fails else -1, "error": kinds[i % kinds.size()] if fails else "", "help": "", "msFirst": 4000.0 if fails else 21000.0, "ms": 30000.0}
+		demo.player = Assessment.record_try(demo.player, item, outcome, "test")
+		i += 1
+	demo._finish_test()
+	await _frames(10)
+	await _shot("55_resultado")
+	var pr: Dictionary = Assessment.profile(demo.player["tries"])
+	var todo: Dictionary = Assessment.plan(demo.player["rating"], pr)
+	print("NIVEL resultado: problemas=%d nivel=%.0f±%.0f mates=%d/%d largos=%d/%d fallos=%d respuesta=%d precipitados=%d plan=%s hábitos=%s modo=%s página=%s" % [(demo.player["tries"] as Array).size(), float(demo.player["rating"]["r"]), float(demo.player["rating"]["rd"]), int(pr["mate"]["correct"]), int(pr["mate"]["n"]), int(pr["long"]["correct"]), int(pr["long"]["n"]), int(pr["fails"]), int(pr["replyBlind"]), int(pr["time"]["rushed"]), str(todo["focus"]), str(todo["habits"]), demo.mode, demo.progress_kind])
+	demo.progress_scroll.scroll_vertical = 700
+	await _frames(3)
+	await _shot("55b_resultado_perfil")
+	demo.progress_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("55c_resultado_plan")
+	# Entrenamiento: el problema lo elige el nivel y el perfil; al terminar se ve cómo cambia el nivel.
+	demo._start_training()
+	await _frames(40)
+	await _shot("56_entrenamiento")
+	print("NIVEL entrenamiento: modo=%s problema=%s dificultad=%d (objetivo %.0f) píldora=«%s» visible=%s" % [demo.mode, str(demo.puzzle["id"]), int(demo.puzzle["rating"]), float(todo["target"]), (demo.level_pill.get_meta("label_node") as Label).text, str(demo.level_pill.visible)])
+	guard = 0
+	while demo.phase != 4 and guard < 8:
+		guard += 1
+		if demo.phase == 1 and dview.interactive and demo.step < demo.puzzle["moves"].size():
+			var move := str(demo.puzzle["moves"][demo.step])
+			_tap(dview, _sq(move.substr(0, 2)))
+			await _frames(3)
+			_tap(dview, _sq(move.substr(2, 2)))
+		await _frames(34)
+	await _frames(10)
+	await _shot("57_entrenamiento_resuelto")
+	print("NIVEL tras resolver: fase=%d anotados=%d cambio=%s" % [demo.phase, (demo.player["tries"] as Array).size(), str(demo._rating_shown)])
+	demo._open_progress("progress")
+	await _frames(8)
+	await _shot("58_progreso")
+	demo._close_progress()
+	demo._set_dark(true)
+	await _frames(6)
+	demo._open_progress("progress")
+	await _frames(8)
+	await _shot("59_progreso_oscuro")
+	demo._open_experience()
+	await _frames(8)
+	await _shot("59b_experiencia_oscuro")
+	demo._close_progress()
+	demo._set_dark(false)
+	await _frames(6)
 
 
 ## Dos dedos que giran alrededor de un punto, de un ángulo a otro (grados; positivo = a la derecha, como las agujas del reloj).

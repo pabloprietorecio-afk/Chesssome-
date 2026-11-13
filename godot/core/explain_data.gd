@@ -116,6 +116,8 @@ func _unpack(e: Dictionary) -> Dictionary:
 		"best": str(e.get("b", "")),
 		"correct": int(e.get("ok", 0)) == 1,
 		"verdict": str(e.get("v", "")),
+		# Clase de error de la jugada ("" si es la del problema): ver Assessment.ERROR_KINDS.
+		"error": str(e.get("e", "")),
 		"headline": _text(e.get("h", -1)),
 		"levels": levels,
 		"facts": facts,

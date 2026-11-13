@@ -45,6 +45,9 @@ func _init() -> void:
 				explicaciones += 1
 				variantes += _revisa(expl, "%s punto %d %s" % [id, k, uci])
 				_comprueba(bool(expl["correct"]) == (uci == datos.point_solution(k) or here.after(m).is_checkmate()), "%s punto %d %s: «correct» no cuadra con el problema" % [id, k, uci])
+				# Toda jugada equivocada lleva su clase de error (la usa el perfil del jugador); las buenas, ninguna.
+				var clase := str(expl.get("error", ""))
+				_comprueba((clase == "") == bool(expl["correct"]) and (clase == "" or Assessment.ERROR_KINDS.has(clase)), "%s punto %d %s: clase de error «%s»" % [id, k, uci, clase])
 			var sol := chess.find_uci(str(moves[2 * k + 1]))
 			if sol < 0:
 				break

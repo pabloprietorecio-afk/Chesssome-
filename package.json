@@ -14,7 +14,7 @@
     "pipeline:import": "tsx pipeline/import-lichess.ts",
     "pipeline:analyze": "tsx pipeline/analyze.ts",
     "pipeline:report": "tsx pipeline/build-pack.ts",
-    "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts",
+    "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts && tsx scripts/export-golden-assessment.ts",
     "pieces": "node tools/pieces/generate.mjs",
     "pieces:fichas": "node tools/pieces/fichas.mjs",
     "ui:icons": "node tools/ui/icons.mjs",

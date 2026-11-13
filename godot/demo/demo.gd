@@ -98,6 +98,24 @@ var gesture_hint := true
 var hint_level := 0
 ## Posición tras la jugada que se resolvió con «Un paso» (para seguir desde ella).
 var step_fen := ""
+
+## Modo de la pantalla: "free" (los problemas en orden y sin nivel: es lo que usan las pruebas), "test" (test
+## de nivel: un intento por problema y sin ayudas) o "train" (entrenamiento adaptado al nivel y al perfil).
+var mode := "free"
+## Lo que la evaluación sabe de cada problema (Assessment.item_of), en el orden de la lista, y dónde está cada id.
+var pool: Array = []
+var _index_of := {}
+## El jugador: {rating, tries, done} (ver Assessment). Vacío hasta que hace el test o lo salta.
+var player := {}
+## Lo que dijo de su experiencia ("never", "rules", "casual" o "regular") y si saltó el test.
+var experience := ""
+var test_skipped := false
+## El intento en curso: {item, t0, ms_first, fail_step, error, help, recorded} (ver _record).
+var _try := {}
+## Nivel antes y después del intento anotado en este problema (para enseñar el cambio al terminar).
+var _rating_shown: Array = []
+var _rng := RandomNumberGenerator.new()
+const PLAYER_PATH := "user://chessome_jugador.json"
 ## Con false no se leen ni se guardan los ajustes ni se enseña la bienvenida (lo usan las pruebas).
 var use_settings := true
 var welcome_seen := false
@@ -162,6 +180,13 @@ var overlay: Control
 ## Zona desplazable de la hoja abierta (opciones o ayuda).
 var sheet_scroll: ScrollContainer
 var welcome: Control
+## Página a pantalla completa abierta: la pregunta de experiencia ("experience"), el resultado del test
+## ("result") o el progreso ("progress"). Y su zona desplazable.
+var progress: Control
+var progress_kind := ""
+var progress_scroll: ScrollContainer
+## Píldora de la barra con el nivel del jugador (solo en el entrenamiento): abre el progreso.
+var level_pill: Button
 
 var font_regular: Font
 var font_medium: Font
@@ -421,11 +446,28 @@ func _ready() -> void:
 	view.set_view_locked(_saved_lock)
 	view.board.anim_mode = _saved_anim as Board3D.Anim
 
+	_rng.randomize()
 	_build_chrome()
 	resized.connect(_layout)
-	_start(0)
-	if use_settings and not welcome_seen:
-		_open_welcome()
+	if not use_settings:
+		# Sin jugador (las pruebas): los problemas en orden.
+		_start(0)
+		return
+	_load_player()
+	if _has_player():
+		# Vuelve por donde iba: a medio test o entrenando.
+		if bool(player.get("done", false)):
+			mode = "train"
+			_next_training()
+		else:
+			mode = "test"
+			_next_test()
+	else:
+		_idle()
+		if welcome_seen:
+			_open_experience()
+		else:
+			_open_welcome()
 
 
 func _notification(what: int) -> void:
@@ -433,6 +475,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if welcome != null and is_instance_valid(welcome):
 			_close_welcome()
+		elif progress != null and is_instance_valid(progress):
+			_leave_progress()
 		elif sheet_kind != "":
 			_close_options()
 		elif whatif:
@@ -450,6 +494,12 @@ func _load_puzzles() -> void:
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/demo_puzzles.json"))
 	if typeof(data) == TYPE_DICTIONARY:
 		puzzles = data.get("puzzles", [])
+	pool = []
+	_index_of = {}
+	for i in puzzles.size():
+		var item := Assessment.item_of(puzzles[i])
+		pool.append(item)
+		_index_of[item["id"]] = i
 
 
 ## Versión de la app, para enseñarla en Opciones: la escribe la CI en data/version.json al generar el APK.
@@ -499,6 +549,45 @@ func _save_settings() -> void:
 	cfg.set_value("vista", "pista_de_gestos", gesture_hint)
 	cfg.set_value("vista", "giro_fijado", view.view_locked if view != null else _saved_lock)
 	cfg.save(SETTINGS_PATH)
+
+
+# ---------------------------------------------------------------- el jugador
+
+func _has_player() -> bool:
+	return player.has("rating")
+
+
+func _load_player() -> void:
+	if not FileAccess.file_exists(PLAYER_PATH):
+		return
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(PLAYER_PATH))
+	if typeof(data) != TYPE_DICTIONARY or typeof(data.get("rating")) != TYPE_DICTIONARY or typeof(data.get("tries")) != TYPE_ARRAY:
+		return
+	var rating: Dictionary = data["rating"]
+	if not (rating.has("r") and rating.has("rd") and rating.has("vol")):
+		return
+	player = {"rating": rating, "tries": data["tries"], "done": bool(data.get("done", false))}
+	experience = str(data.get("experience", ""))
+	test_skipped = bool(data.get("skipped", false))
+
+
+func _save_player() -> void:
+	if not use_settings or not _has_player():
+		return
+	var file := FileAccess.open(PLAYER_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify({"version": 1, "experience": experience, "skipped": test_skipped, "rating": player["rating"], "tries": player["tries"], "done": bool(player.get("done", false))}))
+	file.close()
+
+
+## Problemas del test ya contestados.
+func _test_count() -> int:
+	var n := 0
+	for t: Dictionary in player.get("tries", []):
+		if str(t.get("phase", "")) == "test":
+			n += 1
+	return n
 
 
 # ---------------------------------------------------------------- piezas de la interfaz
@@ -648,6 +737,7 @@ func _button(icon_name: String, text: String, on_press: Callable, fill: Color, f
 		if label != null:
 			box.add_child(label)
 	b.set_meta("label", text)
+	b.set_meta("label_node", label)
 	# Un botón no mide a sus hijos: su tamaño mínimo se le da a mano, el del contenido más el relleno.
 	var pad_x := float(opt.get("pad_x", 22.0 if vertical else 40.0))
 	var fit := func() -> void:
@@ -770,6 +860,12 @@ func _build_chrome() -> void:
 	bar.add_theme_constant_override("separation", 18)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar_pad.add_child(bar)
+	var lilac := _tint("lilac")
+	level_pill = _button("cap", "Nivel", _open_progress.bind("progress"), lilac[0], lilac[1], {"font_size": F_SUB, "height": 100.0, "icon": 54.0, "pad_x": 30.0})
+	level_pill.mouse_filter = Control.MOUSE_FILTER_STOP
+	level_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	level_pill.visible = false
+	bar.add_child(level_pill)
 	counter = _text("", F_SUB, _c("quiet"), font_medium)
 	counter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	counter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -912,7 +1008,7 @@ func _place_tip() -> void:
 	var bar_bottom := bar_row.get_global_rect().end.y if bar_row != null and is_instance_valid(bar_row) else 0.0
 	var room := slot_top - bar_bottom
 	var fits := room >= gesture_tip.size.y + 56.0
-	gesture_tip.visible = _tip_note or (gesture_hint and not view.view_locked and welcome == null and fits)
+	gesture_tip.visible = _tip_note or (gesture_hint and not view.view_locked and welcome == null and progress == null and fits)
 	var y := slot_top - gesture_tip.size.y - 34.0
 	if not fits:
 		y = bar_bottom + 14.0
@@ -1020,7 +1116,15 @@ func _refresh(animate: bool = true) -> void:
 	if card_body == null or not is_instance_valid(card_body):
 		return
 	var total := puzzles.size()
-	counter.text = ("Problema %d de %d" % [index + 1, total]) if total > 0 else "Sin problemas"
+	level_pill.visible = mode == "train" and _has_player()
+	if level_pill.visible:
+		(level_pill.get_meta("label_node") as Label).text = "Nivel %d" % int(round(float(player["rating"]["r"])))
+		counter.text = ""
+	elif mode == "test":
+		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
+		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
+	else:
+		counter.text = ("Problema %d de %d" % [index + 1, total]) if total > 0 else "Sin problemas"
 	_build_card()
 	_build_actions()
 	_layout(animate)
@@ -1028,47 +1132,62 @@ func _refresh(animate: bool = true) -> void:
 
 ## Botones del pie. Mientras se resuelve: Pista, Un paso, Solución y Saltar. Tras resolver un paso: Solución y
 ## Seguir. Con el problema terminado: Repetir y Siguiente (el color pleno solo aparece cuando toca avanzar).
+## En el test de nivel no hay ayudas: «No lo sé» mientras se resuelve y «Siguiente» al terminar cada problema.
 func _build_actions() -> void:
 	if actions == null or not is_instance_valid(actions):
 		return
 	var done := phase == Phase.SOLVED or phase == Phase.SHOWN
-	var mode := "done" if done else ("step" if phase == Phase.STEP else "solve")
+	var kind := "done" if done else ("step" if phase == Phase.STEP else "solve")
+	var last_test := mode == "test" and done and bool(player.get("done", false))
+	var key := "%s:%s:%s" % [mode, kind, str(last_test)]
 	var can_help := phase == Phase.SOLVING or phase == Phase.WRONG
-	if mode != _actions_mode:
-		_actions_mode = mode
+	if key != _actions_mode:
+		_actions_mode = key
 		for old in actions.get_children():
 			(old as CanvasItem).visible = false
 			old.queue_free()
 		hint_button = null
 		step_button = null
 		var wide := {"font_size": F_BODY, "height": BAR_HEIGHT, "icon": 56.0, "radius": 60}
-		if mode == "solve":
+		var go := wide.duplicate()
+		go["glow"] = _c("glow")
+		go["trailing"] = true
+		var row: Array[Button] = []
+		if mode == "test":
+			if kind == "solve":
+				var quiet := wide.duplicate()
+				quiet["glow"] = _c("shadow")
+				left_button = _button("why", "No lo sé", _on_left, _c("surface"), _c("ink"), quiet)
+			else:
+				left_button = _button("next", "Ver mi nivel" if last_test else "Siguiente", _on_right, _c("accent"), _c("accent_ink"), go)
+			right_button = left_button
+			row = [left_button]
+		elif kind == "solve":
 			hint_button = _tool_button("bulb", "Pista", _on_hint, "butter")
 			step_button = _tool_button("step", "Un paso", _on_step, "mint")
 			left_button = _tool_button("eye", "Solución", _on_left, "lilac")
 			right_button = _tool_button("skip", "Saltar", _on_right, "sky")
-			for b: Button in [hint_button, step_button, left_button, right_button]:
-				actions.add_child(b)
+			row = [hint_button, step_button, left_button, right_button]
 		else:
-			if mode == "done":
+			if kind == "done":
 				left_button = _button("retry", "Repetir", _on_left, _c("accent_soft"), _c("accent_text"), wide)
 			else:
 				left_button = _button("eye", "Solución", _on_left, _c("accent_soft"), _c("accent_text"), wide)
-			var go := wide.duplicate()
-			go["glow"] = _c("glow")
-			go["trailing"] = true
-			right_button = _button("next", "Siguiente" if mode == "done" else "Seguir", _on_right, _c("accent"), _c("accent_ink"), go)
-			for b: Button in [left_button, right_button]:
-				b.mouse_filter = Control.MOUSE_FILTER_STOP
-				b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				actions.add_child(b)
+			right_button = _button("next", "Siguiente" if kind == "done" else "Seguir", _on_right, _c("accent"), _c("accent_ink"), go)
+			row = [left_button, right_button]
+		for b: Button in row:
+			b.mouse_filter = Control.MOUSE_FILTER_STOP
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			actions.add_child(b)
 	# La pista y el paso solo tienen sentido cuando le toca jugar al jugador.
 	for b: Button in [hint_button, step_button]:
 		if b != null and is_instance_valid(b):
 			b.disabled = not can_help
 			b.modulate.a = 1.0 if can_help else 0.42
-	if mode == "solve" and left_button != null and is_instance_valid(left_button):
+	if kind == "solve" and left_button != null and is_instance_valid(left_button):
 		var can_show := phase != Phase.INTRO and phase != Phase.SHOWING
+		if mode == "test":
+			can_show = phase == Phase.SOLVING
 		left_button.disabled = not can_show
 		left_button.modulate.a = 1.0 if can_show else 0.42
 
@@ -1105,6 +1224,8 @@ func _build_card() -> void:
 		Phase.SOLVING:
 			head = "Juegan %s" % ("blancas" if view.board.chess.turn == 0 else "negras")
 			sub = "Encuentra la mejor jugada." if ask_step <= 1 else "Sigue: todavía hay más."
+			if mode == "test" and ask_step <= 1:
+				sub = "Encuentra la mejor jugada. Solo hay un intento."
 			show_dot = true
 		Phase.WRONG:
 			head = "No es la mejor"
@@ -1168,7 +1289,11 @@ func _build_card() -> void:
 		_add_whatif(e)
 	elif not e.is_empty():
 		_add_explanation(e, exp_level, exp_partial)
-		if done:
+		if mode == "test":
+			# El test es breve: la explicación a fondo llega después, en el entrenamiento.
+			if done and not bool(e.get("correct", false)):
+				card_body.add_child(_para("Lo repasaremos con calma en el entrenamiento.", F_SUB, _c("quiet"), font_regular))
+		elif done:
 			_add_tools()
 		elif phase == Phase.STEP:
 			card_body.add_child(_para("Pulsa «Seguir» y continúa tú con el resto.", F_SUB, _c("quiet"), font_regular))
@@ -1186,8 +1311,16 @@ func _build_card() -> void:
 		chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if done and theme_name != "":
 			chips.add_child(_chip(theme_name, _c("accent_soft"), _c("accent_text")))
-		chips.add_child(_chip("Dificultad %d" % rating, _c("field"), _c("ink")))
-		chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet")))
+		if mode == "test":
+			# En el test no se enseña la dificultad: no hay que saber por dónde va la estimación.
+			chips.add_child(_chip("Test de nivel", _c("field"), _c("ink")))
+		else:
+			if done and _rating_shown.size() == 2:
+				var up := float(_rating_shown[1]) >= float(_rating_shown[0])
+				var chip_tint := _tint("mint" if up else "peach")
+				chips.add_child(_chip("Nivel %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
+			chips.add_child(_chip("Dificultad %d" % rating, _c("field"), _c("ink")))
+			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet")))
 		var chips_pad := _pad(0, 8, 0, 0)
 		chips_pad.add_child(chips)
 		card_body.add_child(chips_pad)
@@ -1276,6 +1409,8 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 		count -= 1
 	for i in count:
 		card_body.add_child(_para(str(first[i]), F_BODY, _c("ink"), font_regular))
+	if mode == "test":
+		return
 	var lines: Array = (levels[2] as Dictionary)["lines"]
 	if partial:
 		# Lo que pasaría tras la jugada, para verlo en el tablero.
@@ -1767,6 +1902,9 @@ func _build_sheet() -> void:
 	var box := _sheet("Opciones")
 	if box == null:
 		return
+	if _has_player():
+		var mine_tint := _tint("lilac")
+		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	box.add_child(_caption("Piezas"))
 	box.add_child(_picture_tiles([["piece_knight", "Figuras"], ["token_pawn", "Fichas"]], SETS.find(piece_set), _set_pieces_index))
 	box.add_child(_caption("Material"))
@@ -2092,6 +2230,9 @@ func _close_welcome() -> void:
 		welcome_seen = true
 		_save_settings()
 	_place_tip()
+	# Primera vez: tras la bienvenida, la pregunta de experiencia y el test de nivel.
+	if use_settings and not _has_player() and progress == null:
+		_open_experience()
 
 
 # ---------------------------------------------------------------- problema
@@ -2149,6 +2290,17 @@ func _start(i: int) -> void:
 	step_fen = ""
 	step = 0
 	ask_step = 0
+	_rating_shown = []
+	_try = {}
+	if mode != "free" and _has_player() and index < pool.size():
+		var item: Dictionary = pool[index]
+		# Un problema ya anotado (al repetirlo, o en un repaso) no vuelve a mover el nivel.
+		var seen := false
+		for t: Dictionary in player["tries"]:
+			if str(t["id"]) == str(item["id"]):
+				seen = true
+				break
+		_try = {"item": item, "t0": 0, "ms_first": 0.0, "fail_step": -1, "error": "", "help": "", "recorded": seen}
 	view.sounds.stop_all()
 	view.board.set_arrows([])
 	view.set_fen(puzzle["fen"])
@@ -2174,6 +2326,9 @@ func _ask() -> void:
 	hint_level = 0
 	# Jugada nueva: el tablero vuelve a bajar a su sitio de resolver (pudo subir para dejar sitio a una explicación).
 	_gap_limit = INF
+	# El reloj del intento empieza cuando el jugador puede mover por primera vez.
+	if not _try.is_empty() and int(_try["t0"]) == 0:
+		_try["t0"] = Time.get_ticks_msec()
 	view.interactive = true
 	_set_phase(Phase.SOLVING)
 
@@ -2181,11 +2336,12 @@ func _ask() -> void:
 ## «Pista»: la primera vez, el tema del problema; la segunda, además, la pieza que hay que mover (queda
 ## elegida en el tablero, con sus destinos a la vista). No dice la jugada.
 func _on_hint() -> void:
-	if phase != Phase.SOLVING and phase != Phase.WRONG:
+	if mode == "test" or (phase != Phase.SOLVING and phase != Phase.WRONG):
 		return
 	var moves: Array = puzzle.get("moves", [])
 	if ask_step < 1 or ask_step >= moves.size():
 		return
+	_mark_help("hint")
 	if hint_level < 2:
 		hint_level += 1
 	if hint_level == 1 and _hint_theme() == "":
@@ -2207,11 +2363,12 @@ func _on_hint() -> void:
 
 ## «Un paso»: juega solo la jugada que toca y explica por qué es esa. El resto lo sigue resolviendo el jugador.
 func _on_step() -> void:
-	if phase != Phase.SOLVING and phase != Phase.WRONG:
+	if mode == "test" or (phase != Phase.SOLVING and phase != Phase.WRONG):
 		return
 	var moves: Array = puzzle.get("moves", [])
 	if ask_step < 1 or ask_step >= moves.size():
 		return
+	_mark_help("step")
 	run_id += 1
 	var my_run := run_id
 	var k := _point()
@@ -2293,6 +2450,8 @@ func _on_move_played(uci: String) -> void:
 	var moves: Array = puzzle["moves"]
 	if step >= moves.size():
 		return
+	if not _try.is_empty() and float(_try["ms_first"]) <= 0.0 and int(_try["t0"]) > 0:
+		_try["ms_first"] = maxf(1.0, float(Time.get_ticks_msec() - int(_try["t0"])))
 	var mate := view.board.chess.is_checkmate()
 	if uci != str(moves[step]) and not mate:
 		# Fallo: se cuenta qué hace la jugada y qué permite, y se deja reintentar.
@@ -2303,6 +2462,20 @@ func _on_move_played(uci: String) -> void:
 		hint_level = 0
 		expl = _explanation_for(k, uci)
 		exp_point = k
+		# La primera jugada equivocada decide el intento: en qué paso fue y qué clase de error.
+		if not _try.is_empty() and not bool(_try["recorded"]):
+			_try["fail_step"] = k
+			_try["error"] = str(expl.get("error", ""))
+			_record(false)
+		if mode == "test":
+			# En el test hay un solo intento: se explica el fallo, con la jugada buena, y se pasa al siguiente.
+			exp_partial = false
+			_set_phase(Phase.SHOWN)
+			await _wait(0.9)
+			if my_run != run_id:
+				return
+			_show_decision(_arrows_for(expl, 1, false))
+			return
 		exp_partial = true
 		_set_phase(Phase.WRONG)
 		await _wait(0.9)
@@ -2319,6 +2492,8 @@ func _on_move_played(uci: String) -> void:
 		view.interactive = false
 		if explain != null and explain.ok:
 			expl = explain.solved()
+		# Resuelto sin fallos ni ayudas: acierto. (Si antes hubo un fallo o una ayuda, ya está anotado.)
+		_record(true)
 		_set_phase(Phase.SOLVED)
 		return
 	last_wrong = {}
@@ -2339,6 +2514,7 @@ func _show_solution() -> void:
 	var moves: Array = puzzle.get("moves", [])
 	if phase == Phase.INTRO or phase == Phase.SHOWING or ask_step < 1 or ask_step >= moves.size():
 		return
+	_mark_help("solution")
 	run_id += 1
 	var my_run := run_id
 	var k := _point()
@@ -2369,17 +2545,497 @@ func _show_solution() -> void:
 	_set_phase(Phase.SHOWN)
 
 
-## «Solución» mientras se resuelve; «Repetir» cuando el problema ha terminado.
+## «Solución» mientras se resuelve; «Repetir» cuando el problema ha terminado. En el test, «No lo sé».
 func _on_left() -> void:
-	if phase == Phase.SOLVED or phase == Phase.SHOWN:
+	if mode == "test":
+		_on_right()
+	elif phase == Phase.SOLVED or phase == Phase.SHOWN:
 		_start(index)
 	else:
 		_show_solution()
 
 
-## «Saltar» o «Siguiente»; tras «Un paso», «Seguir».
+## «Saltar» o «Siguiente»; tras «Un paso», «Seguir». En el test: «No lo sé» mientras se resuelve y, al
+## terminar cada problema, el siguiente (o el resultado, si ya hay datos suficientes).
 func _on_right() -> void:
-	if phase == Phase.STEP:
+	if mode == "test":
+		if phase == Phase.SOLVED or phase == Phase.SHOWN:
+			if bool(player.get("done", false)):
+				_finish_test()
+			else:
+				_next_test()
+		elif phase == Phase.SOLVING:
+			_give_up()
+	elif phase == Phase.STEP:
 		_on_continue()
+	elif mode == "train":
+		_next_training()
 	else:
 		_start(index + 1)
+
+
+# ---------------------------------------------------------------- test de nivel y entrenamiento
+
+## Tablero quieto mientras se enseñan la bienvenida y la pregunta de experiencia.
+func _idle() -> void:
+	run_id += 1
+	puzzle = {}
+	explain = null
+	_clear_explanation()
+	_try = {}
+	view.board.set_arrows([])
+	view.set_fen(Board3D.START_FEN)
+	view.set_orientation(0)
+	view.interactive = false
+	_set_phase(Phase.INTRO)
+
+
+## Empieza el test de nivel desde lo que el jugador dice de su experiencia.
+func _start_test(exp: String) -> void:
+	experience = exp
+	test_skipped = false
+	player = Assessment.start_test(exp)
+	mode = "test"
+	_close_progress()
+	_save_player()
+	_next_test()
+
+
+## Sin test: se entrena desde un nivel provisional, que se va afinando con cada problema.
+func _skip_test() -> void:
+	if experience == "":
+		experience = "casual"
+	test_skipped = true
+	player = Assessment.start_test(experience)
+	player["done"] = true
+	mode = "train"
+	_close_progress()
+	_save_player()
+	_next_training()
+
+
+func _next_test() -> void:
+	var item := Assessment.next_test_item(player, pool, _rng.randf())
+	if item.is_empty():
+		player["done"] = true
+		_finish_test()
+		return
+	_start(int(_index_of[item["id"]]))
+
+
+## El test ha terminado: se enseña el resultado. Detrás queda el modo de entrenamiento.
+func _finish_test() -> void:
+	mode = "train"
+	_save_player()
+	_open_progress("result")
+
+
+## Siguiente problema del entrenamiento: según el nivel y los puntos flojos; agotados los nuevos, un repaso.
+func _next_training() -> void:
+	if pool.is_empty() or not _has_player():
+		_start(index + 1)
+		return
+	var item := Assessment.pick_training_item(player["rating"], player["tries"], pool, _rng.randf())
+	if item.is_empty():
+		item = Assessment.pick_review_item(player["tries"], pool)
+	_start(int(_index_of[item["id"]]))
+
+
+## Anota el intento en curso (una sola vez por problema): mueve el nivel y lo guarda.
+func _record(correct: bool) -> void:
+	if mode == "free" or _try.is_empty() or bool(_try.get("recorded", true)) or not _has_player():
+		return
+	_try["recorded"] = true
+	var t0 := int(_try["t0"])
+	var outcome := {
+		"correct": correct,
+		"failStep": int(_try["fail_step"]),
+		"error": str(_try["error"]),
+		"help": str(_try["help"]),
+		"msFirst": float(_try["ms_first"]),
+		"ms": float(Time.get_ticks_msec() - t0) if t0 > 0 else 0.0,
+	}
+	var before := float(player["rating"]["r"])
+	player = Assessment.record_try(player, _try["item"], outcome, mode)
+	_rating_shown = [before, float(player["rating"]["r"])]
+	_save_player()
+
+
+## Pedir ayuda decide el intento: cuenta como no resuelto por uno mismo.
+func _mark_help(kind: String) -> void:
+	if _try.is_empty() or bool(_try.get("recorded", true)):
+		return
+	_try["help"] = kind
+	_record(false)
+
+
+## «No lo sé» (en el test): se anota y se enseña la solución.
+func _give_up() -> void:
+	if phase != Phase.SOLVING:
+		return
+	_mark_help("giveup")
+	_show_solution()
+
+
+# ---------------------------------------------------------------- páginas: experiencia, resultado y progreso
+
+## Página a pantalla completa con fondo pastel: arriba una zona que se desplaza y abajo un pie fijo.
+## Devuelve {"body": VBoxContainer, "footer": VBoxContainer}.
+func _page(kind: String) -> Dictionary:
+	_close_progress()
+	if sheet_kind != "":
+		_close_options()
+	progress_kind = kind
+	progress = Control.new()
+	progress.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(progress)
+	var back := PastelBackdrop.new()
+	back.top = _c("wash_top")
+	back.mid = _c("wash_mid")
+	back.bottom = _c("wash_bottom")
+	var glow := 0.5 if not dark else 0.22
+	var rose: Color = _tint("rose")[0]
+	var sky: Color = _tint("sky")[0]
+	var butter: Color = _tint("butter")[0]
+	back.blobs = [
+		[Vector2(0.95, 0.08), 0.62, Color(sky.r, sky.g, sky.b, glow)],
+		[Vector2(0.0, 0.4), 0.5, Color(rose.r, rose.g, rose.b, glow * 0.8)],
+		[Vector2(0.92, 0.8), 0.56, Color(butter.r, butter.g, butter.b, glow * 0.9)],
+	]
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.mouse_filter = Control.MOUSE_FILTER_STOP
+	progress.add_child(back)
+	var inset := _insets()
+	var pad := _pad(48, int(maxf(inset.x, 60.0)) + 20, 48, int(inset.y) + 40)
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	progress.add_child(pad)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 0)
+	pad.add_child(column)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(scroll)
+	progress_scroll = scroll
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 0)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(body)
+	column.add_child(_spacer(20.0))
+	var footer := VBoxContainer.new()
+	footer.add_theme_constant_override("separation", 0)
+	column.add_child(footer)
+	_place_tip()
+	return {"body": body, "footer": footer}
+
+
+func _close_progress() -> void:
+	if progress != null and is_instance_valid(progress):
+		progress.visible = false
+		progress.queue_free()
+	progress = null
+	progress_kind = ""
+	_place_tip()
+
+
+## Salir de la página abierta (botón «atrás»): del resultado se pasa a entrenar; de la pregunta de
+## experiencia no se sale sin contestar (o sin saltar el test).
+func _leave_progress() -> void:
+	if progress_kind == "result":
+		_start_training()
+	elif progress_kind == "progress" or (progress_kind == "experience" and _has_player()):
+		_close_progress()
+
+
+func _start_training() -> void:
+	mode = "train"
+	_close_progress()
+	_next_training()
+
+
+func _centered(label: Label) -> Label:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return label
+
+
+## Pregunta de experiencia: el punto de partida del test. Cuatro opciones con su dibujo.
+func _open_experience() -> void:
+	var page := _page("experience")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(8.0, true))
+	var tile := _icon_tile("cap", "lilac", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(24.0))
+	body.add_child(_centered(_para("¿Cuánto has jugado?", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_spacer(4.0))
+	body.add_child(_centered(_para("Así el test empieza cerca de tu nivel.", F_HEAD, _c("quiet"), font_medium)))
+	body.add_child(_spacer(40.0))
+	var options := [
+		["never", "book", "butter", "Nunca he jugado", "Aún no hay curso de reglas, pero puedes probar."],
+		["rules", "piece_pawn", "mint", "Sé mover las piezas", "Conozco las reglas y poco más."],
+		["casual", "piece_knight", "sky", "Juego de vez en cuando", "Alguna partida con amigos o en el móvil."],
+		["regular", "piece_queen", "rose", "Juego a menudo", "En un club o por internet."],
+	]
+	for def: Array in options:
+		body.add_child(_option_button(str(def[1]), str(def[2]), str(def[3]), str(def[4]), _start_test.bind(str(def[0]))))
+		body.add_child(_spacer(20.0))
+	body.add_child(_spacer(8.0, true))
+	footer.add_child(_centered(_para("El test tiene entre 8 y 12 problemas, con un solo intento y sin ayudas. Al terminar verás tu nivel, en qué fallas y un plan.", F_FOOT + 2, _c("quiet"), font_regular)))
+	footer.add_child(_spacer(14.0))
+	if _has_player():
+		# Se llega aquí desde «Repetir el test»: se puede dejar todo como estaba.
+		footer.add_child(_button("", "Cancelar", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+	else:
+		footer.add_child(_button("", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+
+
+## Opción grande: tesela con dibujo, titular, una línea de texto y una flecha.
+func _option_button(icon_name: String, tint_name: String, heading: String, text: String, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.pressed.connect(on_press)
+	_style_button(b, _c("surface"), _c("ink"), 48, F_BODY, font_semibold, _c("shadow"))
+	var pad := _pad(26, 24, 30, 24)
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	b.add_child(pad)
+	var row := _icon_row(icon_name, tint_name, heading, text, 120.0)
+	pad.add_child(row)
+	row.add_child(_icon("next", 46.0, _c("quiet")))
+	var fit := func() -> void:
+		if is_instance_valid(b) and is_instance_valid(pad):
+			b.custom_minimum_size = Vector2(0.0, pad.get_combined_minimum_size().y)
+	pad.minimum_size_changed.connect(fit)
+	fit.call()
+	b.set_meta("label", heading)
+	return b
+
+
+## Tarjeta blanca de una página, con sus filas dentro.
+func _panel() -> Array:
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = _c("surface")
+	sb.set_corner_radius_all(48)
+	sb.content_margin_left = 30.0
+	sb.content_margin_right = 30.0
+	sb.content_margin_top = 30.0
+	sb.content_margin_bottom = 30.0
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 24
+	sb.shadow_offset = Vector2(0.0, 10.0)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 30)
+	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(rows)
+	return [panel, rows]
+
+
+## Calificación de una dimensión del perfil, como etiqueta. "" = sin etiqueta.
+func _status_chip(state: String) -> Control:
+	var chip: PanelContainer = null
+	match state:
+		"weak":
+			var rose := _tint("rose")
+			chip = _chip("A reforzar", rose[0], rose[1])
+		"strong":
+			var mint := _tint("mint")
+			chip = _chip("Fuerte", mint[0], mint[1])
+		"ok":
+			chip = _chip("En tu nivel", _c("field"), _c("ink"))
+		"few":
+			chip = _chip("Pocos datos", _c("field"), _c("quiet"))
+	return chip
+
+
+## Fila del perfil o del plan: tesela con icono, titular, detalle y, si la hay, su calificación.
+func _profile_row(icon_name: String, tint_name: String, heading: String, text: String, state: String = "") -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(_icon_row(icon_name, tint_name, heading, text, 92.0))
+	var chip := _status_chip(state)
+	if chip != null:
+		var line := HBoxContainer.new()
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(_spacer_w(116.0))
+		chip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		line.add_child(chip)
+		box.add_child(line)
+	return box
+
+
+func _spacer_w(width: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(width, 0.0)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+
+## «18 s» o «1 min 5 s».
+func _duration(ms: float) -> String:
+	var seconds := int(round(ms / 1000.0))
+	if seconds < 60:
+		return "%d s" % maxi(seconds, 1)
+	return "%d min %d s" % [seconds / 60, seconds % 60] if seconds % 60 != 0 else "%d min" % (seconds / 60)
+
+
+## Resultado del test ("result") o progreso ("progress"): el nivel, el perfil por dimensiones y el plan.
+func _open_progress(kind: String = "progress") -> void:
+	if not _has_player():
+		return
+	var page := _page(kind)
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var rating: Dictionary = player["rating"]
+	var tries: Array = player["tries"]
+	var pr := Assessment.profile(tries)
+	var todo := Assessment.plan(rating, pr)
+	var r := float(rating["r"])
+	var band := Assessment.level_band(r)
+	var limits := Assessment.measurable_range(pool)
+
+	# El nivel.
+	body.add_child(_spacer(4.0))
+	body.add_child(_centered(_para("TU NIVEL" if kind != "result" else "RESULTADO DEL TEST", F_CAP, _c("quiet"), font_semibold)))
+	var level_text := str(int(round(r)))
+	var limit_note := ""
+	if r < float(limits["min"]):
+		level_text = "Menos de %d" % int(limits["min"])
+		limit_note = "Esta muestra de problemas casi no tiene otros más fáciles: por debajo de ese nivel el número no es fiable."
+	elif r > float(limits["max"]):
+		level_text = "Más de %d" % int(limits["max"])
+		limit_note = "Esta muestra de problemas casi no tiene otros más difíciles: por encima de ese nivel el número no es fiable."
+	var number := _centered(_para(level_text, F_LARGE + 44 if limit_note == "" else F_LARGE, _c("ink"), font_display))
+	number.add_theme_constant_override("line_spacing", -8)
+	body.add_child(number)
+	var band_row := CenterContainer.new()
+	band_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var lilac := _tint("lilac")
+	band_row.add_child(_chip(str(band["name"]), lilac[0], lilac[1]))
+	body.add_child(band_row)
+	body.add_child(_spacer(18.0))
+	body.add_child(_centered(_para(str(band["blurb"]), F_BODY, _c("ink"), font_regular)))
+	body.add_child(_spacer(10.0))
+	var margin := int(round(2.0 * float(rating["rd"]) / 10.0)) * 10
+	var small := "Margen: ±%d. Se afina con cada problema. Es la escala de los problemas de Lichess, no Elo." % margin
+	if limit_note != "":
+		small = limit_note + " " + small
+	if tries.is_empty():
+		small = "Has saltado el test: es un nivel provisional. " + small
+	body.add_child(_centered(_para(small, F_FOOT, _c("quiet"), font_regular)))
+
+	# El perfil.
+	body.add_child(_spacer(40.0))
+	var n := tries.size()
+	body.add_child(_text(("PERFIL · %d PROBLEMAS" % n) if n != 1 else "PERFIL · 1 PROBLEMA", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(8.0))
+	if n < 20:
+		body.add_child(_para("Primeras observaciones: con tan pocos problemas son indicios, no un veredicto. Se afinan al entrenar.", F_FOOT + 2, _c("quiet"), font_regular))
+		body.add_child(_spacer(14.0))
+	var made := _panel()
+	var rows: VBoxContainer = made[1]
+	body.add_child(made[0])
+	var shown := 0
+	for f: Dictionary in pr["families"]:
+		if shown >= 5:
+			break
+		shown += 1
+		rows.add_child(_profile_row("whatif", "sky", str(Assessment.FAMILY_NAME.get(f["family"], f["family"])), "%d de %d acertados" % [int(f["correct"]), int(f["n"])], Assessment.status(f)))
+	var mate: Dictionary = pr["mate"]
+	if int(mate["n"]) > 0:
+		rows.add_child(_profile_row("target", "rose", "Visión de mate", "%d de %d problemas que acaban en mate" % [int(mate["correct"]), int(mate["n"])], Assessment.status(mate)))
+	var long: Dictionary = pr["long"]
+	if int(long["n"]) > 0:
+		var calc := "%d de %d problemas de tres jugadas o más." % [int(long["correct"]), int(long["n"])]
+		if int(pr["failLater"]) > 0:
+			calc += " En %d acertaste la primera jugada y fallaste después." % int(pr["failLater"])
+		rows.add_child(_profile_row("line", "lilac", "Cálculo", calc, Assessment.status(long)))
+	var fails := int(pr["fails"])
+	if fails > 0:
+		var parts := PackedStringArray()
+		for error_kind: String in Assessment.ERROR_KINDS:
+			var count := int(pr["errors"][error_kind])
+			if count > 0:
+				parts.append("%s ×%d" % [_error_name(error_kind), count])
+		var detail := " · ".join(parts) + "."
+		if int(pr["replyBlind"]) > 0:
+			detail += " %d de %d se castigaban con la respuesta inmediata del rival." % [int(pr["replyBlind"]), fails]
+		rows.add_child(_profile_row("wrong", "peach", "Tus jugadas equivocadas: %d" % fails, detail))
+	var time: Dictionary = pr["time"]
+	if int(time["n"]) > 0:
+		var pace := "Sueles tardar %s en mover." % _duration(float(time["median"]))
+		if int(time["rushed"]) > 0:
+			pace += " %d fallos llegaron en menos de la mitad de lo que tardas cuando aciertas." % int(time["rushed"])
+		rows.add_child(_profile_row("clock", "butter", "Ritmo", pace))
+	rows.add_child(_profile_row("info", "mint", "Sin medir todavía", "Desarrollo, seguridad del rey y estrategia. Los problemas tácticos no las miden: hacen falta posiciones de otro tipo."))
+
+	# El plan.
+	body.add_child(_spacer(40.0))
+	body.add_child(_text("TU PLAN", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(12.0))
+	var plan_made := _panel()
+	var plan_rows: VBoxContainer = plan_made[1]
+	body.add_child(plan_made[0])
+	var target := float(todo["target"])
+	var lowest := float(pool[0]["rating"]) if not pool.is_empty() else 0.0
+	if target < lowest:
+		plan_rows.add_child(_profile_row("target", "peach", "Los problemas más fáciles que hay", "La muestra empieza en %d: al principio fallarás más de lo que conviene." % int(lowest)))
+	else:
+		plan_rows.add_child(_profile_row("target", "peach", "Problemas de dificultad %d" % int(round(target)), "Algo por debajo de tu nivel, para acertar unos tres de cada cuatro."))
+	var focus: Array = todo["focus"]
+	if focus.is_empty():
+		plan_rows.add_child(_profile_row("whatif", "sky", "Problemas variados", "Todavía no hay un punto flojo claro."))
+	for item: Dictionary in focus:
+		var what := "mate"
+		if str(item["kind"]) == "long":
+			what = "tres jugadas o más"
+		elif str(item["kind"]) == "family":
+			what = str(Assessment.FAMILY_NAME.get(item["family"], "")).to_lower()
+		plan_rows.add_child(_profile_row("flag", "rose", "Más problemas de %s" % what, "Es donde rindes por debajo de tu nivel: saldrán más a menudo."))
+	for habit: String in todo["habits"]:
+		match habit:
+			"reply":
+				plan_rows.add_child(_profile_row("eye", "lilac", "Mira la respuesta del rival", "Antes de soltar la pieza, busca sus jaques, capturas y amenazas."))
+			"rushed":
+				plan_rows.add_child(_profile_row("clock", "butter", "Sin prisa", "Tus fallos llegan muy rápido. Dedica a cada jugada el tiempo que usas cuando aciertas."))
+			"followThrough":
+				plan_rows.add_child(_profile_row("line", "mint", "Calcula hasta el final", "Aciertas la primera jugada y fallas después: repasa la variante entera antes de mover."))
+	body.add_child(_spacer(20.0))
+
+	var go := {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")}
+	if kind == "result":
+		var start := _button("next", "Empezar a entrenar", _start_training, _c("accent"), _c("accent_ink"), go)
+		start.mouse_filter = Control.MOUSE_FILTER_STOP
+		footer.add_child(start)
+	else:
+		var keep := _button("next", "Seguir entrenando", _close_progress, _c("accent"), _c("accent_ink"), go)
+		keep.mouse_filter = Control.MOUSE_FILTER_STOP
+		footer.add_child(keep)
+		footer.add_child(_spacer(8.0))
+		footer.add_child(_button("retry", "Repetir el test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+
+
+## Clase de una jugada equivocada, como nombre corto para la lista del perfil.
+func _error_name(kind: String) -> String:
+	match kind:
+		"mate":
+			return "mate en contra"
+		"hangMoved":
+			return "pieza movida a una casilla atacada"
+		"hangOther":
+			return "otra pieza sin defensa"
+		"material":
+			return "pérdida de material en pocas jugadas"
+		"worse":
+			return "posición perdida"
+		"missed":
+			return "ocasión desaprovechada"
+		"slower":
+			return "ganaba, pero no era la más precisa"
+	return kind

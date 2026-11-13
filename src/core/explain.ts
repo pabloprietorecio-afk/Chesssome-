@@ -45,6 +45,20 @@ import type { AnalyzedPuzzle, Color, MoveEval, PieceType, Score, Square, Uci } f
  */
 export type Verdict = 'best' | 'alsoWins' | 'slower' | 'missed' | 'loses';
 
+/**
+ * Qué clase de error es una jugada equivocada, por su consecuencia (la evaluación inicial y el perfil del
+ * jugador lo usan para saber en qué falla, no solo cuánto):
+ *   mate       permite mate (en la respuesta o forzado)
+ *   hangMoved  la pieza que se mueve queda a tiro y se pierde material
+ *   hangOther  la respuesta captura otra pieza y se pierde material
+ *   material   se pierde material en pocas jugadas sin una captura inmediata
+ *   worse      la posición queda perdida según el motor, sin pérdida concreta a corto plazo
+ *   missed     no pierde, pero deja pasar la ocasión
+ *   slower     también gana (o es casi igual de buena), pero no es la más precisa
+ * '' si la jugada es la del problema.
+ */
+export type ErrorKind = '' | 'mate' | 'hangMoved' | 'hangOther' | 'material' | 'worse' | 'missed' | 'slower';
+
 export interface Arrow {
   from: Square;
   to: Square;
@@ -100,6 +114,7 @@ export interface Explanation {
   bestSan: string;
   correct: boolean;
   verdict: Verdict;
+  errorKind: ErrorKind;
   headline: string;
   levels: [Level, Level, Level, Level];
   facts: Fact[];
@@ -667,6 +682,7 @@ export function explain(p: AnalyzedPuzzle, pointIndex: number, played: Uci, opts
   const l3 = emptyLevel(3, 'La variante');
   const l4 = emptyLevel(4, 'Análisis del motor');
   let headline: string;
+  let errorKind: ErrorKind = '';
 
   if (correct) {
     headline = opts.solved || pointIndex === p.points.length - 1 ? '¡Resuelto!' : '¡Correcto!';
@@ -692,10 +708,12 @@ export function explain(p: AnalyzedPuzzle, pointIndex: number, played: Uci, opts
     const reply = playedEval?.pv[0];
     let replySan = '';
     let effect = '';
+    let replyFacts: MoveFacts | null = null;
     if (reply) {
       const probe = new Chess(playedFacts.fenAfter);
       if (tryUci(probe, reply)) {
         const rf = describeMove(playedFacts.fenAfter, reply);
+        replyFacts = rf;
         replySan = sanEs(rf.move.san);
         effect = replyEffect(rf);
       }
@@ -704,15 +722,20 @@ export function explain(p: AnalyzedPuzzle, pointIndex: number, played: Uci, opts
     const allows = replySan ? `permite ${replySan}${effect ? `, que ${effect}` : ''}` : '';
 
     if (pick(playedFacts, 'stalemate')) {
+      errorKind = 'missed';
       l1.paragraphs.push('Pero deja al rey rival sin jugadas legales y sin jaque: es ahogado, tablas.');
     } else if (verdict === 'loses') {
       const mateAgainst = playedEval && 'mate' in playedEval.score && playedEval.score.mate < 0 ? -playedEval.score.mate : 0;
       if (effect === 'es jaque mate') {
+        errorKind = 'mate';
         l1.paragraphs.push(`Pero permite ${replySan}, que es jaque mate.`);
       } else if (mateAgainst > 0) {
+        errorKind = 'mate';
         l1.paragraphs.push(`Pero ${allows}. El motor ve mate en contra en ${mateAgainst}.`);
       } else {
         const loss = lossPhrase(refOutcome);
+        const taken = replyFacts ? pick(replyFacts, 'capture') : undefined;
+        errorKind = !loss ? 'worse' : !taken ? 'material' : taken.captured.square === played.slice(2, 4) ? 'hangMoved' : 'hangOther';
         const words = playedEval ? evalWords(playedEval.score) : 'quedas peor';
         if (effect) l1.paragraphs.push(`Pero ${allows}. ${loss ? `En pocas jugadas ${loss}.` : `Según el motor, ${words}.`}`);
         else if (replySan) l1.paragraphs.push(loss ? `Pero tras ${replySan}, en pocas jugadas ${loss}.` : `Pero tras ${replySan}, según el motor, ${words}.`);
@@ -720,9 +743,11 @@ export function explain(p: AnalyzedPuzzle, pointIndex: number, played: Uci, opts
         if (loss) facts.push({ source: 'reglas', text: `Balance material tras ${playedSan}, resueltos los cambios: ${refOutcome.delta}.` });
       }
     } else if (verdict === 'missed') {
+      errorKind = 'missed';
       const tail = playedEval ? evalWords(playedEval.score) : 'la ventaja desaparece';
       l1.paragraphs.push(`Pero deja pasar la ocasión: ${replySan ? `tras ${replySan}, ` : ''}${tail}.`);
     } else if (verdict === 'slower') {
+      errorKind = 'slower';
       if (playedEval && 'mate' in playedEval.score) {
         l1.paragraphs.push(`También gana: el motor ve mate en ${playedEval.score.mate}. Pero hay un camino más corto.`);
       } else if (solOutcome.mates) {
@@ -731,6 +756,7 @@ export function explain(p: AnalyzedPuzzle, pointIndex: number, played: Uci, opts
         l1.paragraphs.push(`Conserva ventaja (${playedEval ? formatScore(playedEval.score) : ''}), pero se queda lejos de lo que ofrece la posición.`);
       }
     } else {
+      errorKind = 'slower';
       l1.paragraphs.push(`El motor también la valora bien (${playedEval ? formatScore(playedEval.score) : ''}). El problema pide la más precisa.`);
     }
 
@@ -818,6 +844,7 @@ export function explain(p: AnalyzedPuzzle, pointIndex: number, played: Uci, opts
     bestSan,
     correct,
     verdict,
+    errorKind,
     headline,
     levels: [l1, l2, l3, l4],
     facts,

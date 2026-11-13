@@ -8,28 +8,53 @@
  * Hay una explicación por cada jugada legal de cada punto de decisión, más la del problema resuelto.
  * Son los mismos problemas reales de Lichess (CC0) del paquete provisional de desarrollo.
  *
- * Uso: npx tsx scripts/export-godot-demo.ts [cuántos]
+ * Cada problema lleva además lo que la evaluación necesita saber de él (src/core/assessment.ts): la
+ * incertidumbre de su rating, la clave y la familia de su tema, si acaba en mate y cuántas jugadas pide.
+ * Y cada jugada equivocada, su clase de error (ErrorKind).
+ *
+ * Uso: npx tsx scripts/export-godot-demo.ts [cuántos]   (npm run godot:demo)
+ * Después hay que regenerar los datos de oro (npm run golden): la prueba de la evaluación usa esta lista.
  */
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Chess } from 'chess.js';
+import { itemOf } from '../src/core/assessment';
 import { explain, explainSolved, type Explanation, type Line } from '../src/core/explain';
 import { unpackPuzzle } from '../src/core/pack';
 import { primaryTheme, themeName } from '../src/core/themes';
 import type { AnalyzedPuzzle, PuzzlePack } from '../src/core/types';
 
 const DATA = fileURLToPath(new URL('../godot/data/', import.meta.url));
-const n = Number(process.argv[2] ?? 60);
+const n = Number(process.argv[2] ?? 150);
 const pack = JSON.parse(readFileSync(new URL('../src/data/puzzles.pack.json', import.meta.url), 'utf8')) as PuzzlePack;
 const all = pack.puzzles.map((p) => unpackPuzzle(p, pack.engine)).sort((a, b) => a.rating - b.rating);
-// Repartidos por dificultad, de fácil a difícil.
-const picked = Array.from({ length: n }, (_, i) => all[Math.floor((i * (all.length - 1)) / (n - 1))]);
+// De fácil a difícil. La muestra de desarrollo tiene muy pocos problemas fáciles (29 por debajo de 1200 y solo
+// 2 por debajo de 1000): van todos, para medir lo mejor posible a quien empieza. El resto, repartidos por dificultad.
+const easy = all.filter((p) => p.rating < 1200);
+const rest = all.filter((p) => p.rating >= 1200);
+const m = Math.max(2, n - easy.length);
+const picked = [...easy, ...Array.from({ length: m }, (_, i) => rest[Math.floor((i * (rest.length - 1)) / (m - 1))])].slice(0, Math.max(n, 2));
 
 const list = {
   provisional: true,
   source: 'Lichess (CC0), muestra de desarrollo',
   engine: pack.engine.name,
-  puzzles: picked.map((p) => ({ id: p.id, fen: p.fen, moves: p.moves, rating: p.rating, theme: themeName(primaryTheme(p.themes)), game: p.gameUrl })),
+  puzzles: picked.map((p) => {
+    const item = itemOf(p);
+    return {
+      id: p.id,
+      fen: p.fen,
+      moves: p.moves,
+      rating: p.rating,
+      rd: p.rd,
+      theme: themeName(primaryTheme(p.themes)),
+      key: item.theme,
+      family: item.family,
+      mate: item.mate,
+      steps: item.steps,
+      game: p.gameUrl,
+    };
+  }),
 };
 mkdirSync(DATA, { recursive: true });
 writeFileSync(DATA + 'demo_puzzles.json', JSON.stringify(list) + '\n');
@@ -39,6 +64,7 @@ writeFileSync(DATA + 'demo_puzzles.json', JSON.stringify(list) + '\n');
  * motor, los hechos), así que cada ficha lleva una tabla de textos, `S`, y las explicaciones guardan índices:
  *   s   jugada en notación española          b   la mejor jugada
  *   ok  1 si el problema la acepta           v   veredicto (best, alsoWins, slower, missed, loses)
+ *   e   clase de error (ErrorKind; no va si la jugada es la del problema)
  *   h   titular (índice en S)
  *   l   los cuatro niveles: { t título, p párrafos, a flechas [desde, hasta, tono], n variantes, r filas de la tabla }
  *       (t, p y r son índices en S; n, índices en `lines`; una fila es «etiqueta⇥jugada⇥evaluación⇥profundidad⇥continuación»)
@@ -76,6 +102,7 @@ function exportPuzzle(p: AnalyzedPuzzle) {
     b: e.bestSan,
     ok: e.correct ? 1 : 0,
     v: e.verdict,
+    ...(e.errorKind ? { e: e.errorKind } : {}),
     h: str(e.headline),
     l: e.levels.map((lv) => ({
       t: str(lv.title),

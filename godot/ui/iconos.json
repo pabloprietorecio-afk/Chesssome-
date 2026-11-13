@@ -153,32 +153,44 @@
    5,
    4
   ],
-  "piece_pawn": [
+  "clock": [
    6,
    4
   ],
-  "piece_knight": [
+  "flag": [
    7,
    4
   ],
-  "piece_bishop": [
+  "trend": [
    0,
    5
   ],
-  "piece_rook": [
+  "piece_pawn": [
    1,
    5
   ],
-  "piece_queen": [
+  "piece_knight": [
    2,
    5
   ],
-  "piece_king": [
+  "piece_bishop": [
    3,
    5
   ],
-  "token_pawn": [
+  "piece_rook": [
    4,
+   5
+  ],
+  "piece_queen": [
+   5,
+   5
+  ],
+  "piece_king": [
+   6,
+   5
+  ],
+  "token_pawn": [
+   7,
    5
   ]
  }

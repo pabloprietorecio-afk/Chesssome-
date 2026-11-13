@@ -66,6 +66,9 @@ const ICONS = {
   play: ['play', 'fill'],
   first: ['skip-back', 'fill'],
   cap: ['graduation-cap', 'duotone'],
+  clock: ['timer', 'duotone'],
+  flag: ['flag-checkered', 'duotone'],
+  trend: ['trend-up', 'bold'],
 };
 
 // ---------- PNG (mismo formato sencillo que tools/pieces/fichas.mjs: 8 bits RGBA, sin filtro) ----------

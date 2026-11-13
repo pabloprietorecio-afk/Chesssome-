@@ -120,7 +120,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain; do
+          for T in test_glicko2 test_chess test_explain test_assessment; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -139,7 +139,7 @@ jobs:
         if: always()
         run: |
           mkdir -p build/shots
-          cp shots.log import.log test_chess.log test_explain.log build/shots/ 2>/dev/null || true
+          cp shots.log import.log test_chess.log test_explain.log test_assessment.log build/shots/ 2>/dev/null || true
           # main publica en ci-shots; las demás ramas, en ci-shots-<rama>, para que dos trabajos en paralelo no se pisen.
           SHOTS_BRANCH=ci-shots
           if [ "$GITHUB_REF_NAME" != "main" ]; then SHOTS_BRANCH="ci-shots-${GITHUB_REF_NAME//\//-}"; fi
