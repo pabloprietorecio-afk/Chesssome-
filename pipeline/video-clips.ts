@@ -97,4 +97,62 @@ export const CLIPS: ClipSource[] = [
     notes:
       'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s. Las primeras marcas (3:20 a 3:53, pausa en 3:35) dejaban la pausa antes de 58…Re5 y no antes de 55…Txf2. Marcas actuales estimadas con los relojes y un ancla de Pablo (55…Txf2 en 2:21): 55.Tf2 en 0:09, pausa en 2:18, fin en 3:53. Comprobadas por Pablo en su móvil.',
   },
+  {
+    id: 'gukesh-carlsen-2025-norway-r6',
+    title: 'El golpe en la mesa',
+    subtitle: 'Gukesh – Carlsen · Norway Chess 2025, ronda 6',
+    event: 'Norway Chess 2025, ronda 6 · Stavanger',
+    year: 2025,
+    white: 'Gukesh D',
+    black: 'Magnus Carlsen',
+    video: {
+      provider: 'youtube',
+      id: 'xbX88PgcaYc',
+      title: 'The LOUDEST BANG you will ever hear in chess | Gukesh beats Magnus Carlsen in Norway',
+      channel: 'ChessBase India',
+      channelUrl: 'https://www.youtube.com/@ChessBaseIndiachannel',
+      // Grabado en la sala por ChessBase India (su crónica de la ronda lo acredita: «Video: ChessBase India»).
+      official: true,
+      checked: '2026-11-13',
+      duration: null,
+    },
+    start: null,
+    end: null,
+    marks: 'pending',
+    moves:
+      '1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. d3 Bc5 5. c3 O-O 6. O-O d6 7. h3 a6 8. Ba4 h6 9. Re1 b5 10. Bc2 Bb6 11. Nbd2 Ne7 12. a4 Rb8 13. d4 Ng6 14. Nf1 c5 15. Ng3 cxd4 16. cxd4 bxa4 17. Bxa4 Bb7 18. d5 a5 19. Be3 Bc8 20. b3 Bxe3 21. Rxe3 Nf4 22. Bc6 Rb4 23. Qc2 g6 24. Kh1 Ba6 25. Qa2 Bd3 26. Nd2 h5 27. Qxa5 Qxa5 28. Rxa5 h4 29. Ra4 Rfb8 30. Ra2 Kg7 31. Ra7 Rd4 32. Nf3 hxg3 33. fxg3 Nxh3 34. gxh3 Bxe4 35. Kh2 Rd1 36. g4 Bxd5 37. Bxd5 Nxd5 38. Re2 Nf4 39. Rc2 Kf6 40. h4 Ke6 41. Ng5+ Kd5 42. Ra5+ Kd4 43. Ra4+ Kd3 44. Rf2 f6 45. Rf3+ Ke2 46. Ra2+ Rd2 47. Rxd2+ Kxd2 48. Ne4+ Ke2 49. Kg3 d5 50. Nxf6 Rf8 51. Rf2+ Ke1 52. Nd7 Ne2+ 53. Rxe2+ Kxe2 54. Nxf8 d4 55. Ne6 d3 56. Nc5 Ke3 57. Na4 e4 58. h5 gxh5 59. gxh5 Kd2 60. Nb2 e3 61. Nc4+ Ke2 62. Kf4 1-0',
+    gameSource:
+      'Partida pública, cotejada jugada a jugada en dos fuentes: The Washington Times (10 de junio de 2025) y Chess Trap Guide. El final (52…Ce2+ 53.Txe2+ Rxe2 54.Cxf8 y 62.Rf4) coincide con ChessBase India y Wikipedia.',
+    orientation: 'w',
+    intro:
+      'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Carlsen, con negras, ha llevado ventaja casi toda la partida, pero los dos llegan al final con muy poco tiempo en el reloj.',
+    stops: [
+      {
+        at: null,
+        questions: [
+          {
+            ply: 104,
+            question: 'Juegan las negras: Carlsen, con segundos en el reloj. ¿Qué jugarías?',
+            hint: 'Tu torre de f8 está atacada.',
+            why: 'La torre de f8 está atacada por el caballo de d7. Según el motor, apartarla (Te8, Tg8, Th8 o Ta8) mantiene el equilibrio, y 52…g5 también. En la partida, Carlsen jugó 52…Ce2+??: tras 53.Txe2+ Rxe2 54.Cxf8, las blancas quedaron con una pieza de más.',
+          },
+          {
+            ply: 113,
+            question: 'Juegan las blancas: Gukesh. Los peones negros de d3 y e5 avanzan. ¿Qué jugarías?',
+            hint: 'El caballo tiene que llegar a tiempo para frenar los peones.',
+            why: '57.Ca4: según el motor, es la única que gana. El caballo se dirige a b2 y c3 para frenar los peones negros; en la partida llegó a b2 y después dio jaque en c4. Comerse el peón con 57.Cxd3 parece lógico, pero el motor lo da por tablas.',
+          },
+          {
+            ply: 121,
+            question: 'Los peones negros siguen avanzando. ¿Y ahora?',
+            hint: 'Busca un jaque que, además, ataque un peón.',
+            why: '61.Cc4+: jaque al rey de d2 y, a la vez, el caballo ataca el peón de e3. Según el motor, es la única que gana. Tras 61…Re2 62.Rf4, Carlsen abandonó.',
+          },
+        ],
+      },
+    ],
+    outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
+    notes:
+      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt) y el buscador no muestra sus tiempos, así que las marcas se ponen a mano en el editor. En las preguntas, el tablero se orienta hacia quien juega (negras en la primera, blancas en las otras dos).',
+  },
 ];

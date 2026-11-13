@@ -407,6 +407,32 @@ assert(bi.kind === 'video' && bi.ply === '116' && /tras 58…Re5/.test(bi.label)
 assert((await page.evaluate(() => document.documentElement.dataset.immersive)) === undefined, 'al acabar, vuelve la barra de secciones');
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
 
+// ── G. Gukesh–Carlsen: el tablero se gira hacia quien juega y un error histórico se enseña como tal. ──
+await clickText('Volver a la cartelera');
+await page.waitForSelector('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"]');
+await page.evaluate(() => [...document.querySelectorAll('.vc-card[data-clip="gukesh-carlsen-2025-norway-r6"] button')].find((b) => b.textContent.trim().startsWith('Ir directo')).click());
+await waitAttr('phase', 'asking');
+await sleep(400);
+await move('f4e2', 'b'); // 52…Ce2+??, lo que jugó Carlsen (negras abajo)
+assert(/Fue un error en la partida/.test(await panel()), 'Ce2+ debe presentarse como error de la partida: ' + (await panel()));
+await clickText('Repetir');
+await sleep(300);
+await clickText('Ver la respuesta');
+await sleep(300);
+assert(/La respuesta/.test(await panel()) && !/¡Esa es!/.test(await panel()), '«Ver la respuesta» no es «¡Esa es!»: ' + (await panel()));
+await shot('16-error-historico');
+await clickText('Siguiente pregunta');
+await waitAttr('question', 1, 12000);
+await sleep(400);
+await move('c5a4', 'w'); // 57.Ca4 (blancas abajo)
+assert(/¡Esa es!/.test(await panel()), '57.Ca4 debe ser la buena: ' + (await panel()));
+await clickText('Siguiente pregunta');
+await waitAttr('question', 2, 15000);
+await sleep(400);
+await move('b2c4', 'w'); // 61.Cc4+
+assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
+await shot('17-gukesh-carlsen-pregunta-3');
+
 console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
 console.log('Clip con las marcas del paquete (ancla 2:21 y relojes): empieza en', cued.toFixed(2), 's, se para en', syncPause.toFixed(2), 's (marca 138) y el tablero llega a 58…Re5.');
 console.log('En 386 × 708, con el vídeo a la vista: tablero de', fitWatching.board[2], 'px viendo,', fitAsking.board[2], 'px en la pausa y', fitReveal.board[2], 'px al revelar.');

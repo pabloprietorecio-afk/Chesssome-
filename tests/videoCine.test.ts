@@ -13,6 +13,7 @@ import {
   marksProblems,
   moveAt,
   plyAt,
+  referenceMove,
   replay,
   run,
   syncCap,
@@ -398,5 +399,32 @@ describe('tablero sincronizado', () => {
     expect(withMarks(ding, { ...marks, sync }).sync).toEqual(sync);
     expect(withMarks({ ...ding, sync }, { ...marks, sync: null }).sync).toBeUndefined();
     expect(withMarks({ ...ding, sync }, marks).sync).toEqual(sync); // marcas sin tablero: se queda el del clip
+  });
+});
+
+describe('pregunta en la que la partida tuvo un error (Gukesh–Carlsen, 52…Ce2+??)', () => {
+  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  const q = gc.stops[0].questions[0];
+
+  it('la jugada de la partida se presenta como error y una que mantiene el resultado es la respuesta', () => {
+    expect(q.played.san).toBe('Ne2+');
+    expect(q.playedCls).toBe('spoils');
+    expect(judgeAnswer(q, q.playedUci).outcome).toBe('played-error');
+    const keep = q.verdicts.find((v) => v.cls === 'keeps')!;
+    const a = judgeAnswer(q, keep.uci);
+    expect(a.outcome).toBe('answer');
+    expect(a.text).toContain(q.why);
+  });
+
+  it('«Ver la respuesta» enseña una jugada buena, no la de la partida', () => {
+    const ref = referenceMove(q);
+    expect(ref.fromGame).toBe(false);
+    expect(q.verdicts.find((v) => v.uci === ref.uci)?.cls).toBe('keeps');
+    const ding0 = ding.stops[0].questions[0];
+    expect(referenceMove(ding0)).toEqual({ uci: ding0.playedUci, san: ding0.played.san, fromGame: true });
+  });
+
+  it('las preguntas se hacen desde el lado de quien juega', () => {
+    expect(gc.stops[0].questions.map((x) => x.mover)).toEqual(['b', 'w', 'w']);
   });
 });

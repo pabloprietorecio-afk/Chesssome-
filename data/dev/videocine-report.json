@@ -88,6 +88,103 @@
      "unclear": []
     }
    ]
+  },
+  {
+   "id": "gukesh-carlsen-2025-norway-r6",
+   "ok": true,
+   "errors": [],
+   "warnings": [
+    "Sin marcas de tiempo: el clip no pausa solo; solo funciona «directo a la pregunta».",
+    "52…Ne2+: veredictos dudosos a profundidad 24; las mejores jugadas se repitieron a 34.",
+    "52…Ne2+: la jugada de la partida queda «spoils»; la app la presentará como error histórico.",
+    "52…Ne2+: varias jugadas mantienen el resultado: Re8, g5, Rg8, Rh8, Ra8.",
+    "Sin tablero sincronizado: mientras se ve el vídeo se mostrará la posición de la primera pregunta (tras la media jugada 103)."
+   ],
+   "questions": [
+    {
+     "ply": 104,
+     "played": "52…Ne2+",
+     "target": "draw",
+     "playedCls": "spoils",
+     "proof": "engine",
+     "keeps": [
+      "Re8",
+      "g5",
+      "Rg8",
+      "Rh8",
+      "Ra8"
+     ],
+     "spoils": [
+      "Nh5+",
+      "e4",
+      "d4",
+      "Ne2+",
+      "Rb8",
+      "Rf5",
+      "Rf7",
+      "Kd1",
+      "Ne6",
+      "Nd3",
+      "Rf6",
+      "Nh3",
+      "Ng2"
+     ],
+     "unclear": [
+      "Rc8",
+      "Rd8"
+     ]
+    },
+    {
+     "ply": 113,
+     "played": "57.Na4",
+     "target": "win",
+     "playedCls": "keeps",
+     "proof": "engine",
+     "keeps": [
+      "Na4"
+     ],
+     "spoils": [
+      "Nxd3",
+      "Ne4",
+      "h5",
+      "Nd7",
+      "Ne6",
+      "b4",
+      "Kh3",
+      "Nb7",
+      "Kg2",
+      "Kh2",
+      "g5",
+      "Na6"
+     ],
+     "unclear": []
+    },
+    {
+     "ply": 121,
+     "played": "61.Nc4+",
+     "target": "win",
+     "playedCls": "keeps",
+     "proof": "mate",
+     "keeps": [
+      "Nc4+"
+     ],
+     "spoils": [
+      "h6",
+      "Kf3",
+      "Kf4",
+      "b4",
+      "Kg2",
+      "Kh4",
+      "Kg4",
+      "Kh3",
+      "Kh2",
+      "Na4",
+      "Nd1",
+      "Nxd3"
+     ],
+     "unclear": []
+    }
+   ]
   }
  ]
 }

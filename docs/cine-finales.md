@@ -10,7 +10,7 @@ Idea de Pablo: ver finales reales en vídeo y que el vídeo **se pare solo justo
    Mientras se ve o se responde, vídeo, pregunta y tablero caben en una pantalla de móvil sin desplazarse: la barra de secciones se oculta y el tablero toma el alto que quede (comprobado a 386 × 708 px, la pantalla útil del móvil de Pablo: tablero de 285 px viendo, 311 en la pausa y 354 al revelar). Las acciones (pista, ver la respuesta, seguir) van debajo del tablero.
 2. **Tablero del vídeo.** Mientras se ve el vídeo, debajo va nuestro tablero 2D con la posición que hay en el tablero del vídeo, y se mueve cuando se mueve en el vídeo (apartado 6, «Tablero sincronizado»).
 3. **Pregunta.** Debajo del vídeo aparece la pregunta y nuestro tablero con la posición. Puede haber varias preguntas encadenadas en la misma pausa; el tablero juega las jugadas intermedias de la partida.
-4. **Respuesta.** Tras cada jugada, la app dice si mantiene el resultado, si lo estropea y con qué línea del motor.
+4. **Respuesta.** Tras cada jugada, la app dice si mantiene el resultado, si lo estropea y con qué línea del motor. Si no vale, «Repetir» vuelve a la posición. En cada pregunta, el tablero se orienta hacia quien juega. Si en la partida se jugó un error, la jugada de la partida se presenta como error histórico, cualquier jugada que mantenga el resultado es la respuesta y «Ver la respuesta» enseña una de ellas.
 5. **Así ocurrió.** El vídeo sigue desde la pausa y se ve la jugada real y lo que vino después.
 
 Y dos atajos:
@@ -140,6 +140,7 @@ Los resúmenes con cortes se marcan a mano. Riesgo en retransmisiones completas:
 | Vídeo | Canal | Momento | Estado |
 | --- | --- | --- | --- |
 | [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | **Clip terminado y verificado** (pausa y tablero sincronizado): de 0:03,5 a 3:53, pausa en 2:18 antes de 55…Txf2. Vídeo de 437 s |
+| [The LOUDEST BANG you will ever hear in chess](https://www.youtube.com/watch?v=xbX88PgcaYc) | ChessBase India (oEmbed correcto, 13 nov 2026) | Gukesh–Carlsen, Norway Chess 2025, ronda 6: 52…Ce2+?? (error histórico), 57.Ca4! y 61.Cc4+! | **Clip en la app, por marcar.** Sin relojes (Lichess no se puede descargar), así que las marcas van a mano. Partida cotejada en dos fuentes. Stockfish: en la 52 mantienen Te8, Tg8, Th8, Ta8 y g5; la 57 solo Ca4 (Cxd3 hace tablas); la 61 solo Cc4+ (mate forzado) |
 | [Final Moments of Gukesh Winning World Championship](https://www.youtube.com/watch?v=HlmhDl_KnOY) | ChessBase India | El mismo momento, grabado a pie de tablero | oEmbed correcto. Alternativa al anterior |
 | [FIDE World Championship Match - TIEBREAK FOR THE TITLE](https://www.youtube.com/watch?v=WkwVXg9a_i0) | FIDE chess | Nepómniashchi–Ding 2023, desempate 4: 46…Tg6 | oEmbed correcto. Retransmisión larga con comentaristas. No es un final técnico |
 | [Instructive Knight vs Rook endgame with a beautiful finish](https://www.youtube.com/watch?v=Y_IV9N5rhhw) | ChessBase India | Final de caballo contra torre entre aficionados | oEmbed correcto. Falta la partida |

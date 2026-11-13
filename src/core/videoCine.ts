@@ -33,8 +33,8 @@ export interface VideoRef {
   title: string;
   channel: string;
   channelUrl: string;
-  /** Fecha de publicación, AAAA-MM-DD. */
-  published: string;
+  /** Fecha de publicación, AAAA-MM-DD. Se omite si no se ha podido comprobar. */
+  published?: string;
   /** El canal es del titular de los derechos (organizador, federación o productora del vídeo). */
   official: boolean;
   /** Última vez que se comprobó que se puede incrustar (respuesta de oEmbed), AAAA-MM-DD. */
@@ -50,7 +50,10 @@ export interface ClipQuestionSource {
   ply: number;
   question: string;
   hint?: string;
-  /** Por qué la jugada de la partida es buena. Texto propio, revisado contra el análisis. */
+  /**
+   * Por qué la jugada de la partida es buena o, si fue un error, cuál era la buena y qué pasó en la partida.
+   * Texto propio, revisado contra el análisis.
+   */
   why: string;
 }
 
@@ -321,7 +324,15 @@ export function replay(moves: string, id = 'clip'): GameMove[] {
 
 // ───────────────────────── Respuestas ─────────────────────────
 
-export type AnswerOutcome = 'answer' | 'also-good' | 'spoils' | 'unclear' | 'unknown' | 'played-error';
+/** 'shown': el jugador pidió ver la respuesta sin jugar. */
+export type AnswerOutcome = 'answer' | 'also-good' | 'spoils' | 'unclear' | 'unknown' | 'played-error' | 'shown';
+
+/** Jugada que se enseña con «Ver la respuesta»: la de la partida o, si fue un error, la primera que el motor da por buena. */
+export function referenceMove(q: Pick<ClipQuestion, 'playedCls' | 'playedUci' | 'played' | 'verdicts'>): { uci: string; san: string; fromGame: boolean } {
+  if (q.playedCls === 'keeps') return { uci: q.playedUci, san: q.played.san, fromGame: true };
+  const best = q.verdicts.find((x) => x.cls === 'keeps');
+  return best ? { uci: best.uci, san: best.san, fromGame: false } : { uci: q.playedUci, san: q.played.san, fromGame: true };
+}
 
 export interface ClipAnswer {
   outcome: AnswerOutcome;
@@ -351,6 +362,11 @@ export function judgeAnswer(q: ClipQuestion, uci: string): ClipAnswer {
     const best = q.verdicts.find((x) => x.cls === 'keeps');
     const better = best ? ` Según el motor, lo correcto era ${sanEs(best.san)}.` : '';
     return { outcome: 'played-error', text: `Es lo que se jugó en la partida, pero según el motor ${mine} ${lost}.${lineEndText(v)}${better}`, line };
+  }
+  if (v.cls === 'keeps' && q.playedCls !== 'keeps') {
+    // La partida tuvo aquí un error: encontrar una jugada que mantiene el resultado es la respuesta.
+    const goal = q.target === 'win' ? 'gana' : 'mantiene las tablas';
+    return { outcome: 'answer', text: `Según el motor, ${mine} ${goal}. ${q.why}`, line };
   }
   if (v.cls === 'keeps') {
     const goal = q.target === 'win' ? 'también gana' : 'también mantiene las tablas';

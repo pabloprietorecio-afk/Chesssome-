@@ -13,6 +13,7 @@ import {
   fenAfter,
   moveAt,
   plyAt,
+  referenceMove,
   syncCap,
   syncProblems,
   canAutoPause,
@@ -120,7 +121,7 @@ export function VideoCinemaScreen(): JSX.Element {
               <div className="vc-card-top">
                 {q0 && (
                   <div className="vc-card-board" aria-hidden="true">
-                    <Board2D fen={q0.fen} orientation={c.orientation} interactive={false} lastMove={q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null} animMode="none" coordinates={false} />
+                    <Board2D fen={q0.fen} orientation={q0.mover} interactive={false} lastMove={q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null} animMode="none" coordinates={false} />
                   </div>
                 )}
                 <div className="vc-card-text">
@@ -267,6 +268,7 @@ const OUTCOME_LABEL: Record<ClipAnswer['outcome'], string> = {
   unclear: 'Sin veredicto claro',
   unknown: 'Sin análisis',
   'played-error': 'Fue un error en la partida',
+  shown: 'La respuesta',
 };
 
 function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autostart?: StartMode; onClose: () => void; onEdit: () => void }): JSX.Element {
@@ -343,12 +345,19 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     setBoard({ fen: q.fen, last: q.lead ? { from: q.lead.from, to: q.lead.to } : null, anim: null });
     ev('retry', { stop: st.stop, question: qi });
   };
-  const canRetry = !!answer && answer.outcome !== 'answer' && answer.outcome !== 'also-good' && !busy;
+  const canRetry = !!answer && answer.outcome !== 'answer' && answer.outcome !== 'also-good' && answer.outcome !== 'shown' && !busy;
 
   const showAnswer = () => {
     if (!q || answer) return;
-    setAnswer({ outcome: 'answer', text: q.why });
-    showPlayed(q, true);
+    setAnswer({ outcome: 'shown', text: q.why });
+    const ref = referenceMove(q);
+    if (ref.fromGame) showPlayed(q, true);
+    else {
+      // En la partida fue un error: se enseña la jugada buena.
+      const c = new Chess(q.fen);
+      const m = c.move({ from: ref.uci.slice(0, 2), to: ref.uci.slice(2, 4), promotion: ref.uci[4] });
+      setBoard({ fen: c.fen(), last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: !!m.captured } });
+    }
     ev('show_answer', { stop: st.stop, question: qi });
   };
 
@@ -424,6 +433,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     if (cur.key >= 0 && m) syncedAnim = { from: m.from, to: m.to, key: cur.key, captured: m.captured };
   } else prevSynced.current = null;
   const shown = synced ? { fen: synced.fen, last: synced.last, anim: syncedAnim } : board;
+  // En las preguntas, el tablero se orienta hacia quien juega; el tablero del vídeo, como el clip.
+  const boardSide = !synced && st.phase === 'asking' && q ? q.mover : clip.orientation;
 
   // Mientras se ve o se responde, la cabecera y el crédito se encogen para que vídeo, pregunta y tablero quepan en un móvil.
   const compact = st.phase === 'watching' || st.phase === 'asking' || st.phase === 'reveal';
@@ -578,7 +589,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             <div className="vc-board-fit">
               <Board2D
                 fen={shown.fen}
-                orientation={clip.orientation}
+                orientation={boardSide}
                 interactive={st.phase === 'asking' && !answer && !busy}
                 lastMove={shown.last}
                 animate={shown.anim}
@@ -611,7 +622,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       {st.phase === 'asking' && q && answer && (
         <div className="vc-tools">
           {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
-          {answer.outcome !== 'answer' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
+          {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
           {qi + 1 < totalQuestions ? (
             <button className="cm-primary" onClick={nextQuestion} disabled={busy}>
               Siguiente pregunta
