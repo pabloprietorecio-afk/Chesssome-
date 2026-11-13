@@ -98,6 +98,55 @@ export const CLIPS: ClipSource[] = [
       'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s. Las primeras marcas (3:20 a 3:53, pausa en 3:35) dejaban la pausa antes de 58…Re5 y no antes de 55…Txf2. Marcas actuales estimadas con los relojes y un ancla de Pablo (55…Txf2 en 2:21): 55.Tf2 en 0:09, pausa en 2:18, fin en 3:53. Comprobadas por Pablo en su móvil.',
   },
   {
+    id: 'gukesh-carlsen-2025-norway-r6-error',
+    title: 'El error de Carlsen',
+    subtitle: 'Gukesh – Carlsen · Norway Chess 2025, ronda 6',
+    event: 'Norway Chess 2025, ronda 6 · Stavanger',
+    year: 2025,
+    white: 'Gukesh D',
+    black: 'Magnus Carlsen',
+    video: {
+      provider: 'youtube',
+      id: 'xbX88PgcaYc',
+      title: 'The LOUDEST BANG you will ever hear in chess | Gukesh beats Magnus Carlsen in Norway',
+      channel: 'ChessBase India',
+      channelUrl: 'https://www.youtube.com/@ChessBaseIndiachannel',
+      // Grabado en la sala por ChessBase India (su crónica de la ronda lo acredita: «Video: ChessBase India»).
+      official: true,
+      checked: '2026-11-13',
+      duration: 759,
+    },
+    // Marcas medidas por Claude sobre la grabación de pantalla de Pablo (13 nov 2026), sin comprobar aún en el móvil.
+    // El tablero está quieto (tras 52.Cd7) hasta que Carlsen juega 52…Ce2+ en ~281 s. 52.Cd7 se jugó antes de lo grabado.
+    start: 271,
+    end: 283,
+    marks: 'pending',
+    sync: { startPly: 103, marks: [{ ply: 104, at: 281.0 }] },
+    moves:
+      '1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. d3 Bc5 5. c3 O-O 6. O-O d6 7. h3 a6 8. Ba4 h6 9. Re1 b5 10. Bc2 Bb6 11. Nbd2 Ne7 12. a4 Rb8 13. d4 Ng6 14. Nf1 c5 15. Ng3 cxd4 16. cxd4 bxa4 17. Bxa4 Bb7 18. d5 a5 19. Be3 Bc8 20. b3 Bxe3 21. Rxe3 Nf4 22. Bc6 Rb4 23. Qc2 g6 24. Kh1 Ba6 25. Qa2 Bd3 26. Nd2 h5 27. Qxa5 Qxa5 28. Rxa5 h4 29. Ra4 Rfb8 30. Ra2 Kg7 31. Ra7 Rd4 32. Nf3 hxg3 33. fxg3 Nxh3 34. gxh3 Bxe4 35. Kh2 Rd1 36. g4 Bxd5 37. Bxd5 Nxd5 38. Re2 Nf4 39. Rc2 Kf6 40. h4 Ke6 41. Ng5+ Kd5 42. Ra5+ Kd4 43. Ra4+ Kd3 44. Rf2 f6 45. Rf3+ Ke2 46. Ra2+ Rd2 47. Rxd2+ Kxd2 48. Ne4+ Ke2 49. Kg3 d5 50. Nxf6 Rf8 51. Rf2+ Ke1 52. Nd7 Ne2+ 53. Rxe2+ Kxe2 54. Nxf8 d4 55. Ne6 d3 56. Nc5 Ke3 57. Na4 e4 58. h5 gxh5 59. gxh5 Kd2 60. Nb2 e3 61. Nc4+ Ke2 62. Kf4 1-0',
+    gameSource:
+      'Partida pública, cotejada jugada a jugada en dos fuentes: The Washington Times (10 de junio de 2025) y Chess Trap Guide. El final (52…Ce2+ 53.Txe2+ Rxe2 54.Cxf8 y 62.Rf4) coincide con ChessBase India y Wikipedia.',
+    orientation: 'w',
+    intro:
+      'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Carlsen, con negras, ha llevado ventaja casi toda la partida, pero los dos llegan al final con muy poco tiempo en el reloj. Gukesh acaba de jugar 52.Cd7.',
+    stops: [
+      {
+        at: 277.5,
+        questions: [
+          {
+            ply: 104,
+            question: 'Juegan las negras: Carlsen, con segundos en el reloj. ¿Qué jugarías?',
+            hint: 'Tu torre de f8 está atacada.',
+            why: 'La torre de f8 está atacada por el caballo de d7. Según el motor, apartarla (Te8, Tg8, Th8 o Ta8) mantiene el equilibrio, y 52…g5 también. En la partida, Carlsen jugó 52…Ce2+??: tras 53.Txe2+ Rxe2 54.Cxf8, las blancas quedaron con una pieza de más.',
+          },
+        ],
+      },
+    ],
+    outro: 'Tras 52…Ce2+?? 53.Txe2+ Rxe2 54.Cxf8, Gukesh quedó con una pieza de más. Cómo acabó, en «El golpe en la mesa».',
+    notes:
+      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s y 52…Ce2+ en ~281 s (pausa en 277,5). El clip acaba en 283 s: las jugadas 53–59 no se pueden fechar en el vídeo (cortes de cámara). Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
+  },
+  {
     id: 'gukesh-carlsen-2025-norway-r6',
     title: 'El golpe en la mesa',
     subtitle: 'Gukesh – Carlsen · Norway Chess 2025, ronda 6',
@@ -117,31 +166,14 @@ export const CLIPS: ClipSource[] = [
       duration: 759,
     },
     // Marcas medidas por Claude sobre la grabación de pantalla de Pablo (13 nov 2026), sin comprobar aún en el móvil.
-    // La posición está quieta hasta ~280 s; Carlsen juega 52…Ce2+ en ~281 s. Las jugadas 53–59 no se pueden fechar
-    // con fiabilidad en el vídeo (cortes de cámara y manos): el vídeo sigue de corrido y, entre 283 y 364,4 s, el tablero
-    // se atenúa y dice qué jugadas se están haciendo (tramo sin seguimiento). En 364,4 s se pone al día, antes de 60.Cb2.
-    start: 257,
+    // 60.Cb2 en 365,9 s; 60…e3 en 371,2 (la mano de Carlsen deja el tablero hacia 371,3); la mano de Gukesh sale hacia
+    // 371,5, así que la pausa (371,4) tiene muy poco margen. 61.Cc4+ en 372,1; 61…Re2 en 375,6; 62.Rf4 en 376,4; golpe ~377,5.
+    start: 362,
     end: 378.8,
     marks: 'pending',
     sync: {
-      startPly: 103,
-      gaps: [{ from: 283, to: 364.4 }],
+      startPly: 118,
       marks: [
-        { ply: 104, at: 281.0 },
-        { ply: 105, at: 364.4 },
-        { ply: 106, at: 364.4 },
-        { ply: 107, at: 364.4 },
-        { ply: 108, at: 364.4 },
-        { ply: 109, at: 364.4 },
-        { ply: 110, at: 364.4 },
-        { ply: 111, at: 364.4 },
-        { ply: 112, at: 364.4 },
-        { ply: 113, at: 364.4 },
-        { ply: 114, at: 364.4 },
-        { ply: 115, at: 364.4 },
-        { ply: 116, at: 364.4 },
-        { ply: 117, at: 364.4 },
-        { ply: 118, at: 364.4 },
         { ply: 119, at: 365.9 },
         { ply: 120, at: 371.2 },
         { ply: 121, at: 372.1 },
@@ -155,26 +187,14 @@ export const CLIPS: ClipSource[] = [
       'Partida pública, cotejada jugada a jugada en dos fuentes: The Washington Times (10 de junio de 2025) y Chess Trap Guide. El final (52…Ce2+ 53.Txe2+ Rxe2 54.Cxf8 y 62.Rf4) coincide con ChessBase India y Wikipedia.',
     orientation: 'w',
     intro:
-      'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Carlsen, con negras, ha llevado ventaja casi toda la partida, pero los dos llegan al final con muy poco tiempo en el reloj.',
+      'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Tras el error de Carlsen en la jugada 52, Gukesh tiene un caballo contra dos peones negros que avanzan, y a los dos les quedan segundos en el reloj.',
     stops: [
       {
-        at: 277.5,
+        at: 371.4,
         questions: [
           {
-            ply: 104,
-            question: 'Juegan las negras: Carlsen, con segundos en el reloj. ¿Qué jugarías?',
-            hint: 'Tu torre de f8 está atacada.',
-            why: 'La torre de f8 está atacada por el caballo de d7. Según el motor, apartarla (Te8, Tg8, Th8 o Ta8) mantiene el equilibrio, y 52…g5 también. En la partida, Carlsen jugó 52…Ce2+??: tras 53.Txe2+ Rxe2 54.Cxf8, las blancas quedaron con una pieza de más.',
-          },
-          {
-            ply: 113,
-            question: 'Juegan las blancas: Gukesh. Los peones negros de d3 y e5 avanzan. ¿Qué jugarías?',
-            hint: 'El caballo tiene que llegar a tiempo para frenar los peones.',
-            why: '57.Ca4: según el motor, es la única que gana. El caballo se dirige a b2 y c3 para frenar los peones negros; en la partida llegó a b2 y después dio jaque en c4. Comerse el peón con 57.Cxd3 parece lógico, pero el motor lo da por tablas.',
-          },
-          {
             ply: 121,
-            question: 'Los peones negros siguen avanzando. ¿Y ahora?',
+            question: 'Juegan las blancas: Gukesh. Carlsen acaba de empujar 60…e3. ¿Qué jugarías?',
             hint: 'Busca un jaque que, además, ataque un peón.',
             why: '61.Cc4+: jaque al rey de d2 y, a la vez, el caballo ataca el peón de e3. Según el motor, es la única que gana. Tras 61…Re2 62.Rf4, Carlsen abandonó.',
           },
@@ -183,6 +203,6 @@ export const CLIPS: ClipSource[] = [
     ],
     outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
     notes:
-      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil: tablero quieto hasta ~280 s, 52…Ce2+ en ~281 s (pausa en 277,5), y el final fechado al segundo (60.Cb2 365,9; 60…e3 371,2; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). Las jugadas 53–59 no se pueden fechar con fiabilidad: el vídeo sigue de corrido y, entre 283 y 364,4 s, el tablero se atenúa y dice qué jugadas se están haciendo; en 364,4 s se pone al día. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
+      'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil (60.Cb2 365,9; 60…e3 371,2; pausa 371,4; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). La pausa tiene ~0,3 s de margen antes de que Gukesh mueva la mano. La pregunta de 57.Ca4 se retiró: el vídeo no enseña esa jugada. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
   },
 ];

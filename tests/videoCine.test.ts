@@ -408,7 +408,7 @@ describe('tablero sincronizado', () => {
 });
 
 describe('pregunta en la que la partida tuvo un error (Gukesh–Carlsen, 52…Ce2+??)', () => {
-  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6-error')!;
   const q = gc.stops[0].questions[0];
 
   it('la jugada de la partida se presenta como error y una que mantiene el resultado es la respuesta', () => {
@@ -429,13 +429,14 @@ describe('pregunta en la que la partida tuvo un error (Gukesh–Carlsen, 52…Ce
     expect(referenceMove(ding0)).toEqual({ uci: ding0.playedUci, san: ding0.played.san, fromGame: true });
   });
 
-  it('las preguntas se hacen desde el lado de quien juega', () => {
-    expect(gc.stops[0].questions.map((x) => x.mover)).toEqual(['b', 'w', 'w']);
+  it('la pregunta es de las negras, aunque el tablero se vea desde las blancas', () => {
+    expect(q.mover).toBe('b');
+    expect(gc.orientation).toBe('w');
   });
 });
 
 describe('marcado rápido', () => {
-  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6-error')!;
 
   it('los pasos van en el orden del vídeo: inicio, jugadas, pausa antes de la pregunta, fin', () => {
     const steps = quickSteps(gc, 101);
@@ -456,39 +457,40 @@ describe('marcado rápido', () => {
   });
 });
 
-describe('Gukesh–Carlsen: marcas medidas sobre la grabación', () => {
-  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
-  it('puede pararse sola y sus marcas son coherentes', () => {
-    expect(canAutoPause(gc)).toBe(true);
-    expect(marksProblems(marksOf(gc))).toEqual([]);
-    expect(syncProblems(gc, gc.sync!, marksOf(gc))).toEqual([]);
-    expect(gc.marks).toBe('pending'); // medidas por Claude sobre vídeo, sin comprobar por una persona
+describe('Gukesh–Carlsen en dos clips: marcas medidas sobre la grabación', () => {
+  const err = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6-error')!;
+  const bang = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  it('los dos pueden pararse solos, con marcas coherentes y sin tramos sin seguimiento', () => {
+    for (const c of [err, bang]) {
+      expect(canAutoPause(c)).toBe(true);
+      expect(marksProblems(marksOf(c))).toEqual([]);
+      expect(syncProblems(c, c.sync!, marksOf(c))).toEqual([]);
+      expect(c.sync!.gaps ?? []).toEqual([]);
+      expect(c.marks).toBe('pending'); // medidas por Claude sobre vídeo, sin comprobar por una persona
+      expect(c.video.id).toBe('xbX88PgcaYc');
+    }
   });
-  it('la pausa va antes de 52…Ce2+ y el vídeo sigue de corrido: se ve la jugada de Carlsen', () => {
-    const stop = gc.stops[0];
-    expect(stop.at).toBeLessThan(281);
-    expect(stop.resumeAt ?? null).toBeNull();
-    expect(plyAt(gc.sync!, stop.at!)).toBe(103); // aún no se ha jugado 52…Ce2+
-    expect(plyAt(gc.sync!, 282)).toBe(104); // 52…Ce2+
+  it('«El error de Carlsen»: pausa antes de 52…Ce2+, que se ve en el vídeo, y acaba antes de las jugadas sin fechar', () => {
+    expect(err.stops.map((s) => s.questions.map((q) => q.ply))).toEqual([[104]]);
+    expect(plyAt(err.sync!, err.start!)).toBe(103);
+    expect(plyAt(err.sync!, err.stops[0].at!)).toBe(103);
+    expect(plyAt(err.sync!, err.end!)).toBe(104);
   });
-  it('las jugadas 53–59 caen en un tramo sin seguimiento y el tablero se pone al día antes de 60.Cb2', () => {
-    expect(syncGapAt(gc.sync!, 282)).toBeNull();
-    const g = syncGapAt(gc.sync!, 300)!;
-    expect(g).not.toBeNull();
-    expect(gapPlies(gc.sync!, g)).toEqual({ first: 105, last: 118 }); // 53.Txe2+ … 59…Rd2
-    expect(syncGapAt(gc.sync!, 364.4)).toBeNull();
-    expect(plyAt(gc.sync!, 364.5)).toBe(118);
-  });
-  it('el tablero sigue el final del vídeo', () => {
-    expect(plyAt(gc.sync!, 366)).toBe(119); // 60.Cb2
-    expect(plyAt(gc.sync!, 371.3)).toBe(120); // 60…e3
-    expect(plyAt(gc.sync!, 372.2)).toBe(121); // 61.Cc4+
-    expect(plyAt(gc.sync!, 378)).toBe(123); // 62.Rf4
+  it('«El golpe en la mesa»: empieza antes de 60.Cb2, pausa tras 60…e3 y antes de 61.Cc4+, y sigue hasta 62.Rf4', () => {
+    expect(bang.stops.map((s) => s.questions.map((q) => q.ply))).toEqual([[121]]);
+    expect(plyAt(bang.sync!, bang.start!)).toBe(118);
+    const at = bang.stops[0].at!;
+    expect(plyAt(bang.sync!, at)).toBe(120); // 60…e3 ya en el tablero
+    expect(bang.sync!.marks.find((m) => m.ply === 121)!.at).toBeGreaterThan(at); // 61.Cc4+ todavía no
+    expect(plyAt(bang.sync!, 366)).toBe(119);
+    expect(plyAt(bang.sync!, bang.end!)).toBe(123);
   });
 });
 
 describe('tramos sin seguimiento del tablero', () => {
-  const gc = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+  // Un clip de prueba con todo el final de la partida: del 52…Ce2+ al 62.Rf4.
+  const base = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6-error')!;
+  const gc = { ...base, timeline: base.timeline, end: 378.8, sync: { startPly: 103, marks: [{ ply: 104, at: 281 }, ...Array.from({ length: 14 }, (_, i) => ({ ply: 105 + i, at: 364.4 })), { ply: 119, at: 365.9 }] } };
   const m = marksOf(gc);
   it('se rechazan tramos al revés, solapados, fuera del clip o sin jugadas', () => {
     const bad = (gaps: { from: number; to: number }[]) => syncProblems(gc, { ...gc.sync!, gaps }, m);
@@ -497,5 +499,11 @@ describe('tramos sin seguimiento del tablero', () => {
     expect(bad([{ from: 200, to: 300 }]).length).toBeGreaterThan(0);
     expect(bad([{ from: 290, to: 300 }]).length).toBeGreaterThan(0); // ninguna jugada cambia dentro
     expect(bad([{ from: 283, to: 364.4 }])).toEqual([]);
+  });
+  it('dice qué jugadas caen dentro', () => {
+    const sy = { ...gc.sync, gaps: [{ from: 283, to: 364.4 }] };
+    expect(syncGapAt(sy, 282)).toBeNull();
+    expect(gapPlies(sy, syncGapAt(sy, 300)!)).toEqual({ first: 105, last: 118 });
+    expect(syncGapAt(sy, 364.4)).toBeNull();
   });
 });
