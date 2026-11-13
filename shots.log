@@ -1,0 +1,49 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+
+SHOTS driver=X11 pantalla=(1080, 2400) lienzo=(1080.0, 2400.0)
+SHOT 01_inicio
+TEXTURA arce (1024.0, 1024.0) formato=17 mipmaps=true
+SHOT 01_marmol
+SHOT 01_metal
+SHOT 01_ilustrado
+SHOT 01_madera_con_contorno
+SHOT 02_jaque_y_seleccion
+SHOT 03_flechas
+SHOT 04_cenital
+SHOT 05_girada
+SHOT 06_oscuro
+SHOT 07_negras
+SHOT 08_primer_plano
+SHOT 09_primer_plano_negras
+SHOT 09_primer_plano_marmol
+SHOT 09_primer_plano_metal
+SHOT 10_salto_del_caballo
+SHOT 11_captura
+SHOT 12_enroque
+SHOT 13_promocion
+SHOT 14_mate
+SHOT 15_mate_final
+SHOT 16_arrastre
+SHOT 20_demo
+SHOT 21_demo_pieza_tocada
+DEMO seleccionada=32 (esperada 32)
+SHOT 22_demo_bien
+DEMO titulo=«¡Bien!» paso=2
+SHOT 23_demo_sigue
+DEMO titulo=«Juegan negras» paso=3
+SHOT 24_demo_solucion
+DEMO titulo=«La solución» izquierda=«Repetir» derecha=«Siguiente»
+SHOT 25_demo_opciones
+SHOT 26_demo_opciones_oscuro
+SHOT 27_demo_oscuro
+SHOT 28_demo_oscuro_picado
+SHOT 29_demo_repetido
+DEMO titulo=«Juegan negras» paso=1 problema=0
+SHOT 30_demo_ampliado
+DEMO ampliado zoom=1.88 desplazamiento=(-0.001215, 0.011288)
+SHOT 31_demo_desplazado
+DEMO desplazado zoom=1.88 desplazamiento=(-1.028389, 0.485368) seleccionada=-1
+SHOT 32_demo_entero_otra_vez
+DEMO entero zoom=1.00 desplazamiento=(0.0, -0.0) picado=false
+SHOTS DONE
