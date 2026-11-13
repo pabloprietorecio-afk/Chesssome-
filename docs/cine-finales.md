@@ -2,7 +2,7 @@
 
 Idea de Pablo: ver finales reales en vídeo y que el vídeo **se pare solo justo antes de la jugada** para preguntar al jugador «¿Qué jugarías?». Después, el vídeo sigue y se ve lo que pasó de verdad.
 
-**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`. Probado con un reproductor simulado; **falta la prueba con YouTube real**, que exige una web publicada (apartado 12). Un clip preparado (Ding–Gukesh, Mundial 2024) con tres preguntas comprobadas con Stockfish; le faltan las marcas de tiempo, que solo se pueden poner viendo el vídeo. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
+**Estado (13 nov 2026).** Prototipo en la web 2D, en la rama `cine-video`, publicado en la web de pruebas (apartado 12). El reproductor de YouTube carga en el móvil de Pablo. Un clip preparado (Ding–Gukesh, Mundial 2024) con tres preguntas comprobadas con Stockfish y con las marcas de tiempo puestas por Pablo viendo el vídeo; falta que confirme en el móvil que la pausa automática cae justo antes de la jugada. Las películas generadas (sin vídeo) quedan aparcadas: ver el apartado 13.
 
 ## 1. Cómo es la experiencia
 
@@ -101,7 +101,7 @@ Coste estimado: un par de minutos por clip (sin medir).
 
 | Vídeo | Canal | Momento | Estado |
 | --- | --- | --- | --- |
-| [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | **Clip preparado.** oEmbed correcto. Faltan las marcas |
+| [Gukesh wins! - The final minutes of the FIDE World Championship 2024](https://www.youtube.com/watch?v=W9JtcW_0Sr8) | FIDE chess | 55.Tf2?? Txf2, 56…Ad5, 58…Re5: final de torre y alfil que pasa a final de peones | **Clip preparado.** oEmbed correcto. Vídeo de 437 s; clip de 3:20 a 3:53 con la pausa en 3:35 (215,47 s), marcas de Pablo |
 | [Final Moments of Gukesh Winning World Championship](https://www.youtube.com/watch?v=HlmhDl_KnOY) | ChessBase India | El mismo momento, grabado a pie de tablero | oEmbed correcto. Alternativa al anterior |
 | [FIDE World Championship Match - TIEBREAK FOR THE TITLE](https://www.youtube.com/watch?v=WkwVXg9a_i0) | FIDE chess | Nepómniashchi–Ding 2023, desempate 4: 46…Tg6 | oEmbed correcto. Retransmisión larga con comentaristas. No es un final técnico |
 | [Instructive Knight vs Rook endgame with a beautiful finish](https://www.youtube.com/watch?v=Y_IV9N5rhhw) | ChessBase India | Final de caballo contra torre entre aficionados | oEmbed correcto. Falta la partida |

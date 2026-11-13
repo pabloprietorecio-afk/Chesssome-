@@ -38,7 +38,7 @@ const FAKE_API = `(() => {
     getPlayerState() { return this.state; }
     destroy() { clearInterval(this.timer); this.el.remove(); }
   }
-  window.__fakeYT = { players, calls: [], duration: 431, rate: 1, ad: false,
+  window.__fakeYT = { players, calls: [], duration: 437, rate: 1, ad: false,
     last() { return players[players.length - 1]; },
     tapPlay() { this.last().state = 1; }, tapPause() { this.last().state = 2; },
     error(code) { const p = this.last(); p.events.onError && p.events.onError({ data: code }); } };
@@ -98,6 +98,8 @@ await page.evaluate(() => {
     placement: { done: true }, rating: { r: 1450, rd: 90, vol: 0.06 }, trials: [], events: [], reviews: [], themeFeedback: {},
     settings: { theme: 'auto', board: '2d', anim: 'fast', studyAlternateBoard: false, coordinates: true, sound: false }, surveysDone: [],
   }));
+  // Para probar los caminos «sin marcas», el clip se deja sin marcas en este dispositivo.
+  localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'ding-gukesh-2024-g14': { start: null, end: null, stops: [null], duration: null } }));
 });
 await page.reload();
 
@@ -249,7 +251,23 @@ assert(await page.evaluate(() => /no permite ver este vídeo fuera de YouTube/.t
 assert(await page.evaluate(() => !!document.querySelector('.vc-poster a[href*="youtube.com/watch?v=W9JtcW_0Sr8"]')), 'debe haber enlace a YouTube');
 await shot('12-video-no-disponible');
 
+// ── E. Con las marcas del paquete (sin marcas locales): se para en 215,47 s, antes de 55…Txf2. ──
+await page.evaluate(() => localStorage.removeItem('chessome.clipMarks.v1'));
+await clickText('Volver a la cartelera');
+await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
+await page.waitForSelector('.vc[data-phase="idle"]');
+await clickText('Ver el vídeo: se para');
+await waitAttr('phase', 'watching');
+await waitAttr('player', 'ready');
+const cued = await fake(() => window.__fakeYT.last().time);
+assert(Math.abs(cued - 200) < 0.5, `el clip debe empezar en 200 s (está en ${cued})`);
+await fake(() => window.__fakeYT.tapPlay());
+await waitAttr('phase', 'asking', 25000);
+const packPause = await fake(() => window.__fakeYT.last().time);
+assert(packPause >= 215.47 - 0.13 && packPause <= 215.47 + 0.2, `la pausa del paquete cayó en ${packPause}`);
+
 console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
+console.log('Clip con las marcas del paquete: empieza en', cued.toFixed(2), 's y se para en', packPause.toFixed(2), 's (marca 215,47).');
 console.log('Pausa automática en', paused.time.toFixed(2), 's (marca 8,40). Prueba del editor en', tested, 's. Reproductor', Math.round(geom.w) + '×' + Math.round(geom.h), 'px.');
 await browser.close();
 server.close();

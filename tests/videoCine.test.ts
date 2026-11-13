@@ -71,6 +71,11 @@ describe('paquete de clips de vídeo', () => {
     }
   });
 
+  it('Ding–Gukesh: marcas de Pablo en orden y dentro del vídeo', () => {
+    expect(marksOf(ding)).toEqual({ start: 200.14, stops: [215.47], end: 233.07, duration: 437 });
+    expect(marksProblems(marksOf(ding))).toEqual([]);
+  });
+
   it('Ding–Gukesh: en las tres preguntas solo gana la jugada de la partida', () => {
     const qs = ding.stops[0].questions;
     expect(qs.map((q) => q.played.san)).toEqual(['Rxf2', 'Bd5', 'Ke5']);
@@ -126,7 +131,9 @@ describe('utilidades', () => {
     expect(marksProblems({ start: 0, stops: [500], end: null, duration: 430 })).toEqual(['Hay marcas más allá del final del vídeo.']);
   });
   it('un clip sin marcas no puede pausar solo; con marcas locales, sí', () => {
-    expect(canAutoPause(ding)).toBe(false);
+    const unmarked = withMarks(ding, { start: null, stops: [null], end: null, duration: null });
+    expect(canAutoPause(unmarked)).toBe(false);
+    expect(canAutoPause(ding)).toBe(true);
     const marked = withMarks(ding, { start: 0, stops: [8.4], end: 120, duration: 431 });
     expect(canAutoPause(marked)).toBe(true);
     expect(marksOf(marked)).toEqual({ start: 0, stops: [8.4], end: 120, duration: 431 });

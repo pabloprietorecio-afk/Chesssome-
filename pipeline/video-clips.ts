@@ -29,10 +29,12 @@ export const CLIPS: ClipSource[] = [
       published: '2024-12-12',
       official: true,
       checked: '2026-11-13',
-      duration: null,
+      duration: 437,
     },
-    start: null,
-    end: null,
+    // Marcas puestas por Pablo viendo el vídeo (13 nov 2026). Pasarán a 'verified' cuando confirme
+    // en el móvil que la pausa automática cae justo antes de 55…Txf2.
+    start: 200.14,
+    end: 233.07,
     marks: 'pending',
     moves:
       '1. Nf3 d5 2. g3 c5 3. Bg2 Nc6 4. d4 e6 5. O-O cxd4 6. Nxd4 Nge7 7. c4 Nxd4 8. Qxd4 Nc6 9. Qd1 d4 10. e3 Bc5 11. exd4 Bxd4 12. Nc3 O-O 13. Nb5 Bb6 14. b3 a6 15. Nc3 Bd4 16. Bb2 e5 17. Qd2 Be6 18. Nd5 b5 19. cxb5 axb5 20. Nf4 exf4 21. Bxc6 Bxb2 22. Qxb2 Rb8 23. Rfd1 Qb6 24. Bf3 fxg3 25. hxg3 b4 26. a4 bxa3 27. Rxa3 g6 28. Qd4 Qb5 29. b4 Qxb4 30. Qxb4 Rxb4 31. Ra8 Rxa8 32. Bxa8 g5 33. Bd5 Bf5 34. Rc1 Kg7 35. Rc7 Bg6 36. Rc4 Rb1+ 37. Kg2 Re1 38. Rb4 h5 39. Ra4 Re5 40. Bf3 Kh6 41. Kg1 Re6 42. Rc4 g4 43. Bd5 Rd6 44. Bb7 Kg5 45. f3 f5 46. fxg4 hxg4 47. Rb4 Bf7 48. Kf2 Rd2+ 49. Kg1 Kf6 50. Rb6+ Kg5 51. Rb4 Be6 52. Ra4 Rb2 53. Ba8 Kf6 54. Rf4 Ke5 55. Rf2 Rxf2 56. Kxf2 Bd5 57. Bxd5 Kxd5 58. Ke3 Ke5 0-1',
@@ -42,7 +44,7 @@ export const CLIPS: ClipSource[] = [
       'Singapur, 12 de diciembre de 2024. Última partida del Mundial, con 6,5 a 6,5 en el marcador. El final de torre y alfil parece encaminado a las tablas… hasta que Ding Liren juega 55.Tf2.',
     stops: [
       {
-        at: null,
+        at: 215.47,
         questions: [
           {
             ply: 110,
@@ -67,6 +69,6 @@ export const CLIPS: ClipSource[] = [
     ],
     outro: 'Con esta partida, Gukesh ganó el Mundial por 7,5 a 6,5 y se convirtió, con 18 años, en el campeón del mundo más joven de la historia.',
     notes:
-      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Según una reseña, el vídeo dura algo más de siete minutos y empieza justo cuando Ding juega 55.Tf2: la pausa tendrá que ir en los primeros segundos. Sin verificar.',
+      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s; el clip va de 3:20 a 3:53 y se para en 3:35, antes de 55…Txf2 (marcas de Pablo).',
   },
 ];

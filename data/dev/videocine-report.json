@@ -6,9 +6,7 @@
    "id": "ding-gukesh-2024-g14",
    "ok": true,
    "errors": [],
-   "warnings": [
-    "Sin marcas de tiempo: el clip no pausa solo; solo funciona «directo a la pregunta»."
-   ],
+   "warnings": [],
    "questions": [
     {
      "ply": 110,
