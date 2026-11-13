@@ -53,4 +53,25 @@ if [ -f tools/assets/want.txt ]; then
     fi
   done
 fi
-du -sh "$OUT"; ls -la "$OUT/files" | head -60
+
+# 4. ambientCG (tools/assets/ambientcg.txt): «categoria <Nombre>» descarga las miniaturas de una categoría;
+#    «zip <Id> <1K-JPG>» descarga ese paquete y saca los mapas de color, normales y rugosidad.
+if [ -f tools/assets/ambientcg.txt ]; then
+  grep -v '^#' tools/assets/ambientcg.txt | while read -r kind name attr; do
+    [ -n "${kind:-}" ] || continue
+    if [ "$kind" = "categoria" ]; then
+      get "https://ambientcg.com/api/v2/full_json?type=Material&category=$name&limit=250&include=downloadData%2CpreviewData&sort=Popular" -o "$OUT/ambientcg_$name.json" || continue
+      jq -r '.foundAssets[] | "\(.assetId)\t\(.previewImage["256-JPG-FFFFFF"] // .previewImage["256-PNG"] // "")"' "$OUT/ambientcg_$name.json" > "$OUT/ambientcg_$name.tsv" || true
+      wc -l "$OUT/ambientcg_$name.tsv"
+      while IFS=$'\t' read -r id url; do
+        [ -n "$url" ] && get "$url" -o "$OUT/thumbs/acg_$id.img" || true
+      done < "$OUT/ambientcg_$name.tsv"
+    elif [ "$kind" = "zip" ]; then
+      mkdir -p "$OUT/tmp" && get "https://ambientcg.com/get?file=${name}_${attr}.zip" -o "$OUT/tmp/$name.zip" || continue
+      unzip -l "$OUT/tmp/$name.zip" || true
+      unzip -q -o -j "$OUT/tmp/$name.zip" '*_Color.jpg' '*_NormalGL.jpg' '*_Roughness.jpg' -d "$OUT/files" || true
+      rm -rf "$OUT/tmp"
+    fi
+  done
+fi
+du -sh "$OUT"; ls -la "$OUT/files" | head -80
