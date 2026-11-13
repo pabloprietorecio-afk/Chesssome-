@@ -124,8 +124,8 @@ var line_ply := -1
 var sheet_kind := ""
 var _keep_scroll := false
 var _gap_tween: Tween
-## Dentro de un mismo problema el tablero solo sube (cuando la explicación pide sitio); vuelve a bajar al
-## empezar el siguiente. Así no se mueve bajo el dedo entre un intento y otro.
+## Mientras se decide una misma jugada el tablero solo sube (cuando la explicación pide sitio); vuelve a bajar
+## cuando toca la jugada siguiente o empieza otro problema. Así no se mueve bajo el dedo entre un intento y otro.
 var _gap_limit := INF
 ## Alto de todo lo que no es tablero, cielo ni tarjeta (barra, botones y márgenes), según el último reparto.
 var _fixed_height := 0.0
@@ -275,8 +275,8 @@ class GestureHint extends Control:
 	var animated := true
 	var _t := 0.0
 
-	const ANIM_W := 132.0
-	const PAD := 30.0
+	const ANIM_W := 150.0
+	const PAD := 26.0
 
 	func fit() -> void:
 		var w := PAD * 2.0
@@ -284,7 +284,7 @@ class GestureHint extends Control:
 			w += ANIM_W + 8.0
 		if font != null and text != "":
 			w += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x
-		custom_minimum_size = Vector2(w, 108.0)
+		custom_minimum_size = Vector2(w, 124.0)
 		size = custom_minimum_size
 
 	func _process(delta: float) -> void:
@@ -319,11 +319,11 @@ class GestureHint extends Control:
 			turn = sin(PI * (_t - 2.2) / 1.9)
 		grow = grow * grow
 		turn = turn * turn
-		var k := 1.0 + 0.42 * grow
-		var angle := deg_to_rad(34.0) * turn
+		var k := 1.0 + 0.36 * grow
+		var angle := deg_to_rad(36.0) * turn
 		# El tablerito: cuatro casillas, que crecen y giran con los dedos.
 		draw_set_transform(c, angle, Vector2(k, k))
-		var half := 21.0
+		var half := 25.0
 		var frame := StyleBoxFlat.new()
 		frame.bg_color = board_dark
 		frame.set_corner_radius_all(7)
@@ -332,12 +332,12 @@ class GestureHint extends Control:
 		draw_rect(Rect2(Vector2(0.0, 0.0), Vector2(half, half)), board_light)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		# Los dos dedos, en diagonal: se separan al ampliar y giran alrededor del centro al girar.
-		var reach := 30.0 + 22.0 * grow
-		var base := deg_to_rad(-38.0) + angle
+		var reach := 34.0 + 22.0 * grow
+		var base := deg_to_rad(-40.0) + angle
 		for side: float in [-1.0, 1.0]:
 			var p := c + Vector2(cos(base), sin(base)) * reach * side
-			draw_circle(p, 13.0, Color(accent.r, accent.g, accent.b, 0.28), true, -1.0, true)
-			draw_circle(p, 8.0, accent, true, -1.0, true)
+			draw_circle(p, 15.0, Color(accent.r, accent.g, accent.b, 0.28), true, -1.0, true)
+			draw_circle(p, 9.5, accent, true, -1.0, true)
 
 
 ## Muestra de un acabado: una pieza clara y otra oscura, como dos discos que se solapan.
@@ -841,11 +841,11 @@ func _build_chrome() -> void:
 	gesture_tip.paper = _c("surface")
 	gesture_tip.ink = _c("ink")
 	gesture_tip.accent = _c("accent_text")
-	gesture_tip.board_light = _c("field") if not dark else Color("d9dff2")
-	gesture_tip.board_dark = _c("track") if not dark else Color("5a678f")
+	gesture_tip.board_light = Color("f3ead8")
+	gesture_tip.board_dark = Color("a97f5f")
 	gesture_tip.shadow = _c("shadow")
 	gesture_tip.font = font_medium
-	gesture_tip.font_size = F_FOOT
+	gesture_tip.font_size = F_SUB
 	gesture_tip.text = "Amplía y gira con dos dedos"
 	gesture_tip.visible = false
 	gesture_tip.fit()
@@ -911,12 +911,14 @@ func _place_tip() -> void:
 	var slot_top := board_slot.get_global_rect().position.y
 	var bar_bottom := bar_row.get_global_rect().end.y if bar_row != null and is_instance_valid(bar_row) else 0.0
 	var room := slot_top - bar_bottom
-	var wanted := _tip_note or (gesture_hint and not view.view_locked and welcome == null)
 	var fits := room >= gesture_tip.size.y + 56.0
-	gesture_tip.visible = wanted and fits
-	gesture_tip.position = Vector2((size.x - gesture_tip.size.x) * 0.5, slot_top - gesture_tip.size.y - 34.0)
+	gesture_tip.visible = _tip_note or (gesture_hint and not view.view_locked and welcome == null and fits)
+	var y := slot_top - gesture_tip.size.y - 34.0
+	if not fits:
+		y = bar_bottom + 14.0
+	gesture_tip.position = Vector2((size.x - gesture_tip.size.x) * 0.5, y)
 	# Las nubes (o la luna) se quedan por encima de la pista.
-	bg.ornament_bottom = gesture_tip.position.y - 12.0 if gesture_tip.visible else -1.0
+	bg.ornament_bottom = gesture_tip.position.y - 12.0 if gesture_tip.visible and fits else -1.0
 	bg.queue_redraw()
 
 
@@ -946,7 +948,7 @@ func _layout(animate: bool = false) -> void:
 	var board_h := clampf(canvas.y - fixed - CARD_MIN, 320.0, maxf(canvas.x, 320.0))
 	board_slot.custom_minimum_size = Vector2(0.0, board_h)
 	var free := maxf(canvas.y - fixed - board_h, CARD_MIN)
-	var gap := minf(maxf(0.0, (free - _card_room()) * 0.78), _gap_limit)
+	var gap := minf(maxf(0.0, (free - _card_room()) * 0.86), _gap_limit)
 	_gap_limit = gap
 	if _gap_tween != null and _gap_tween.is_valid():
 		_gap_tween.kill()
@@ -1619,6 +1621,7 @@ func _copy_ai_text() -> void:
 	DisplayServer.clipboard_set(_ai_text())
 	if _ai_status != null and is_instance_valid(_ai_status):
 		_ai_status.text = "Copiado. Pégalo en la IA que prefieras."
+		_ai_status.visible = true
 
 
 ## Abre la búsqueda de Google en Modo IA con la pregunta. El parámetro udm=50 no está documentado por Google
@@ -1638,6 +1641,7 @@ func _build_ai_sheet() -> void:
 	var google := _button("open", "Abrir en Google (Modo IA)", _open_google_ai, tint[0], tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 52.0})
 	box.add_child(google)
 	_ai_status = _para("", F_SUB, _c("good"), font_medium)
+	_ai_status.visible = false
 	box.add_child(_ai_status)
 	box.add_child(_caption("Texto que se copia"))
 	var preview := _para(_ai_text(), F_CAP, _c("quiet"), font_regular)
@@ -1850,8 +1854,8 @@ func _swatch_tiles(selected: int) -> HBoxContainer:
 	return row
 
 
-func _switch_row(icon_name: String, tint_name: String, label: String, hint: String, value: bool, on_change: Callable) -> HBoxContainer:
-	var row := _icon_row(icon_name, tint_name, label, hint, 88.0)
+func _switch_row(icon_name: String, tint_name: String, label: String, hint: String, value: bool, on_change: Callable) -> MarginContainer:
+	var row := _icon_row(icon_name, tint_name, label, hint, 96.0)
 	var sw := Switch.new()
 	sw.on = value
 	sw.on_color = _c("accent")
@@ -1865,7 +1869,9 @@ func _switch_row(icon_name: String, tint_name: String, label: String, hint: Stri
 		sw.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	sw.pressed.connect(on_change.bind(not value))
 	row.add_child(sw)
-	return row
+	var spaced := _pad(0, 10, 0, 10)
+	spaced.add_child(row)
+	return spaced
 
 
 func _set_pieces_index(i: int) -> void:
@@ -2021,7 +2027,7 @@ func _open_welcome() -> void:
 	emblem.texture = UiIcons.emblem()
 	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	emblem.custom_minimum_size = Vector2(330.0, 330.0)
+	emblem.custom_minimum_size = Vector2(390.0, 390.0)
 	emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2030,7 +2036,7 @@ func _open_welcome() -> void:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(name_label)
 	body.add_child(_spacer(6.0))
-	var claim := _para("Aprende ajedrez entendiendo cada jugada.", F_HEAD, _c("quiet"), font_medium)
+	var claim := _para("Aprende ajedrez entendiendo cada jugada.", F_HEAD + 2, _c("quiet"), font_medium)
 	claim.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(claim)
 	body.add_child(_spacer(54.0, true))
@@ -2043,12 +2049,12 @@ func _open_welcome() -> void:
 	for i in rows.size():
 		var def: Array = rows[i]
 		if i > 0:
-			body.add_child(_spacer(38.0))
+			body.add_child(_spacer(42.0))
 		body.add_child(_welcome_row(str(def[0]), str(def[1]), str(def[2]), str(def[3])))
 	body.add_child(_spacer(20.0, true))
 
 	column.add_child(_spacer(22.0))
-	var note := _para("Todavía no hay curso de reglas: necesitas saber cómo se mueven las piezas.", F_FOOT, _c("quiet"), font_regular)
+	var note := _para("Todavía no hay curso de reglas: necesitas saber cómo se mueven las piezas.", F_FOOT + 2, _c("quiet"), font_regular)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(note)
 	column.add_child(_spacer(26.0))
@@ -2063,7 +2069,7 @@ func _welcome_row(icon_name: String, tint_name: String, heading: String, text: S
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 34)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tile := _icon_tile(icon_name, tint_name, 136.0, 84.0)
+	var tile := _icon_tile(icon_name, tint_name, 152.0, 94.0)
 	tile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(tile)
 	var texts := VBoxContainer.new()
@@ -2071,8 +2077,8 @@ func _welcome_row(icon_name: String, tint_name: String, heading: String, text: S
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	texts.add_child(_para(heading, F_HEAD, _c("ink"), font_semibold))
-	texts.add_child(_para(text, F_SUB, _c("quiet"), font_regular))
+	texts.add_child(_para(heading, F_HEAD + 6, _c("ink"), font_semibold))
+	texts.add_child(_para(text, F_BODY, _c("quiet"), font_regular))
 	row.add_child(texts)
 	return row
 
@@ -2166,6 +2172,8 @@ func _ask() -> void:
 	fen_before = view.board.chess.fen()
 	ask_step = step
 	hint_level = 0
+	# Jugada nueva: el tablero vuelve a bajar a su sitio de resolver (pudo subir para dejar sitio a una explicación).
+	_gap_limit = INF
 	view.interactive = true
 	_set_phase(Phase.SOLVING)
 

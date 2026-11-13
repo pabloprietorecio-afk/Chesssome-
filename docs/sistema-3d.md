@@ -11,18 +11,20 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | Nivel | `godot/core/glicko2.gd` | Glicko-2, igual que `src/core/glicko2.ts` |
 | Explicaciones | `godot/core/explain_data.gd` | Lee las explicaciones ya redactadas de cada problema (`godot/data/explain/`) |
 | Escena | `godot/board3d/board_3d.gd` | Cámara, luces, piezas, casillas, flechas, animaciones y avisos de sonido |
-| Control | `godot/board3d/board_view_3d.gd` | Toque, arrastre, promoción, giro con dos dedos, seguir al móvil |
+| Control | `godot/board3d/board_view_3d.gd` | Toque, arrastre, promoción, ampliar y girar con dos dedos, fijar el giro, seguir al móvil |
 | Sonido | `godot/board3d/board_sounds.gd` | Reproduce las grabaciones de `godot/sounds/` cuando la escena avisa |
 | Materiales | `godot/board3d/shaders/` | Realistas: `squares_textured`, `frame_textured`, `piece_textured`, `studio_sky`. Ilustrado: `squares`, `piece`. Fichas: `piece_token`. Comunes: `outline`, `outline_disc`, `soft_shadow` |
 | Texturas | `godot/textures/` | Fotografías de madera, mármol y metal (CC0), con su procedencia en `LEEME.md` |
 | Colecciones | `godot/sets/clasico/`, `godot/sets/fichas/` | Figuras (seis piezas y el marco, en GLB) y fichas planas (una ficha y el atlas de iconos) |
 | Modelado | `tools/pieces/` | Genera los GLB y los iconos desde campos de distancia (código propio) |
 | Pantalla | `godot/demo/` | Pantalla de problema: problemas reales de `godot/data/demo_puzzles.json`, explicación, ayudas y opciones |
+| Iconos | `godot/ui/` | Atlas de iconos (Phosphor, MIT, y piezas propias) y emblema; los genera `tools/ui/icons.mjs` |
 | Tipografía | `godot/fonts/` | Inter e Inter Display (OFL 1.1) |
-| Capturas | `godot/tests/shots.gd` | 66 capturas: tablero, fichas y la pantalla de problema con toques simulados |
+| Capturas | `godot/tests/shots.gd` | 75 capturas: tablero, fichas y la pantalla de problema con toques y gestos simulados |
 
-Renderizador: «Mobile» (Vulkan). Modelos, iconos y código de modelado propios. Las texturas de los acabados
-realistas son de Poly Haven y ambientCG, y los sonidos de OpenGameArt y Versilian Studios; todo bajo CC0.
+Renderizador: «Mobile» (Vulkan). Modelos, iconos de las piezas y código de modelado propios. Las texturas de
+los acabados realistas son de Poly Haven y ambientCG, y los sonidos de OpenGameArt y Versilian Studios; todo
+bajo CC0. Los iconos generales de la interfaz son de Phosphor Icons (MIT).
 
 ## Uso de `BoardView3D`
 
@@ -89,15 +91,24 @@ view.set_view_locked(true)              # fijar la vista actual
 | --- | --- |
 | Un dedo sobre una pieza propia | Seleccionar; tocar el destino o arrastrarla para jugar |
 | Pellizco con dos dedos | Ampliar o reducir alrededor de los dedos, de ×1 (tablero entero) a ×3. El tablero puede ser más ancho que la pantalla |
-| Dos dedos a la par | Con el tablero ampliado, desplazarlo. Sin ampliar, girar la vista (inclinación y giro) |
+| Girar dos dedos (como un mapa) | Gira el tablero lo mismo que los dedos y hacia el mismo lado |
+| Dos dedos a la par | Con el tablero ampliado, desplazarlo. Sin ampliar, inclinar y rodear la vista |
 | Un dedo desde donde no hay pieza propia | Con el tablero ampliado, desplazarlo |
-| Botón de vista | Si está ampliado, lo deja entero. Si no, alterna entre inclinada y en picado |
+| Chincheta (barra superior) | Fija el giro: ni los dedos ni el móvil giran o inclinan el tablero. Ampliar y desplazar siguen funcionando |
+| Botón de vista | Si está ampliado, lo deja entero. Si no, alterna entre inclinada y en picado (y lo endereza) |
 
 - La ampliación estrecha el campo de visión (no acerca la cámara), así la perspectiva no cambia.
 - El desplazamiento se limita: el tablero siempre cubre la zona que ocupaba sin ampliar.
-- El gesto de dos dedos se decide en los primeros 14 px: si los dedos se separan, es ampliar; si van a la par, girar.
-- «Fijar la vista» bloquea también la ampliación y el desplazamiento.
-- La ampliación se conserva de un problema al siguiente.
+- El gesto de dos dedos se decide en los primeros 14 px según lo que más pese: separar los dedos (ampliar),
+  girarlos (girar el tablero) o llevarlos a la par (inclinar o desplazar). Mientras se amplía, el tablero no gira.
+- **Se endereza solo.** Si al soltar los dedos el tablero queda a menos de 8° de estar derecho, vuelve a 0°: un
+  giro tan pequeño suele ser sin querer (Pablo lo vio en su móvil: el tablero quedaba torcido).
+- Un pellizco mínimo (menos de ×1,12) tampoco amplía: vuelve al tablero entero.
+- **Pista de gestos.** En el hueco de encima del tablero, una animación pequeña (dos dedos que se separan y
+  luego giran, con un tablerito que crece y gira) y el texto «Amplía y gira con dos dedos». Viene activada, y
+  se apaga sola la primera vez que el jugador amplía, gira o desplaza el tablero (`BoardView3D.view_gesture`).
+  Se puede volver a encender en Opciones. Solo se enseña si cabe y si el giro no está fijado.
+- La ampliación se conserva de un problema al siguiente; el giro fijado y la pista, entre sesiones.
 
 ## Fichas
 
@@ -140,16 +151,48 @@ límites de estas grabaciones, en `godot/sounds/LEEME.md`.
   (4.787 para los 60 problemas) y la del problema resuelto. La app no redacta ni calcula ajedrez nuevo.
 - **Si el jugador falla**, la tarjeta cuenta qué hace su jugada y qué permite, con la variante para verla en
   el tablero, pero no dice cuál era la mejor: puede reintentar.
+- **Ayuda graduada mientras se resuelve** (barra del pie, también tras un fallo), de menos a más:
+  - **Pista**: la primera vez, el tema del problema («Busca esto: clavada»); la segunda, además, qué pieza hay
+    que mover, que queda elegida en el tablero con sus destinos. Nunca dice la jugada. El tema viene de las
+    etiquetas de Lichess; los que no orientan («Ventaja clara») se saltan.
+  - **Un paso**: juega solo la jugada que toca y explica por qué es esa (la misma explicación de cuatro
+    niveles). Con «Seguir», responde el rival y el jugador continúa con el resto del problema.
+  - **Solución**: enseña la solución entera, como antes.
+  - **Saltar**: pasa al problema siguiente.
 - **Al resolver o pedir la solución**, cuatro niveles con «Explícame por qué»: qué ha pasado, el concepto (con
-  flechas sobre la posición de la decisión), la variante jugada a jugada y las cifras del motor, más «¿De dónde
-  sale cada dato?».
+  flechas sobre la posición de la decisión), la variante jugada a jugada y las cifras del motor. «Datos de la
+  posición» (de dónde sale cada dato) solo aparece en el último nivel.
 - **Ayudas** (`docs/ayudas.md`): «¿Y si juego…?», «Analizar en Lichess» (abre el navegador) y «Pregunta a una
   IA» (copia el texto con la posición y el análisis, o abre Google en Modo IA). En Android no hay menú de
   compartir del sistema sin un complemento propio: de momento, copiar.
 - La tarjeta mide lo que su contenido y, si no cabe, se desplaza. El tablero sube cuando la explicación pide
   sitio y no vuelve a bajar hasta el problema siguiente.
-- **Bienvenida** de primer uso (también en Opciones → «Cómo funciona Chessome»), **ajustes guardados**
+- **Bienvenida** de primer uso (también en Opciones → «Cómo se usa Chessome»), **ajustes guardados**
   (`user://chessome.cfg`) y **versión de la app** al pie de Opciones (la escribe la CI en `data/version.json`).
+
+## Diseño de la interfaz
+
+Decisiones de Pablo tras probar la versión 35 en su móvil (13 nov): todo se veía pequeño; aire de app móvil
+(inspiración en los diseños de Apple), tonos pastel, iconos grandes y botones ilustrados; y **la app no explica
+cómo funciona por dentro** (nada de «cada frase sale del análisis de un motor»).
+
+- **Letra.** El lienzo mide 1080 unidades de ancho y un móvil corriente unos 393 puntos: un punto son unas
+  2,75 unidades. El cuerpo iba a 33 unidades (12 puntos, pequeño); ahora va a 42 (15 puntos). Escala en
+  `demo.gd`: `F_LARGE` 100, `F_TITLE` 66, `F_TITLE2` 58, `F_HEAD` 46, `F_BODY` 42, `F_SUB` 38, `F_FOOT` 34,
+  `F_CAP` 30. Ningún texto baja de 30 (11 puntos).
+- **Tonos pastel.** Seis tonos (melocotón, menta, lila, cielo, mantequilla y rosa), cada uno con su fondo y su
+  tinta, en claro y en oscuro (`TINTS_LIGHT`, `TINTS_DARK`). El acento pleno (un naranja suavizado) solo
+  aparece en el botón que hace avanzar.
+- **Iconos.** `UiIcons` (`godot/ui/`): un atlas en blanco con transparencia que la app tiñe al dibujar. Los
+  generales son de Phosphor Icons (MIT), en su variante de dos tonos; las piezas y el emblema salen de nuestras
+  piezas 3D. Se generan con `npm run ui:icons` (`tools/ui/icons.mjs`); procedencia en `godot/ui/LEEME.md`.
+- **Botones ilustrados** (`_button`): icono y texto, en fila o con el icono encima. La barra de ayuda son
+  cuatro teselas pastel con su icono; las ayudas de después del problema, tres teselas grandes; en Opciones,
+  figuras y fichas se eligen por su dibujo y los acabados por sus dos colores de pieza.
+- **Bienvenida**: emblema (el caballo en relieve sobre una tesela pastel), nombre, una frase y cuatro ideas con
+  su icono grande; el botón «Empezar», siempre a la vista al pie.
+- **Textos.** La app dice qué puede hacer el jugador, no cómo está hecha. Las cifras del motor siguen en el
+  cuarto nivel de la explicación, para quien las pide.
 
 ## Reglas del sistema
 
@@ -198,7 +241,8 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Que «Analizar en Lichess», «Abrir en Google» y copiar al portapapeles funcionen en el teléfono (en la CI solo
   se comprueba el texto y la dirección).
 - Sentido del giro al seguir al móvil (`ROLL_SIGN` y `TWIST_SIGN` en `board_view_3d.gd`): si va al revés, se cambia el signo.
-- El tacto del pellizco y del arrastre con dedos de verdad (en la CI se simulan los toques).
+- El tacto del pellizco, del giro y del arrastre con dedos de verdad (en la CI se simulan los toques).
+- Que la letra tenga ya buen tamaño en el teléfono de Pablo (la medida es por cálculo: 15 puntos de cuerpo).
 - Comportamiento en teléfonos sin Vulkan.
 
 ## Pendiente
@@ -208,6 +252,8 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Paisaje con el tiempo real en el cielo de la pantalla de problema (hoy es un cielo quieto).
 - Test de nivel y elección de problemas según el jugador (el flujo de entrenamiento del prototipo web).
 - Curso de reglas para quien nunca ha jugado.
+- Pantalla de licencias en la app (Phosphor Icons pide conservar su aviso MIT) antes de publicarla.
+- Icono de la app en el lanzador de Android con el emblema nuevo.
 - Sonidos por material (mármol, metal) y grabaciones de piezas de ajedrez de verdad.
 - Menú de compartir del sistema en «Pregunta a una IA» (necesita un complemento de Android).
 - Niveles de calidad y pausa del dibujo en reposo.
