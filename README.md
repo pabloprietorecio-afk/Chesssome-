@@ -50,13 +50,13 @@ godot --headless --path godot --import
 godot --headless --path godot -s tests/test_glicko2.gd      # prueba de oro de Glicko-2
 ```
 
-La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas de oro en Godot (reglas y Glicko-2), dibuja 29 capturas del tablero 3D y de la demo (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
+La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas en Godot (reglas, Glicko-2 y explicaciones), dibuja 66 capturas del tablero 3D y de la pantalla de problema (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
 
 https://github.com/pabloprietorecio-afk/Chesssome-/releases/download/ultimo-apk/Chessome-debug.apk
 
 `android_firma/debug.keystore` es una clave solo de depuración y se sube a propósito para que cada APK se instale encima del anterior; la clave de publicación nunca debe subirse al repositorio.
 
-El tablero 3D usa el renderizador «Mobile» (Vulkan) y una colección de piezas propia generada por código (`tools/pieces`). Resumen técnico en `docs/sistema-3d.md`.
+El tablero 3D usa el renderizador «Mobile» (Vulkan) y piezas propias generadas por código (`tools/pieces`): figuras y fichas planas con el icono en relieve. La pantalla de problema enseña las explicaciones (`npm run godot:demo` las exporta ya redactadas), las ayudas y el sonido. Resumen técnico en `docs/sistema-3d.md`.
 
 ## Estructura
 
@@ -90,6 +90,9 @@ data/dev/        Problemas importados, análisis del motor e informe de calidad
 | Inter e Inter Display 4.1.1 | SIL OFL 1.1 | Tipografía de la app Godot (`godot/fonts`, con su licencia) |
 | Texturas de madera (Poly Haven) | CC0 | Acabado «Madera». Detalle en `godot/textures/LEEME.md` |
 | Texturas de mármol y metal (ambientCG) | CC0 1.0 | Acabados «Mármol» y «Metal». Detalle en `godot/textures/LEEME.md` |
+| Sonidos de madera y de arrastre (OpenGameArt) | CC0 | «100 CC0 metal and wood SFX», de rubberduck, y «Scrapes». Detalle en `godot/sounds/LEEME.md` |
+| Timbales (VSCO 2: Community Edition, Versilian Studios) | CC0 1.0 | Aviso de jaque. Detalle en `godot/sounds/LEEME.md` |
+| Iconos de las fichas | Propios | Generados por código a partir de las piezas 3D propias (`tools/pieces/fichas.mjs`) |
 
 El paquete de datos está marcado como `provisional: true`: es una muestra de desarrollo, no el catálogo de producción.
 

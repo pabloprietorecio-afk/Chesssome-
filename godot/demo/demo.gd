@@ -31,11 +31,9 @@ const DARK := {
 const VIEW_BLEED_TOP := 64.0
 const VIEW_BLEED_BOTTOM := 110.0
 const VIEW_FADE := 48.0
-## Alto mínimo que se reserva a la tarjeta del entrenador y sitio que se le deja mientras se resuelve
-## (lo demás va de cielo, encima del tablero). Cuando hay explicación completa, el tablero sube y la
-## tarjeta se queda con todo el sitio.
+## Alto mínimo que se reserva siempre a la tarjeta del entrenador. Lo que sobra por encima de lo que la
+## tarjeta necesita en cada momento va de cielo, sobre el tablero (ver _card_room y _layout).
 const CARD_MIN := 300.0
-const CARD_ROOM := 470.0
 const SETTINGS_PATH := "user://chessome.cfg"
 const WHY_LABELS := {1: "Explícame por qué", 2: "Ver la variante", 3: "Ver el análisis"}
 const SOURCE_NAMES := {"motor": "Motor", "reglas": "Reglas", "lichess": "Lichess"}
@@ -89,6 +87,9 @@ var line_ply := -1
 var sheet_kind := ""
 var _keep_scroll := false
 var _gap_tween: Tween
+## Dentro de un mismo problema el tablero solo sube (cuando la explicación pide sitio); vuelve a bajar al
+## empezar el siguiente. Así no se mueve bajo el dedo entre un intento y otro.
+var _gap_limit := INF
 ## Alto de todo lo que no es tablero, cielo ni tarjeta (barra, botones y márgenes), según el último reparto.
 var _fixed_height := 0.0
 var _ai_status: Label
@@ -599,9 +600,15 @@ func _build_chrome() -> void:
 		_build_ai_sheet()
 
 
-## Hay una explicación completa a la vista: la tarjeta necesita sitio y el tablero sube.
-func _explaining() -> bool:
-	return (phase == Phase.SOLVED or phase == Phase.SHOWN) and not expl.is_empty()
+## Sitio que pide la tarjeta según lo que enseña: poco mientras se resuelve, más con la explicación de un
+## fallo o de la solución, y todo el que haya cuando se profundiza o se prueban otras jugadas.
+func _card_room() -> float:
+	var e := _shown_exp()
+	if whatif or (not e.is_empty() and not exp_partial and exp_level >= 2):
+		return INF
+	if not e.is_empty():
+		return 660.0 if exp_partial else 720.0
+	return CARD_MIN + 30.0
 
 
 ## Reparte el alto: el hueco del tablero es tan alto como hace falta para que el tablero vaya de lado a lado
@@ -619,7 +626,8 @@ func _layout(animate: bool = false) -> void:
 	var board_h := clampf(canvas.y - fixed - CARD_MIN, 320.0, maxf(canvas.x, 320.0))
 	board_slot.custom_minimum_size = Vector2(0.0, board_h)
 	var free := maxf(canvas.y - fixed - board_h, CARD_MIN)
-	var gap := 0.0 if _explaining() else maxf(0.0, (free - CARD_ROOM) * 0.78)
+	var gap := minf(maxf(0.0, (free - _card_room()) * 0.78), _gap_limit)
+	_gap_limit = gap
 	if _gap_tween != null and _gap_tween.is_valid():
 		_gap_tween.kill()
 	if animate and view.board.anim_mode != Board3D.Anim.NONE and absf(top_gap.custom_minimum_size.y - gap) > 2.0:
@@ -792,7 +800,8 @@ func _build_card() -> void:
 		card_body.add_child(_para(sub, 33, _c("quiet"), font_regular))
 
 	# Ficha del problema. El tema es una pista: solo se enseña cuando ya está resuelto o mostrado.
-	if total > 0 and not whatif:
+	# Con la explicación de un fallo a la vista no se repite: el sitio es para la explicación.
+	if total > 0 and not whatif and not (phase == Phase.WRONG and not e.is_empty()):
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
 		chips.add_theme_constant_override("v_separation", 10)
@@ -943,7 +952,7 @@ func _add_whatif(e: Dictionary) -> void:
 		card_body.add_child(_para("Probando %s" % str(e.get("san", "")), 28, _c("quiet"), font_semibold))
 		_add_explanation(e, whatif_level, false)
 		card_body.add_child(_para("Prueba otra jugada en el tablero o vuelve a la explicación.", 28, _c("quiet"), font_regular))
-	var back := _card_button("Volver a la explicación", _toggle_whatif, _c("accent_soft"), _c("accent_text"), 31)
+	var back := _card_button("Volver a la explicación", _toggle_whatif, _c("field"), _c("ink"), 31)
 	card_body.add_child(back)
 	if not e.is_empty():
 		var tools := HFlowContainer.new()
@@ -1484,9 +1493,14 @@ func _open_welcome() -> void:
 	welcome = Control.new()
 	welcome.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(welcome)
-	var back := ColorRect.new()
-	back.color = _c("bg")
+	# El mismo cielo de la pantalla de problema; sus nubes (o la luna) van en el hueco entre la presentación y los pasos.
+	var back := SkyBackdrop.new()
+	back.base = _c("bg")
+	back.top = _c("sky")
+	back.ornament = _c("cloud")
+	back.night = dark
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.mouse_filter = Control.MOUSE_FILTER_STOP
 	welcome.add_child(back)
 	var inset := _insets()
 	var pad := _pad(56, int(maxf(inset.x, 60.0)) + 60, 56, int(inset.y) + 44)
@@ -1500,12 +1514,14 @@ func _open_welcome() -> void:
 	claim.add_theme_constant_override("line_spacing", -4)
 	box.add_child(claim)
 	box.add_child(_para("Problemas reales de ajedrez con una explicación de verdad: cada frase sale del análisis de un motor o de las reglas del juego.", 33, _c("quiet"), font_regular))
-	box.add_child(_spacer(10.0))
+	var sky_gap := _spacer(120.0, true)
+	sky_gap.item_rect_changed.connect(_place_welcome_sky.bind(back, sky_gap))
+	box.add_child(sky_gap)
 	box.add_child(_welcome_row("1", "Juega", "Toca una pieza y su destino, o arrástrala. Primero mueve el rival; después te toca a ti."))
 	box.add_child(_welcome_row("2", "Si fallas, te lo explico", "Qué tenía de bueno tu jugada y qué permite. Puedes ver en el tablero lo que pasaría y volver a intentarlo."))
 	box.add_child(_welcome_row("3", "Pregunta «por qué»", "Al resolverlo o ver la solución: el concepto, la variante jugada a jugada y las cifras del motor. Y prueba «¿Y si juego…?» con cualquier otra jugada."))
 	box.add_child(_welcome_row("4", "A tu gusto", "Pellizca el tablero para ampliarlo. En Opciones eliges figuras o fichas, el material, el sonido y las animaciones."))
-	box.add_child(_spacer(0.0, true))
+	box.add_child(_spacer(14.0))
 	box.add_child(_para("Todavía no hay curso de reglas: hace falta saber cómo se mueven las piezas.", 27, _c("quiet"), font_regular))
 	var go := Button.new()
 	go.text = "Empezar"
@@ -1514,6 +1530,15 @@ func _open_welcome() -> void:
 	go.pressed.connect(_close_welcome)
 	_style_button(go, _c("accent"), _c("accent_ink"), 64, 38, font_semibold, Color(1.0, 0.48, 0.1, 0.34))
 	box.add_child(go)
+
+
+func _place_welcome_sky(back: SkyBackdrop, sky_gap: Control) -> void:
+	if not is_instance_valid(back) or not is_instance_valid(sky_gap):
+		return
+	var rect := sky_gap.get_global_rect()
+	back.band_top = rect.position.y
+	back.band_bottom = rect.end.y
+	back.queue_redraw()
 
 
 func _welcome_row(number: String, heading: String, text: String) -> HBoxContainer:
@@ -1599,6 +1624,7 @@ func _start(i: int) -> void:
 	puzzle = puzzles[index]
 	explain = ExplainData.load_for(str(puzzle.get("id", "")))
 	_clear_explanation()
+	_gap_limit = INF
 	last_wrong = {}
 	step = 0
 	ask_step = 0

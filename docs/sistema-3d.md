@@ -1,6 +1,6 @@
-# Sistema 3D (Godot)
+# Sistema 3D y pantalla de problema (Godot)
 
-Resumen técnico del tablero 3D. El diseño razonado (reglas de legibilidad, colecciones, animaciones) está en el
+Resumen técnico del tablero 3D y de la pantalla de problema de la app. El diseño razonado (reglas de legibilidad, colecciones, animaciones) está en el
 documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del MVP.
 
 ## Qué hay
@@ -9,18 +9,20 @@ documento del proyecto, apartados 12–14 y «Sistema 3D y de animaciones» del 
 | --- | --- | --- |
 | Reglas | `godot/core/chess.gd` | Jugadas legales, jaque, mate, enroque, al paso, promoción, FEN |
 | Nivel | `godot/core/glicko2.gd` | Glicko-2, igual que `src/core/glicko2.ts` |
-| Escena | `godot/board3d/board_3d.gd` | Cámara, luces, piezas, casillas, flechas, animaciones |
+| Explicaciones | `godot/core/explain_data.gd` | Lee las explicaciones ya redactadas de cada problema (`godot/data/explain/`) |
+| Escena | `godot/board3d/board_3d.gd` | Cámara, luces, piezas, casillas, flechas, animaciones y avisos de sonido |
 | Control | `godot/board3d/board_view_3d.gd` | Toque, arrastre, promoción, giro con dos dedos, seguir al móvil |
-| Materiales | `godot/board3d/shaders/` | Realistas: `squares_textured`, `frame_textured`, `piece_textured`, `studio_sky`. Ilustrado: `squares`, `piece`. Comunes: `outline`, `outline_disc`, `soft_shadow` |
+| Sonido | `godot/board3d/board_sounds.gd` | Reproduce las grabaciones de `godot/sounds/` cuando la escena avisa |
+| Materiales | `godot/board3d/shaders/` | Realistas: `squares_textured`, `frame_textured`, `piece_textured`, `studio_sky`. Ilustrado: `squares`, `piece`. Fichas: `piece_token`. Comunes: `outline`, `outline_disc`, `soft_shadow` |
 | Texturas | `godot/textures/` | Fotografías de madera, mármol y metal (CC0), con su procedencia en `LEEME.md` |
-| Colección | `godot/sets/clasico/` | Seis piezas y el marco, en GLB |
-| Modelado | `tools/pieces/` | Genera los GLB desde campos de distancia (código propio) |
-| Demo | `godot/demo/` | Pantalla de problema con problemas reales de `godot/data/demo_puzzles.json` |
+| Colecciones | `godot/sets/clasico/`, `godot/sets/fichas/` | Figuras (seis piezas y el marco, en GLB) y fichas planas (una ficha y el atlas de iconos) |
+| Modelado | `tools/pieces/` | Genera los GLB y los iconos desde campos de distancia (código propio) |
+| Pantalla | `godot/demo/` | Pantalla de problema: problemas reales de `godot/data/demo_puzzles.json`, explicación, ayudas y opciones |
 | Tipografía | `godot/fonts/` | Inter e Inter Display (OFL 1.1) |
-| Capturas | `godot/tests/shots.gd` | 16 capturas del tablero y 10 de la demo con toques simulados |
+| Capturas | `godot/tests/shots.gd` | 66 capturas: tablero, fichas y la pantalla de problema con toques simulados |
 
-Renderizador: «Mobile» (Vulkan). Modelos y código de modelado propios. Las texturas de los acabados realistas
-son de Poly Haven y ambientCG, las dos bajo CC0.
+Renderizador: «Mobile» (Vulkan). Modelos, iconos y código de modelado propios. Las texturas de los acabados
+realistas son de Poly Haven y ambientCG, y los sonidos de OpenGameArt y Versilian Studios; todo bajo CC0.
 
 ## Uso de `BoardView3D`
 
@@ -37,6 +39,8 @@ view.edge_fade = 48.0                   # franja en la que la vista se funde con
 view.board.fit_pad = Vector4(0.012, 0.06, 0.012, 0.08)  # margen del encuadre: izquierda, arriba, derecha, abajo
 view.set_board_style("marmol")          # acabado: "madera", "marmol", "metal" o "ilustrado"
 view.board.set_outline(true)            # contorno de tinta (por defecto, solo en el ilustrado)
+view.set_piece_set("fichas")            # juego de piezas: "clasico" (figuras) o "fichas"
+view.set_sound_enabled(false)           # sonido de las jugadas
 view.center_view()                      # vista en picado; default_view() vuelve a la inclinada (las dos deshacen el zoom)
 view.reset_zoom()                       # tablero entero otra vez, sin cambiar inclinación ni giro
 view.set_tilt_enabled(true)             # seguir la inclinación y el giro del móvil
@@ -95,6 +99,58 @@ view.set_view_locked(true)              # fijar la vista actual
 - «Fijar la vista» bloquea también la ampliación y el desplazamiento.
 - La ampliación se conserva de un problema al siguiente.
 
+## Fichas
+
+Segundo juego de piezas (`Board3D.PIECE_SETS`): una ficha plana, la misma para todas, con el icono de cada pieza
+en bajorrelieve. Se combina con cualquier acabado.
+
+- **Los iconos son propios.** `tools/pieces/fichas.mjs` mira de perfil las piezas de la colección clásica (el rey,
+  de frente, para que se vea la cruz), las ensancha un poco y guarda, por cada punto, hacia dónde mira la
+  superficie (aplanada como en una medalla), la distancia al contorno y la sombra de los recovecos. Es un atlas
+  de datos de 3 × 2 iconos (`godot/sets/fichas/iconos.bin`: un PNG con otra extensión para que Godot no lo
+  comprima con pérdida).
+- **El material** (`piece_token.gdshader`) usa esos datos: el relieve responde a la luz de la escena y el borde
+  del icono sale nítido a cualquier ampliación. El cuerpo es del material de su bando y el icono, del material
+  del bando contrario (boj con ébano, mármol blanco con negro, latón con acero).
+- Los iconos quedan derechos para quien juega abajo, sea cual sea el color de la ficha.
+- Al no haber piezas altas, el tablero se encuadra algo más grande (`FIT_HEIGHT_TOKENS`).
+- La ficha tapa casi toda su casilla, así que el **jaque** tiñe de rojo la ficha del rey. En el **mate**, la ficha
+  del rey se da la vuelta y queda bocabajo.
+
+## Sonido
+
+`Board3D` emite la señal `sound(kind, amount)` en los momentos que suenan y `BoardSounds` pone la grabación:
+
+| Aviso | Cuándo | Grabación |
+| --- | --- | --- |
+| `slide` | La pieza empieza a deslizarse (`amount` = lo que tarda en llegar; el roce se apaga justo antes) | `arrastre_1…3` |
+| `place` | La pieza se asienta (también al soltarla con el dedo y la torre del enroque) | `posar_1…3` |
+| `capture` | Se asienta capturando | `captura_1…2` |
+| `check` | Jaque | `jaque` (dos golpes de timbal a un semitono) |
+| `fall` | El rey toca el tablero en el mate | `caida_rey` |
+
+El caballo salta: no se arrastra. Si las animaciones se cortan con un toque, los avisos pendientes se pierden.
+Cada vez se elige una grabación al azar y se varía un poco el tono. Procedencia y licencias (todas CC0), y los
+límites de estas grabaciones, en `godot/sounds/LEEME.md`.
+
+## Explicaciones y pantalla de problema
+
+- **Las explicaciones viajan redactadas.** `npm run godot:demo` (`scripts/export-godot-demo.ts`) genera, con la
+  misma capa explicativa del prototipo web, una explicación por cada jugada legal de cada punto de decisión
+  (4.787 para los 60 problemas) y la del problema resuelto. La app no redacta ni calcula ajedrez nuevo.
+- **Si el jugador falla**, la tarjeta cuenta qué hace su jugada y qué permite, con la variante para verla en
+  el tablero, pero no dice cuál era la mejor: puede reintentar.
+- **Al resolver o pedir la solución**, cuatro niveles con «Explícame por qué»: qué ha pasado, el concepto (con
+  flechas sobre la posición de la decisión), la variante jugada a jugada y las cifras del motor, más «¿De dónde
+  sale cada dato?».
+- **Ayudas** (`docs/ayudas.md`): «¿Y si juego…?», «Analizar en Lichess» (abre el navegador) y «Pregunta a una
+  IA» (copia el texto con la posición y el análisis, o abre Google en Modo IA). En Android no hay menú de
+  compartir del sistema sin un complemento propio: de momento, copiar.
+- La tarjeta mide lo que su contenido y, si no cabe, se desplaza. El tablero sube cuando la explicación pide
+  sitio y no vuelve a bajar hasta el problema siguiente.
+- **Bienvenida** de primer uso (también en Opciones → «Cómo funciona Chessome»), **ajustes guardados**
+  (`user://chessome.cfg`) y **versión de la app** al pie de Opciones (la escribe la CI en `data/version.json`).
+
 ## Reglas del sistema
 
 - La posición lógica cambia al instante; la animación es solo presentación y cualquier toque la termina
@@ -111,6 +167,7 @@ view.set_view_locked(true)              # fijar la vista actual
 node tools/pieces/generate.mjs clasico            # todas las piezas → godot/sets/clasico/*.glb
 node tools/pieces/generate.mjs clasico knight     # una sola
 node tools/pieces/board.mjs                       # marco del tablero
+node tools/pieces/fichas.mjs                      # ficha e iconos → godot/sets/fichas/ (y shots/fichas-iconos.png)
 node tools/pieces/preview.mjs clasico lineup top  # vistas previas locales en shots/pieces-*.png
 ```
 
@@ -123,6 +180,9 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 
 - Pruebas de oro: `godot/tests/test_chess.gd` (3.944 comprobaciones contra chess.js) y `test_glicko2.gd` (1.033).
   `npm run golden` regenera los datos y `tests/golden-godot.test.ts` falla si quedan desfasados.
+- `godot/tests/test_explain.gd`: cada jugada legal de cada punto de decisión tiene su explicación (ni una más ni
+  una menos), con sus cuatro niveles, y todas las variantes se pueden jugar legalmente con las reglas en
+  GDScript (4.787 explicaciones, 9.292 variantes, 65.661 comprobaciones).
 - Capturas: la CI dibuja con Vulkan por software (lavapipe) a 1080 × 2400 y las publica en la rama `ci-shots`
   (las demás ramas, en `ci-shots-<rama>`). `scripts/ci-wait.sh` espera a la CI del último commit y las descarga
   en `shots/ci/`.
@@ -133,6 +193,10 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 ## Sin verificar
 
 - Rendimiento, batería y tacto en un teléfono real.
+- **Cómo suenan los sonidos**: se eligieron por medidas (duración, golpes, espectro), sin oírlos, y en la CI no
+  hay audio. Hay que juzgarlos de oído en un teléfono.
+- Que «Analizar en Lichess», «Abrir en Google» y copiar al portapapeles funcionen en el teléfono (en la CI solo
+  se comprueba el texto y la dirección).
 - Sentido del giro al seguir al móvil (`ROLL_SIGN` y `TWIST_SIGN` en `board_view_3d.gd`): si va al revés, se cambia el signo.
 - El tacto del pellizco y del arrastre con dedos de verdad (en la CI se simulan los toques).
 - Comportamiento en teléfonos sin Vulkan.
@@ -142,7 +206,10 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Tablero 2D en Godot con la misma interfaz y alternancia 2D/3D para medir H3.
 - Con el tablero ampliado, llevar la vista a la jugada del rival si cae fuera de la pantalla.
 - Paisaje con el tiempo real en el cielo de la pantalla de problema (hoy es un cielo quieto).
-- Mostrar explicaciones y flujo de entrenamiento en Godot.
+- Test de nivel y elección de problemas según el jugador (el flujo de entrenamiento del prototipo web).
+- Curso de reglas para quien nunca ha jugado.
+- Sonidos por material (mármol, metal) y grabaciones de piezas de ajedrez de verdad.
+- Menú de compartir del sistema en «Pregunta a una IA» (necesita un complemento de Android).
 - Niveles de calidad y pausa del dibujo en reposo.
 - Partículas, sonido y bandeja de capturas.
 - Hoja de animación por colección (datos) y más colecciones.

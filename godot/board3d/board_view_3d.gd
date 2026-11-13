@@ -20,6 +20,8 @@ signal tapped(kind: String)
 const DRAG_THRESHOLD := 18.0
 ## Recorrido de los dos dedos a partir del cual se decide qué gesto es.
 const GESTURE_THRESHOLD := 14.0
+## Por debajo de esta ampliación, al soltar los dedos el tablero vuelve a su tamaño.
+const ZOOM_SNAP := 1.12
 ## Sentido del giro con el móvil. Sin verificar en un dispositivo real: si gira al revés, cambiar el signo.
 const ROLL_SIGN := 1.0
 const TWIST_SIGN := 1.0
@@ -269,6 +271,9 @@ func _gui_input(event: InputEvent) -> void:
 			if single:
 				_on_release(e.position)
 			if _touches.size() < 2:
+				# Una ampliación mínima suele ser un pellizco sin querer: el tablero vuelve a verse entero.
+				if _gesture == Gesture.ZOOM and board.zoom > 1.0 and board.zoom < ZOOM_SNAP:
+					board.animate_view(board.cam_pitch, board.cam_yaw, 0.18)
 				_gesture = Gesture.NONE
 			if _touches.is_empty():
 				_multi = false

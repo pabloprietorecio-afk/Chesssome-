@@ -510,6 +510,7 @@ func set_piece_set(set_name: String) -> void:
 			node.set_meta("topple_lift", TOKEN["height"] if is_tokens() else 0.0)
 		_dress(node)
 		_rest(node, s)
+	_refresh_state()
 	apply_camera()
 
 
@@ -838,6 +839,10 @@ func _refresh_state() -> void:
 	for s in 64:
 		_state_img.set_pixel(s & 7, s >> 3, Color8(hi[s], mark[s], 255 if chess.b[s] != 0 else 0, 255))
 	_state_tex.update(_state_img)
+	# Con fichas, el rey en jaque se tiñe: la ficha tapa casi toda la casilla resaltada.
+	var alert_sq := chess.king_sq(chess.turn) if is_tokens() and chess.in_check() else -1
+	for s: int in _pieces:
+		((_pieces[s] as Node3D).get_node("Malla") as MeshInstance3D).set_instance_shader_parameter("alert", 1.0 if s == alert_sq else 0.0)
 
 
 ## Marca una jugada como la última sin moverla: para recuperar el resaltado al volver a una posición anterior.

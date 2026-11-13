@@ -26,6 +26,7 @@ uniform float ao_amount : hint_range(0.0, 1.0) = 1.0;
 uniform vec4 rim_color : source_color = vec4(0.75, 0.82, 1.0, 1.0);
 uniform float rim_amount : hint_range(0.0, 1.0) = 0.0;
 uniform vec4 glow_color : source_color = vec4(1.0, 0.48, 0.1, 1.0);
+uniform vec4 alert_color : source_color = vec4(0.9, 0.22, 0.2, 1.0);
 // Medidas de la ficha (tools/pieces/fichas.mjs, TOKEN), en casillas.
 uniform float icon_radius = 0.31;
 uniform float field_radius = 0.343;
@@ -36,6 +37,8 @@ uniform float relief : hint_range(0.0, 2.0) = 1.0;
 // Por pieza: resplandor de selección (0–1) y casilla del icono en el atlas (columna, fila).
 instance uniform float glow = 0.0;
 instance uniform vec2 icon_cell = vec2(0.0);
+// Por pieza: aviso de jaque (0–1). La ficha tapa casi toda su casilla, así que el aviso va en la propia ficha.
+instance uniform float alert = 0.0;
 
 varying vec3 model_pos;
 varying vec3 model_normal;
@@ -89,6 +92,7 @@ void fragment() {
 
 	float fres = pow(1.0 - clamp(dot(base_normal, normalize(VIEW)), 0.0, 1.0), 3.0);
 	col = mix(col, rim_color.rgb, fres * rim_amount);
+	col = mix(col, alert_color.rgb, alert * 0.5 * (1.0 - inside));
 	ALBEDO = col;
 	METALLIC = mix(metallic, inlay_metallic, inside);
 	ROUGHNESS = mix(rough, inlay_rough, inside);
