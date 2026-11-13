@@ -84,6 +84,9 @@ async function move(uci, orientation = 'b') {
   await sq(uci.slice(0, 2)); await sleep(150); await sq(uci.slice(2, 4)); await sleep(350);
 }
 // Tras desplazar se espera a que termine el desplazamiento suave de la propia app antes de medir el tablero.
+// En la cartelera, cada clip tiene «Comenzar» y «Ir directo a la pregunta».
+const openClip = (label) => page.evaluate((t) => [...document.querySelectorAll('.vc-card[data-clip="ding-gukesh-2024-g14"] button')].find((b) => b.textContent.trim().startsWith(t)).click(), label);
+const cardText = () => page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"]', (e) => e.textContent);
 const scrollTo = async (sel) => { await sleep(500); await page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(350); };
 
 // ── 0. Enlace directo …/#cine sin haber hecho el test de nivel. ──
@@ -108,13 +111,10 @@ await page.reload();
 // ── A. Sin marcas: directo a la pregunta. No se carga nada de YouTube hasta pedir el vídeo. ──
 await page.waitForSelector('.vc-card');
 await shot('01-cartelera');
-await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
-await page.waitForSelector('.vc[data-phase="idle"]');
-assert(!(await hasButton('Ver el vídeo: se para')), 'sin marcas no debe ofrecerse la pausa automática');
-await shot('02-clip-sin-marcas');
-// El botón ▶ del cartel carga el vídeo aunque no haya marcas: se ve entero y la pregunta queda a un toque.
-assert(ytRequests.length === 0, 'no debe pedirse nada a YouTube antes de pulsar ▶');
-await page.click('.vc-play');
+assert(/Sin pausa marcada/.test(await cardText()), 'sin marcas, la tarjeta debe decir que el vídeo se ve entero: ' + (await cardText()));
+// «Comenzar» carga el vídeo aunque no haya marcas: se ve entero y la pregunta queda a un toque.
+assert(ytRequests.length === 0, 'no debe pedirse nada a YouTube antes de pulsar «Comenzar»');
+await openClip('Comenzar');
 await waitAttr('phase', 'reveal');
 await waitAttr('player', 'ready');
 assert(/Vídeo sin pausas/.test(await panel()), 'debe avisar de que no hay pausa: ' + (await panel()));
@@ -123,10 +123,9 @@ await shot('02b-video-sin-pausas');
 await clickText('Ir a la pregunta');
 await waitAttr('phase', 'asking');
 await clickText('Volver a la cartelera');
-await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
-await page.waitForSelector('.vc[data-phase="idle"]');
+await page.waitForSelector('.vc-card');
 ytRequests.length = 0;
-await clickText('Ir directo a la pregunta');
+await openClip('Ir directo a la pregunta');
 await waitAttr('phase', 'asking');
 assert(ytRequests.length === 0, 'no debe pedirse nada a YouTube antes de elegir ver el vídeo');
 await sleep(900);
@@ -272,7 +271,7 @@ assert(await page.evaluate(() => /no permite ver este vídeo fuera de YouTube/.t
 assert(await page.evaluate(() => !!document.querySelector('.vc-poster a[href*="youtube.com/watch?v=W9JtcW_0Sr8"]')), 'debe haber enlace a YouTube');
 await shot('12-video-no-disponible');
 
-// ── E. Marcas del paquete, estimadas con los relojes y aún sin comprobar. En este dispositivo quedan las marcas
+// ── E. Marcas del paquete, estimadas con los relojes y verificadas. En este dispositivo quedan las marcas
 // antiguas de Pablo (inicio 3:20), guardadas sobre otra versión del clip: deben ignorarse. ──
 await page.evaluate(() => {
   localStorage.removeItem('chessome.dev.localMarks');
@@ -280,18 +279,24 @@ await page.evaluate(() => {
 });
 await clickText('Volver a la cartelera');
 await page.waitForSelector('.vc-card');
-assert(/Pausa automática · marcas estimadas/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"]', (e) => e.textContent)), 'el clip debe figurar con marcas estimadas');
-await page.click('.vc-card[data-clip="ding-gukesh-2024-g14"]');
-await page.waitForSelector('.vc[data-phase="idle"]');
-assert(await hasButton('Ver el vídeo: se para'), 'con marcas estimadas debe ofrecerse la pausa automática');
-assert(/sin comprobar/.test(await panel()), 'debe decir que las marcas están sin comprobar: ' + (await panel()));
-assert(/versión anterior del clip/.test(await panel()), 'debe avisar de que las marcas antiguas del dispositivo ya no se usan: ' + (await panel()));
-assert(await hasButton('Editor de marcas'), 'un clip pendiente debe ofrecer el editor');
+assert(/Se para solo antes de la jugada$/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"] .vc-chip', (e) => e.textContent)), 'el clip debe figurar con pausa automática verificada');
+assert(/versión anterior del clip/.test(await cardText()), 'debe avisar de que las marcas antiguas del dispositivo ya no se usan: ' + (await cardText()));
+await page.evaluate(() => window.scrollTo(0, 0));
+await shot('01b-cartelera-con-pausa');
+await openClip('Comenzar');
+await waitAttr('phase', 'watching');
+assert(!(await hasButton('Editor de marcas')), 'un clip verificado y con tablero no ofrece el editor');
 
-// ── F. El ancla de Pablo (55…Txf2: reloj en 2:21) reproduce las marcas del paquete; el tablero sigue al vídeo. ──
+// ── F. El ancla de Pablo (55…Txf2: reloj en 2:21) reproduce las marcas del paquete; el tablero sigue al vídeo.
+// El editor de un clip verificado solo se abre con el interruptor de desarrollo. ──
+await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.setItem('chessome.dev.localMarks', '1'); });
+await clickText('Volver a la cartelera');
+await page.waitForSelector('.vc-card');
+await openClip('Comenzar');
+await waitAttr('phase', 'watching');
 await clickText('Editor de marcas');
 await page.waitForSelector('.vc-editor .vc-sync');
-assert(await page.$('.vc-mark[data-mark="start"]'), 'en un clip pendiente se editan también inicio, pausas y fin');
+assert(await page.$('.vc-mark[data-mark="start"]'), 'con el interruptor se editan también inicio, pausas y fin');
 assert(!(await page.$('.vc-clock .vc-warn')), 'no debe avisar de cortes: no se sabe si los hay');
 const before = await page.$eval('.vc-json', (e) => e.value);
 await clickText('Cargar el vídeo');
@@ -339,9 +344,24 @@ await sleep(200);
 await shot('14-editor-tablero');
 await clickText('Volver al clip');
 await page.waitForSelector('.vc[data-phase="idle"]');
+// Pantalla útil del móvil de Pablo con el navegador abierto: unos 386 × 708 px.
+await page.setViewport({ width: 386, height: 708, deviceScaleFactor: 2 });
+const layout = () => page.evaluate(() => {
+  const v = (document.querySelector('.vc-player iframe') || document.querySelector('.vc-video')).getBoundingClientRect();
+  const b = document.querySelector('.vc-board .cm-board')?.getBoundingClientRect();
+  const nav = document.querySelector('.cm-top nav');
+  return { video: [Math.round(v.top), Math.round(v.bottom)], board: b ? [Math.round(b.top), Math.round(b.bottom), Math.round(b.width)] : null, h: innerHeight, nav: nav ? getComputedStyle(nav).display : 'none' };
+});
+const assertFits = async (what) => {
+  await sleep(800); // desplazamiento suave de la app
+  const l = await layout();
+  assert(l.board && l.video[0] >= -1 && l.board[1] <= l.h + 1 && l.board[2] >= 270 && l.nav === 'none', `${what}: el vídeo y el tablero no caben a la vez: ${JSON.stringify(l)}`);
+  return l;
+};
 await clickText('Ver el vídeo: se para');
 await waitAttr('phase', 'watching');
 await waitAttr('player', 'ready');
+const fitWatching = await assertFits('viendo el vídeo');
 const cued = await fake(() => window.__fakeYT.last().time);
 assert(Math.abs(cued - 3.5) < 1, `el clip debe empezar en 3,5 s (está en ${cued})`);
 // Mientras se ve el vídeo, debajo va el tablero del vídeo.
@@ -349,8 +369,6 @@ const boardInfo = () => page.$eval('.vc-board', (e) => ({ kind: e.dataset.board,
 const waitPly = async (ply, ms = 8000) => { const t0 = Date.now(); while ((await boardInfo()).ply !== ply) { if (Date.now() - t0 > ms) throw new Error(`El tablero no llega a ${ply}: ${JSON.stringify(await boardInfo())}`); await sleep(60); } };
 let bi = await boardInfo();
 assert(bi.kind === 'video' && bi.ply === '108' && /tras 54…Re5/.test(bi.label), 'tablero del vídeo al empezar: ' + JSON.stringify(bi));
-await page.evaluate(() => window.scrollTo(0, 0));
-await sleep(200);
 await shot('13-viendo-con-tablero');
 await fake(() => { window.__fakeYT.rate = 25; window.__fakeYT.tapPlay(); });
 await waitPly('109');
@@ -362,6 +380,8 @@ await waitAttr('phase', 'asking', 25000);
 const syncPause = await fake(() => window.__fakeYT.last().time);
 assert(syncPause >= 138 - 0.13 && syncPause <= 138 + 0.2, `la pausa cayó en ${syncPause}, no junto a 138`);
 assert((await boardInfo()).kind === 'question', 'en la pausa, el tablero es el de la pregunta');
+const fitAsking = await assertFits('en la pausa');
+await shot('13b-pausa-con-tablero');
 await clickText('Seguir viendo sin responder');
 await waitAttr('phase', 'reveal');
 await waitPly('110');
@@ -369,17 +389,19 @@ bi = await boardInfo();
 assert(bi.kind === 'video' && /tras 55…Txf2/.test(bi.label), 'tras la pausa, el tablero sigue al vídeo: ' + JSON.stringify(bi));
 await waitPly('111');
 assert(/tras 56\.Rxf2/.test((await boardInfo()).label), 'etiqueta: ' + (await boardInfo()).label);
-await page.evaluate(() => document.querySelector('.vc-board')?.scrollIntoView({ block: 'center' }));
-await sleep(500);
+const fitReveal = await assertFits('al revelar');
 await shot('15-tablero-sigue-al-video');
 await fake(() => { window.__fakeYT.rate = 25; });
 await waitAttr('phase', 'ended', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });
 bi = await boardInfo();
 assert(bi.kind === 'video' && bi.ply === '116' && /tras 58…Re5/.test(bi.label), 'al final, la última jugada marcada: ' + JSON.stringify(bi));
+assert((await page.evaluate(() => document.documentElement.dataset.immersive)) === undefined, 'al acabar, vuelve la barra de secciones');
+await page.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
 
 console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
 console.log('Clip con las marcas del paquete (ancla 2:21 y relojes): empieza en', cued.toFixed(2), 's, se para en', syncPause.toFixed(2), 's (marca 138) y el tablero llega a 58…Re5.');
+console.log('En 386 × 708, con el vídeo a la vista: tablero de', fitWatching.board[2], 'px viendo,', fitAsking.board[2], 'px en la pausa y', fitReveal.board[2], 'px al revelar.');
 console.log('Pausa automática en', paused.time.toFixed(2), 's (marca 8,40). Prueba del editor en', tested, 's. Reproductor', Math.round(geom.w) + '×' + Math.round(geom.h), 'px.');
 await browser.close();
 server.close();

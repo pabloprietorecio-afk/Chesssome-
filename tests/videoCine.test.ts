@@ -81,8 +81,8 @@ describe('paquete de clips de vídeo', () => {
     }
   });
 
-  it('Ding–Gukesh: marcas estimadas con los relojes, pendientes de comprobar en el vídeo', () => {
-    expect(ding.marks).toBe('pending');
+  it('Ding–Gukesh: marcas estimadas con los relojes y comprobadas en el vídeo', () => {
+    expect(ding.marks).toBe('verified');
     expect(marksOf(ding)).toEqual({ start: 3.5, stops: [138], end: 233.07, duration: 437, sync: ding.sync });
     expect(marksProblems(marksOf(ding))).toEqual([]);
     expect(syncProblems(ding, ding.sync!, marksOf(ding))).toEqual([]);

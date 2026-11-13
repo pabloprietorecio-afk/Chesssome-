@@ -36,10 +36,10 @@ export const CLIPS: ClipSource[] = [
     },
     // Marcas estimadas (13 nov 2026) con un ancla de Pablo, 55…Txf2: Gukesh pulsa el reloj en 2:21 (141 s), y los
     // relojes de la retransmisión (ver `clocks`). Fin: el apretón de manos que marcó Pablo (233,07 s).
-    // Sin comprobar en el vídeo: 'pending' hasta que Pablo las pruebe.
+    // Comprobadas por Pablo en su móvil (13 nov 2026): pausa antes de 55…Txf2 y tablero sincronizado con el vídeo.
     start: 3.5,
     end: 233.07,
-    marks: 'pending',
+    marks: 'verified',
     // Tablero sincronizado: cada jugada 0,5 s antes de que se pulse su reloj (suggestSync).
     sync: {
       startPly: 108,
@@ -95,6 +95,6 @@ export const CLIPS: ClipSource[] = [
         'Retransmisión oficial en Lichess, «FIDE World Championship 2024», game 14 (lichess.org/broadcast/fide-world-championship-2024/game-14/LtsCRK9D), leída del texto que indexa el buscador: la página no se pudo descargar (robots.txt).',
     },
     notes:
-      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s. Las primeras marcas (3:20 a 3:53, pausa en 3:35) dejaban la pausa antes de 58…Re5 y no antes de 55…Txf2. Marcas actuales estimadas con los relojes y un ancla de Pablo (55…Txf2 en 2:21): 55.Tf2 en 0:09, pausa en 2:18, fin en 3:53. Sin comprobar en el vídeo.',
+      'El título del vídeo en YouTube dice quién gana, pero no la jugada. En modo «directo a la pregunta» el reproductor no se carga hasta después de responder. Vídeo de 437 s. Las primeras marcas (3:20 a 3:53, pausa en 3:35) dejaban la pausa antes de 58…Re5 y no antes de 55…Txf2. Marcas actuales estimadas con los relojes y un ancla de Pablo (55…Txf2 en 2:21): 55.Tf2 en 0:09, pausa en 2:18, fin en 3:53. Comprobadas por Pablo en su móvil.',
   },
 ];

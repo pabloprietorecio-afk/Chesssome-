@@ -52,7 +52,8 @@ const STEP_MS = 850;
 const YT_TERMS = 'https://www.youtube.com/t/terms';
 const GOOGLE_PRIVACY = 'https://policies.google.com/privacy';
 
-type View = { kind: 'list' } | { kind: 'clip'; id: string } | { kind: 'editor'; id: string } | { kind: 'generated' };
+type StartMode = 'film' | 'direct' | 'free';
+type View = { kind: 'list' } | { kind: 'clip'; id: string; start?: StartMode } | { kind: 'editor'; id: string } | { kind: 'generated' };
 
 /** Interruptor de desarrollo: localStorage['chessome.dev.localMarks'] = '1' deja usar marcas locales también en clips verificados. */
 const LOCAL_MARKS_FLAG = 'localMarks';
@@ -94,44 +95,82 @@ function syncedView(clip: Clip, sync: ClipSync, t: number, cap = Infinity): { pl
 }
 
 export function VideoCinemaScreen(): JSX.Element {
+  const s = useAppState();
   const [view, setView] = useState<View>({ kind: 'list' });
   const current = view.kind === 'clip' || view.kind === 'editor' ? PACK.clips.find((c) => c.id === view.id) : undefined;
   if (view.kind === 'generated') return <CinemaScreen />;
-  if (view.kind === 'clip' && current) return <ClipView key={current.id} packed={current} onClose={() => setView({ kind: 'list' })} onEdit={() => setView({ kind: 'editor', id: current.id })} />;
+  if (view.kind === 'clip' && current)
+    return <ClipView key={current.id} packed={current} autostart={view.start} onClose={() => setView({ kind: 'list' })} onEdit={() => setView({ kind: 'editor', id: current.id })} />;
   if (view.kind === 'editor' && current) return <MarksEditor key={current.id} clip={current} onClose={() => setView({ kind: 'clip', id: current.id })} />;
   return (
-    <section className="cm-card">
-      <p className="cm-kicker">Cine de finales</p>
-      <h2>Finales reales, en vídeo</h2>
-      <p className="cm-quiet">El vídeo se para solo justo antes de la jugada clave y te pregunta qué jugarías. Después ves lo que pasó de verdad.</p>
+    <section className="vc-home">
+      <header className="vc-home-head">
+        <p className="cm-kicker">Cine de finales</p>
+        <h2>Finales reales, en vídeo</h2>
+        <p className="cm-quiet">El vídeo se para solo justo antes de la jugada clave y te pregunta qué jugarías. Después ves lo que pasó de verdad.</p>
+      </header>
       <ul className="vc-bill">
         {PACK.clips.map((c) => {
           const e = effective(c);
           const auto = canAutoPause(e.clip);
+          const q0 = c.stops[0]?.questions[0];
+          const questions = c.stops.reduce((n, st) => n + st.questions.length, 0);
           return (
-            <li key={c.id}>
-              <button className="vc-card" onClick={() => setView({ kind: 'clip', id: c.id })} data-clip={c.id}>
-                <span className="vc-card-year">{c.year}</span>
-                <span className="vc-card-title">{c.title}</span>
-                <span className="vc-card-sub">{c.subtitle}</span>
-                <span className="vc-card-meta">
-                  Vídeo: {c.video.channel} · YouTube · {c.stops.reduce((n, s) => n + s.questions.length, 0)} preguntas
-                </span>
-                <span className={`vc-chip ${auto ? 'vc-chip-on' : ''}`}>{auto ? (e.local ? 'Pausa automática · marcas de este dispositivo' : c.marks === 'pending' ? 'Pausa automática · marcas estimadas' : 'Pausa automática') : 'Pausa sin marcar · directo a la pregunta'}</span>
+            <li key={c.id} className="vc-card" data-clip={c.id}>
+              <div className="vc-card-top">
+                {q0 && (
+                  <div className="vc-card-board" aria-hidden="true">
+                    <Board2D fen={q0.fen} orientation={c.orientation} interactive={false} lastMove={q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null} animMode="none" coordinates={false} />
+                  </div>
+                )}
+                <div className="vc-card-text">
+                  <span className="vc-card-year">{c.year}</span>
+                  <h3 className="vc-card-title">{c.title}</h3>
+                  <span className="vc-card-sub">{c.subtitle}</span>
+                </div>
+              </div>
+              <p className="vc-card-intro">{c.intro}</p>
+              <span className={`vc-chip ${auto ? 'vc-chip-on' : ''}`}>
+                {auto
+                  ? e.local
+                    ? 'Se para solo · marcas de este dispositivo'
+                    : c.marks === 'pending'
+                      ? 'Se para solo · marcas estimadas, sin comprobar'
+                      : 'Se para solo antes de la jugada'
+                  : 'Sin pausa marcada: el vídeo se ve entero'}
+              </span>
+              <button className="cm-primary cm-big vc-start" onClick={() => setView({ kind: 'clip', id: c.id, start: auto ? 'film' : 'free' })}>
+                Comenzar
               </button>
+              <button className="cm-link vc-direct" onClick={() => setView({ kind: 'clip', id: c.id, start: 'direct' })}>
+                Ir directo a la pregunta, sin vídeo
+              </button>
+              <span className="vc-card-meta">
+                {questions} preguntas · vídeo del canal {c.video.channel} en YouTube
+              </span>
+              {e.stale && <span className="vc-card-meta">Las marcas guardadas en este dispositivo eran de una versión anterior del clip: ya no se usan.</span>}
             </li>
           );
         })}
       </ul>
-      <p className="cm-quiet cm-small">
-        Los vídeos se ven con el reproductor de YouTube, desde el canal oficial de quien los grabó. Chessome no los descarga ni los modifica.
+      <p className="cm-quiet cm-small vc-home-legal">
+        Los vídeos se ven con el reproductor de YouTube, desde el canal oficial de quien los grabó; Chessome no los descarga ni los modifica. Al pulsar
+        «Comenzar» se carga el reproductor: se aplican los{' '}
+        <a href={YT_TERMS} target="_blank" rel="noreferrer">
+          Términos del Servicio de YouTube
+        </a>{' '}
+        y la{' '}
+        <a href={GOOGLE_PRIVACY} target="_blank" rel="noreferrer">
+          Política de Privacidad de Google
+        </a>
+        .
       </p>
       {devFlag('generatedFilms') && (
         <button className="cm-link" onClick={() => setView({ kind: 'generated' })}>
           Películas generadas (aparcadas)
         </button>
       )}
-      <button className="cm-link" onClick={() => go('home')}>
+      <button className="cm-link" onClick={() => go(s.rating && s.placement?.done ? 'home' : 'welcome')}>
         Volver
       </button>
     </section>
@@ -230,13 +269,14 @@ const OUTCOME_LABEL: Record<ClipAnswer['outcome'], string> = {
   'played-error': 'Fue un error en la partida',
 };
 
-function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => void; onEdit: () => void }): JSX.Element {
+function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autostart?: StartMode; onClose: () => void; onEdit: () => void }): JSX.Element {
   const s = useAppState();
   const { clip, local, stale } = useMemo(() => effective(packed), [packed]);
   const auto = canAutoPause(clip);
   const mount = useRef<HTMLDivElement>(null);
   const videoBox = useRef<HTMLDivElement>(null);
   const askBox = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const { st, send, player, blocked, playing, time, now } = useDirector(clip, mount);
 
   const [qi, setQi] = useState(0);
@@ -276,8 +316,6 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
     setBusy(false);
     setBoard({ fen: q0.fen, last: q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null, anim: null });
     ev('pause', { stop: st.stop, mode: st.mode });
-    // Vídeo arriba, pregunta debajo y tablero a continuación: lo que hace falta ver al pararse.
-    window.setTimeout(() => (st.videoOn ? videoBox.current : askBox.current)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [st.phase, st.stop]);
 
@@ -339,13 +377,21 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
     send({ type: 'reveal', time: time() });
   };
 
-  const start = (mode: 'film' | 'direct' | 'free') => {
+  const start = (mode: StartMode) => {
     clearTimers();
     setBoard(null);
     setAnswer(null);
     ev('start', { mode, auto });
     send({ type: 'start', mode });
   };
+  // «Comenzar» en la cartelera arranca el clip directamente.
+  const autostarted = useRef(false);
+  useEffect(() => {
+    if (!autostart || autostarted.current) return;
+    autostarted.current = true;
+    start(autostart);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const at = stop?.resumeAt ?? stop?.at ?? clip.start;
   const lastSan = lastQ ? sanEs(lastQ.played.san) : '';
@@ -372,6 +418,20 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
 
   // Mientras se ve o se responde, la cabecera y el crédito se encogen para que vídeo, pregunta y tablero quepan en un móvil.
   const compact = st.phase === 'watching' || st.phase === 'asking' || st.phase === 'reveal';
+  // Mientras se ve o se responde, vídeo, texto y tablero ocupan la pantalla entera, sin la barra de secciones,
+  // para que el vídeo y el tablero se vean a la vez sin desplazarse.
+  useEffect(() => {
+    if (!compact) return;
+    document.documentElement.dataset.immersive = 'cine';
+    return () => {
+      delete document.documentElement.dataset.immersive;
+    };
+  }, [compact]);
+  useEffect(() => {
+    if (!compact) return;
+    const id = window.setTimeout(() => stage.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    return () => window.clearTimeout(id);
+  }, [compact, st.phase, st.stop]);
   const videoCredit = (
     <p className="vc-credit">
       {compact ? `Vídeo: ${clip.video.channel} · YouTube · ` : `Vídeo: «${clip.video.title}» · canal ${clip.video.channel} en YouTube · `}
@@ -383,108 +443,142 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
 
   return (
     <section className="vc" data-clip={clip.id} data-phase={st.phase} data-stop={st.stop} data-question={qi} data-player={player} data-video={st.videoOn ? 'on' : 'off'}>
-      {compact ? (
-        <p className="cm-kicker vc-compact-head">{clip.subtitle}</p>
-      ) : (
-        <header className="vc-head">
-          <p className="cm-kicker">{clip.event}</p>
-          <h2>{clip.title}</h2>
-          <p className="cm-quiet">
-            {clip.white} – {clip.black}
-          </p>
-        </header>
-      )}
+      <div className="vc-stage" ref={stage} data-fit={compact ? 'on' : 'off'}>
+        {compact ? (
+          <p className="cm-kicker vc-compact-head">{clip.subtitle}</p>
+        ) : (
+          <header className="vc-head">
+            <p className="cm-kicker">{clip.event}</p>
+            <h2>{clip.title}</h2>
+            <p className="cm-quiet">
+              {clip.white} – {clip.black}
+            </p>
+          </header>
+        )}
 
-      <div className="vc-video" ref={videoBox}>
-        {/* El reproductor de YouTube ocupa este hueco entero. Nunca se dibuja nada delante de él. */}
-        <div className="vc-player" ref={mount} />
-        {player === 'none' && (
-          <div className="vc-poster">
-            {st.errorCode != null ? (
-              <>
-                <p>{errorText(st.errorCode)}</p>
-                <a className="cm-primary vc-yt-link" href={watchUrl(clip.video, at)} target="_blank" rel="noreferrer">
-                  Ver en YouTube
-                </a>
-              </>
-            ) : (
-              st.phase === 'idle' ? (
-                // Aún no hay reproductor: el botón carga el de YouTube (nada se pide a YouTube antes).
+        <div className="vc-video" ref={videoBox}>
+          {/* El reproductor de YouTube ocupa este hueco entero. Nunca se dibuja nada delante de él. */}
+          <div className="vc-player" ref={mount} />
+          {player === 'none' && (
+            <div className="vc-poster">
+              {st.errorCode != null ? (
                 <>
-                  <button className="vc-play" onClick={() => start(auto ? 'film' : 'free')} aria-label="Ver el vídeo">
-                    ▶
-                  </button>
-                  <p>Ver el vídeo</p>
-                  <p className="vc-poster-small">{auto ? 'Se parará solo antes de la jugada clave' : 'Aún sin pausa marcada: se verá entero'}</p>
+                  <p>{errorText(st.errorCode)}</p>
+                  <a className="cm-primary vc-yt-link" href={watchUrl(clip.video, at)} target="_blank" rel="noreferrer">
+                    Ver en YouTube
+                  </a>
                 </>
               ) : (
-                <p>El vídeo aparecerá aquí cuando quieras ver cómo ocurrió.</p>
-              )
+                st.phase === 'idle' ? (
+                  // Aún no hay reproductor: el botón carga el de YouTube (nada se pide a YouTube antes).
+                  <>
+                    <button className="vc-play" onClick={() => start(auto ? 'film' : 'free')} aria-label="Ver el vídeo">
+                      ▶
+                    </button>
+                    <p>Ver el vídeo</p>
+                    <p className="vc-poster-small">{auto ? 'Se parará solo antes de la jugada clave' : 'Aún sin pausa marcada: se verá entero'}</p>
+                  </>
+                ) : (
+                  <p>El vídeo aparecerá aquí cuando quieras ver cómo ocurrió.</p>
+                )
+              )}
+            </div>
+          )}
+        </div>
+        {player === 'loading' && st.errorCode == null && <p className="cm-quiet vc-loading">Cargando el reproductor de YouTube…</p>}
+        {videoCredit}
+
+        {st.phase === 'idle' && (
+          <div className="cm-hint vc-panel">
+            <p>{clip.intro}</p>
+            {auto ? (
+              <button className="cm-primary" onClick={() => start('film')}>
+                Ver el vídeo: se para antes de la jugada
+              </button>
+            ) : (
+              <p className="vc-warn">
+                Este vídeo todavía no tiene marcado el segundo de la pausa, así que no puede pararse solo.{' '}
+                <button className="cm-link" onClick={onEdit}>
+                  Marcar la pausa
+                </button>
+              </p>
             )}
+            <button className={auto ? 'cm-why' : 'cm-primary'} onClick={() => start('direct')}>
+              Ir directo a la pregunta
+            </button>
+            {local && <p className="vc-warn">La pausa usa marcas hechas en este dispositivo. No están verificadas.</p>}
+            {stale && <p className="cm-quiet cm-small">Las marcas guardadas en este dispositivo eran de una versión anterior del clip: ya no se usan.</p>}
+            {!local && auto && clip.marks === 'pending' && <p className="cm-quiet cm-small">Marcas estimadas con los relojes de la partida, sin comprobar aún en el vídeo.</p>}
+            <p className="cm-quiet cm-small">
+              El vídeo se reproduce con YouTube. Al verlo aceptas los{' '}
+              <a href={YT_TERMS} target="_blank" rel="noreferrer">
+                Términos del Servicio de YouTube
+              </a>{' '}
+              y se aplica la{' '}
+              <a href={GOOGLE_PRIVACY} target="_blank" rel="noreferrer">
+                Política de Privacidad de Google
+              </a>
+              . Nada se carga de YouTube hasta que eliges ver el vídeo.
+            </p>
+          </div>
+        )}
+
+        {st.phase === 'watching' && (
+          <div className="cm-hint vc-panel" aria-live="polite">
+            {st.adSuspected ? (
+              <p>Anuncio de YouTube. La pausa esperará a que empiece el vídeo.</p>
+            ) : playing ? (
+              <p>El vídeo se parará solo justo antes de la jugada clave.</p>
+            ) : (
+              <p>
+                <strong>Pulsa ▶ en el vídeo.</strong> Se parará solo justo antes de la jugada clave.
+              </p>
+            )}
+            <button className="cm-link" onClick={() => send({ type: 'ask', now: performance.now() })}>
+              No esperar: ir ya a la pregunta
+            </button>
+          </div>
+        )}
+
+        {/* En la pausa: la pregunta (o el veredicto) encima del tablero y las acciones debajo, para que el vídeo y el
+            tablero quepan a la vez en un móvil. */}
+        {st.phase === 'asking' && q && !answer && (
+          <div className="cm-hint vc-panel vc-ask" ref={askBox}>
+            <p className="cm-kicker">
+              {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
+            </p>
+            {busy ? <p className="cm-quiet">Así siguió la partida…</p> : <p className="vc-question">{q.question}</p>}
+          </div>
+        )}
+
+        {st.phase === 'asking' && q && answer && (
+          <div className={`cm-hint vc-panel vc-answer vc-o-${answer.outcome}`}>
+            <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
+            <p>{answer.text}</p>
+          </div>
+        )}
+
+        {shown && st.phase !== 'idle' && (
+          <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''}>
+            {synced && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
+            <div className="vc-board-fit">
+              <Board2D
+                fen={shown.fen}
+                orientation={clip.orientation}
+                interactive={st.phase === 'asking' && !answer && !busy}
+                lastMove={shown.last}
+                animate={shown.anim}
+                animMode={s.settings.anim}
+                coordinates={s.settings.coordinates}
+                onMove={onMove}
+              />
+            </div>
           </div>
         )}
       </div>
-      {player === 'loading' && st.errorCode == null && <p className="cm-quiet vc-loading">Cargando el reproductor de YouTube…</p>}
-      {videoCredit}
-
-      {st.phase === 'idle' && (
-        <div className="cm-hint vc-panel">
-          <p>{clip.intro}</p>
-          {auto ? (
-            <button className="cm-primary" onClick={() => start('film')}>
-              Ver el vídeo: se para antes de la jugada
-            </button>
-          ) : (
-            <p className="vc-warn">
-              Este vídeo todavía no tiene marcado el segundo de la pausa, así que no puede pararse solo.{' '}
-              <button className="cm-link" onClick={onEdit}>
-                Marcar la pausa
-              </button>
-            </p>
-          )}
-          <button className={auto ? 'cm-why' : 'cm-primary'} onClick={() => start('direct')}>
-            Ir directo a la pregunta
-          </button>
-          {local && <p className="vc-warn">La pausa usa marcas hechas en este dispositivo. No están verificadas.</p>}
-          {stale && <p className="cm-quiet cm-small">Las marcas guardadas en este dispositivo eran de una versión anterior del clip: ya no se usan.</p>}
-          {!local && auto && clip.marks === 'pending' && <p className="cm-quiet cm-small">Marcas estimadas con los relojes de la partida, sin comprobar aún en el vídeo.</p>}
-          <p className="cm-quiet cm-small">
-            El vídeo se reproduce con YouTube. Al verlo aceptas los{' '}
-            <a href={YT_TERMS} target="_blank" rel="noreferrer">
-              Términos del Servicio de YouTube
-            </a>{' '}
-            y se aplica la{' '}
-            <a href={GOOGLE_PRIVACY} target="_blank" rel="noreferrer">
-              Política de Privacidad de Google
-            </a>
-            . Nada se carga de YouTube hasta que eliges ver el vídeo.
-          </p>
-        </div>
-      )}
-
-      {st.phase === 'watching' && (
-        <div className="cm-hint vc-panel" aria-live="polite">
-          {st.adSuspected ? (
-            <p>Anuncio de YouTube. La pausa esperará a que empiece el vídeo.</p>
-          ) : playing ? (
-            <p>El vídeo se parará solo justo antes de la jugada clave.</p>
-          ) : (
-            <p>
-              <strong>Pulsa ▶ en el vídeo.</strong> Se parará solo justo antes de la jugada clave.
-            </p>
-          )}
-          <button className="cm-link" onClick={() => send({ type: 'ask', now: performance.now() })}>
-            No esperar: ir ya a la pregunta
-          </button>
-        </div>
-      )}
 
       {st.phase === 'asking' && q && !answer && (
-        <div className="cm-hint vc-panel vc-ask" ref={askBox}>
-          <p className="cm-kicker">
-            {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
-          </p>
-          {busy ? <p className="cm-quiet">Así siguió la partida…</p> : <p className="vc-question">{q.question}</p>}
+        <div className="vc-tools">
           {!busy && (
             <>
               <p className="cm-quiet">Haz tu jugada en el tablero.</p>
@@ -501,9 +595,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
       )}
 
       {st.phase === 'asking' && q && answer && (
-        <div className={`cm-hint vc-panel vc-answer vc-o-${answer.outcome}`}>
-          <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
-          <p>{answer.text}</p>
+        <div className="vc-tools">
           {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
           {answer.outcome !== 'answer' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
           {qi + 1 < totalQuestions ? (
@@ -520,22 +612,6 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
             </button>
           )}
           {qi + 1 < totalQuestions && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={reveal} onFinish={() => send({ type: 'finish' })} />}
-        </div>
-      )}
-
-      {shown && st.phase !== 'idle' && (
-        <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''}>
-          {synced && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
-          <Board2D
-            fen={shown.fen}
-            orientation={clip.orientation}
-            interactive={st.phase === 'asking' && !answer && !busy}
-            lastMove={shown.last}
-            animate={shown.anim}
-            animMode={s.settings.anim}
-            coordinates={s.settings.coordinates}
-            onMove={onMove}
-          />
         </div>
       )}
 
@@ -569,7 +645,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
                 </p>
               )}
               {player === 'loading' && <p className="cm-quiet">Cargando el reproductor de YouTube…</p>}
-              {playing && <p>En la partida se jugó {lastSan}. {hasSyncMarks ? 'El tablero de abajo sigue al vídeo.' : 'Mira cómo ocurrió.'}</p>}
+              {playing && <p>En la partida se jugó {lastSan}. {hasSyncMarks ? 'El tablero sigue al vídeo.' : 'Mira cómo ocurrió.'}</p>}
               {st.adSuspected && <p className="cm-quiet">Anuncio de YouTube: el vídeo sigue después.</p>}
             </>
           ) : (
@@ -605,6 +681,7 @@ function ClipView({ packed, onClose, onEdit }: { packed: Clip; onClose: () => vo
           </div>
         </div>
       )}
+
 
       <div className="cm-row vc-foot">
         <button className="cm-link" onClick={onClose}>
