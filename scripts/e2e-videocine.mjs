@@ -90,8 +90,9 @@ async function move(uci, orientation = 'b') {
   await sleep(350);
 }
 // Tras desplazar se espera a que termine el desplazamiento suave de la propia app antes de medir el tablero.
-// En la cartelera, cada clip tiene «Comenzar» y «Ir directo a la pregunta».
-const openClip = (label) => page.evaluate((t) => [...document.querySelectorAll('.vc-card[data-clip="ding-gukesh-2024-g14"] button')].find((b) => b.textContent.trim().startsWith(t)).click(), label);
+// En la cartelera, cada clip es una fila: tocarla es «Comenzar»; «Solo la pregunta, sin vídeo» va aparte.
+const rowButton = (t) => (t === 'Comenzar' ? '.vc-row-main' : '.vc-row-direct');
+const openClip = (label) => page.click(`.vc-card[data-clip="ding-gukesh-2024-g14"] ${rowButton(label)}`);
 const cardText = () => page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"]', (e) => e.textContent);
 const scrollTo = async (sel) => { await sleep(500); await page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(350); };
 
@@ -117,9 +118,9 @@ await page.reload();
 // ── A. Sin marcas: directo a la pregunta. No se carga nada de YouTube hasta pedir el vídeo. ──
 await page.waitForSelector('.vc-card');
 await shot('01-cartelera');
-assert(/Sin pausa marcada/.test(await cardText()), 'sin marcas, la tarjeta debe decir que el vídeo se ve entero: ' + (await cardText()));
+assert(/sin pausa: se ve entero/.test(await cardText()), 'sin marcas, la tarjeta debe decir que el vídeo se ve entero: ' + (await cardText()));
 // «Comenzar» carga el vídeo aunque no haya marcas: se ve entero y la pregunta queda a un toque.
-assert(ytRequests.length === 0, 'no debe pedirse nada a YouTube antes de pulsar «Comenzar»');
+assert(ytRequests.length === 0, 'no debe pedirse nada a YouTube antes de abrir la partida');
 await openClip('Comenzar');
 await waitAttr('phase', 'reveal');
 await waitAttr('player', 'ready');
@@ -243,6 +244,10 @@ await fake(() => { window.__fakeYT.ad = true; window.__fakeYT.tapPlay(); });
 await sleep(900);
 assert((await attr('phase')) === 'watching', 'durante un anuncio no debe pasar nada');
 assert(/Anuncio de YouTube/.test(await panel()), 'debe avisar del anuncio: ' + (await panel()));
+// Durante el anuncio la botonera está apagada (salvo «Cartelera»), para no despistar.
+const dockOn = () => page.$$eval('.vc-dock-2 button', (bs) => bs.filter((b) => !b.disabled).map((b) => b.textContent.trim()));
+assert((await page.$('.vc-dock-2[data-locked="ad"]')) !== null, 'la botonera debe marcarse bloqueada durante el anuncio');
+assert(JSON.stringify(await dockOn()) === JSON.stringify(['Cartelera']), 'durante el anuncio solo «Cartelera» se puede pulsar: ' + (await dockOn()));
 await fake(() => { window.__fakeYT.ad = false; });
 // En cuanto el vídeo arranca, el aviso desaparece y el tablero no se mueve de sitio.
 const boardTop = () => page.$eval('.vc-board', (e) => Math.round(e.getBoundingClientRect().top + window.scrollY));
@@ -324,7 +329,7 @@ await page.evaluate(() => {
 });
 await clickText('Cartelera');
 await page.waitForSelector('.vc-card');
-assert(/Se para solo · marcas sin comprobar$/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"] .vc-chip', (e) => e.textContent)), 'el clip figura con pausa automática, pendiente de comprobar las pausas nuevas');
+assert(/pausas sin comprobar$/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"] .vc-chip', (e) => e.textContent)), 'el clip figura con pausa automática, pendiente de comprobar las pausas nuevas');
 assert(/versión anterior del clip/.test(await cardText()), 'debe avisar de que las marcas antiguas del dispositivo ya no se usan: ' + (await cardText()));
 await page.evaluate(() => window.scrollTo(0, 0));
 await shot('01b-cartelera-con-pausa');
@@ -500,7 +505,7 @@ await page.evaluate((id) => {
 await fake(() => { window.__fakeYT.duration = 759; });
 await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${ERR}"]`);
-const openGC = (t, id = ERR) => page.evaluate((t, id) => [...document.querySelectorAll(`.vc-card[data-clip="${id}"] button`)].find((b) => b.textContent.trim().startsWith(t)).click(), t, id);
+const openGC = (t, id = ERR) => page.click(`.vc-card[data-clip="${id}"] ${rowButton(t)}`);
 // Sin marcas ni tablero sincronizado: el vídeo se ve entero y el aviso va justo debajo, sin hueco.
 await openGC('Comenzar');
 await waitAttr('phase', 'reveal');
@@ -512,7 +517,7 @@ await shot('15b-sin-marcas-sin-hueco');
 await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
 await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${ERR}"]`);
-for (const id of [ERR, BANG]) assert(/Se para solo · marcas sin comprobar/.test(await page.$eval(`.vc-card[data-clip="${id}"] .vc-chip`, (e) => e.textContent)), `${id}: marcas medidas, pendientes de comprobar`);
+for (const id of [ERR, BANG]) assert(/pausas sin comprobar/.test(await page.$eval(`.vc-card[data-clip="${id}"] .vc-chip`, (e) => e.textContent)), `${id}: marcas medidas, pendientes de comprobar`);
 await fake(() => { window.__fakeYT.duration = 759; });
 await openGC('Ir directo');
 await waitAttr('phase', 'asking');

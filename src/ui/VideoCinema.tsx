@@ -132,57 +132,49 @@ export function VideoCinemaScreen(): JSX.Element {
   return (
     <section className="vc-home">
       <header className="vc-home-head">
-        <p className="cm-kicker">Cine de finales</p>
-        <h2>Finales reales, en vídeo</h2>
-        <p className="cm-quiet">El vídeo se para solo justo antes de la jugada clave y te pregunta qué jugarías. Después ves lo que pasó de verdad.</p>
+        <h2>Cine de finales</h2>
+        <p className="cm-quiet">Finales reales en vídeo. Se paran antes de la jugada clave: ¿qué jugarías?</p>
       </header>
-      <ul className="vc-bill">
+      <p className="vc-list-label">{PACK.clips.length} partidas</p>
+      <ul className="vc-bill vc-list">
         {PACK.clips.map((c) => {
           const e = effective(c);
           const auto = canAutoPause(e.clip);
           const q0 = c.stops[0]?.questions[0];
           const questions = c.stops.reduce((n, st) => n + st.questions.length, 0);
+          // Solo se dice algo cuando la pausa no es de fiar del todo.
+          const status = auto ? (e.local ? 'marcas de este dispositivo' : c.marks === 'pending' ? 'pausas sin comprobar' : '') : 'sin pausa: se ve entero';
           return (
-            <li key={c.id} className="vc-card" data-clip={c.id}>
-              <div className="vc-card-top">
+            // Cada partida es una fila: se toca entera para empezar. «Sin vídeo» va aparte, a la derecha.
+            <li key={c.id} className="vc-card vc-row" data-clip={c.id}>
+              <button className="vc-row-main" onClick={() => setView({ kind: 'clip', id: c.id, start: auto ? 'film' : 'free' })} aria-label={`Comenzar: ${c.title}`}>
                 {q0 && (
-                  <div className="vc-card-board" aria-hidden="true">
+                  <span className="vc-row-board" aria-hidden="true">
                     <Board2D fen={q0.fen} orientation={c.orientation} interactive={false} lastMove={q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null} animMode="none" coordinates={false} />
-                  </div>
+                  </span>
                 )}
-                <div className="vc-card-text">
-                  <span className="vc-card-year">{c.year}</span>
-                  <h3 className="vc-card-title">{c.title}</h3>
-                  <span className="vc-card-sub">{c.subtitle}</span>
-                </div>
-              </div>
-              <p className="vc-card-intro">{c.intro}</p>
-              <span className={`vc-chip ${auto ? 'vc-chip-on' : ''}`}>
-                {auto
-                  ? e.local
-                    ? 'Se para solo · marcas de este dispositivo'
-                    : c.marks === 'pending'
-                      ? 'Se para solo · marcas sin comprobar'
-                      : 'Se para solo antes de la jugada'
-                  : 'Sin pausa marcada: el vídeo se ve entero'}
-              </span>
-              <button className="cm-primary cm-big vc-start" onClick={() => setView({ kind: 'clip', id: c.id, start: auto ? 'film' : 'free' })}>
-                Comenzar
+                <span className="vc-row-text">
+                  <span className="vc-card-title">{c.title}</span>
+                  <span className="vc-row-sub">{c.subtitle}</span>
+                  <span className="vc-row-meta">
+                    {questions === 1 ? '1 pregunta' : `${questions} preguntas`}
+                    {c.lesson ? ' · lección' : ''}
+                    {status && <span className={`vc-chip ${auto ? 'vc-chip-on' : ''}`}> · {status}</span>}
+                  </span>
+                </span>
+                <span className="vc-row-chev" aria-hidden="true">›</span>
               </button>
-              <button className="cm-link vc-direct" onClick={() => setView({ kind: 'clip', id: c.id, start: 'direct' })}>
-                Ir directo a la pregunta, sin vídeo
+              <button className="vc-row-direct" onClick={() => setView({ kind: 'clip', id: c.id, start: 'direct' })}>
+                Solo la pregunta, sin vídeo
               </button>
-              <span className="vc-card-meta">
-                {questions} preguntas · vídeo del canal {c.video.channel} en YouTube
-              </span>
               {e.stale && <span className="vc-card-meta">Las marcas guardadas en este dispositivo eran de una versión anterior del clip: ya no se usan.</span>}
             </li>
           );
         })}
       </ul>
       <p className="cm-quiet cm-small vc-home-legal">
-        Los vídeos se ven con el reproductor de YouTube, desde el canal oficial de quien los grabó; Chessome no los descarga ni los modifica. Al pulsar
-        «Comenzar» se carga el reproductor: se aplican los{' '}
+        Los vídeos se ven con el reproductor de YouTube, desde el canal oficial de quien los grabó; Chessome no los descarga ni los modifica. Al abrir
+        una partida se carga el reproductor: se aplican los{' '}
         <a href={YT_TERMS} target="_blank" rel="noreferrer">
           Términos del Servicio de YouTube
         </a>{' '}
@@ -605,6 +597,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   } else prevSynced.current = null;
   // Tras la pregunta, con el tablero sincronizado, no hace falta texto: el tablero grande sigue al vídeo.
   const quietReveal = st.phase === 'reveal' && st.missed === 'none' && hasSyncMarks && st.errorCode == null;
+  const everPlayed = useRef(false);
+  if (playing) everPlayed.current = true;
   // Mientras se ve el vídeo, el aviso va encima del tablero (sin mover nada) y desaparece en cuanto el vídeo arranca.
   const watchNote: JSX.Element | null =
     st.phase !== 'watching' && !quietReveal
@@ -622,7 +616,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                 {quietReveal ? (
                   <p>{blocked ? 'Si no arranca, pulsa ▶ en el propio vídeo (el navegador no deja arrancarlo desde fuera).' : 'El tablero seguirá al vídeo.'}</p>
                 ) : (
-                  <p>{blocked ? 'Si no arranca, pulsa ▶ en el propio vídeo.' : 'Se parará solo justo antes de la jugada clave.'}</p>
+                  <>
+                    {/* La presentación del clip (antes en la cartelera) se lee aquí, mientras arranca el vídeo. */}
+                    {!everPlayed.current && st.stop === 0 && <p className="vc-note-intro">{clip.intro}</p>}
+                    <p>{blocked ? 'Si no arranca, pulsa ▶ en el propio vídeo.' : 'Se parará solo justo antes de la jugada clave.'}</p>
+                  </>
                 )}
               </>
             )
@@ -673,6 +671,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                 : undefined,
     nextIsEnd: (st.phase === 'reveal' && !moreStops && st.missed === 'none') || (st.phase === 'asking' && !moreStops && lastInStop),
   };
+  // Mientras YouTube pone un anuncio, la botonera queda apagada (salvo «Cartelera»): tocar opciones entonces despista.
+  const adLock = st.adSuspected && st.videoOn && st.errorCode == null;
+  const lock = <T,>(f: T | undefined): T | undefined => (adLock ? undefined : f);
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
   // Al avanzar un paso de la lección, la última jugada del paso se anima (las anteriores, en `lessonFrame`).
@@ -721,7 +722,10 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   // Final del clip: en una ventana translúcida sobre el tablero (o en el panel, si no hay tablero).
   const endCard = (
     <>
-    <p className="cm-kicker">Fin del clip</p>
+    <p className="vc-end-title">
+      <span className="vc-end-tick" aria-hidden="true">✓</span>
+      Fin del clip
+    </p>
     <p>{clip.outro}</p>
     {lastQ && (
       <p className="cm-quiet cm-small">
@@ -1125,48 +1129,48 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       {fit || (st.phase === 'ended' && shown && !lessonNow) ? (
         // Botonera fija de dos filas: arriba, lo que se hace con la pregunta; abajo, moverse por el clip. Siempre los
         // mismos botones en el mismo sitio; cada uno se activa cuando tiene sentido.
-        <nav className="vc-dock vc-dock-2" aria-label="Opciones del clip">
-          <SeekButton dir={-1} onSeek={seekable ? seekBy : undefined} />
+        <nav className="vc-dock vc-dock-2" aria-label="Opciones del clip" data-locked={adLock ? 'ad' : undefined}>
+          <SeekButton dir={-1} onSeek={seekable && !adLock ? seekBy : undefined} />
           <div className="vc-dock-rows">
           <div className="vc-dock-row">
             {answer && canRetry && !gate ? (
-              <DockButton icon="retry" label="Repetir" onClick={retry} />
+              <DockButton icon="retry" label="Repetir" onClick={lock(retry)} />
             ) : (
-              <DockButton icon="hint" label="Pista" onClick={dock.hint} />
+              <DockButton icon="hint" label="Pista" onClick={lock(dock.hint)} />
             )}
-            <DockButton icon="answer" label="Respuesta" onClick={dock.answer} />
-            <DockButton icon="play" label="Continuar" onClick={dock.play} />
-            <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Ir a pregunta'} onClick={dock.next} />
+            <DockButton icon="answer" label="Respuesta" onClick={lock(dock.answer)} />
+            <DockButton icon="play" label="Continuar" onClick={lock(dock.play)} />
+            <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Ir a pregunta'} onClick={lock(dock.next)} />
           </div>
           <div className="vc-dock-row">
             <DockButton icon="back" label="Cartelera" onClick={onClose} />
             <DockButton
               icon="text"
               label={st.phase === 'ended' ? 'Ver el final' : answer ? 'Explicación' : 'Pregunta'}
-              onClick={cardHidden && ((st.phase === 'asking' && q && !gate && !busy) || st.phase === 'ended' || (st.phase === 'reveal' && st.missed !== 'none')) ? () => setCardHidden(false) : undefined}
+              onClick={lock(cardHidden && ((st.phase === 'asking' && q && !gate && !busy) || st.phase === 'ended' || (st.phase === 'reveal' && st.missed !== 'none')) ? () => setCardHidden(false) : undefined)}
             />
             <DockButton
               icon="lesson"
               label="Lección"
-              onClick={
+              onClick={lock(
                 clip.lesson && (st.phase === 'ended' || (asking && lastInStop && !moreStops && !!answer))
                   ? () => {
                       if (st.phase !== 'ended') send({ type: 'finish' });
                       setLessonStep(0);
                     }
-                  : undefined
-              }
+                  : undefined,
+              )}
             />
             {/* «Otra vez»: empezar el clip de nuevo, en cualquier momento. */}
             <DockButton
               icon="restart"
               label="Otra vez"
-              onClick={st.phase !== 'idle' ? () => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); } : undefined}
+              onClick={lock(st.phase !== 'idle' ? () => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); } : undefined)}
             />
-            {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
+            {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={lock(onEdit)} />}
           </div>
           </div>
-          <SeekButton dir={1} onSeek={seekable ? seekBy : undefined} />
+          <SeekButton dir={1} onSeek={seekable && !adLock ? seekBy : undefined} />
         </nav>
       ) : (
         <nav className="vc-dock" aria-label="Opciones del clip">
