@@ -3481,6 +3481,9 @@ func _open_home() -> void:
 		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4]))
 		body.add_child(_spacer(16.0))
 	body.add_child(_spacer(8.0, true))
+	if kids:
+		# Salida a la vista (pide la multiplicación para mayores).
+		footer.add_child(_button("close", "Salir del modo Kids (para mayores)", _set_kids.bind(false), Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
 	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
 
