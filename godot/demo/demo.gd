@@ -511,30 +511,12 @@ func _ready() -> void:
 		_start(0)
 		return
 	_load_player()
-	if kids and welcome_seen:
-		# Nivel Kids: siempre el curso.
-		_idle()
-		if course_done.is_empty():
-			_start_from_zero()
-		else:
-			_open_course()
-	elif _has_player():
-		# Vuelve por donde iba: a medio test o entrenando.
-		if bool(player.get("done", false)):
-			mode = "train"
-			_next_training()
-		else:
-			mode = "test"
-			_next_test()
+	_idle()
+	if not welcome_seen:
+		_open_welcome()
 	else:
-		_idle()
-		if not welcome_seen:
-			_open_welcome()
-		elif not course_done.is_empty():
-			# Está aprendiendo a jugar: vuelve al curso.
-			_open_course()
-		else:
-			_open_experience()
+		# Cada vez que se abre la app: la pantalla de inicio, con todo lo que se puede hacer.
+		_open_home()
 
 
 func _notification(what: int) -> void:
@@ -552,6 +534,8 @@ func _notification(what: int) -> void:
 			_open_course()
 		elif mode == "game":
 			_leave_game()
+		elif use_settings:
+			_open_home()
 
 
 func _load_font(file: String) -> Font:
@@ -2017,6 +2001,9 @@ func _build_sheet() -> void:
 	var box := _sheet("Opciones")
 	if box == null:
 		return
+	if use_settings:
+		var home_tint := _tint("peach")
+		box.add_child(_button("first", "Inicio", _open_home, home_tint[0], home_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	if not course.is_empty():
 		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
 		if kids:
@@ -2918,12 +2905,12 @@ func _open_course() -> void:
 			body.add_child(_spacer(14.0))
 			n += 1
 	body.add_child(_spacer(10.0, true))
-	if _has_player() or (kids and mode == "learn"):
-		footer.add_child(_button("", "Cerrar", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
-	elif not kids:
+	if not kids and not _has_player():
 		footer.add_child(_button("cap", "Ya sé mover las piezas: test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
-	if kids:
-		footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	if use_settings:
+		footer.add_child(_button("first", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	if mode == "learn" and not lesson.is_empty():
+		footer.add_child(_button("", "Volver a la lección", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 
 
 func _start_lesson(id: String) -> void:
@@ -3223,6 +3210,69 @@ func _after_course() -> void:
 
 
 
+
+# ---------------------------------------------------------------- pantalla de inicio
+
+## Inicio: lo que se puede hacer en la app, con lo que estaba haciendo el jugador en primer lugar.
+func _open_home() -> void:
+	if sheet_kind != "":
+		_close_options()
+	_stop_voice()
+	var page := _page("home")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(6.0, true))
+	var emblem := TextureRect.new()
+	emblem.texture = UiIcons.emblem()
+	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	emblem.custom_minimum_size = Vector2(220.0, 220.0)
+	emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(emblem)
+	body.add_child(_centered(_para("Chessome", F_LARGE, _c("ink"), font_display)))
+	var sub := "¿A qué jugamos hoy?" if kids else "¿Qué quieres hacer?"
+	body.add_child(_centered(_para(sub, F_HEAD, _c("quiet"), font_medium)))
+	body.add_child(_spacer(36.0))
+	var lessons := _course_lessons()
+	var done := 0
+	for l: Dictionary in lessons:
+		if course_done.has(str(l["id"])):
+			done += 1
+	var items: Array = []
+	if not kids and _has_player():
+		var lvl := Assessment.level_of(float(player["rating"]["r"]))
+		if bool(player.get("done", false)):
+			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel (nivel %d), con explicaciones." % lvl, _home_train])
+		else:
+			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
+	if not course.is_empty():
+		items.append(["book", "butter", "Aprende a jugar", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Desde cero: cómo se mueve cada pieza.", _open_course])
+	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, en cinco niveles.", _open_game_setup])
+	if not kids and not _has_player():
+		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
+	if not kids and _has_player():
+		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué aciertas, en qué fallas y qué toca.", _open_progress.bind("progress")])
+	if not kids and not course.is_empty():
+		items.append(["party", "sky", "Modo Kids", "Desde 8 años: frases sencillas y voz.", _set_kids.bind(true)])
+	for def: Array in items:
+		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4]))
+		body.add_child(_spacer(16.0))
+	body.add_child(_spacer(8.0, true))
+	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+
+
+func _home_train() -> void:
+	_start_training()
+
+
+func _home_test() -> void:
+	mode = "test"
+	_close_progress()
+	_next_test()
+
+
 # ---------------------------------------------------------------- partidas contra el rival
 
 const GAME_LEVEL_TEXT := [
@@ -3286,8 +3336,8 @@ func _set_game_color(i: int) -> void:
 
 func _close_game_setup() -> void:
 	_close_progress()
-	if mode == "game" and game_state == "":
-		_leave_game()
+	if mode != "game" or game_state == "":
+		_open_home()
 
 
 ## La partida del final de una unidad del curso.
@@ -3549,16 +3599,16 @@ func _leave_game() -> void:
 	var unit := str(game.get("unit", ""))
 	game_state = ""
 	view.set_orientation(0)
-	if unit != "" or kids or not _has_player():
-		if lesson.is_empty():
-			mode = "free"
-			_idle()
-		else:
-			mode = "learn"
-			_show_lesson_step()
+	if lesson.is_empty():
+		mode = "free"
+		_idle()
+	else:
+		mode = "learn"
+		_show_lesson_step()
+	if unit != "":
 		_open_course()
 	else:
-		_start_training()
+		_open_home()
 
 
 ## Tras la partida de una unidad: la primera lección de la siguiente (o el mapa del curso).
@@ -3756,7 +3806,7 @@ func _set_kids(on: bool) -> void:
 		kids = true
 		_save_settings()
 		_close_options()
-		_open_course()
+		_open_home()
 		return
 	# Salir del nivel Kids es cosa de mayores.
 	_close_options()
@@ -3769,10 +3819,8 @@ func _leave_kids() -> void:
 	_save_settings()
 	if mode == "learn" and not lesson.is_empty():
 		_show_lesson_step()
-	elif _has_player():
-		_start_training()
 	else:
-		_open_experience()
+		_open_home()
 
 
 func _set_voice(on: bool) -> void:
@@ -3823,14 +3871,14 @@ func _on_gate(v: int) -> void:
 	if ok and _gate_then.is_valid():
 		_gate_then.call()
 	elif mode != "learn":
-		_open_course()
+		_open_home()
 
 
 func _close_gate() -> void:
 	_gate_answer = -1
 	_close_progress()
 	if mode != "learn":
-		_open_course()
+		_open_home()
 
 
 # ---------------------------------------------------------------- páginas: experiencia, resultado y progreso
@@ -3904,8 +3952,10 @@ func _leave_progress() -> void:
 		_close_gate()
 	elif progress_kind == "game_setup":
 		_close_game_setup()
-	elif progress_kind == "progress" or (progress_kind in ["experience", "course"] and (_has_player() or mode == "learn")):
+	elif progress_kind == "progress" or (progress_kind == "course" and mode == "learn" and not lesson.is_empty()):
 		_close_progress()
+	elif progress_kind in ["course", "experience"] and use_settings:
+		_open_home()
 
 
 func _start_training() -> void:
@@ -3950,7 +4000,7 @@ func _open_experience() -> void:
 	footer.add_child(_spacer(14.0))
 	if _has_player():
 		# Se llega aquí desde «Repetir el test»: se puede dejar todo como estaba.
-		footer.add_child(_button("", "Cancelar", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+		footer.add_child(_button("", "Cancelar", _open_home if use_settings else _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 	else:
 		footer.add_child(_button("", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 

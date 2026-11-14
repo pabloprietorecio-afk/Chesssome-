@@ -716,12 +716,19 @@ func _course_shots(demo: Control) -> void:
 ## adultos y las opciones. La voz no suena en las pruebas (no hay salida de audio), pero se anota qué diría.
 func _kids_shots(demo: Control) -> void:
 	var dview: BoardView3D = demo.view
+	demo._open_home()
+	await _frames(10)
+	await _shot("69_inicio")
+	print("INICIO página=%s" % demo.progress_kind)
 	demo._open_welcome()
 	await _frames(10)
 	await _shot("70_bienvenida_kids")
 	demo._close_welcome()
 	demo._close_progress()
 	demo.kids = true
+	demo._open_home()
+	await _frames(10)
+	await _shot("69b_inicio_kids")
 	demo._open_course()
 	await _frames(8)
 	await _shot("71_kids_curso")
