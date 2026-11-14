@@ -846,7 +846,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const boardSide = clip.orientation;
 
   // Mientras se ve o se responde, la cabecera y el crédito se encogen para que vídeo, pregunta y tablero quepan en un móvil.
-  const compact = st.phase === 'watching' || st.phase === 'asking' || st.phase === 'reveal';
+  // También al acabar el clip (salvo en la lección): si la cabecera volviera a crecer, el vídeo y el tablero se moverían
+  // justo cuando sale el final, y eso despista.
+  const compact = st.phase === 'watching' || st.phase === 'asking' || st.phase === 'reveal' || (st.phase === 'ended' && lessonStep == null);
   // Mientras se ve o se responde, vídeo, texto y tablero ocupan la pantalla entera, sin la barra de secciones,
   // para que el vídeo y el tablero se vean a la vez sin desplazarse.
   useEffect(() => {

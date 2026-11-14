@@ -511,7 +511,11 @@ await waitAttr('phase', 'ended', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });
 bi = await boardInfo();
 assert(bi.kind === 'video' && bi.ply === '116' && /tras 58…Re5/.test(bi.label), 'al final, la última jugada marcada: ' + JSON.stringify(bi));
-assert((await page.evaluate(() => document.documentElement.dataset.immersive)) === undefined, 'al acabar, vuelve la barra de secciones');
+// Al acabar, la pantalla no se mueve: ni vuelve la cabecera grande ni la barra de secciones (petición de Pablo).
+assert((await page.evaluate(() => document.documentElement.dataset.immersive)) === 'cine', 'al acabar, sigue la pantalla del clip');
+await sleep(800);
+const endLayout = await layout();
+assert(Math.abs(endLayout.video[0] - fitWatching.video[0]) <= 2 && Math.abs(endLayout.board[0] - fitWatching.board[0]) <= 2, `al acabar, vídeo y tablero siguen en su sitio: ${JSON.stringify(fitWatching)} → ${JSON.stringify(endLayout)}`);
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
 
 // ── G. Gukesh–Carlsen en dos clips: «El error de Carlsen» (error histórico) y «El golpe en la mesa». ──

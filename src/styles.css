@@ -2497,3 +2497,10 @@ a {
 .vc-hook p {
   text-align: center;
 }
+.vc-hook .cm-row {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.vc-hook .cm-row button {
+  padding: 8px 14px;
+}
