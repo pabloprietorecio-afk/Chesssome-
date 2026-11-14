@@ -94,6 +94,7 @@ data/dev/        Problemas importados, análisis del motor e informe de calidad
 | Timbales (VSCO 2: Community Edition, Versilian Studios) | CC0 1.0 | Aviso de jaque. Detalle en `godot/sounds/LEEME.md` |
 | Iconos de las fichas | Propios | Generados por código a partir de las piezas 3D propias (`tools/pieces/fichas.mjs`) |
 | Iconos de la interfaz (Phosphor Icons 2.1.1) | MIT | Bombilla, huellas, chincheta, etc. Detalle y aviso de licencia en `godot/ui/` |
+| Voz del nivel Kids (Kokoro-82M, voz `ef_dora`) | Apache-2.0 (pesos) | Audios generados en la CI; espeak-ng (GPL-3.0) solo se usa allí, no va en la app. Ver `docs/kids.md` |
 | Emblema y siluetas de piezas de la interfaz | Propios | Generados desde las piezas 3D propias (`tools/ui/icons.mjs`) |
 
 El paquete de datos está marcado como `provisional: true`: es una muestra de desarrollo, no el catálogo de producción.
