@@ -244,3 +244,8 @@ Cuatro películas sin vídeo (oposición, Saavedra 1895, Lucena, Philidor) con f
 
 - **Sin saltos bruscos (Pablo, 14 nov 2026):** cada paso añade como mucho dos medias jugadas al anterior, continuando su línea; para enseñar otra opción, un paso puede volver a la posición de partida y jugar una o dos jugadas desde ella («Volvamos atrás…»). Una idea por paso. Al avanzar, el tablero anima la última jugada. Lo comprueba un test (`regla de las lecciones: sin saltos bruscos`).
 - Toda afirmación sobre evaluaciones o variantes se comprueba antes con Stockfish y se anota en el comentario de la lección (profundidad y fecha).
+
+## Diseño de pantalla (Pablo, 14 nov 2026)
+
+- Pantalla «estática»: los textos no empujan el tablero. Los avisos van en ventanas translúcidas encima del tablero y el tablero se mantiene grande.
+- Nunca se dibuja nada delante del reproductor de YouTube (normas de la API de YouTube). Mientras se pregunta, el vídeo está parado y se recoge (sigue montado, sin ocupar sitio): la pregunta ocupa su lugar.

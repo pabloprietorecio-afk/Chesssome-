@@ -1912,3 +1912,19 @@ a {
   pointer-events: auto;
   justify-items: center;
 }
+
+/* Vídeo recogido durante la pregunta: sigue montado (no se pierde el punto), pero no ocupa sitio ni se ve. */
+.vc-video[data-collapsed='on'] {
+  aspect-ratio: auto;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+/* El tablero no crece más que su ancho: las opciones quedan pegadas debajo y el sitio que sobre, al final. */
+.vc-stage[data-fit='on'] {
+  container-type: inline-size;
+}
+.vc-stage[data-fit='on'] > .vc-board {
+  max-height: calc(100cqw + 32px);
+}

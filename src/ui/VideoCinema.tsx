@@ -563,7 +563,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </header>
         )}
 
-        <div className="vc-video" ref={videoBox}>
+        {/* Mientras se pregunta, el vídeo está parado: se recoge (sin desmontarlo) y la pregunta ocupa su sitio, para que
+            el tablero conserve su tamaño. Nunca se dibuja nada delante del reproductor (normas de YouTube). */}
+        <div className="vc-video" ref={videoBox} data-collapsed={st.phase === 'asking' ? 'on' : 'off'}>
           {/* El reproductor de YouTube ocupa este hueco entero. Nunca se dibuja nada delante de él. */}
           <div className="vc-player" ref={mount} />
           {player === 'none' && (
