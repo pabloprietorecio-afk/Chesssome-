@@ -142,6 +142,13 @@ var _voice_last: Array = []
 ## «¡Muy bien!» grabado (Pixabay, TomyEducaST, licencia de contenido de Pixabay; ver godot/voz/humana/LEEME.md):
 ## suena delante de cada acierto en el nivel Kids. En las listas de _say se pide con BRAVO.
 const BRAVO := "#bravo"
+## Efectos de la interfaz (acierto, error, lección terminada) y música del nivel Kids: godot/sounds/ui/LEEME.md.
+var music_on := true
+var sfx_player: AudioStreamPlayer
+var music_player: AudioStreamPlayer
+var _sfx_cache := {}
+const MUSIC_DB := -15.0
+const MUSIC_DUCK_DB := -26.0
 const BRAVO_PATH := "res://voz/humana/muy_bien.ogg"
 ## Partida contra el rival (core/bot.gd): ajustes ({variant, level, fen, title, text, kids, unit}), color del
 ## jugador, posiciones tras cada jugada (para deshacer y para las repeticiones), estado ("play", "think", "over"),
@@ -199,6 +206,8 @@ var ex_fails := 0
 var ex_text := ""
 var ex_good := false
 var ex_stars: Array = []
+## Piezas negras que quedan en un ejercicio de recoger (para sonar al capturar una).
+var _ex_blacks := 0
 ## Con false no se leen ni se guardan los ajustes ni se enseña la bienvenida (lo usan las pruebas).
 var use_settings := true
 var welcome_seen := false
@@ -523,6 +532,12 @@ func _ready() -> void:
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
+	sfx_player = AudioStreamPlayer.new()
+	sfx_player.volume_db = -4.0
+	add_child(sfx_player)
+	music_player = AudioStreamPlayer.new()
+	music_player.volume_db = MUSIC_DB
+	add_child(music_player)
 	if use_settings:
 		_load_settings()
 		_load_course_progress()
@@ -629,6 +644,7 @@ func _load_settings() -> void:
 	press_clock = bool(cfg.get_value("partida", "pulsar_reloj", true))
 	press_reminder = bool(cfg.get_value("partida", "aviso_reloj", true))
 	voice_on = bool(cfg.get_value("sonido", "voz", true))
+	music_on = bool(cfg.get_value("sonido", "musica", true))
 	gesture_hint = bool(cfg.get_value("vista", "pista_de_gestos", gesture_hint))
 	_saved_lock = bool(cfg.get_value("vista", "giro_fijado", false))
 	_saved_anim = clampi(int(cfg.get_value("tablero", "animaciones", _saved_anim)), 0, 3)
@@ -649,6 +665,7 @@ func _save_settings() -> void:
 	cfg.set_value("partida", "pulsar_reloj", press_clock)
 	cfg.set_value("partida", "aviso_reloj", press_reminder)
 	cfg.set_value("sonido", "voz", voice_on)
+	cfg.set_value("sonido", "musica", music_on)
 	cfg.set_value("vista", "pista_de_gestos", gesture_hint)
 	cfg.set_value("vista", "giro_fijado", view.view_locked if view != null else _saved_lock)
 	cfg.save(SETTINGS_PATH)
@@ -1268,6 +1285,7 @@ func _refresh(animate: bool = true) -> void:
 		counter.text = ("Problema %d de %d" % [index + 1, total]) if total > 0 else "Sin problemas"
 	if kids_wall != null and is_instance_valid(kids_wall):
 		kids_wall.visible = kids
+	_sync_music()
 	_build_card()
 	_build_actions()
 	_sync_learn_popup()
@@ -2082,6 +2100,7 @@ func _build_sheet() -> void:
 		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
 		if kids:
 			box.add_child(_switch_row("sound", "sky", "Voz", "Lee en voz alta las lecciones y lo que pasa en cada jugada.", voice_on, _set_voice))
+			box.add_child(_switch_row("party", "rose", "Música", "Una melodía infantil de fondo, en bucle. Baja sola cuando habla la voz.", music_on, _set_music))
 	if _has_player() and not kids:
 		var mine_tint := _tint("lilac")
 		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
@@ -2100,7 +2119,7 @@ func _build_sheet() -> void:
 	box.add_child(_caption("Material"))
 	box.add_child(_swatch_tiles(STYLES.find(board_style)))
 	box.add_child(_switch_row("outline", "lilac", "Contorno de las piezas", "Una línea de tinta alrededor de cada pieza.", board_outline, _set_outline))
-	box.add_child(_switch_row("sound", "mint", "Sonido", "Arrastre y golpe de las piezas, jaque y caída del rey.", sound_on, _set_sound))
+	box.add_child(_switch_row("sound", "mint", "Sonido", "Piezas, jaque y caída del rey; aciertos, errores y final de lección.", sound_on, _set_sound))
 	box.add_child(_caption("Animaciones"))
 	box.add_child(_segments(["Completas", "Rápidas", "Mínimas", "Sin"], int(view.board.anim_mode), _set_anim))
 	box.add_child(_caption("Vista"))
@@ -2245,6 +2264,7 @@ func _set_press_reminder(on: bool) -> void:
 func _set_sound(on: bool) -> void:
 	sound_on = on
 	view.set_sound_enabled(on)
+	_sync_music()
 	_save_settings()
 	_sync_sheet()
 
@@ -2672,6 +2692,7 @@ func _on_move_played(uci: String) -> void:
 	if uci != str(moves[step]) and not mate:
 		# Fallo: se cuenta qué hace la jugada y qué permite, y se deja reintentar.
 		view.interactive = false
+		_sfx("error")
 		var k := _point()
 		last_wrong = {"point": k, "uci": uci}
 		_clear_explanation()
@@ -2710,8 +2731,10 @@ func _on_move_played(uci: String) -> void:
 			expl = explain.solved()
 		# Resuelto sin fallos ni ayudas: acierto. (Si antes hubo un fallo o una ayuda, ya está anotado.)
 		_record(true)
+		_sfx("leccion")
 		_set_phase(Phase.SOLVED)
 		return
+	_sfx("acierto")
 	last_wrong = {}
 	view.interactive = false
 	_set_phase(Phase.REPLY)
@@ -3062,6 +3085,7 @@ func _show_lesson_step() -> void:
 		var id := str(lesson["id"])
 		course_done[id] = maxi(stars, int(course_done.get(id, 0)))
 		_save_course_progress()
+		_sfx("leccion")
 		var said := [BRAVO, _kid_line("lessonDone"), str(_lesson_text("takeaway"))]
 		if _is_last_lesson():
 			said.append(_kid_line("courseDone"))
@@ -3077,6 +3101,7 @@ func _show_lesson_step() -> void:
 				ex_state = "info"
 			"collect":
 				ex_state = "play"
+				_ex_blacks = _black_left()
 				view.board.set_goals(_squares(ex.get("stars", [])))
 				view.board.only_square = Chess.sq_index(str(ex["hero"]))
 				view.interactive = true
@@ -3118,11 +3143,15 @@ func _learn_move(uci: String) -> void:
 		if bool(ex.get("safe", false)) and board.chess.attacked(to, 1):
 			ex_state = "fail"
 			ex_good = false
+			_sfx("error")
 			ex_text = _kid_line("attacked") if kids else "Esa casilla la ataca una pieza negra: te capturarían. Mira antes qué casillas atacan."
 			_say([ex_text])
 			view.interactive = false
 			_refresh()
 			return
+		if board.has_goal(to) or _black_left() < _ex_blacks:
+			_sfx("acierto")
+		_ex_blacks = _black_left()
 		if board.has_goal(to):
 			board.take_goal(to)
 		if board.goals_left() == 0 and _black_left() == 0:
@@ -3143,6 +3172,7 @@ func _learn_move(uci: String) -> void:
 	var verdict: Dictionary = (ex.get("moves", {}) as Dictionary).get(uci, {})
 	ex_text = str(verdict.get("k" if kids else "t", verdict.get("t", "")))
 	_say([BRAVO, ex_text] if bool(verdict.get("ok", false)) else [ex_text])
+	_sfx("acierto" if bool(verdict.get("ok", false)) else "error")
 	view.interactive = false
 	if bool(verdict.get("ok", false)):
 		ex_stars.append(clampi(3 - ex_fails, 1, 3))
@@ -3888,6 +3918,8 @@ func _game_check_end(before: Chess, m: int) -> bool:
 		"bloqueo": ["El rival se ha quedado sin jugadas: ¡has ganado!", "Te has quedado sin jugadas: gana el rival."],
 	}
 	var draws := {"ahogado": "Ahogado: el rey no está en jaque y no puede mover. Tablas.", "50": "Cincuenta jugadas sin capturas ni movimientos de peón: tablas.", "repeticion": "La misma posición tres veces: tablas.", "material": "No queda material para dar mate: tablas."}
+	if game_won != 0:
+		_sfx("leccion" if game_won > 0 else "error")
 	if game_won == 0:
 		game_result = str(draws.get(why, "Tablas."))
 		_say([_kid_line("gameDraw")])
@@ -4383,6 +4415,48 @@ func _kid_line(key: String) -> String:
 	return str(kids_lines.get(key, ""))
 
 
+
+## Efecto de la interfaz: "acierto" (cada jugada buena), "error" (jugada mala) y "leccion" (lección o problema
+## terminados, partida ganada). Con el sonido quitado, nada.
+func _sfx(kind: String) -> void:
+	if not sound_on or sfx_player == null:
+		return
+	if not _sfx_cache.has(kind):
+		var path := "res://sounds/ui/%s.ogg" % kind
+		_sfx_cache[kind] = load(path) if ResourceLoader.exists(path) else null
+	var stream: AudioStream = _sfx_cache[kind]
+	if stream == null:
+		return
+	sfx_player.stream = stream
+	sfx_player.play()
+
+
+## Música de fondo del nivel Kids: suena en bucle mientras se esté en Kids, con la música y el sonido puestos.
+func _sync_music() -> void:
+	if music_player == null:
+		return
+	var want := kids and music_on and sound_on and use_settings
+	if want and not music_player.playing:
+		if music_player.stream == null and ResourceLoader.exists("res://sounds/ui/musica_kids.ogg"):
+			var stream := load("res://sounds/ui/musica_kids.ogg") as AudioStreamOggVorbis
+			if stream != null:
+				stream = stream.duplicate()
+				stream.loop = true
+				music_player.stream = stream
+		if music_player.stream != null:
+			music_player.volume_db = MUSIC_DB
+			music_player.play()
+	elif not want and music_player.playing:
+		music_player.stop()
+
+
+func _set_music(on: bool) -> void:
+	music_on = on
+	_save_settings()
+	_sync_music()
+	_sync_sheet()
+
+
 ## Dice las frases en voz alta, una detrás de otra (solo en el nivel Kids y con la voz puesta). Corta lo que
 ## estuviera sonando. Una frase sin audio se salta: la voz no es imprescindible para seguir.
 func _say(lines: Array) -> void:
@@ -4404,8 +4478,15 @@ func _say(lines: Array) -> void:
 
 
 func _voice_next() -> void:
-	if _voice_queue.is_empty() or voice_player == null:
+	if voice_player == null:
 		return
+	if _voice_queue.is_empty():
+		# Sin voz, la música vuelve a su volumen.
+		if music_player != null:
+			create_tween().tween_property(music_player, "volume_db", MUSIC_DB, 0.4)
+		return
+	if music_player != null and music_player.playing:
+		create_tween().tween_property(music_player, "volume_db", MUSIC_DUCK_DB, 0.15)
 	var stream := load(str(_voice_queue.pop_front())) as AudioStream
 	if stream == null:
 		_voice_next()
