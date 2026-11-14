@@ -151,13 +151,13 @@ await move('b2f2');
 assert(/¡Esa es!/.test(await panel()), 'tras repetir, Txf2 debe darse por buena: ' + (await panel()));
 assert(!(await hasButton('Repetir')), 'con la buena no se ofrece «Repetir»');
 // Sin vídeo que se pare solo, «Siguiente pregunta» pasa a la siguiente pausa en el tablero, con las jugadas intermedias.
-await clickText('Siguiente');
+await clickText('Ir a pregunta');
 await waitAttr('stop', '1', 12000);
 await sleep(300);
 assert(/pregunta 2 de 3/i.test(await page.$eval('.vc-ask', (e) => e.textContent).catch(() => '') + (await page.$eval('.vc-board-label', (e) => e.textContent).catch(() => ''))), 'pregunta 2 de 3');
 await move('e6d5');
 assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
-await clickText('Siguiente');
+await clickText('Ir a pregunta');
 await waitAttr('stop', '2', 12000);
 await sleep(300);
 await shot('05-pregunta-3');
@@ -283,7 +283,7 @@ await sleep(300);
 // «Siguiente pregunta»: va ya a la siguiente pausa, sin ver el vídeo hasta allí.
 await move('e6d5');
 assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
-await clickText('Siguiente');
+await clickText('Ir a pregunta');
 await waitAttr('stop', '2', 8000);
 await sleep(300);
 const p3 = await fake(() => window.__fakeYT.last());
@@ -446,9 +446,18 @@ await shot('15-tablero-sigue-al-video');
 for (const [stop, at] of [['1', 144.5], ['2', 214]]) {
   if (stop === '1') {
     // «Ir a la pregunta» en la botonera: no hace falta esperar a que el vídeo llegue a la pausa.
-    await clickText('Siguiente');
+    await clickText('Ir a pregunta');
   } else {
-    await fake(() => { window.__fakeYT.rate = 5; });
+    // Desde 57…Rxd5 (aún sin 58.Re3 en el vídeo): «Ir a pregunta» hace 58.Re3 en el tablero antes de preguntar.
+    await setTime(157); await fake(() => { window.__fakeYT.last().state = 1; });
+    await waitPly('114');
+    await clickText('Ir a pregunta');
+    await sleep(150);
+    const f0 = await page.$eval('.vc-board-box', (e) => e.dataset.fen.split(' ')[0]);
+    assert(f0 === '8/8/8/3k1p2/6p1/6P1/5K2/8', 'primero la posición tras 57…Rxd5: ' + f0);
+    await sleep(1200);
+    const f1 = await page.$eval('.vc-board-box', (e) => e.dataset.fen.split(' ')[0]);
+    assert(f1.split('/')[5] === '4K1P1', 'después 58.Re3, animada: ' + f1);
   }
   await waitAttr('phase', 'asking', 25000);
   await fake(() => { window.__fakeYT.rate = 1; });

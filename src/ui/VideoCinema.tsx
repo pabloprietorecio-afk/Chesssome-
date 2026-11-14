@@ -367,6 +367,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonStep]);
   const animKey = useRef(0);
+  const lastSyncedPly = useRef<number | null>(null);
   const timers = useRef<number[]>([]);
   const clearTimers = () => {
     timers.current.forEach((t) => window.clearTimeout(t));
@@ -401,7 +402,25 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     setAnswer(null);
     setHint(false);
     setBusy(false);
-    setBoard({ fen: q0.fen, last: q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null, anim: null });
+    // Si se ha llegado sin ver las últimas jugadas en el tablero («Ir a pregunta»), se hacen una tras otra antes de
+    // preguntar; si no, se pregunta ya.
+    const from = lastSyncedPly.current;
+    lastSyncedPly.current = null;
+    const steps: (() => void)[] = [];
+    if (from != null && from < q0.ply - 1) {
+      const start = fenAfter(clip, from);
+      if (start) {
+        setBoard({ fen: start, last: null, anim: null });
+        setBusy(true);
+        for (let p = from + 1; p < q0.ply; p++) {
+          const m = moveAt(clip, p);
+          if (m) steps.push(() => setBoard({ fen: m.fenAfter, last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: m.captured } }));
+        }
+        steps.push(() => setBusy(false));
+        steps.forEach((fn, i) => timers.current.push(window.setTimeout(fn, 350 + i * STEP_MS)));
+      }
+    }
+    if (!steps.length) setBoard({ fen: q0.fen, last: q0.lead ? { from: q0.lead.from, to: q0.lead.to } : null, anim: null });
     ev('pause', { stop: st.stop, mode: st.mode });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [st.phase, st.stop]);
@@ -561,6 +580,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const syncTime = st.phase === 'ended' && hasSyncMarks ? Infinity : (now ?? (st.phase === 'watching' ? (clip.start ?? 0) : null));
   const useSynced = syncTime != null && (st.phase === 'watching' || ((st.phase === 'reveal' || st.phase === 'ended') && hasSyncMarks));
   const synced = useSynced ? syncedView(clip, sync, syncTime!, syncCap(clip, st)) : null;
+  // Última jugada que el tablero sincronizado ha enseñado (para no saltarse jugadas al ir a la pregunta).
+  if (synced && (st.phase === 'watching' || st.phase === 'reveal')) lastSyncedPly.current = synced.ply;
   const prevSynced = useRef<{ ply: number; key: number } | null>(null);
   let syncedAnim: MoveAnim | null = null;
   if (synced) {
@@ -1073,7 +1094,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             )}
             <DockButton icon="answer" label="Respuesta" onClick={dock.answer} />
             <DockButton icon="play" label="Continuar" onClick={dock.play} />
-            <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Siguiente'} onClick={dock.next} />
+            <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Ir a pregunta'} onClick={dock.next} />
           </div>
           <div className="vc-dock-row">
             <DockButton icon="back" label="Cartelera" onClick={onClose} />
