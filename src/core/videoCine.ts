@@ -728,3 +728,17 @@ export function toCourseLesson(clip: Pick<Clip, 'id' | 'timeline'> & { lesson?: 
     takeaway: lesson.takeaway,
   };
 }
+
+/** Segundos de vídeo que se dejan tras la última jugada marcada en el tablero antes de dar el clip por terminado. */
+export const END_TAIL = 2.5;
+
+/**
+ * El clip termina poco después de la última jugada que sigue el tablero: lo que venga luego (análisis, apretones de
+ * manos…) no aporta y hace esperar. Si el final marcado ya llega antes, se respeta.
+ */
+export function trimEnd<C extends Pick<Clip, 'end' | 'sync'>>(clip: C): C {
+  const marks = clip.sync?.marks ?? [];
+  if (clip.end == null || !marks.length) return clip;
+  const last = Math.max(...marks.map((m) => m.at));
+  return last + END_TAIL < clip.end ? { ...clip, end: Math.round((last + END_TAIL) * 100) / 100 } : clip;
+}

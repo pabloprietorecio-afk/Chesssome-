@@ -547,6 +547,9 @@ await sleep(400);
 await move('b2c4', 'w'); // 61.Cc4+
 assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
 await shot('17-golpe-en-la-mesa-pregunta');
+// Tras responder la última pregunta: «Terminar», «Lección» y «Otra vez» encendidos.
+const enabled = await page.$$eval('.vc-dock-btn', (bs) => bs.filter((b) => !b.disabled).map((b) => b.textContent.trim()));
+assert(['Terminar', 'Lección', 'Otra vez', 'Continuar'].every((t) => enabled.includes(t)), 'botones encendidos al acabar las preguntas: ' + enabled.join(', '));
 await clickText('Continuar');
 await waitAttr('phase', 'reveal');
 await setTime(377); await sleep(300);

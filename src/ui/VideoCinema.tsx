@@ -40,6 +40,7 @@ import {
   type VideoCinePack,
   gapPlies,
   lessonPositions,
+  trimEnd,
   syncGapAt,
 } from '../core/videoCine';
 import { sanEs } from '../core/lang';
@@ -311,7 +312,11 @@ function OutcomeMark({ outcome }: { outcome: ClipAnswer['outcome'] }): JSX.Eleme
 
 function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autostart?: StartMode; onClose: () => void; onEdit: () => void }): JSX.Element {
   const s = useAppState();
-  const { clip, local, stale } = useMemo(() => effective(packed), [packed]);
+  const { clip, local, stale } = useMemo(() => {
+    const e = effective(packed);
+    // El clip acaba poco después de la última jugada que sigue el tablero.
+    return { ...e, clip: trimEnd(e.clip) };
+  }, [packed]);
   const auto = canAutoPause(clip);
   const mount = useRef<HTMLDivElement>(null);
   const videoBox = useRef<HTMLDivElement>(null);
@@ -643,7 +648,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             ? nextQuestion
             : asking && lastInStop && moreStops
               ? goNextStop
-              : (st.phase === 'reveal' && quietReveal && !moreStops) || (asking && st.errorCode != null && !moreStops)
+              : (st.phase === 'reveal' && quietReveal && !moreStops) || (asking && lastInStop && !moreStops && (!!answer || st.errorCode != null))
                 ? () => send({ type: 'finish' })
                 : undefined,
     nextIsEnd: (st.phase === 'reveal' && !moreStops) || (st.phase === 'asking' && !moreStops && lastInStop),
@@ -1103,11 +1108,23 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               label={st.phase === 'ended' ? 'Ver el final' : answer ? 'Explicación' : 'Pregunta'}
               onClick={cardHidden && ((st.phase === 'asking' && q && !gate && !busy) || st.phase === 'ended') ? () => setCardHidden(false) : undefined}
             />
-            <DockButton icon="lesson" label="Lección" onClick={st.phase === 'ended' && clip.lesson ? () => setLessonStep(0) : undefined} />
+            <DockButton
+              icon="lesson"
+              label="Lección"
+              onClick={
+                clip.lesson && (st.phase === 'ended' || (asking && lastInStop && !moreStops && !!answer))
+                  ? () => {
+                      if (st.phase !== 'ended') send({ type: 'finish' });
+                      setLessonStep(0);
+                    }
+                  : undefined
+              }
+            />
+            {/* «Otra vez»: empezar el clip de nuevo, en cualquier momento. */}
             <DockButton
               icon="restart"
               label="Otra vez"
-              onClick={st.phase === 'ended' ? () => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); } : undefined}
+              onClick={st.phase !== 'idle' ? () => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); } : undefined}
             />
             {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
           </div>

@@ -258,3 +258,7 @@ Cuatro películas sin vídeo (oposición, Saavedra 1895, Lucena, Philidor) con f
 ## Botonera fija (14 nov 2026)
 
 Mientras se ve un clip, la botonera inferior tiene siempre los mismos cinco botones en el mismo sitio: Cartelera, Pista (Repetir tras una jugada que no vale), Respuesta, Continuar (seguir el vídeo; sin responder, antes se enseña la jugada de la partida) y Siguiente (ir a la pregunta / siguiente pregunta; Terminar en la última). Cada uno se apaga cuando no tiene sentido. No quedan enlaces de texto: el de YouTube y «Ver la pregunta» son botones píldora. «Respuesta» deja ver primero cómo se mueve la pieza y después llega la explicación.
+
+## Final del clip (14 nov 2026)
+
+El clip termina 2,5 s después de la última jugada que sigue el tablero (`trimEnd`, `END_TAIL`), salvo que el final marcado llegue antes. En Ding–Gukesh pasa de 233,07 (apretón de manos) a 219; en «El golpe en la mesa» no cambia (fin en 378,8, con el golpe dentro). Tras responder la última pregunta se encienden «Terminar» y «Lección»; «Otra vez» funciona en cualquier momento.

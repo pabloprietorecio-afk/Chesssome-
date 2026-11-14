@@ -10,6 +10,7 @@ import {
   gapPlies,
   lessonPositions,
   toCourseLesson,
+  trimEnd,
   initialDirector,
   judgeAnswer,
   marksOf,
@@ -585,5 +586,15 @@ describe('«Siguiente pregunta» desde una pregunta', () => {
     const r = direct(ding, st, { type: 'jump', now: 5 });
     expect(r.state).toMatchObject({ phase: 'asking', stop: 1 });
     expect(r.commands).toEqual([{ type: 'seek', at: ding.stops[1].at }, { type: 'pause' }]);
+  });
+});
+
+describe('el clip acaba poco después de la última jugada', () => {
+  it('Ding: de 233,07 (apretón de manos) a 219 (2,5 s tras 58…Re5)', () => {
+    expect(trimEnd(ding).end).toBe(219);
+  });
+  it('si el final marcado ya llega antes, se respeta', () => {
+    const bang = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+    expect(trimEnd(bang).end).toBe(bang.end); // 62.Rf4 en 376,4; el golpe sigue dentro (fin 378,8)
   });
 });
