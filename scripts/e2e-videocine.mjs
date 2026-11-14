@@ -359,17 +359,19 @@ await shot('14-editor-tablero');
 await clickText('Volver al clip');
 await page.waitForSelector('.vc[data-phase="idle"]');
 // Pantalla útil del móvil de Pablo con el navegador abierto: unos 386 × 708 px.
+await page.evaluate(() => localStorage.removeItem('chessome.dev.localMarks')); // como lo ve cualquiera
 await page.setViewport({ width: 386, height: 708, deviceScaleFactor: 2 });
 const layout = () => page.evaluate(() => {
   const v = (document.querySelector('.vc-player iframe') || document.querySelector('.vc-video')).getBoundingClientRect();
   const b = document.querySelector('.vc-board .cm-board')?.getBoundingClientRect();
   const nav = document.querySelector('.cm-top nav');
-  return { video: [Math.round(v.top), Math.round(v.bottom)], board: b ? [Math.round(b.top), Math.round(b.bottom), Math.round(b.width)] : null, h: innerHeight, nav: nav ? getComputedStyle(nav).display : 'none' };
+  const foot = document.querySelector('.vc-foot').getBoundingClientRect();
+  return { video: [Math.round(v.top), Math.round(v.bottom)], board: b ? [Math.round(b.top), Math.round(b.bottom), Math.round(b.width)] : null, foot: Math.round(foot.bottom), h: innerHeight, nav: nav ? getComputedStyle(nav).display : 'none' };
 });
 const assertFits = async (what) => {
   await sleep(800); // desplazamiento suave de la app
   const l = await layout();
-  assert(l.board && l.video[0] >= -1 && l.board[1] <= l.h + 1 && l.board[2] >= 270 && l.nav === 'none', `${what}: el vídeo y el tablero no caben a la vez: ${JSON.stringify(l)}`);
+  assert(l.board && l.video[0] >= -1 && l.board[1] <= l.h + 1 && l.board[2] >= 240 && l.foot <= l.h + 1 && l.nav === 'none', `${what}: vídeo, tablero y opciones no caben a la vez: ${JSON.stringify(l)}`);
   return l;
 };
 await clickText('Ver el vídeo: se para');
@@ -394,6 +396,7 @@ await waitAttr('phase', 'asking', 25000);
 const syncPause = await fake(() => window.__fakeYT.last().time);
 assert(syncPause >= 138 - 0.13 && syncPause <= 138 + 0.2, `la pausa cayó en ${syncPause}, no junto a 138`);
 assert((await boardInfo()).kind === 'question', 'en la pausa, el tablero es el de la pregunta');
+await shot('19-pausa-cabe-todo');
 const fitAsking = await assertFits('en la pausa');
 await shot('13b-pausa-con-tablero');
 await clickText('Seguir viendo sin responder');

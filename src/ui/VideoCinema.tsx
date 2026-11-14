@@ -514,6 +514,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     const id = window.setTimeout(() => stage.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
     return () => window.clearTimeout(id);
   }, [compact, st.phase, st.stop]);
+  // Vídeo y tablero a la vez en una pantalla: la cabecera y las opciones se condensan.
+  const fit = compact && !!shown;
   const videoCredit = (
     <p className="vc-credit">
       {compact ? `Vídeo: ${clip.video.channel} · YouTube · ` : `Vídeo: «${clip.video.title}» · canal ${clip.video.channel} en YouTube · `}
@@ -525,9 +527,16 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
   return (
     <section className="vc" data-clip={clip.id} data-phase={st.phase} data-stop={st.stop} data-question={qi} data-player={player} data-video={st.videoOn ? 'on' : 'off'}>
-      <div className="vc-stage" ref={stage} data-fit={compact && shown ? 'on' : 'off'}>
+      <div className="vc-stage" ref={stage} data-fit={fit ? 'on' : 'off'}>
         {compact ? (
-          <p className="cm-kicker vc-compact-head">{clip.subtitle}</p>
+          <div className="vc-compact-row">
+            <p className="cm-kicker vc-compact-head">{clip.subtitle}</p>
+            {fit && (
+              <a className="vc-compact-yt" href={watchUrl(clip.video, at)} target="_blank" rel="noreferrer">
+                {clip.video.channel} en YouTube
+              </a>
+            )}
+          </div>
         ) : (
           <header className="vc-head">
             <p className="cm-kicker">{clip.event}</p>
@@ -568,7 +577,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           )}
         </div>
         {player === 'loading' && st.errorCode == null && <p className="cm-quiet vc-loading">Cargando el reproductor de YouTube…</p>}
-        {videoCredit}
+        {!fit && videoCredit}
 
         {st.phase === 'idle' && (
           <div className="cm-hint vc-panel">
@@ -705,13 +714,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             </div>
           </div>
         )}
-      </div>
 
       {st.phase === 'asking' && q && !answer && (
         <div className="vc-tools">
           {!busy && (
             <>
-              <p className="cm-quiet">Haz tu jugada en el tablero.</p>
               <div className="cm-row">
                 {q.hint && (hint ? <p className="vc-hint">{q.hint}</p> : <button className="cm-why" onClick={() => setHint(true)}>Pista</button>)}
                 <button className="cm-link" onClick={showAnswer}>
@@ -720,7 +727,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               </div>
             </>
           )}
-          <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={reveal} onFinish={() => send({ type: 'finish' })} />
+          {!fit && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={reveal} onFinish={() => send({ type: 'finish' })} />}
         </div>
       )}
 
@@ -827,11 +834,13 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             Ir ya a la pregunta
           </button>
         )}
+        {fit && st.phase === 'asking' && q && !answer && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={reveal} onFinish={() => send({ type: 'finish' })} />}
         {canEditMarks(packed) && (
           <button className="cm-link" onClick={onEdit}>
             Editor de marcas
           </button>
         )}
+      </div>
       </div>
     </section>
   );

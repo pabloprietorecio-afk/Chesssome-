@@ -1694,15 +1694,15 @@ a {
   min-height: 100vh;
   min-height: 100dvh;
   box-sizing: border-box;
-  padding: 8px 0;
-  gap: 8px;
+  padding: 6px 0;
+  gap: 6px;
 }
 .vc-stage[data-fit='on'] > * {
   flex: none;
 }
 .vc-stage[data-fit='on'] > .vc-board {
   flex: 1 1 0;
-  min-height: 240px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
 }
@@ -1841,4 +1841,68 @@ a {
   background: color-mix(in srgb, var(--card) 62%, transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
+}
+
+/* En el cine (vídeo y tablero a la vez), la cabecera de la app se encoge para ganar alto. */
+:root[data-immersive='cine'] .cm-top {
+  padding: 6px 0;
+}
+:root[data-immersive='cine'] .cm-brand {
+  font-size: 1rem;
+  gap: 8px;
+}
+:root[data-immersive='cine'] .cm-logo {
+  width: 28px;
+  height: 28px;
+  border-width: 2px;
+  border-radius: 9px;
+}
+:root[data-immersive='cine'] .cm-logo svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Pie del cine: en una línea y discreto, para que quepa bajo el tablero. */
+.vc-stage[data-fit='on'] .vc-foot {
+  gap: 4px 16px;
+  font-size: 0.85rem;
+}
+.vc-stage[data-fit='on'] .vc-foot .cm-link {
+  padding: 4px 0;
+}
+/* En la pausa, las opciones van en una o dos líneas bajo el tablero, sin apilarse. */
+.vc-stage[data-fit='on'] .vc-tools {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+.vc-stage[data-fit='on'] .vc-tools > .cm-row {
+  display: contents;
+}
+.vc-stage[data-fit='on'] .vc-tools .cm-why {
+  padding: 8px 16px;
+}
+/* Cabecera condensada del cine: partida a la izquierda, enlace a YouTube a la derecha, en una sola línea. */
+.vc-compact-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.vc-compact-row .vc-compact-head {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.vc-compact-yt {
+  flex: none;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.vc-stage[data-fit='on'] .vc-question {
+  font-size: 1.05rem;
+}
+.vc-stage[data-fit='on'] .vc-foot {
+  font-size: 0.82rem;
 }
