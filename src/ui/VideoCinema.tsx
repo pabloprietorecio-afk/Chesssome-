@@ -704,7 +704,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   return (
     <section className="vc" data-clip={clip.id} data-phase={st.phase} data-stop={st.stop} data-question={qi} data-player={player} data-video={st.videoOn ? 'on' : 'off'}>
       <div className="vc-stage" ref={stage} data-fit={fit ? 'on' : 'off'}>
-        {compact ? (
+        {fit ? null : compact ? (
           <div className="vc-compact-row">
             <p className="cm-kicker vc-compact-head">{clip.subtitle}</p>
             {fit && (
@@ -866,22 +866,22 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                 <span className="vc-board-label-text">
                   Tablero del vídeo · <span className="vc-san">{synced.label}</span>
                 </span>
-                {st.phase === 'ended' && cardHidden && (
-                  <button className="vc-reopen" onClick={() => setCardHidden(false)}>
-                    Ver el final
-                  </button>
+                {fit && (
+                  <a className="vc-compact-yt" href={watchUrl(clip.video, at)} target="_blank" rel="noreferrer">
+                    {clip.video.channel}
+                  </a>
                 )}
               </p>
             )}
             {!synced && fit && st.phase === 'asking' && q && (
               <p className="cm-kicker vc-board-label vc-board-label-ask">
                 <span className="vc-board-label-text">
-                  {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qNumber} de {qTotal}
+                  Pregunta {qNumber} de {qTotal}
                 </span>
-                {!gate && cardHidden && (
-                  <button className="vc-reopen" onClick={() => setCardHidden(false)}>
-                    {answer ? 'Ver la explicación' : 'Ver la pregunta'}
-                  </button>
+                {fit && (
+                  <a className="vc-compact-yt" href={watchUrl(clip.video, at)} target="_blank" rel="noreferrer">
+                    {clip.video.channel}
+                  </a>
                 )}
               </p>
             )}
@@ -1061,30 +1061,39 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       )}
 
 
-      {fit ? (
-        // Botonera fija mientras se ve el clip: siempre los mismos botones en el mismo sitio; cada uno se activa
-        // cuando tiene sentido.
-        <nav className="vc-dock" aria-label="Opciones del clip">
-          <DockButton icon="back" label="Cartelera" onClick={onClose} />
-          {answer && canRetry && !gate ? (
-            <DockButton icon="retry" label="Repetir" onClick={retry} />
-          ) : (
-            <DockButton icon="hint" label="Pista" onClick={dock.hint} />
-          )}
-          <DockButton icon="answer" label="Respuesta" onClick={dock.answer} />
-          <DockButton icon="play" label="Continuar" onClick={dock.play} />
-          <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Siguiente'} onClick={dock.next} />
-          {canEditMarks(packed) && devFlag(LOCAL_MARKS_FLAG) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
+      {fit || (st.phase === 'ended' && shown && !lessonNow) ? (
+        // Botonera fija de dos filas: arriba, lo que se hace con la pregunta; abajo, moverse por el clip. Siempre los
+        // mismos botones en el mismo sitio; cada uno se activa cuando tiene sentido.
+        <nav className="vc-dock vc-dock-2" aria-label="Opciones del clip">
+          <div className="vc-dock-row">
+            {answer && canRetry && !gate ? (
+              <DockButton icon="retry" label="Repetir" onClick={retry} />
+            ) : (
+              <DockButton icon="hint" label="Pista" onClick={dock.hint} />
+            )}
+            <DockButton icon="answer" label="Respuesta" onClick={dock.answer} />
+            <DockButton icon="play" label="Continuar" onClick={dock.play} />
+            <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Siguiente'} onClick={dock.next} />
+          </div>
+          <div className="vc-dock-row">
+            <DockButton icon="back" label="Cartelera" onClick={onClose} />
+            <DockButton
+              icon="text"
+              label={st.phase === 'ended' ? 'Ver el final' : answer ? 'Explicación' : 'Pregunta'}
+              onClick={cardHidden && ((st.phase === 'asking' && q && !gate && !busy) || st.phase === 'ended') ? () => setCardHidden(false) : undefined}
+            />
+            <DockButton icon="lesson" label="Lección" onClick={st.phase === 'ended' && clip.lesson ? () => setLessonStep(0) : undefined} />
+            <DockButton
+              icon="restart"
+              label="Otra vez"
+              onClick={st.phase === 'ended' ? () => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); } : undefined}
+            />
+            {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
+          </div>
         </nav>
       ) : (
         <nav className="vc-dock" aria-label="Opciones del clip">
           <DockButton icon="back" label="Cartelera" onClick={onClose} />
-          {st.phase === 'ended' && shown && !lessonNow && (
-            <>
-              {clip.lesson && <DockButton icon="lesson" label="Ver la lección" onClick={() => setLessonStep(0)} />}
-              <DockButton icon="retry" label="Otra vez" onClick={() => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); }} />
-            </>
-          )}
           {canEditMarks(packed) && <DockButton icon="edit" label="Editor de marcas" onClick={onEdit} />}
         </nav>
       )}
@@ -1103,6 +1112,8 @@ const DOCK_ICONS: Record<string, string> = {
   answer: 'M3 10s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5zM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
   retry: 'M4 10a6 6 0 1 0 2-4.5M4 3v3h3',
   lesson: 'M3 5c2-1 5-1 7 1 2-2 5-2 7-1v11c-2-1-5-1-7 1-2-2-5-2-7-1zM10 6v11',
+  text: 'M4 4h12v9H9l-4 3v-3H4z',
+  restart: 'M15 6a6 6 0 1 0 1 6M16 3v4h-4',
   edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
 };
 

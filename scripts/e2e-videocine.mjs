@@ -154,7 +154,7 @@ assert(!(await hasButton('Repetir')), 'con la buena no se ofrece «Repetir»');
 await clickText('Siguiente');
 await waitAttr('stop', '1', 12000);
 await sleep(300);
-assert(/pregunta 2 de 3/.test(await page.$eval('.vc-ask', (e) => e.textContent).catch(() => '') + (await page.$eval('.vc-board-label', (e) => e.textContent).catch(() => ''))), 'pregunta 2 de 3');
+assert(/pregunta 2 de 3/i.test(await page.$eval('.vc-ask', (e) => e.textContent).catch(() => '') + (await page.$eval('.vc-board-label', (e) => e.textContent).catch(() => ''))), 'pregunta 2 de 3');
 await move('e6d5');
 assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
 await clickText('Siguiente');
@@ -546,7 +546,7 @@ assert(bi.ply === '123' && /tras 62\.Rf4/.test(bi.label), 'al final, 62.Rf4: ' +
 // Al acabar, la lección: ocho pasos en el tablero, con flechas y la jugada animada al avanzar.
 await fake(() => { window.__fakeYT.last().time = 379.2; window.__fakeYT.tapPlay(); });
 await waitAttr('phase', 'ended', 8000);
-await clickText('Ver la lección');
+await clickText('Lección');
 await page.waitForSelector('.vc-lesson');
 assert(/Por qué 61\.Cc4\+ gana/.test(await page.$eval('.vc-lesson', (e) => e.textContent)), 'título de la lección');
 await clickText('Siguiente'); await sleep(200);
