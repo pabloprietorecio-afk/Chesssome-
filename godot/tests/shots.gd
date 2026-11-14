@@ -198,6 +198,12 @@ func _simple_shots() -> void:
 	await _frames(3)
 	await _shot("18_simple_cenital")
 	board.deselect()
+	# Mundos Kids: cada uno desde arriba, con la posición inicial.
+	view.set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	for world: String in ["reino", "safari", "espacio", "piratas", "dino"]:
+		view.set_piece_set(world)
+		await _frames(3)
+		await _shot("19_mundo_" + world)
 	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
 	view.set_piece_set("clasico")
 	view.set_board_style("madera")

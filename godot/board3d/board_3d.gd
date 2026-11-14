@@ -30,7 +30,16 @@ const OUTLINE_WIDTH := 0.026
 ## Color del contorno de las piezas negras (amarillo, para que se vea sobre piezas y casillas oscuras).
 const BLACK_OUTLINE := Color("f5c542")
 ## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
-const PIECE_SETS := ["clasico", "fichas", "simple"]
+const PIECE_SETS := ["clasico", "fichas", "simple", "reino", "safari", "espacio", "piratas", "dino"]
+## Juegos planos (un dibujo por pieza): «Simple» y los mundos del nivel Kids (tools/pieces/mundos_arte.py).
+const FLAT_ATLAS := {
+	"simple": "res://sets/simple/iconos.bin",
+	"reino": "res://sets/mundos/reino.bin",
+	"safari": "res://sets/mundos/safari.bin",
+	"espacio": "res://sets/mundos/espacio.bin",
+	"piratas": "res://sets/mundos/piratas.bin",
+	"dino": "res://sets/mundos/dino.bin",
+}
 ## Juego «Simple»: el dibujo plano de cada pieza (tools/pieces/simple_arte.py), mirando siempre a la cámara y lo más
 ## grande que cabe en su casilla, sin relieve ni contorno 3D.
 const SIMPLE_ATLAS := "res://sets/simple/iconos.bin"
@@ -135,6 +144,7 @@ var _tex_mats: Array[ShaderMaterial] = []
 var _token_mats: Array[ShaderMaterial] = []
 var _token_mesh: Mesh
 var _simple_tex: Texture2D
+var _flat_cache := {}
 var _simple_pixel := 0.96 / 256.0
 var _icons_tex: Texture2D
 var _sfx_tweens: Array[Tween] = []
@@ -510,8 +520,9 @@ func is_tokens() -> bool:
 	return piece_set == "fichas"
 
 
+## Juego plano: «Simple» o uno de los mundos Kids.
 func is_simple() -> bool:
-	return piece_set == "simple"
+	return FLAT_ATLAS.has(piece_set)
 
 
 ## Cambia el juego de piezas ("clasico" o "fichas") sin tocar la posición.
@@ -594,9 +605,9 @@ func _dress(node: Node3D) -> void:
 			flat.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
 			flat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 			flat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			flat.texture = _simple_texture()
 			flat.region_enabled = true
 			node.add_child(flat)
+		flat.texture = _simple_texture()
 		var px := float(flat.texture.get_height()) * 0.5 if flat.texture != null else 256.0
 		flat.region_rect = Rect2((piece_type - 1) * px, side * px, px, px)
 		flat.pixel_size = _simple_pixel
@@ -811,14 +822,17 @@ func _fit_disc(node: Node3D, mesh: Mesh) -> void:
 
 ## Atlas del juego «Simple» (se carga al usarlo por primera vez).
 func _simple_texture() -> Texture2D:
-	if _simple_tex == null:
-		var bytes := FileAccess.get_file_as_bytes(SIMPLE_ATLAS)
+	var key := piece_set if FLAT_ATLAS.has(piece_set) else "simple"
+	if not _flat_cache.has(key):
+		var path := str(FLAT_ATLAS[key])
+		var bytes := FileAccess.get_file_as_bytes(path)
 		var img := Image.new()
 		if bytes.is_empty() or img.load_png_from_buffer(bytes) != OK:
-			push_error("No se pueden cargar las piezas simples: " + SIMPLE_ATLAS)
+			push_error("No se pueden cargar las piezas planas: " + path)
 			img = Image.create(12, 2, false, Image.FORMAT_RGBA8)
 		img.generate_mipmaps()
-		_simple_tex = ImageTexture.create_from_image(img)
+		_flat_cache[key] = ImageTexture.create_from_image(img)
+	_simple_tex = _flat_cache[key]
 	return _simple_tex
 
 

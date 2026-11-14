@@ -90,6 +90,11 @@ var board_outline := true
 const SETS := ["clasico", "fichas", "simple"]
 const SET_NAMES := ["Figuras", "Fichas", "Simple"]
 var piece_set := "clasico"
+## Mundos de piezas del nivel Kids (Board3D.FLAT_ATLAS): se ven en las partidas; las lecciones siguen con las piezas
+## normales, para que el niño aprenda las de verdad. "" = sin mundo.
+const WORLDS := ["", "reino", "safari", "espacio", "piratas", "dino"]
+const WORLD_NAMES := ["Normales", "Reino", "Safari", "Espacio", "Piratas", "Dinos"]
+var kids_world := ""
 var sound_on := true
 ## Pista animada sobre el tablero: recuerda que se puede ampliar y girar. Viene activada y se apaga sola
 ## la primera vez que el jugador amplía, gira o desplaza el tablero (se puede volver a activar en Opciones).
@@ -101,7 +106,11 @@ var step_fen := ""
 
 ## Modo de la pantalla: "free" (los problemas en orden y sin nivel: es lo que usan las pruebas), "test" (test
 ## de nivel: un intento por problema y sin ayudas) o "train" (entrenamiento adaptado al nivel y al perfil).
-var mode := "free"
+var mode := "free":
+	set(value):
+		mode = value
+		if view != null and view.board.piece_set != _shown_set():
+			_sync_piece_set()
 ## Lo que la evaluación sabe de cada problema (Assessment.item_of), en el orden de la lista, y dónde está cada id.
 var pool: Array = []
 var _index_of := {}
@@ -634,7 +643,7 @@ func _ready() -> void:
 	view.move_played.connect(_on_move_played)
 	view.view_gesture.connect(_on_view_gesture)
 	add_child(view)
-	view.set_piece_set(piece_set)
+	view.set_piece_set(_shown_set())
 	view.set_sound_enabled(sound_on)
 	view.set_view_locked(_saved_lock)
 	view.board.anim_mode = _saved_anim as Board3D.Anim
@@ -734,6 +743,9 @@ func _load_settings() -> void:
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	kids = bool(cfg.get_value("app", "kids", false))
+	var world := str(cfg.get_value("app", "mundo", ""))
+	if WORLDS.has(world):
+		kids_world = world
 	press_clock = bool(cfg.get_value("partida", "pulsar_reloj", true))
 	press_reminder = bool(cfg.get_value("partida", "aviso_reloj", true))
 	voice_on = bool(cfg.get_value("sonido", "voz", true))
@@ -758,6 +770,7 @@ func _save_settings() -> void:
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
+	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("partida", "pulsar_reloj", press_clock)
 	cfg.set_value("partida", "aviso_reloj", press_reminder)
 	cfg.set_value("sonido", "voz", voice_on)
@@ -2255,6 +2268,9 @@ func _build_sheet() -> void:
 		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
 		if press_clock:
 			box.add_child(_switch_row("bulb", "butter", "Aviso si no lo pulsas", "A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo." % int(PRESS_REMINDER), press_reminder, _set_press_reminder))
+	if kids:
+		box.add_child(_caption("Mundo de las partidas"))
+		box.add_child(_world_tiles())
 	box.add_child(_caption("Piezas"))
 	box.add_child(_picture_tiles([["piece_knight", "Figuras"], ["token_pawn", "Fichas"], ["piece_rook", "Simple"]], SETS.find(piece_set), _set_pieces_index))
 	box.add_child(_caption("Material"))
@@ -2264,7 +2280,7 @@ func _build_sheet() -> void:
 	box.add_child(_caption("Animaciones"))
 	box.add_child(_segments(["Completas", "Rápidas", "Mínimas", "Sin"], int(view.board.anim_mode), _set_anim))
 	box.add_child(_caption("Vista"))
-	if piece_set == "simple":
+	if view.board.is_simple():
 		box.add_child(_para("Con las piezas «Simple», el tablero se ve siempre desde arriba: solo se puede ampliar con dos dedos.", F_SUB, _c("quiet"), font_regular))
 	else:
 		box.add_child(_segments(["Inclinada", "En picado"], 1 if top_view else 0, _set_top_view))
@@ -2367,22 +2383,99 @@ func _switch_row(icon_name: String, tint_name: String, label: String, hint: Stri
 
 func _set_pieces_index(i: int) -> void:
 	piece_set = SETS[clampi(i, 0, SETS.size() - 1)]
-	view.set_piece_set(piece_set)
-	_apply_simple_view()
+	_sync_piece_set()
 	_save_settings()
 	_sync_sheet()
 
 
+## Juego de piezas que toca enseñar: en una partida Kids, el mundo elegido; si no, el del jugador.
+func _shown_set() -> String:
+	if kids and kids_world != "" and mode == "game":
+		return kids_world
+	return piece_set
+
+
+func _sync_piece_set() -> void:
+	if view == null:
+		return
+	view.set_piece_set(_shown_set())
+	_apply_simple_view()
+
+
+## Teselas de los mundos Kids: dos filas, cada una con el rey de su mundo.
+func _world_tiles() -> VBoxContainer:
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 12)
+	var row: HBoxContainer = null
+	for i in WORLDS.size():
+		if i % 3 == 0:
+			row = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 12)
+			rows.add_child(row)
+		var colors := _choice_colors(WORLDS[i] == kids_world)
+		var b := _button("piece_king" if i == 0 else "", str(WORLD_NAMES[i]), _set_world.bind(i), colors[0], colors[1], {"vertical": true, "font_size": F_SUB, "height": 200.0, "icon": 96.0, "radius": 44, "border": colors[2], "font": font_semibold if WORLDS[i] == kids_world else font_medium})
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if i > 0:
+			var pic := TextureRect.new()
+			pic.texture = _world_picture(WORLDS[i])
+			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			pic.custom_minimum_size = Vector2(104.0, 104.0)
+			pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var inner := b.get_child(0)
+			inner.add_child(pic)
+			inner.move_child(pic, 0)
+		row.add_child(b)
+	return rows
+
+
+var _world_pics := {}
+
+
+## El rey blanco de un mundo, recortado de su atlas.
+func _world_picture(world: String) -> Texture2D:
+	if not _world_pics.has(world):
+		var bytes := FileAccess.get_file_as_bytes(str(Board3D.FLAT_ATLAS[world]))
+		var img := Image.new()
+		if bytes.is_empty() or img.load_png_from_buffer(bytes) != OK:
+			return null
+		var cell := img.get_height() / 2
+		var region := img.get_region(Rect2i(cell * 5, 0, cell, cell))
+		region.generate_mipmaps()
+		_world_pics[world] = ImageTexture.create_from_image(region)
+	return _world_pics[world]
+
+
+func _set_world(i: int) -> void:
+	kids_world = WORLDS[clampi(i, 0, WORLDS.size() - 1)]
+	_sync_piece_set()
+	_save_settings()
+	if sheet_kind != "":
+		_sync_sheet()
+	else:
+		_open_game_setup()
+
+
 ## «Simple» es el tablero plano visto desde arriba: solo se amplía, no se gira ni se inclina. Al salir de él, el
 ## giro vuelve a como lo tenía el jugador.
+var _flat_view := false
+
+
 func _apply_simple_view() -> void:
-	if piece_set == "simple":
+	if view.board.is_simple():
 		view.set_tilt_enabled(false)
 		view.set_view_locked(true)
-		top_view = true
+		if piece_set == "simple":
+			top_view = true
+		_flat_view = true
 		view.center_view()
 	else:
 		view.set_view_locked(_saved_lock)
+		# Al salir de un mundo Kids, la vista vuelve a la que tenía el jugador.
+		if _flat_view and not top_view:
+			view.default_view()
+		_flat_view = false
 
 
 func _set_style_index(i: int) -> void:
@@ -2433,7 +2526,7 @@ func _set_anim(mode: int) -> void:
 
 
 func _set_top_view(i: int) -> void:
-	if piece_set == "simple":
+	if view.board.is_simple():
 		return
 	top_view = i == 1
 	_save_settings()
@@ -2449,13 +2542,13 @@ func _on_toggle_view() -> void:
 	if view.is_zoomed():
 		view.reset_zoom()
 		return
-	if piece_set == "simple":
+	if view.board.is_simple():
 		return
 	_set_top_view(0 if top_view else 1)
 
 
 func _set_tilt(on: bool) -> void:
-	if piece_set == "simple":
+	if view.board.is_simple():
 		return
 	view.set_tilt_enabled(on)
 	if on and view.view_locked:
@@ -2465,7 +2558,7 @@ func _set_tilt(on: bool) -> void:
 
 
 func _set_lock(on: bool) -> void:
-	if piece_set == "simple":
+	if view.board.is_simple():
 		return
 	_saved_lock = on
 	view.set_view_locked(on)
@@ -3770,6 +3863,11 @@ func _open_game_setup() -> void:
 	body.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
 	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color))
+	if kids:
+		body.add_child(_spacer(30.0))
+		body.add_child(_text("MUNDO", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(12.0))
+		body.add_child(_world_tiles())
 	if not kids:
 		body.add_child(_spacer(30.0))
 		body.add_child(_text("RITMO", F_CAP, _c("quiet"), font_semibold))
@@ -5003,6 +5101,7 @@ func _set_kids(on: bool) -> void:
 		return
 	if on:
 		kids = true
+		_sync_piece_set()
 		_actions_mode = ""
 		_sync_bar_icons()
 		_save_settings()
@@ -5016,6 +5115,7 @@ func _set_kids(on: bool) -> void:
 
 func _leave_kids() -> void:
 	kids = false
+	_sync_piece_set()
 	_actions_mode = ""
 	_sync_bar_icons()
 	_stop_voice()

@@ -60,3 +60,13 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
 - Piezas «Cuarto de juegos» (modelos 3D nuevos): de momento el nivel Kids usa las figuras o las fichas.
 - Minijuegos con pocas piezas (la guerra de peones, mates básicos contra un rival que se mueve).
 - Probar con niños de verdad: ¿se entienden las frases? ¿la voz va demasiado rápida?
+
+## Mundos de piezas (14 nov 2026)
+
+- Cinco mundos planos para las partidas Kids: Reino, Safari, Espacio, Piratas y Dinos. Los personajes salen de la
+  lámina que aportó Pablo (`tools/pieces/mundos/`), recortados sin ficha por `tools/pieces/mundos_arte.py`.
+- Las lecciones siguen con las piezas normales (el niño aprende las de verdad); el mundo se ve en las partidas
+  (`_shown_set()` en `demo.gd`). Se elige en «Juega una partida» y en Opciones (`app/mundo`).
+- Blancas: contorno blanco. Negras: oscurecidas y con contorno azul tinta. Cada personaje lleva una insignia pequeña
+  con la pieza clásica que es. Con un mundo, el tablero se ve desde arriba (como «Simple»).
+- De momento los cinco son planos. El 3D de Espacio, Piratas y Dinos necesita modelos `.glb` (fase aparte).
