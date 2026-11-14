@@ -475,7 +475,7 @@ await waitAttr('phase', 'reveal');
 await setTime(377); await sleep(300);
 bi = await boardInfo();
 assert(bi.ply === '123' && /tras 62\.Rf4/.test(bi.label), 'al final, 62.Rf4: ' + JSON.stringify(bi));
-// Al acabar, la lección: cinco pasos en el tablero, con flechas.
+// Al acabar, la lección: ocho pasos en el tablero, con flechas y la jugada animada al avanzar.
 await fake(() => { window.__fakeYT.last().time = 379.2; window.__fakeYT.tapPlay(); });
 await waitAttr('phase', 'ended', 8000);
 await clickText('Ver la lección');
@@ -483,9 +483,9 @@ await page.waitForSelector('.vc-lesson');
 assert(/Por qué 61\.Cc4\+ gana/.test(await page.$eval('.vc-lesson', (e) => e.textContent)), 'título de la lección');
 await clickText('Siguiente'); await sleep(200);
 await shot('17c-leccion-paso-2');
-for (let k = 2; k < 5; k++) { await clickText('Siguiente'); await sleep(150); }
+for (let k = 2; k < 8; k++) { await clickText('Siguiente'); await sleep(150); }
 const lastStep = await page.$eval('.vc-lesson', (e) => e.textContent);
-assert(/Por qué abandonó Carlsen/.test(lastStep) && /paso 5 de 5/.test(lastStep), 'último paso: ' + lastStep);
+assert(/Por eso abandonó Carlsen/.test(lastStep) && /paso 8 de 8/.test(lastStep), 'último paso: ' + lastStep);
 await shot('17c-leccion');
 await clickText('Terminar la lección');
 await sleep(150);

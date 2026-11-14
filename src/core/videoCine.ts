@@ -652,14 +652,14 @@ export function run(adapter: PlayerAdapter, commands: Command[]): void {
 }
 
 /** Posiciones de cada paso de una lección, o el error si alguna jugada no es legal. */
-export function lessonPositions(clip: Pick<Clip, 'timeline'> & { lesson?: ClipLesson }): { fen: string; last: { from: string; to: string } | null }[] {
+export function lessonPositions(clip: Pick<Clip, 'timeline'> & { lesson?: ClipLesson }): { fen: string; last: { from: string; to: string; captured: boolean } | null }[] {
   const lesson = clip.lesson;
   if (!lesson) return [];
   const start = fenAfter(clip, lesson.from);
   if (!start) throw new Error(`La lección empieza fuera de las jugadas disponibles (${lesson.from}).`);
   return lesson.steps.map((st, i) => {
     const c = new Chess(start);
-    let last: { from: string; to: string } | null = null;
+    let last: { from: string; to: string; captured: boolean } | null = null;
     for (const san of st.moves.split(/\s+/).filter(Boolean)) {
       const m = (() => {
         try {
@@ -669,7 +669,7 @@ export function lessonPositions(clip: Pick<Clip, 'timeline'> & { lesson?: ClipLe
         }
       })();
       if (!m) throw new Error(`Lección, paso ${i + 1}: ${san} no es legal.`);
-      last = { from: m.from, to: m.to };
+      last = { from: m.from, to: m.to, captured: !!m.captured };
     }
     return { fen: c.fen(), last };
   });

@@ -308,6 +308,13 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const [lessonStep, setLessonStep] = useState<number | null>(null);
   const lessonPos = useMemo(() => lessonPositions(clip), [clip]);
   const lessonRef = useRef<HTMLDivElement | null>(null);
+  // Paso anterior de la lección (para animar solo al avanzar de uno en uno).
+  const lessonPrev = useRef<number | null>(null);
+  const lessonShownRef = useRef<number | null>(null);
+  if (lessonShownRef.current !== lessonStep) {
+    lessonPrev.current = lessonShownRef.current;
+    lessonShownRef.current = lessonStep;
+  }
   useEffect(() => {
     if (lessonStep != null) lessonRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [lessonStep]);
@@ -459,8 +466,13 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   } else prevSynced.current = null;
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
+  // Al avanzar un paso de la lección, se anima la última jugada del paso.
+  const lessonAnim: MoveAnim | null =
+    lessonNow && lessonNow.pos.last && lessonPrev.current != null && lessonPrev.current === lessonStep! - 1
+      ? { ...lessonNow.pos.last, key: 1000 + lessonStep! }
+      : null;
   const shown = lessonNow
-    ? { fen: lessonNow.pos.fen, last: lessonNow.pos.last, anim: null }
+    ? { fen: lessonNow.pos.fen, last: lessonNow.pos.last, anim: lessonAnim }
     : synced
       ? { fen: synced.fen, last: synced.last, anim: syncedAnim }
       : board;

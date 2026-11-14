@@ -228,8 +228,23 @@ export const CLIPS: ClipSource[] = [
           ],
         },
         {
+          moves: 'Nc4+ Ke2 Kf4 d2',
+          text: 'Por qué abandonó Carlsen. Su mejor defensa era 62…d2: el peón amenaza coronar en d1.',
+          arrows: [{ from: 'd2', to: 'd1', tone: 'bad' }],
+        },
+        {
+          moves: 'Nc4+ Ke2 Kf4 d2 Nxe3',
+          text: '63.Cxe3: el caballo se come el peón de e3 y, desde e3, vigila d1. Si el peón corona, el caballo se come la dama.',
+          arrows: [{ from: 'e3', to: 'd1', tone: 'good' }],
+        },
+        {
+          moves: 'Nc4+ Ke2 Kf4 d2 Nxe3 Kd3 b4',
+          text: '63…Rd3 64.b4: el rey negro no puede comerse el caballo, porque lo defiende el rey blanco. Las blancas tienen tiempo de avanzar su peón.',
+          arrows: [{ from: 'f4', to: 'e3', tone: 'info' }],
+        },
+        {
           moves: 'Nc4+ Ke2 Kf4 d2 Nxe3 Kd3 b4 d1=Q Nxd1',
-          text: 'Por qué abandonó Carlsen: la mejor defensa es 62…d2, pero 63.Cxe3 se come el peón y desde e3 vigila d1, la casilla de coronación. Tras 63…Rd3 64.b4 d1=D 65.Cxd1, las blancas quedan con caballo y dos peones contra el rey solo.',
+          text: '64…d1=D 65.Cxd1: la dama nueva cae enseguida. Quedan caballo y dos peones contra el rey solo, una victoria clara según el motor. Por eso abandonó Carlsen.',
         },
       ],
     },

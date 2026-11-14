@@ -530,3 +530,19 @@ describe('lección de «El golpe en la mesa»', () => {
     expect(() => lessonPositions({ ...bang, lesson: { ...bang.lesson!, steps: [{ moves: 'Nc4+ Kd1 Kxh5', text: '' }] } })).toThrow();
   });
 });
+
+describe('regla de las lecciones: sin saltos bruscos', () => {
+  // Pablo, 14 nov 2026: cada paso de una lección añade como mucho dos medias jugadas al anterior, para que no se pierda.
+  for (const c of PACK.clips.filter((x) => x.lesson)) {
+    it(`${c.id}: cada paso añade 0, 1 o 2 medias jugadas y continúa el anterior`, () => {
+      const steps = c.lesson!.steps.map((s) => s.moves.split(/\s+/).filter(Boolean));
+      steps.forEach((m, i) => {
+        if (i === 0) return expect(m.length).toBeLessThanOrEqual(2);
+        const prev = steps[i - 1];
+        expect(m.slice(0, prev.length)).toEqual(prev);
+        expect(m.length - prev.length).toBeGreaterThanOrEqual(0);
+        expect(m.length - prev.length).toBeLessThanOrEqual(2);
+      });
+    });
+  }
+});

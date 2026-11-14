@@ -239,3 +239,8 @@ Cuatro películas sin vídeo (oposición, Saavedra 1895, Lucena, Philidor) con f
 - **Saavedra:** publicada por Barbier en 1895; Saavedra murió en 1922. [Tim Krabbé](https://timkr.home.xs4all.nl/chess2/prynd.htm).
 - **Sin verificar:** si los estudios compuestos son obra protegida en la UE; la fecha de muerte de Barbier.
 - Consultar con un abogado antes de publicar comercialmente partidas históricas o estudios.
+
+## Reglas de las lecciones
+
+- **Sin saltos bruscos (Pablo, 14 nov 2026):** cada paso añade como mucho dos medias jugadas al anterior, y las jugadas continúan las del paso previo. Una idea por paso. Al avanzar, el tablero anima la última jugada. Lo comprueba un test (`regla de las lecciones: sin saltos bruscos`).
+- Toda afirmación sobre evaluaciones o variantes se comprueba antes con Stockfish y se anota en el comentario de la lección (profundidad y fecha).
