@@ -1,0 +1,47 @@
+name: Voces de ánimo expresivas (Chatterbox)
+
+# Frases de ánimo del nivel Kids con Chatterbox Multilingual (MIT), con la voz de Kokoro ef_dora como referencia
+# y con la voz por defecto. Se publican para escucharlas en la versión preliminar «voces-animo» y en la rama
+# voz-exp-src. Ver tools/voz/expresiva.py.
+on:
+  push:
+    branches: [voz-exp-fetch]
+  workflow_dispatch:
+
+jobs:
+  voces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependencias
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak-ng ffmpeg
+          pip install -q chatterbox-tts
+          pip install -q "kokoro>=0.9.4" soundfile
+          pip list 2>/dev/null | grep -iE "torch|chatterbox|kokoro"
+      - name: Generar
+        run: python tools/voz/expresiva.py --salida out
+      - name: Publicar en la rama voz-exp-src
+        run: |
+          cd out
+          ls -la
+          git init -q
+          git checkout -q -b voz-exp-src
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Voces de ánimo (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" voz-exp-src
+      - name: Para escuchar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: voces-animo
+          name: Chessome · voces de ánimo (Chatterbox)
+          prerelease: true
+          body: "Frases de ánimo para el nivel Kids con Chatterbox Multilingual (MIT). «__ref»: con la voz de Kokoro ef_dora como referencia (la misma del resto del nivel Kids). «__def»: voz por defecto de Chatterbox. Llevan la marca de agua inaudible PerTh de Resemble AI."
+          files: out/*.ogg
