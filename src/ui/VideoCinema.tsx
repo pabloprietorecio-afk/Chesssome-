@@ -265,7 +265,8 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
   );
 
   const time = useCallback(() => adapter.current?.snapshot()?.time ?? null, []);
-  return { st, send, player, blocked, playing, time, now };
+  const playNow = useCallback(() => adapter.current?.play(), []);
+  return { st, send, player, blocked, playing, time, now, playNow };
 }
 
 /** Desplaza hasta el elemento si no está a la vista en más de la mitad; resuelve cuando ya lo está. */
@@ -296,6 +297,18 @@ const OUTCOME_LABEL: Record<ClipAnswer['outcome'], string> = {
   shown: 'La respuesta',
 };
 
+/** Marca discreta junto al veredicto: tick verde si vale, aspa roja si no. */
+function OutcomeMark({ outcome }: { outcome: ClipAnswer['outcome'] }): JSX.Element | null {
+  const ok = outcome === 'answer' || outcome === 'also-good';
+  const bad = outcome === 'spoils' || outcome === 'played-error';
+  if (!ok && !bad) return null;
+  return (
+    <svg className={`vc-mark vc-mark-${ok ? 'ok' : 'bad'}`} viewBox="0 0 16 16" width="13" height="13" aria-label={ok ? 'Correcta' : 'Incorrecta'} role="img">
+      {ok ? <path d="M3 8.5l3.2 3L13 4.5" /> : <path d="M4 4l8 8M12 4l-8 8" />}
+    </svg>
+  );
+}
+
 function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autostart?: StartMode; onClose: () => void; onEdit: () => void }): JSX.Element {
   const s = useAppState();
   const { clip, local, stale } = useMemo(() => effective(packed), [packed]);
@@ -304,7 +317,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const videoBox = useRef<HTMLDivElement>(null);
   const askBox = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const { st, send, player, blocked, playing, time, now } = useDirector(clip, mount);
+  const { st, send, player, blocked, playing, time, now, playNow } = useDirector(clip, mount);
 
   const [qi, setQi] = useState(0);
   const [answer, setAnswer] = useState<ClipAnswer | null>(null);
@@ -505,9 +518,20 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       : st.adSuspected
         ? <p>Anuncio de YouTube. {quietReveal ? 'El vídeo sigue después.' : 'La pausa esperará a que empiece el vídeo.'}</p>
         : !playing && player !== 'none'
-          ? quietReveal
-            ? <p><strong>Pulsa ▶ en el vídeo</strong> para ver la jugada{blocked ? ' (el navegador no deja arrancarlo solo)' : ''}.</p>
-            : <p><strong>Pulsa ▶ en el vídeo.</strong> Se parará solo justo antes de la jugada clave.</p>
+          ? (
+              <>
+                {player === 'ready' && (
+                  <button className="cm-primary vc-note-play" onClick={playNow} aria-label="Reproducir el vídeo">
+                    ▶ {quietReveal ? 'Ver la jugada' : 'Ver el vídeo'}
+                  </button>
+                )}
+                {quietReveal ? (
+                  <p>{blocked ? 'Si no arranca, pulsa ▶ en el propio vídeo (el navegador no deja arrancarlo desde fuera).' : 'El tablero seguirá al vídeo.'}</p>
+                ) : (
+                  <p>{blocked ? 'Si no arranca, pulsa ▶ en el propio vídeo.' : 'Se parará solo justo antes de la jugada clave.'}</p>
+                )}
+              </>
+            )
           : null;
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
@@ -673,7 +697,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
         {st.phase === 'asking' && q && answer && !gate && !fit && (
           <div className={`cm-hint vc-panel vc-answer vc-o-${answer.outcome}`}>
-            <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
+            <p className="cm-kicker">
+              <OutcomeMark outcome={answer.outcome} /> {OUTCOME_LABEL[answer.outcome]}
+            </p>
             <p>{answer.text}</p>
             {canRetry && (
               <button className="cm-why vc-retry" onClick={retry}>
@@ -747,7 +773,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                       </div>
                     ) : (
                       <div className={`vc-gap-card vc-glass vc-answer vc-o-${answer.outcome}`}>
-                        <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
+                        <p className="cm-kicker">
+              <OutcomeMark outcome={answer.outcome} /> {OUTCOME_LABEL[answer.outcome]}
+            </p>
                         <p>{answer.text}</p>
                         {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
                         {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
@@ -779,7 +807,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                 )}
                 {watchNote && !gap && !gate && (
                   <div className="vc-gap vc-watch-note" role="status" aria-live="polite">
-                    <div className="vc-gap-card vc-glass">{watchNote}</div>
+                    <div className="vc-gap-card vc-glass vc-note-card">{watchNote}</div>
                   </div>
                 )}
                 {gap && (

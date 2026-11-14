@@ -1977,3 +1977,34 @@ a {
 .vc-board-label-ask .vc-reopen {
   flex: none;
 }
+
+/* El aviso del inicio lleva un botón ▶ que arranca el vídeo (el botón sí recibe toques). */
+.vc-note-card {
+  pointer-events: auto;
+  justify-items: center;
+}
+
+/* Tick o aspa junto al veredicto: pequeño y del color del texto apagado, sin llamar la atención. */
+.vc-board .vc-mark,
+.vc-mark {
+  display: inline-block;
+  width: 13px !important;
+  height: 13px !important;
+  max-width: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  vertical-align: -1px;
+  margin-right: 2px;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.vc-mark-ok {
+  stroke: #3a9a5b;
+}
+.vc-mark-bad {
+  stroke: #c4553f;
+}
