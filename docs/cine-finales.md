@@ -254,3 +254,7 @@ Cuatro películas sin vídeo (oposición, Saavedra 1895, Lucena, Philidor) con f
 
 - Ding–Gukesh tiene ahora tres pausas (138; 144,5; 214): respondes, «Siguiente pregunta» enseña la jugada en el vídeo y se para antes de la siguiente. 138 la comprobó Pablo; 144,5 y 214 salen de los relojes con `suggestPause` y están sin comprobar, así que el clip vuelve a `pending`.
 - Sin vídeo que se pare solo («Ir directo»), «Siguiente pregunta» hace en el tablero las jugadas intermedias y pasa a la pregunta de la siguiente pausa (evento `next` del director).
+
+## Botonera fija (14 nov 2026)
+
+Mientras se ve un clip, la botonera inferior tiene siempre los mismos cinco botones en el mismo sitio: Cartelera, Pista (Repetir tras una jugada que no vale), Respuesta, Continuar (seguir el vídeo; sin responder, antes se enseña la jugada de la partida) y Siguiente (ir a la pregunta / siguiente pregunta; Terminar en la última). Cada uno se apaga cuando no tiene sentido. No quedan enlaces de texto: el de YouTube y «Ver la pregunta» son botones píldora. «Respuesta» deja ver primero cómo se mueve la pieza y después llega la explicación.

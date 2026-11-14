@@ -73,6 +73,7 @@ const clickText = async (t) => {
   const ok = await page.evaluate((t) => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim().startsWith(t) && !x.disabled); b?.click(); return !!b; }, t);
   if (!ok) throw new Error('No encuentro el botón: ' + t);
 };
+const openEditor = async () => { if (await hasButton('Editor de marcas')) await clickText('Editor de marcas'); else await clickText('Marcas'); };
 const hasButton = (t) => page.evaluate((t) => [...document.querySelectorAll('button')].some((x) => x.textContent.trim().startsWith(t)), t);
 const attr = (name) => page.$eval('.vc', (e, n) => e.dataset[n], name);
 const waitAttr = async (name, value, ms = 20000) => { const t = Date.now(); while ((await attr(name)) !== String(value)) { if (Date.now() - t > ms) throw new Error(`No llega ${name}=${value} (está en ${await attr(name)})`); await sleep(80); } };
@@ -150,19 +151,19 @@ await move('b2f2');
 assert(/¡Esa es!/.test(await panel()), 'tras repetir, Txf2 debe darse por buena: ' + (await panel()));
 assert(!(await hasButton('Repetir')), 'con la buena no se ofrece «Repetir»');
 // Sin vídeo que se pare solo, «Siguiente pregunta» pasa a la siguiente pausa en el tablero, con las jugadas intermedias.
-await clickText('Siguiente pregunta');
+await clickText('Siguiente');
 await waitAttr('stop', '1', 12000);
 await sleep(300);
 assert(/pregunta 2 de 3/.test(await page.$eval('.vc-ask', (e) => e.textContent).catch(() => '') + (await page.$eval('.vc-board-label', (e) => e.textContent).catch(() => ''))), 'pregunta 2 de 3');
 await move('e6d5');
 assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
-await clickText('Siguiente pregunta');
+await clickText('Siguiente');
 await waitAttr('stop', '2', 12000);
 await sleep(300);
 await shot('05-pregunta-3');
 await move('d5e5');
 assert(/¡Esa es!/.test(await panel()), 'Re5 debe ser la buena: ' + (await panel()));
-await clickText('Ver cómo ocurrió en el vídeo');
+await clickText('Continuar');
 await waitAttr('phase', 'reveal');
 await waitAttr('player', 'ready');
 assert(ytRequests.some((u) => u.includes('youtube-nocookie.com/embed/W9JtcW_0Sr8')), 'el vídeo debe cargarse en modo de privacidad mejorada');
@@ -188,7 +189,7 @@ await scrollTo('.vc-panel');
 await shot('07-fin');
 
 // ── B. Editor de marcas: marcar, probar y guardar en este dispositivo. ──
-await clickText('Editor de marcas');
+await openEditor();
 await page.waitForSelector('.vc-editor');
 await clickText('Cargar el vídeo');
 await page.waitForSelector('.vc-editor[data-player="ready"]');
@@ -282,12 +283,12 @@ await sleep(300);
 // «Siguiente pregunta»: va ya a la siguiente pausa, sin ver el vídeo hasta allí.
 await move('e6d5');
 assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
-await clickText('Siguiente pregunta');
+await clickText('Siguiente');
 await waitAttr('stop', '2', 8000);
 await sleep(300);
 const p3 = await fake(() => window.__fakeYT.last());
 assert((await attr('phase')) === 'asking' && Math.abs(p3.time - 60) < 0.5 && p3.state === 2, 'salta a la tercera pausa con el vídeo parado: ' + JSON.stringify({ t: p3.time, s: p3.state }));
-await clickText('Saltar pregunta');
+await clickText('Continuar');
 await sleep(200);
 // Primero, encima del tablero, la jugada de la partida; el vídeo no sigue hasta pulsar OK.
 assert((await attr('phase')) === 'asking' && /En la partida se jugó Re5/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso con la jugada antes de seguir');
@@ -339,7 +340,7 @@ await clickText('Cartelera');
 await page.waitForSelector('.vc-card');
 await openClip('Comenzar');
 await waitAttr('phase', 'watching');
-await clickText('Editor de marcas');
+await openEditor();
 await page.waitForSelector('.vc-editor .vc-sync');
 assert(await page.$('.vc-mark[data-mark="start"]'), 'con el interruptor se editan también inicio, pausas y fin');
 assert(!(await page.$('.vc-clock .vc-warn')), 'no debe avisar de cortes: no se sabe si los hay');
@@ -430,7 +431,7 @@ assert((await boardInfo()).kind === 'question', 'en la pausa, el tablero es el d
 await shot('19-pausa-cabe-todo');
 const fitAsking = await assertFits('en la pausa');
 await shot('13b-pausa-con-tablero');
-await clickText('Saltar pregunta');
+await clickText('Continuar');
 await clickText('OK');
 await waitAttr('phase', 'reveal');
 await waitPly('110');
@@ -445,7 +446,7 @@ await shot('15-tablero-sigue-al-video');
 for (const [stop, at] of [['1', 144.5], ['2', 214]]) {
   if (stop === '1') {
     // «Ir a la pregunta» en la botonera: no hace falta esperar a que el vídeo llegue a la pausa.
-    await clickText('Ir a la pregunta');
+    await clickText('Siguiente');
   } else {
     await fake(() => { window.__fakeYT.rate = 5; });
   }
@@ -454,7 +455,7 @@ for (const [stop, at] of [['1', 144.5], ['2', 214]]) {
   const t = await fake(() => window.__fakeYT.last().time);
   assert((await attr('stop')) === stop && Math.abs(t - at) < 0.6, `pausa ${stop} en ${t}, no junto a ${at}`);
   await sleep(300);
-  await clickText('Saltar pregunta');
+  await clickText('Continuar');
   await clickText('OK');
   await waitAttr('phase', 'reveal');
 }
@@ -497,12 +498,15 @@ await move('f4e2', 'w'); // 52…Ce2+??, lo que jugó Carlsen (el tablero no gir
 assert(/Fue un error en la partida/.test(await panel()), 'Ce2+ debe presentarse como error de la partida: ' + (await panel()));
 await clickText('Repetir');
 await sleep(300);
-await clickText('Ver la respuesta');
+await clickText('Respuesta');
 await sleep(300);
+// Primero se ve la pieza moverse, sin ventana encima; luego llega la explicación.
+assert((await page.$('.vc-card-over')) === null, 'mientras se mueve la pieza, sin ventana encima');
+await sleep(1100);
 assert(/La respuesta/.test(await panel()) && !/¡Esa es!/.test(await panel()), '«Ver la respuesta» no es «¡Esa es!»: ' + (await panel()));
 await shot('16-error-historico');
 // Al ver el vídeo, empieza en la pausa y se ve 52…Ce2+ en el tablero.
-await clickText('Ver cómo ocurrió en el vídeo');
+await clickText('Continuar');
 await waitAttr('phase', 'reveal');
 await waitAttr('player', 'ready');
 await fake(() => { window.__fakeYT.duration = 759; });
@@ -534,7 +538,7 @@ await sleep(400);
 await move('b2c4', 'w'); // 61.Cc4+
 assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
 await shot('17-golpe-en-la-mesa-pregunta');
-await clickText('Ver cómo ocurrió en el vídeo');
+await clickText('Continuar');
 await waitAttr('phase', 'reveal');
 await setTime(377); await sleep(300);
 bi = await boardInfo();
@@ -577,7 +581,7 @@ await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${ERR}"]`);
 await openGC('Comenzar');
 await waitAttr('phase', 'reveal');
-await clickText('Editor de marcas');
+await openEditor();
 await page.waitForSelector('.vc-quick');
 await clickText('Cargar el vídeo');
 await page.waitForSelector('.vc-editor[data-player="ready"]');

@@ -434,7 +434,15 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
   const showAnswer = () => {
     if (!q || answer) return;
-    setAnswer({ outcome: 'shown', text: q.why });
+    // Primero se ve la pieza moverse; la explicación llega cuando ha terminado (si no, la ventana la tapa).
+    clearTimers();
+    setBusy(true);
+    timers.current.push(
+      window.setTimeout(() => {
+        setAnswer({ outcome: 'shown', text: q.why });
+        setBusy(false);
+      }, 1100),
+    );
     const ref = referenceMove(q);
     if (ref.fromGame) showPlayed(q, true);
     else {
@@ -586,6 +594,34 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               </>
             )
           : null;
+  // Acciones de la botonera (undefined = botón apagado).
+  const asking = st.phase === 'asking' && !!q && !gate && !busy;
+  const lastInStop = qi + 1 >= totalQuestions;
+  const goNextStop = st.videoOn && canAutoPause(clip) ? () => send({ type: 'jump', now: performance.now() }) : nextStopOnBoard;
+  const dock: { hint?: () => void; answer?: () => void; play?: () => void; next?: () => void; nextIsEnd: boolean } = {
+    hint: asking && !answer && q!.hint && !hint ? () => { setHint(true); setCardHidden(false); } : undefined,
+    answer: asking && !answer ? showAnswer : undefined,
+    // Continuar: seguir el vídeo (sin responder, primero se enseña la jugada de la partida).
+    play:
+      asking && st.errorCode == null
+        ? !answer || !lastInStop
+          ? skip
+          : reveal
+        : undefined,
+    next:
+      st.phase === 'watching' && synced
+        ? () => send({ type: 'ask', now: performance.now() })
+        : st.phase === 'reveal' && st.missed === 'none' && moreStops && clip.stops[st.stop + 1]?.at != null
+          ? () => send({ type: 'ask', now: performance.now() })
+          : asking && !lastInStop && answer
+            ? nextQuestion
+            : asking && lastInStop && moreStops
+              ? goNextStop
+              : (st.phase === 'reveal' && quietReveal && !moreStops) || (asking && st.errorCode != null && !moreStops)
+                ? () => send({ type: 'finish' })
+                : undefined,
+    nextIsEnd: (st.phase === 'reveal' && !moreStops) || (st.phase === 'asking' && !moreStops && lastInStop),
+  };
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
   // Al avanzar un paso de la lección, la última jugada del paso se anima (las anteriores, en `lessonFrame`).
@@ -817,7 +853,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                   coordinates={s.settings.coordinates}
                   onMove={onMove}
                 />
-                {fit && st.phase === 'asking' && q && !gate && !cardHidden && (
+                {fit && st.phase === 'asking' && q && !gate && !cardHidden && !busy && (
                   <div className="vc-gap vc-card-over" onClick={hideCard} role="dialog" aria-label="Pregunta">
                     {!answer ? (
                       <div className="vc-gap-card vc-glass vc-ask">
@@ -833,17 +869,6 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                         <p>{answer.text}</p>
                         {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
                         {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
-                        {canRetry && (
-                          <button
-                            className="cm-why vc-retry"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              retry();
-                            }}
-                          >
-                            Repetir
-                          </button>
-                        )}
                         <p className="cm-quiet cm-small">Toca para ver el tablero</p>
                       </div>
                     )}
@@ -878,8 +903,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </div>
         )}
 
-      {fit && !(st.phase === 'asking' && q && !gate) && <div className="vc-tools" aria-hidden="true" />}
-      {st.phase === 'asking' && q && !answer && !gate && (
+      {!fit && st.phase === 'asking' && q && !answer && !gate && (
         <div className="vc-tools">
           {!busy && (
             <>
@@ -906,7 +930,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         </div>
       )}
 
-      {st.phase === 'asking' && q && answer && !gate && (
+      {!fit && st.phase === 'asking' && q && answer && !gate && (
         <div className="vc-tools">
           {!fit && answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
           {!fit && answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
@@ -1004,24 +1028,27 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       )}
 
 
-      <nav className="vc-dock" aria-label="Opciones del clip">
-        <DockButton icon="back" label="Cartelera" onClick={onClose} />
-        {st.phase === 'watching' && synced && <DockButton icon="ask" label="Ir a la pregunta" onClick={() => send({ type: 'ask', now: performance.now() })} />}
-        {st.phase === 'reveal' && st.missed === 'none' && moreStops && clip.stops[st.stop + 1]?.at != null && (
-          <DockButton icon="ask" label="Ir a la pregunta" onClick={() => send({ type: 'ask', now: performance.now() })} />
-        )}
-        {fit && st.phase === 'asking' && q && !gate && (!answer || qi + 1 < totalQuestions) &&
-          (st.errorCode != null ? (
-            <DockButton icon="stop" label="Terminar" onClick={() => send({ type: 'finish' })} />
+      {fit ? (
+        // Botonera fija mientras se ve el clip: siempre los mismos botones en el mismo sitio; cada uno se activa
+        // cuando tiene sentido.
+        <nav className="vc-dock" aria-label="Opciones del clip">
+          <DockButton icon="back" label="Cartelera" onClick={onClose} />
+          {answer && canRetry && !gate ? (
+            <DockButton icon="retry" label="Repetir" onClick={retry} />
           ) : (
-            <DockButton icon="skip" label="Saltar pregunta" onClick={skip} />
-          ))}
-        {st.phase === 'asking' && q && answer && !gate && qi + 1 >= totalQuestions && moreStops && st.videoOn && canAutoPause(clip) && (
-          <DockButton icon="play" label="Continuar" onClick={reveal} />
-        )}
-        {st.phase === 'reveal' && quietReveal && <DockButton icon="stop" label="Terminar" onClick={() => send({ type: 'finish' })} />}
-        {canEditMarks(packed) && (!fit || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Editor de marcas" onClick={onEdit} />}
-      </nav>
+            <DockButton icon="hint" label="Pista" onClick={dock.hint} />
+          )}
+          <DockButton icon="answer" label="Respuesta" onClick={dock.answer} />
+          <DockButton icon="play" label="Continuar" onClick={dock.play} />
+          <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Siguiente'} onClick={dock.next} />
+          {canEditMarks(packed) && devFlag(LOCAL_MARKS_FLAG) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
+        </nav>
+      ) : (
+        <nav className="vc-dock" aria-label="Opciones del clip">
+          <DockButton icon="back" label="Cartelera" onClick={onClose} />
+          {canEditMarks(packed) && <DockButton icon="edit" label="Editor de marcas" onClick={onEdit} />}
+        </nav>
+      )}
       </div>
     </section>
   );
@@ -1033,13 +1060,16 @@ const DOCK_ICONS: Record<string, string> = {
   skip: 'M4 5l7 5-7 5zM12 5l7 5-7 5z',
   stop: 'M5 5h10v10H5z',
   play: 'M6 4l10 6-10 6z',
+  hint: 'M7 15h6M8 18h4M10 2a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9z',
+  answer: 'M3 10s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5zM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  retry: 'M4 10a6 6 0 1 0 2-4.5M4 3v3h3',
   edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
 };
 
 /** Botón de la botonera inferior del cine: icono encima y texto corto debajo. */
-function DockButton({ icon, label, onClick }: { icon: keyof typeof DOCK_ICONS; label: string; onClick: () => void }): JSX.Element {
+function DockButton({ icon, label, onClick }: { icon: keyof typeof DOCK_ICONS; label: string; onClick?: () => void }): JSX.Element {
   return (
-    <button className="vc-dock-btn" onClick={onClick}>
+    <button className="vc-dock-btn" onClick={onClick} disabled={!onClick}>
       <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
         <path d={DOCK_ICONS[icon]} />
       </svg>
