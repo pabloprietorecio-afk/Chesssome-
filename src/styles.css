@@ -2350,3 +2350,23 @@ a {
   font-size: 0.85rem;
   letter-spacing: 0;
 }
+/* Coordenadas del tablero del cine: más grandes y sin que las esquinas redondeadas tapen la «h» ni el «8». */
+.vc .cm-board {
+  border-radius: 8px;
+}
+.vc .cm-board svg text {
+  font-size: 30px;
+  font-weight: 800;
+}
+/* Más contraste que el color de la casilla contraria: tinta oscura sobre las claras, blanco sobre las oscuras. */
+.vc .cm-board svg text[style*='sq-dark'] {
+  fill: #3f5680 !important;
+}
+.vc .cm-board svg text[style*='sq-light'] {
+  fill: #ffffff !important;
+}
+/* Los números de fila se cuelgan del borde superior de su casilla (con letra grande, el «8» se salía por arriba). */
+.vc .cm-board svg text:not([text-anchor='end']) {
+  dominant-baseline: hanging;
+  transform: translateY(-14px);
+}

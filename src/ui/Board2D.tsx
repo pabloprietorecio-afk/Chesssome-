@@ -181,7 +181,8 @@ export function Board2D(props: BoardProps): JSX.Element {
     for (let i = 0; i < 8; i++) {
       const file = orientation === 'w' ? FILES[i] : FILES[7 - i];
       const rank = orientation === 'w' ? 8 - i : i + 1;
-      const fileDark = (i + 7) % 2 === 1 === (orientation === 'w');
+      // La casilla de abajo a la izquierda es oscura con cualquier orientación (a1 con blancas, h8 con negras).
+      const fileDark = i % 2 === 0;
       coords.push(
         <text key={`f${i}`} x={i * S + S - 6} y={8 * S - 6} textAnchor="end" fontSize="17" fontWeight="600" style={{ fill: fileDark ? LIGHT : DARK }}>
           {file}
