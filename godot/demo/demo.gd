@@ -139,6 +139,10 @@ var voice_index := {}
 var voice_player: AudioStreamPlayer
 var _voice_queue: Array = []
 var _voice_last: Array = []
+## «¡Muy bien!» grabado (Pixabay, TomyEducaST, licencia de contenido de Pixabay; ver godot/voz/humana/LEEME.md):
+## suena delante de cada acierto en el nivel Kids. En las listas de _say se pide con BRAVO.
+const BRAVO := "#bravo"
+const BRAVO_PATH := "res://voz/humana/muy_bien.ogg"
 ## Partida contra el rival (core/bot.gd): ajustes ({variant, level, fen, title, text, kids, unit}), color del
 ## jugador, posiciones tras cada jugada (para deshacer y para las repeticiones), estado ("play", "think", "over"),
 ## resultado (1 gana, 0 tablas, −1 pierde) y lo que se cuenta en la tarjeta.
@@ -3058,7 +3062,7 @@ func _show_lesson_step() -> void:
 		var id := str(lesson["id"])
 		course_done[id] = maxi(stars, int(course_done.get(id, 0)))
 		_save_course_progress()
-		var said := [_kid_line("lessonDone"), str(_lesson_text("takeaway"))]
+		var said := [BRAVO, _kid_line("lessonDone"), str(_lesson_text("takeaway"))]
 		if _is_last_lesson():
 			said.append(_kid_line("courseDone"))
 		elif _unit_of(id).has("game") and _is_last_of_unit(id):
@@ -3130,13 +3134,15 @@ func _learn_move(uci: String) -> void:
 			view.interactive = false
 			ex_text = ("¡Perfecto! En %d jugadas, el mínimo posible." % ex_moves) if ex_moves <= par else ("¡Hecho! En %d jugadas. Se puede en %d: prueba a repetirlo." % [ex_moves, par])
 			if kids:
-				ex_text = _kid_line("perfect") if ex_moves <= par else _kid_line("fewer")
-			_say([ex_text])
+				ex_text = _kid_line("good") if ex_moves <= par else _kid_line("fewer")
+				_say([BRAVO] if ex_moves <= par else [BRAVO, ex_text])
+			else:
+				_say([ex_text])
 		_refresh()
 		return
 	var verdict: Dictionary = (ex.get("moves", {}) as Dictionary).get(uci, {})
 	ex_text = str(verdict.get("k" if kids else "t", verdict.get("t", "")))
-	_say([ex_text])
+	_say([BRAVO, ex_text] if bool(verdict.get("ok", false)) else [ex_text])
 	view.interactive = false
 	if bool(verdict.get("ok", false)):
 		ex_stars.append(clampi(3 - ex_fails, 1, 3))
@@ -3888,9 +3894,9 @@ func _game_check_end(before: Chess, m: int) -> bool:
 	else:
 		game_result = str((texts[why] as Array)[0 if game_won > 0 else 1])
 		if variant == "peones":
-			_say([_kid_line("pawnsWin" if game_won > 0 else "pawnsLose")])
+			_say(([BRAVO] if game_won > 0 else []) + [_kid_line("pawnsWin" if game_won > 0 else "pawnsLose")])
 		else:
-			_say([_kid_line("gameWin" if game_won > 0 else "gameLose")])
+			_say(([BRAVO] if game_won > 0 else []) + [_kid_line("gameWin" if game_won > 0 else "gameLose")])
 	if game_won > 0 and str(game.get("unit", "")) != "":
 		course_done["partida-" + str(game["unit"])] = 1
 		_save_course_progress()
@@ -4385,6 +4391,10 @@ func _say(lines: Array) -> void:
 		return
 	_voice_queue = []
 	for t: Variant in lines:
+		if str(t) == BRAVO:
+			if ResourceLoader.exists(BRAVO_PATH):
+				_voice_queue.append(BRAVO_PATH)
+			continue
 		var id := str(voice_index.get(str(t), ""))
 		var path := "res://voz/%s.ogg" % id
 		if id != "" and ResourceLoader.exists(path):
@@ -4417,6 +4427,8 @@ func _stop_voice() -> void:
 ## Hay audio para alguna de estas frases (para enseñar el botón de repetir).
 func _has_voice(lines: Array) -> bool:
 	for t: Variant in lines:
+		if str(t) == BRAVO:
+			return true
 		var id := str(voice_index.get(str(t), ""))
 		if id != "" and ResourceLoader.exists("res://voz/%s.ogg" % id):
 			return true
