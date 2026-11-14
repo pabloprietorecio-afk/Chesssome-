@@ -1,0 +1,71 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+
+SHOTS driver=X11 pantalla=(1080, 2400) lienzo=(1080.0, 2400.0)
+SHOT 01_inicio
+TEXTURA arce (1024.0, 1024.0) formato=17 mipmaps=true
+SHOT 01_marmol
+SHOT 01_metal
+SHOT 01_ilustrado
+SHOT 01_madera_con_contorno
+SHOT 02_jaque_y_seleccion
+SHOT 03_flechas
+SHOT 04_cenital
+SHOT 05_girada
+SHOT 06_oscuro
+SHOT 07_negras
+SHOT 08_primer_plano
+SHOT 09_primer_plano_negras
+SHOT 09_primer_plano_marmol
+SHOT 09_primer_plano_metal
+SHOT 10_salto_del_caballo
+SHOT 11_captura
+SHOT 12_enroque
+SHOT 13_promocion
+SHOT 14_mate
+SHOT 15_mate_final
+SHOT 16_arrastre
+SHOT 17_fichas_madera
+SHOT 17_fichas_marmol
+SHOT 17_fichas_metal
+SHOT 17_fichas_ilustrado
+SHOT 17_fichas_jaque_y_seleccion
+SHOT 17_fichas_cenital
+SHOT 17_fichas_negras
+SHOT 18_fichas_de_cerca_madera
+SHOT 18_fichas_de_cerca_marmol
+SHOT 18_fichas_de_cerca_metal
+SHOT 18_fichas_de_cerca_ilustrado
+SHOT 18_fichas_de_cerca_oscuras
+SHOT 19_fichas_mate
+SHOT 19_fichas_mate_final
+SONIDOS avisos=["capture", "slide", "place", "fall"] grabaciones: arrastre=true posar=true captura=true jaque=true caida=true
+SHOT 20_demo
+ICONOS 48 en el atlas, faltan=[] emblema=true
+DEMO pista de gestos visible=true botones=«Pista» «Un paso» «Solución» «Saltar»
+DEMO explicaciones=true puntos=1
+SHOT 20b_demo_fallo
+DEMO fallo=d2e3 titulo=«No es la mejor» fase=2 parcial=true interactivo=true
+DEMO fallo dice: Tu jugada, De3, amenaza mate con Dxe1# y ataca a la dama de e1. | Pero permite Dxe3, que captura tu dama de e3. En pocas jugadas pierdes la dama y un alfil a cambio de la torre. | La mejor era Dxe1#, que es jaque mate.
+SHOT 20c_demo_fallo_variante
+DEMO tras la variante: fase=2 interactivo=true
+SHOT 21_demo_pieza_tocada
+DEMO seleccionada=11 (esperada 11)
+SHOT 22_demo_bien
+DEMO titulo=«¡Resuelto!» paso=2
+SHOT 23_demo_sigue
+DEMO titulo=«¡Resuelto!» paso=2
+SHOT 24_demo_solucion
+DEMO titulo=«Juegan negras» izquierda=«Solución» derecha=«Saltar»
+SHOT 24b_demo_nivel_2
+SHOT 24c_demo_nivel_3
+SHOT 24d_demo_nivel_4
+DEMO nivel=4 flechas=0 alto de la tarjeta=295
+SHOT 24e_demo_nivel_4_final
+SHOT 24g_demo_y_si_juego
+SHOT 24h_demo_y_si_juego_jugada
+DEMO y si juego d2e3: titulo=«No es la mejor» interactivo=true
+SHOT 24i_demo_pregunta_a_una_ia
+DEMO texto para la IA: 901 caracteres, empieza «Estoy aprendiendo ajedrez y tengo una duda sobre esta posici»
+DEMO lichess=https://lichess.org/analysis/6k1/p4pp1/2R2b1p/1P6/P7/3b4/3q1PPP/4Q1K1%20b%20-%20-%200%2037
+SHOT 25_demo_opciones
