@@ -92,6 +92,13 @@ function effective(clip: Clip): { clip: Clip; local: boolean; stale: boolean } {
   return { clip, local: false, stale };
 }
 
+/** Si el paso `i` de la lección sigue la línea del anterior (si no, vuelve a la posición de partida). */
+function lessonContinues(lesson: NonNullable<Clip['lesson']>, i: number): boolean {
+  const cur = lesson.steps[i].moves.split(/\s+/).filter(Boolean);
+  const prev = lesson.steps[i - 1].moves.split(/\s+/).filter(Boolean);
+  return cur.length > prev.length && prev.every((x, k) => cur[k] === x);
+}
+
 /** Jugadas de `first` a `last` en notación española: «53.Txe2+ Rxe2 54.Cxf8». */
 function movesText(clip: Clip, first: number, last: number): string {
   const out: string[] = [];
@@ -477,7 +484,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
   // Al avanzar un paso de la lección, se anima la última jugada del paso.
   const lessonAnim: MoveAnim | null =
-    lessonNow && lessonNow.pos.last && lessonPrev.current != null && lessonPrev.current === lessonStep! - 1
+    lessonNow && lessonNow.pos.last && lessonPrev.current != null && lessonPrev.current === lessonStep! - 1 && lessonContinues(clip.lesson!, lessonStep!)
       ? { ...lessonNow.pos.last, key: 1000 + lessonStep! }
       : null;
   const shown = lessonNow

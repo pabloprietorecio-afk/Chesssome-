@@ -60,6 +60,55 @@ export const CLIPS: ClipSource[] = [
     orientation: 'b',
     intro:
       'Singapur, 12 de diciembre de 2024. Última partida del Mundial, con 6,5 a 6,5 en el marcador. El final de torre y alfil parece encaminado a las tablas… hasta que Ding Liren juega 55.Tf2.',
+    // Lección comprobada con Stockfish 19 Lite (profundidad 26, 14 nov 2026): antes de 55.Tf2, igualdad (55.Ag2 −0,1;
+    // 55.Ta4 −0,1); tras 55.Tf2, 55…Txf2 +6,4; tras 56.Rxf2, 56…Ad5 es la única que gana (+5,9; el resto 0,0); tras 58.Re3,
+    // 58…Re5 es la única que gana (+6,0; Re6 y Rd6 0,0); tras 58…Re5, todas las blancas pierden (−13,9).
+    lesson: {
+      title: 'Cómo se ganó el Mundial con un final de peones',
+      from: 108,
+      steps: [
+        {
+          moves: '',
+          text: 'Final de torre y alfil igualado. El alfil blanco de a8 tiene poco sitio, pero mientras haya torres no corre peligro.',
+        },
+        {
+          moves: 'Rf2',
+          text: '55.Tf2? ofrece cambiar las torres. Parece prudente, pero es el error: con 55.Ag2 o 55.Ta4, Ding seguía en tablas.',
+          arrows: [{ from: 'f2', to: 'b2', tone: 'bad' }],
+        },
+        {
+          moves: 'Rf2 Rxf2',
+          text: '55…Txf2: Gukesh acepta el cambio.',
+        },
+        {
+          moves: 'Rf2 Rxf2 Kxf2',
+          text: '56.Rxf2. Sin torres, el problema del alfil de a8 se ve claro: solo tiene una diagonal.',
+          arrows: [{ from: 'a8', to: 'd5', tone: 'info' }],
+        },
+        {
+          moves: 'Rf2 Rxf2 Kxf2 Bd5',
+          text: '56…Ad5: el alfil negro se planta en esa diagonal. Es la única jugada que gana; con cualquier otra, tablas.',
+          arrows: [{ from: 'd5', to: 'a8', tone: 'good' }],
+        },
+        {
+          moves: 'Rf2 Rxf2 Kxf2 Bd5 Bxd5 Kxd5',
+          text: '57.Axd5 Rxd5: el alfil blanco no tenía escapatoria, porque en b7 o c6 también lo capturaban. Queda un final de reyes y peones con un peón más para las negras.',
+        },
+        {
+          moves: 'Rf2 Rxf2 Kxf2 Bd5 Bxd5 Kxd5 Ke3',
+          text: '58.Re3: el rey blanco se pone delante para frenar al negro.',
+        },
+        {
+          moves: 'Rf2 Rxf2 Kxf2 Bd5 Bxd5 Kxd5 Ke3 Ke5',
+          text: '58…Re5: la oposición. Los reyes quedan frente a frente, con una casilla en medio, y le toca mover a las blancas. Era la única que ganaba: 58…Re6 o 58…Rd6 dejaban tablas.',
+          arrows: [{ from: 'e5', to: 'e3', tone: 'good' }],
+        },
+        {
+          moves: 'Rf2 Rxf2 Kxf2 Bd5 Bxd5 Kxd5 Ke3 Ke5',
+          text: 'Mueva lo que mueva, el rey blanco tiene que ceder el paso y el rey negro entra en su campo. Por eso Ding se rindió aquí.',
+        },
+      ],
+    },
     stops: [
       {
         at: 138,
@@ -129,6 +178,36 @@ export const CLIPS: ClipSource[] = [
     orientation: 'w',
     intro:
       'Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Carlsen, con negras, ha llevado ventaja casi toda la partida, pero los dos llegan al final con muy poco tiempo en el reloj. Gukesh acaba de jugar 52.Cd7.',
+    // Lección comprobada con Stockfish 19 Lite (profundidad 26, 14 nov 2026): tras 52.Cd7, 52…Te8 +1,0 para las negras;
+    // 52…g5 0,0; Tg8, Th8 y Ta8 entre −0,3 y −0,5. Tras 52…Ce2+, 53.Txe2+ +6,8 para las blancas.
+    lesson: {
+      title: 'Por qué 52…Ce2+ fue un error',
+      from: 103,
+      steps: [
+        {
+          moves: '',
+          text: 'El caballo de d7 ataca la torre de f8.',
+          arrows: [{ from: 'd7', to: 'f8', tone: 'bad' }],
+        },
+        {
+          moves: 'Ne2+',
+          text: '52…Ce2+?? Con segundos en el reloj, Carlsen da jaque en vez de salvar la torre.',
+          arrows: [{ from: 'e2', to: 'g3', tone: 'info' }],
+        },
+        {
+          moves: 'Ne2+ Rxe2+',
+          text: '53.Txe2+: la torre blanca se come el caballo, y con jaque, porque el rey negro está en e1.',
+        },
+        {
+          moves: 'Ne2+ Rxe2+ Kxe2 Nxf8',
+          text: '53…Rxe2 54.Cxf8: el rey recupera la pieza, pero el caballo se come la torre. Las blancas quedan con un caballo de más, y ganan.',
+        },
+        {
+          moves: 'Re8',
+          text: 'Volvamos atrás. Lo correcto era salvar la torre: con 52…Te8 la partida seguía equilibrada, incluso algo mejor para las negras. También valían Tg8, Th8, Ta8 o 52…g5.',
+        },
+      ],
+    },
     stops: [
       {
         at: 277.5,

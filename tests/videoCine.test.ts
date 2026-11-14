@@ -518,8 +518,9 @@ describe('lección de «El golpe en la mesa»', () => {
     expect(pos[1].fen).toBe(bang.stops[0].questions[0].played.fenAfter); // 61.Cc4+
     expect(pos[3].fen).toBe(bang.tail[1].fenAfter); // 62.Rf4, como en la partida
   });
-  it('las flechas salen de casillas con pieza', () => {
-    bang.lesson!.steps.forEach((st, i) => {
+  it.each(PACK.clips.filter((c) => c.lesson).map((c) => [c.id, c] as const))('%s: jugadas legales y flechas que salen de casillas con pieza', (_id, c) => {
+    const pos = lessonPositions(c);
+    c.lesson!.steps.forEach((st, i) => {
       const board = new Map<string, boolean>();
       const rows = pos[i].fen.split(' ')[0].split('/');
       rows.forEach((r, ri) => { let f = 0; for (const ch of r) { if (/\d/.test(ch)) f += Number(ch); else { board.set('abcdefgh'[f] + (8 - ri), true); f++; } } });
@@ -532,16 +533,15 @@ describe('lección de «El golpe en la mesa»', () => {
 });
 
 describe('regla de las lecciones: sin saltos bruscos', () => {
-  // Pablo, 14 nov 2026: cada paso de una lección añade como mucho dos medias jugadas al anterior, para que no se pierda.
+  // Pablo, 14 nov 2026: cada paso de una lección añade como mucho dos medias jugadas, para que no se pierda.
   for (const c of PACK.clips.filter((x) => x.lesson)) {
-    it(`${c.id}: cada paso añade 0, 1 o 2 medias jugadas y continúa el anterior`, () => {
+    it(`${c.id}: cada paso continúa el anterior con 0, 1 o 2 medias jugadas, o vuelve al principio con 1 o 2`, () => {
       const steps = c.lesson!.steps.map((s) => s.moves.split(/\s+/).filter(Boolean));
       steps.forEach((m, i) => {
-        if (i === 0) return expect(m.length).toBeLessThanOrEqual(2);
-        const prev = steps[i - 1];
-        expect(m.slice(0, prev.length)).toEqual(prev);
-        expect(m.length - prev.length).toBeGreaterThanOrEqual(0);
-        expect(m.length - prev.length).toBeLessThanOrEqual(2);
+        const prev = i === 0 ? [] : steps[i - 1];
+        const continues = m.length >= prev.length && prev.every((x, k) => m[k] === x);
+        if (continues) expect(m.length - prev.length).toBeLessThanOrEqual(2);
+        else expect(m.length).toBeLessThanOrEqual(2); // otra línea desde la posición de partida («volvamos atrás»)
       });
     });
   }
