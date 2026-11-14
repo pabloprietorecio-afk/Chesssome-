@@ -572,6 +572,15 @@ export function direct(clip: Pick<Clip, 'start' | 'end' | 'stops' | 'video'>, s:
     }
 
     case 'ask': {
+      if (s.phase === 'reveal' && s.missed === 'none') {
+        // Viendo cómo sigue el vídeo hacia la siguiente pausa: se va ya a esa pregunta (el vídeo salta a la pausa).
+        const next = clip.stops[s.stop + 1];
+        if (!next || next.at == null) return stay(s);
+        return {
+          state: { ...s, phase: 'asking', stop: s.stop + 1, missed: 'none', pauseIssuedAt: e.now, pauseRetries: 0 },
+          commands: [{ type: 'seek', at: next.at }, { type: 'pause' }],
+        };
+      }
       if (s.phase !== 'watching') return stay(s);
       return {
         state: { ...s, phase: 'asking', missed: 'none', pauseIssuedAt: e.now, pauseRetries: 0 },

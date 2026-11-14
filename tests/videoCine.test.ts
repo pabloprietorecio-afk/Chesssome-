@@ -564,3 +564,17 @@ describe('lecciones del cine en el formato del curso', () => {
     });
   });
 });
+
+describe('«Ir a la pregunta» mientras el vídeo va hacia la siguiente pausa', () => {
+  it('salta a la siguiente pausa y pregunta', () => {
+    const st = { ...initialDirector(), phase: 'reveal' as const, stop: 0, videoOn: true };
+    const r = direct(ding, st, { type: 'ask', now: 1000 });
+    expect(r.state.phase).toBe('asking');
+    expect(r.state.stop).toBe(1);
+    expect(r.commands).toEqual([{ type: 'seek', at: ding.stops[1].at }, { type: 'pause' }]);
+  });
+  it('en la última pausa no hace nada', () => {
+    const st = { ...initialDirector(), phase: 'reveal' as const, stop: 2, videoOn: true };
+    expect(direct(ding, st, { type: 'ask', now: 1000 }).state.phase).toBe('reveal');
+  });
+});

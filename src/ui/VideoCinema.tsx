@@ -297,15 +297,15 @@ const OUTCOME_LABEL: Record<ClipAnswer['outcome'], string> = {
   shown: 'La respuesta',
 };
 
-/** Marca discreta junto al veredicto: tick verde si vale, aspa roja si no. */
+/** Marca discreta junto al veredicto: tick verde si vale, aspa roja si no (texto, no dibujo: no le afectan los estilos del tablero). */
 function OutcomeMark({ outcome }: { outcome: ClipAnswer['outcome'] }): JSX.Element | null {
   const ok = outcome === 'answer' || outcome === 'also-good';
   const bad = outcome === 'spoils' || outcome === 'played-error';
   if (!ok && !bad) return null;
   return (
-    <svg className={`vc-mark vc-mark-${ok ? 'ok' : 'bad'}`} viewBox="0 0 16 16" width="13" height="13" aria-label={ok ? 'Correcta' : 'Incorrecta'} role="img">
-      {ok ? <path d="M3 8.5l3.2 3L13 4.5" /> : <path d="M4 4l8 8M12 4l-8 8" />}
-    </svg>
+    <span className={`vc-mark vc-mark-${ok ? 'ok' : 'bad'}`} role="img" aria-label={ok ? 'Correcta' : 'Incorrecta'}>
+      {ok ? '✓' : '✗'}
+    </span>
   );
 }
 
@@ -972,29 +972,43 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       )}
 
 
-      <div className="cm-row vc-foot">
-        <button className="cm-link" onClick={onClose}>
-          Volver a la cartelera
-        </button>
-        {st.phase === 'watching' && synced && (
-          <button className="cm-link" onClick={() => send({ type: 'ask', now: performance.now() })}>
-            Ir ya a la pregunta
-          </button>
+      <nav className="vc-dock" aria-label="Opciones del clip">
+        <DockButton icon="back" label="Cartelera" onClick={onClose} />
+        {st.phase === 'watching' && synced && <DockButton icon="ask" label="Ir a la pregunta" onClick={() => send({ type: 'ask', now: performance.now() })} />}
+        {st.phase === 'reveal' && st.missed === 'none' && moreStops && clip.stops[st.stop + 1]?.at != null && (
+          <DockButton icon="ask" label="Ir a la pregunta" onClick={() => send({ type: 'ask', now: performance.now() })} />
         )}
-        {fit && st.phase === 'asking' && q && !gate && (!answer || qi + 1 < totalQuestions) && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={skip} onFinish={() => send({ type: 'finish' })} />}
-        {st.phase === 'reveal' && quietReveal && (
-          <button className="cm-link" onClick={() => send({ type: 'finish' })}>
-            Terminar
-          </button>
-        )}
-        {canEditMarks(packed) && (!fit || devFlag(LOCAL_MARKS_FLAG)) && (
-          <button className="cm-link" onClick={onEdit}>
-            Editor de marcas
-          </button>
-        )}
-      </div>
+        {fit && st.phase === 'asking' && q && !gate && (!answer || qi + 1 < totalQuestions) &&
+          (st.errorCode != null ? (
+            <DockButton icon="stop" label="Terminar" onClick={() => send({ type: 'finish' })} />
+          ) : (
+            <DockButton icon="skip" label="Saltar pregunta" onClick={skip} />
+          ))}
+        {st.phase === 'reveal' && quietReveal && <DockButton icon="stop" label="Terminar" onClick={() => send({ type: 'finish' })} />}
+        {canEditMarks(packed) && (!fit || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Editor de marcas" onClick={onEdit} />}
+      </nav>
       </div>
     </section>
+  );
+}
+
+const DOCK_ICONS: Record<string, string> = {
+  back: 'M10 4 4 10l6 6M4 10h12',
+  ask: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8 8a2 2 0 1 1 3 1.7c-.6.4-1 .8-1 1.6M10 14h.01',
+  skip: 'M4 5l7 5-7 5zM12 5l7 5-7 5z',
+  stop: 'M5 5h10v10H5z',
+  edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
+};
+
+/** Botón de la botonera inferior del cine: icono encima y texto corto debajo. */
+function DockButton({ icon, label, onClick }: { icon: keyof typeof DOCK_ICONS; label: string; onClick: () => void }): JSX.Element {
+  return (
+    <button className="vc-dock-btn" onClick={onClick}>
+      <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+        <path d={DOCK_ICONS[icon]} />
+      </svg>
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -1008,7 +1022,7 @@ function SkipLink({ errored, videoOn, onReveal, onFinish }: { errored: boolean; 
     );
   return (
     <button className="cm-link" onClick={onReveal}>
-      {videoOn ? 'Seguir viendo sin responder' : 'Ver el vídeo sin responder'}
+      {videoOn ? 'Saltar pregunta' : 'Ver el vídeo sin responder'}
     </button>
   );
 }

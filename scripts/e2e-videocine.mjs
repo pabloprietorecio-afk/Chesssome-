@@ -127,7 +127,7 @@ await page.evaluate(() => window.scrollTo(0, 0));
 await shot('02b-video-sin-pausas');
 await clickText('Ir a la pregunta');
 await waitAttr('phase', 'asking');
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector('.vc-card');
 ytRequests.length = 0;
 await openClip('Ir directo a la pregunta');
@@ -279,7 +279,7 @@ await fake(() => { window.__fakeYT.rate = 1; });
 const p2 = await fake(() => window.__fakeYT.last().time);
 assert((await attr('stop')) === '1' && Math.abs(p2 - 30) < 1, 'el vídeo avanza hasta la segunda pausa: ' + p2);
 await sleep(300);
-await clickText('Seguir viendo sin responder');
+await clickText('Saltar pregunta');
 await sleep(200);
 // Primero, encima del tablero, la jugada de la partida; el vídeo no sigue hasta pulsar OK.
 assert((await attr('phase')) === 'asking' && /En la partida se jugó Ad5/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso con la jugada antes de seguir');
@@ -296,7 +296,7 @@ await waitAttr('phase', 'asking', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });
 assert((await attr('stop')) === '2', 'tercera pausa');
 await sleep(300);
-await clickText('Seguir viendo sin responder');
+await clickText('Saltar pregunta');
 await clickText('OK');
 await waitAttr('phase', 'reveal');
 await fake(() => { window.__fakeYT.rate = 25; });
@@ -322,7 +322,7 @@ await page.evaluate(() => {
   localStorage.removeItem('chessome.dev.localMarks');
   localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'ding-gukesh-2024-g14': { start: 200.14, end: 233.07, stops: [215.47], duration: 437 } }));
 });
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector('.vc-card');
 assert(/Se para solo · marcas sin comprobar$/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"] .vc-chip', (e) => e.textContent)), 'el clip figura con pausa automática, pendiente de comprobar las pausas nuevas');
 assert(/versión anterior del clip/.test(await cardText()), 'debe avisar de que las marcas antiguas del dispositivo ya no se usan: ' + (await cardText()));
@@ -336,7 +336,7 @@ assert(!(await hasButton('Editor de marcas')), 'viendo el clip, sin el editor en
 // ── F. El ancla de Pablo (55…Txf2: reloj en 2:21) reproduce las marcas del paquete; el tablero sigue al vídeo.
 // El editor de un clip verificado solo se abre con el interruptor de desarrollo. ──
 await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.setItem('chessome.dev.localMarks', '1'); });
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector('.vc-card');
 await openClip('Comenzar');
 await waitAttr('phase', 'watching');
@@ -397,7 +397,7 @@ const layout = () => page.evaluate(() => {
   const v = (document.querySelector('.vc-player iframe') || document.querySelector('.vc-video')).getBoundingClientRect();
   const b = document.querySelector('.vc-board .cm-board')?.getBoundingClientRect();
   const nav = document.querySelector('.cm-top nav');
-  const foot = document.querySelector('.vc-foot').getBoundingClientRect();
+  const foot = document.querySelector('.vc-dock').getBoundingClientRect();
   return { video: [Math.round(v.top), Math.round(v.bottom)], board: b ? [Math.round(b.top), Math.round(b.bottom), Math.round(b.width)] : null, foot: Math.round(foot.bottom), h: innerHeight, nav: nav ? getComputedStyle(nav).display : 'none' };
 });
 const assertFits = async (what) => {
@@ -431,7 +431,7 @@ assert((await boardInfo()).kind === 'question', 'en la pausa, el tablero es el d
 await shot('19-pausa-cabe-todo');
 const fitAsking = await assertFits('en la pausa');
 await shot('13b-pausa-con-tablero');
-await clickText('Seguir viendo sin responder');
+await clickText('Saltar pregunta');
 await clickText('OK');
 await waitAttr('phase', 'reveal');
 await waitPly('110');
@@ -444,13 +444,18 @@ assert([fitAsking, fitReveal].every((f) => JSON.stringify(f.board) === JSON.stri
 await shot('15-tablero-sigue-al-video');
 // Segunda y tercera pausa (antes de 56…Ad5 y de 58…Re5): sin responder, el vídeo sigue hasta el final.
 for (const [stop, at] of [['1', 144.5], ['2', 214]]) {
-  await fake(() => { window.__fakeYT.rate = 5; });
+  if (stop === '1') {
+    // «Ir a la pregunta» en la botonera: no hace falta esperar a que el vídeo llegue a la pausa.
+    await clickText('Ir a la pregunta');
+  } else {
+    await fake(() => { window.__fakeYT.rate = 5; });
+  }
   await waitAttr('phase', 'asking', 25000);
   await fake(() => { window.__fakeYT.rate = 1; });
   const t = await fake(() => window.__fakeYT.last().time);
   assert((await attr('stop')) === stop && Math.abs(t - at) < 0.6, `pausa ${stop} en ${t}, no junto a ${at}`);
   await sleep(300);
-  await clickText('Seguir viendo sin responder');
+  await clickText('Saltar pregunta');
   await clickText('OK');
   await waitAttr('phase', 'reveal');
 }
@@ -470,7 +475,7 @@ await page.evaluate((id) => {
   localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ [id]: { start: null, end: null, stops: [null], duration: null, sync: null } }));
 }, ERR);
 await fake(() => { window.__fakeYT.duration = 759; });
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${ERR}"]`);
 const openGC = (t, id = ERR) => page.evaluate((t, id) => [...document.querySelectorAll(`.vc-card[data-clip="${id}"] button`)].find((b) => b.textContent.trim().startsWith(t)).click(), t, id);
 // Sin marcas ni tablero sincronizado: el vídeo se ve entero y el aviso va justo debajo, sin hueco.
@@ -482,7 +487,7 @@ const gap = await page.evaluate(() => document.querySelector('.vc-panel').getBou
 assert(gap < 80, `el aviso queda muy separado del vídeo (${Math.round(gap)} px)`);
 await shot('15b-sin-marcas-sin-hueco');
 await page.evaluate(() => { localStorage.removeItem('chessome.clipMarks.v1'); localStorage.removeItem('chessome.dev.localMarks'); });
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${ERR}"]`);
 for (const id of [ERR, BANG]) assert(/Se para solo · marcas sin comprobar/.test(await page.$eval(`.vc-card[data-clip="${id}"] .vc-chip`, (e) => e.textContent)), `${id}: marcas medidas, pendientes de comprobar`);
 await fake(() => { window.__fakeYT.duration = 759; });
@@ -508,7 +513,7 @@ bi = await boardInfo();
 assert(bi.ply === '104' && /tras 52…Ce2\+/.test(bi.label) && (await page.$eval('.vc-board', (e) => e.dataset.gap)) === 'off', 'se ve 52…Ce2+: ' + JSON.stringify(bi));
 
 // «El golpe en la mesa»: se ve 60.Cb2 y 60…e3, se para antes de 61.Cc4+ y, tras responder, el tablero llega a 62.Rf4.
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${BANG}"]`);
 await openGC('Comenzar', BANG);
 await waitAttr('phase', 'watching');
@@ -557,7 +562,7 @@ await page.evaluate(() => {
   localStorage.setItem('chessome.dev.localMarks', '1');
   localStorage.setItem('chessome.clipMarks.v1', JSON.stringify({ 'gukesh-carlsen-2025-norway-r6-error': { start: null, end: null, stops: [null], duration: null, sync: null } }));
 });
-await clickText('Volver a la cartelera');
+await clickText('Cartelera');
 await page.waitForSelector(`.vc-card[data-clip="${ERR}"]`);
 await openGC('Comenzar');
 await waitAttr('phase', 'reveal');
