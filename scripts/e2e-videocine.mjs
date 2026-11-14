@@ -270,8 +270,8 @@ assert((await fake(() => window.__fakeYT.last().state)) === 2, 'al volver a la p
 await scrollTo('.vc-board');
 await move('b2f2');
 assert(/¡Esa es!/.test(await panel()), 'Txf2 debe ser la buena: ' + (await panel()));
-// Con el vídeo: «Siguiente pregunta» enseña la jugada en el vídeo y se para solo antes de la siguiente.
-await clickText('Siguiente pregunta');
+// Con el vídeo: «Continuar» (botonera) enseña la jugada en el vídeo y se para solo antes de la siguiente pregunta.
+await clickText('Continuar');
 await waitAttr('phase', 'reveal');
 await fake(() => { window.__fakeYT.rate = 5; });
 await waitAttr('phase', 'asking', 15000);
@@ -279,10 +279,18 @@ await fake(() => { window.__fakeYT.rate = 1; });
 const p2 = await fake(() => window.__fakeYT.last().time);
 assert((await attr('stop')) === '1' && Math.abs(p2 - 30) < 1, 'el vídeo avanza hasta la segunda pausa: ' + p2);
 await sleep(300);
+// «Siguiente pregunta»: va ya a la siguiente pausa, sin ver el vídeo hasta allí.
+await move('e6d5');
+assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
+await clickText('Siguiente pregunta');
+await waitAttr('stop', '2', 8000);
+await sleep(300);
+const p3 = await fake(() => window.__fakeYT.last());
+assert((await attr('phase')) === 'asking' && Math.abs(p3.time - 60) < 0.5 && p3.state === 2, 'salta a la tercera pausa con el vídeo parado: ' + JSON.stringify({ t: p3.time, s: p3.state }));
 await clickText('Saltar pregunta');
 await sleep(200);
 // Primero, encima del tablero, la jugada de la partida; el vídeo no sigue hasta pulsar OK.
-assert((await attr('phase')) === 'asking' && /En la partida se jugó Ad5/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso con la jugada antes de seguir');
+assert((await attr('phase')) === 'asking' && /En la partida se jugó Re5/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso con la jugada antes de seguir');
 assert((await page.$('.vc-ask')) === null && (await page.$$eval('.vc-tools button', (b) => b.length)) === 0, 'con el aviso, sin pregunta ni opciones');
 await shot('11b-sin-responder-aviso');
 await clickText('OK');
@@ -290,15 +298,6 @@ await waitAttr('phase', 'reveal');
 await sleep(900);
 const afterReveal = await fake(() => ({ state: window.__fakeYT.last().state, calls: window.__fakeYT.calls.slice(-3) }));
 assert(afterReveal.state === 1, 'tras revelar, el vídeo debe reproducirse: ' + JSON.stringify(afterReveal));
-// Se vuelve a parar antes de la tercera pregunta; sin responder, el vídeo sigue hasta el final.
-await fake(() => { window.__fakeYT.rate = 5; });
-await waitAttr('phase', 'asking', 20000);
-await fake(() => { window.__fakeYT.rate = 1; });
-assert((await attr('stop')) === '2', 'tercera pausa');
-await sleep(300);
-await clickText('Saltar pregunta');
-await clickText('OK');
-await waitAttr('phase', 'reveal');
 await fake(() => { window.__fakeYT.rate = 25; });
 await waitAttr('phase', 'ended', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });

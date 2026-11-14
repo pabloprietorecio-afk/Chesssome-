@@ -517,6 +517,8 @@ export type DirectorEvent =
   | { type: 'ask'; now: number }
   /** Sin vídeo que se pare solo: se pasa a la pregunta de la siguiente pausa directamente en el tablero. */
   | { type: 'next' }
+  /** Desde una pregunta, ir ya a la de la siguiente pausa: el vídeo salta a esa pausa (sin verlo hasta allí). */
+  | { type: 'jump'; now: number }
   /** El jugador da el clip por terminado (p. ej. cuando el vídeo no se puede ver). */
   | { type: 'finish' }
   | { type: 'error'; code: number };
@@ -585,6 +587,15 @@ export function direct(clip: Pick<Clip, 'start' | 'end' | 'stops' | 'video'>, s:
       return {
         state: { ...s, phase: 'asking', missed: 'none', pauseIssuedAt: e.now, pauseRetries: 0 },
         commands: [{ type: 'pause' }],
+      };
+    }
+
+    case 'jump': {
+      const next = clip.stops[s.stop + 1];
+      if (s.phase !== 'asking' || !next || next.at == null) return stay(s);
+      return {
+        state: { ...s, stop: s.stop + 1, missed: 'none', pauseIssuedAt: s.videoOn ? e.now : null, pauseRetries: 0 },
+        commands: s.videoOn ? [{ type: 'seek', at: next.at }, { type: 'pause' }] : [],
       };
     }
 

@@ -578,3 +578,12 @@ describe('«Ir a la pregunta» mientras el vídeo va hacia la siguiente pausa', 
     expect(direct(ding, st, { type: 'ask', now: 1000 }).state.phase).toBe('reveal');
   });
 });
+
+describe('«Siguiente pregunta» desde una pregunta', () => {
+  it('salta a la siguiente pausa con el vídeo parado allí', () => {
+    const st = { ...initialDirector(), phase: 'asking' as const, stop: 0, videoOn: true };
+    const r = direct(ding, st, { type: 'jump', now: 5 });
+    expect(r.state).toMatchObject({ phase: 'asking', stop: 1 });
+    expect(r.commands).toEqual([{ type: 'seek', at: ding.stops[1].at }, { type: 'pause' }]);
+  });
+});

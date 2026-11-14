@@ -1985,14 +1985,14 @@ a {
 }
 
 /* Tick o aspa junto al veredicto: pequeño, sin llamar la atención. */
-.vc-mark {
+.vc-verdict-mark {
   font-weight: 700;
   margin-right: 2px;
 }
-.vc-mark-ok {
+.vc-verdict-ok {
   color: #3a9a5b;
 }
-.vc-mark-bad {
+.vc-verdict-bad {
   color: #c4553f;
 }
 

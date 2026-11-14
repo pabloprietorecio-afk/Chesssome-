@@ -303,7 +303,7 @@ function OutcomeMark({ outcome }: { outcome: ClipAnswer['outcome'] }): JSX.Eleme
   const bad = outcome === 'spoils' || outcome === 'played-error';
   if (!ok && !bad) return null;
   return (
-    <span className={`vc-mark vc-mark-${ok ? 'ok' : 'bad'}`} role="img" aria-label={ok ? 'Correcta' : 'Incorrecta'}>
+    <span className={`vc-verdict-mark vc-verdict-${ok ? 'ok' : 'bad'}`} role="img" aria-label={ok ? 'Correcta' : 'Incorrecta'}>
       {ok ? '✓' : '✗'}
     </span>
   );
@@ -891,7 +891,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               Terminar
             </button>
           ) : (
-            <button className="cm-primary" onClick={moreStops && !(st.videoOn && canAutoPause(clip)) ? nextStopOnBoard : reveal} disabled={busy}>
+            <button
+              className="cm-primary"
+              onClick={!moreStops ? reveal : st.videoOn && canAutoPause(clip) ? () => send({ type: 'jump', now: performance.now() }) : nextStopOnBoard}
+              disabled={busy}
+            >
               {moreStops ? 'Siguiente pregunta' : 'Ver cómo ocurrió en el vídeo'}
             </button>
           )}
@@ -984,6 +988,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           ) : (
             <DockButton icon="skip" label="Saltar pregunta" onClick={skip} />
           ))}
+        {st.phase === 'asking' && q && answer && !gate && qi + 1 >= totalQuestions && moreStops && st.videoOn && canAutoPause(clip) && (
+          <DockButton icon="play" label="Continuar" onClick={reveal} />
+        )}
         {st.phase === 'reveal' && quietReveal && <DockButton icon="stop" label="Terminar" onClick={() => send({ type: 'finish' })} />}
         {canEditMarks(packed) && (!fit || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Editor de marcas" onClick={onEdit} />}
       </nav>
@@ -997,6 +1004,7 @@ const DOCK_ICONS: Record<string, string> = {
   ask: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8 8a2 2 0 1 1 3 1.7c-.6.4-1 .8-1 1.6M10 14h.01',
   skip: 'M4 5l7 5-7 5zM12 5l7 5-7 5z',
   stop: 'M5 5h10v10H5z',
+  play: 'M6 4l10 6-10 6z',
   edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
 };
 
