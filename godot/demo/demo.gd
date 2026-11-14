@@ -805,6 +805,13 @@ func _tint(tint_name: String) -> Array:
 	return tints.get(tint_name, tints["peach"])
 
 
+## Línea que mide lo que su texto (no se recorta): para filas cortas dentro de un contenedor horizontal.
+func _line(text: String, font_size: int, color: Color, font: Font) -> Label:
+	var l := _text(text, font_size, color, font)
+	l.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	return l
+
+
 func _text(text: String, font_size: int, color: Color, font: Font) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -3562,11 +3569,11 @@ func _open_home() -> void:
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
-		words.add_child(_para("Nivel %d · %s" % [lv, str(_rank(lv)[1])], F_HEAD + 4, _c("ink"), font_display))
+		words.add_child(_line("Nivel %d · %s" % [lv, str(_rank(lv)[1])], F_HEAD + 4, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
-		words.add_child(_para(left_text, F_SUB, _c("quiet"), font_medium))
+		words.add_child(_line(left_text, F_SUB, _c("quiet"), font_medium))
 		rank_row.add_child(words)
 		body.add_child(_spacer(22.0))
 		body.add_child(rank_row)
@@ -4428,11 +4435,11 @@ func _celebrate(before: float, now: float) -> void:
 	words.add_theme_constant_override("separation", 0)
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cheer := str(STREAK_CHEERS[_rng.randi() % STREAK_CHEERS.size()]) if _streak >= 3 else str(CHEERS[_rng.randi() % CHEERS.size()])
-	words.add_child(_para(cheer, F_HEAD + 4, _c("ink"), font_display))
+	words.add_child(_line(cheer, F_HEAD + 4, _c("ink"), font_display))
 	var sub := "+%d puntos · ahora %d" % [gained, int(round(now))]
 	if _streak >= 3:
 		sub += " · %d seguidos" % _streak
-	words.add_child(_para(sub, F_SUB, tint[1], font_semibold))
+	words.add_child(_line(sub, F_SUB, tint[1], font_semibold))
 	row.add_child(words)
 	toast.add_child(pill)
 	var place := func() -> void:
