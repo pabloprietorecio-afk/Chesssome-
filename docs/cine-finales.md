@@ -266,5 +266,5 @@ El clip termina 2,5 s después de la última jugada que sigue el tablero (`trimE
 ## Cartelera y anuncios
 
 - La cartelera es una lista tipo iOS: una fila por partida (miniatura con la posición, título, jugadores, número de preguntas) que se toca entera para empezar. «Solo la pregunta, sin vídeo» va debajo, aparte. El estado de las pausas solo se indica cuando no están comprobadas. La presentación del clip (`intro`) se lee en el aviso que hay sobre el tablero antes de arrancar el vídeo.
-- Mientras YouTube pone un anuncio (la duración no cuadra con la del clip), la botonera queda apagada salvo «Cartelera», que sirve para salir. Solo se detecta así cuando el clip tiene la duración anotada.
+- La botonera queda apagada (salvo «Cartelera», para salir) desde que se pide el vídeo hasta que el clip avanza de verdad: el reproductor dice «reproduciendo», la duración es la del clip y el tiempo se mueve. Así cubre el anuncio previo aunque YouTube no dé su duración (en el móvil no siempre la da). Si el navegador impide arrancar el vídeo, se desbloquea para poder pulsar ▶. Un anuncio a mitad de vídeo se detecta porque la duración deja de cuadrar.
 - Al final del clip, el rótulo «Fin del clip» va en rojo y negrita, con un tick.

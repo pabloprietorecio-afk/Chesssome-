@@ -20,6 +20,7 @@ import {
   syncCap,
   syncProblems,
   canAutoPause,
+  DURATION_TOLERANCE,
   direct,
   initialDirector,
   judgeAnswer,
@@ -208,9 +209,18 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
   const [blocked, setBlocked] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [now, setNow] = useState<number | null>(null);
+  // ¿Ha empezado de verdad el clip? En el móvil, durante el anuncio previo YouTube no siempre da la duración del
+  // anuncio, así que no basta con comparar duraciones: el clip solo cuenta como arrancado cuando el reproductor dice
+  // «reproduciendo», la duración es la del clip y el tiempo avanza. Hasta entonces, la botonera queda apagada.
+  const [progressed, setProgressed] = useState(false);
+  const firstSample = useRef<number | null>(null);
 
   const send = useCallback(
     (e: DirectorEvent) => {
+      if (e.type === 'start') {
+        firstSample.current = null;
+        setProgressed(false);
+      }
       const r = direct(clip, stRef.current, e);
       stRef.current = r.state;
       if (r.commands.length) {
@@ -244,10 +254,16 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
       setPlaying(snap.playing);
       setNow(snap.time);
       if (snap.playing) setBlocked(false);
+      const expected = clip.video.duration;
+      const ownVideo = expected == null || Math.abs(snap.duration - expected) <= DURATION_TOLERANCE;
+      if (snap.playing && ownVideo) {
+        if (firstSample.current == null) firstSample.current = snap.time;
+        else if (snap.time > firstSample.current + 0.3) setProgressed(true);
+      } else if (!snap.playing) firstSample.current = null;
       send({ type: 'tick', ...snap, now: performance.now() });
     }, 100);
     return () => window.clearInterval(id);
-  }, [st.videoOn, send]);
+  }, [st.videoOn, send, clip]);
 
   useEffect(
     () => () => {
@@ -260,7 +276,7 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
   const time = useCallback(() => adapter.current?.snapshot()?.time ?? null, []);
   const playNow = useCallback(() => adapter.current?.play(), []);
   const seekTo = useCallback((t: number) => adapter.current?.seek(t), []);
-  return { st, send, player, blocked, playing, time, now, playNow, seekTo };
+  return { st, send, player, blocked, playing, progressed, time, now, playNow, seekTo };
 }
 
 /** Desplaza hasta el elemento si no está a la vista en más de la mitad; resuelve cuando ya lo está. */
@@ -315,7 +331,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const videoBox = useRef<HTMLDivElement>(null);
   const askBox = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const { st, send, player, blocked, playing, time, now, playNow, seekTo } = useDirector(clip, mount);
+  const { st, send, player, blocked, playing, progressed, time, now, playNow, seekTo } = useDirector(clip, mount);
 
   const [qi, setQi] = useState(0);
   const [answer, setAnswer] = useState<ClipAnswer | null>(null);
@@ -672,7 +688,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     nextIsEnd: (st.phase === 'reveal' && !moreStops && st.missed === 'none') || (st.phase === 'asking' && !moreStops && lastInStop),
   };
   // Mientras YouTube pone un anuncio, la botonera queda apagada (salvo «Cartelera»): tocar opciones entonces despista.
-  const adLock = st.adSuspected && st.videoOn && st.errorCode == null;
+  // También antes de que el clip arranque de verdad (ahí es donde YouTube pone el anuncio previo), salvo que el
+  // navegador haya impedido el arranque: entonces hay que poder pulsar ▶ y moverse.
+  const adLock = st.videoOn && st.errorCode == null && (st.adSuspected || (!progressed && !blocked && player !== 'none'));
   const lock = <T,>(f: T | undefined): T | undefined => (adLock ? undefined : f);
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
@@ -1167,7 +1185,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               label="Otra vez"
               onClick={lock(st.phase !== 'idle' ? () => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); } : undefined)}
             />
-            {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={lock(onEdit)} />}
+            {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
           </div>
           </div>
           <SeekButton dir={1} onSeek={seekable && !adLock ? seekBy : undefined} />

@@ -238,6 +238,9 @@ await clickText('Ver el vídeo: se para');
 await waitAttr('phase', 'watching');
 await waitAttr('player', 'ready');
 assert(/Ver (el vídeo|la jugada)/.test(await panel()), 'debe ofrecerse el botón ▶: ' + (await panel()));
+// Hasta que el clip no avanza de verdad (ahí cae el anuncio previo, que en el móvil no siempre se puede detectar),
+// la botonera está apagada.
+assert((await page.$('.vc-dock-2[data-locked="ad"]')) !== null, 'antes de que arranque el clip, botonera apagada');
 await shot('09-esperando-play');
 // Un anuncio antes del vídeo: el director no debe hacer nada.
 await fake(() => { window.__fakeYT.ad = true; window.__fakeYT.tapPlay(); });
@@ -247,8 +250,11 @@ assert(/Anuncio de YouTube/.test(await panel()), 'debe avisar del anuncio: ' + (
 // Durante el anuncio la botonera está apagada (salvo «Cartelera»), para no despistar.
 const dockOn = () => page.$$eval('.vc-dock-2 button', (bs) => bs.filter((b) => !b.disabled).map((b) => b.textContent.trim()));
 assert((await page.$('.vc-dock-2[data-locked="ad"]')) !== null, 'la botonera debe marcarse bloqueada durante el anuncio');
-assert(JSON.stringify(await dockOn()) === JSON.stringify(['Cartelera']), 'durante el anuncio solo «Cartelera» se puede pulsar: ' + (await dockOn()));
+const onlyExit = async () => (await dockOn()).every((t) => t === 'Cartelera' || t === 'Marcas'); // «Marcas»: solo con el interruptor de desarrollo
+assert(await onlyExit(), 'durante el anuncio solo «Cartelera» se puede pulsar: ' + (await dockOn()));
 await fake(() => { window.__fakeYT.ad = false; });
+await sleep(900);
+assert((await page.$('.vc-dock-2[data-locked]')) === null && (await dockOn()).includes('Otra vez'), 'en cuanto el clip avanza de verdad, la botonera vuelve: ' + (await dockOn()));
 // En cuanto el vídeo arranca, el aviso desaparece y el tablero no se mueve de sitio.
 const boardTop = () => page.$eval('.vc-board', (e) => Math.round(e.getBoundingClientRect().top + window.scrollY));
 const topBefore = await boardTop();
@@ -423,7 +429,9 @@ const waitPly = async (ply, ms = 8000) => { const t0 = Date.now(); while ((await
 let bi = await boardInfo();
 assert(bi.kind === 'video' && bi.ply === '108' && /tras 54…Re5/.test(bi.label), 'tablero del vídeo al empezar: ' + JSON.stringify(bi));
 await shot('13-viendo-con-tablero');
-// Avance y retroceso rápidos: se mantiene pulsado y, al soltar, el vídeo sigue a su ritmo.
+// Avance y retroceso rápidos: se mantiene pulsado y, al soltar, el vídeo sigue a su ritmo. (Solo cuando el clip ya ha
+// arrancado de verdad: antes, la botonera está apagada por si hay anuncio.)
+await fake(() => window.__fakeYT.tapPlay()); await sleep(700); await fake(() => window.__fakeYT.tapPause()); await sleep(200);
 const hold = async (i, ms) => {
   const b = await page.$$eval('.vc-seek-btn', (bs, i) => { const r = bs[i].getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, i);
   await page.mouse.move(b.x, b.y); await page.mouse.down(); await sleep(ms); await page.mouse.up(); await sleep(200);
