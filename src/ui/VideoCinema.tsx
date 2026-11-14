@@ -338,6 +338,23 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   useEffect(() => {
     if (lessonStep != null) lessonRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [lessonStep]);
+  // Paso con dos jugadas: se ve primero la primera (animada) y, un momento después, la segunda. Así no desaparece
+  // ninguna pieza sin que se vea cómo.
+  const [lessonFrame, setLessonFrame] = useState<BoardState | null>(null);
+  useEffect(() => {
+    setLessonFrame(null);
+    const lesson = clip.lesson;
+    if (lessonStep == null || !lesson || lessonPrev.current !== lessonStep - 1 || !lessonContinues(lesson, lessonStep)) return;
+    const cur = lesson.steps[lessonStep].moves.split(/\s+/).filter(Boolean);
+    const prev = lesson.steps[lessonStep - 1].moves.split(/\s+/).filter(Boolean);
+    if (cur.length - prev.length < 2) return;
+    const c = new Chess(lessonPos[lessonStep - 1].fen);
+    const m = c.move(cur[prev.length]);
+    setLessonFrame({ fen: c.fen(), last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: !!m.captured } });
+    const id = window.setTimeout(() => setLessonFrame(null), 900);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonStep]);
   const animKey = useRef(0);
   const timers = useRef<number[]>([]);
   const clearTimers = () => {
@@ -566,7 +583,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       ? { ...lessonNow.pos.last, key: 1000 + lessonStep! }
       : null;
   const shown = lessonNow
-    ? { fen: lessonNow.pos.fen, last: lessonNow.pos.last, anim: lessonAnim }
+    ? lessonFrame ?? { fen: lessonNow.pos.fen, last: lessonNow.pos.last, anim: lessonAnim }
     : synced
       ? { fen: synced.fen, last: synced.last, anim: syncedAnim }
       : board;
