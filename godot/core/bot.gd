@@ -17,11 +17,11 @@ const INF_SCORE := 1000000
 
 ## name, depth, noise (centipeones), random (probabilidad de una jugada al azar), think (segundos como mucho)
 const LEVELS := [
-	{"name": "Muy fácil", "depth": 1, "noise": 220, "random": 0.45, "think": 0.6},
-	{"name": "Fácil", "depth": 2, "noise": 120, "random": 0.15, "think": 1.0},
-	{"name": "Medio", "depth": 2, "noise": 40, "random": 0.0, "think": 1.5},
-	{"name": "Difícil", "depth": 3, "noise": 12, "random": 0.0, "think": 2.5},
-	{"name": "Muy difícil", "depth": 5, "noise": 0, "random": 0.0, "think": 4.0},
+	{"name": "Muy fácil", "depth": 1, "noise": 200, "random": 0.35, "think": 0.6},
+	{"name": "Fácil", "depth": 2, "noise": 60, "random": 0.06, "think": 1.0},
+	{"name": "Medio", "depth": 4, "noise": 12, "random": 0.0, "think": 2.0},
+	{"name": "Difícil", "depth": 6, "noise": 0, "random": 0.0, "think": 3.0},
+	{"name": "Muy difícil", "depth": 12, "noise": 0, "random": 0.0, "think": 5.0},
 ]
 
 var level := 0
@@ -32,6 +32,15 @@ var time_cap := 0.0
 var exact := false
 var rng := RandomNumberGenerator.new()
 var nodes := 0
+## Tabla de transposiciones (clave → [profundidad, valor, tipo, jugada]), jugadas «asesinas» por altura y
+## historial de cortes: hacen que la búsqueda llegue más lejos en el mismo tiempo.
+var _tt := {}
+var _killers := {}
+var _history := {}
+const TT_EXACT := 0
+const TT_LOWER := 1
+const TT_UPPER := 2
+const TT_MAX := 200000
 var _deadline := 0
 var _stopped := false
 ## Ruido fijo por jugada de la raíz (se sortea una vez por decisión): un error humano, no temblor.
@@ -55,6 +64,8 @@ func choose(pos: Chess) -> int:
 	var cfg: Dictionary = LEVELS[level]
 	nodes = 0
 	_stopped = false
+	_killers = {}
+	_history = {}
 	var think := float(cfg["think"])
 	if time_cap > 0.0:
 		think = minf(think, time_cap)
@@ -75,7 +86,7 @@ func choose(pos: Chess) -> int:
 	if not exact and rng.randf() < float(cfg["random"]):
 		return moves[rng.randi() % moves.size()]
 	var best := moves[0]
-	var ordered := _order(pos, moves)
+	var ordered := _order(pos, moves, int((_tt.get(_key(pos), [0, 0, 0, -1]) as Array)[3]))
 	for depth in range(1, int(cfg["depth"]) + 1):
 		var alpha := -INF_SCORE
 		var found := -1
@@ -132,13 +143,36 @@ func _search(pos: Chess, depth: int, alpha: int, beta: int, ply: int) -> int:
 		_stopped = true
 	if _stopped:
 		return 0
-	if depth <= 0:
-		return _quiesce(pos, alpha, beta, ply, 4)
 	var me := pos.turn
+	var in_check := variant == "" and pos.in_check()
+	# Extensión por jaque: una posición con el rey atacado no se corta aquí (si no, los mates se ven tarde).
+	if in_check and ply < 24:
+		depth += 1
+	if depth <= 0:
+		return _quiesce(pos, alpha, beta, ply, 6)
+	# Tabla de transposiciones: misma posición por otro camino, mismo resultado (y su mejor jugada primero).
+	var key := _key(pos)
+	var hit: Array = _tt.get(key, [])
+	var tt_move := -1
+	if not hit.is_empty():
+		tt_move = int(hit[3])
+		if int(hit[0]) >= depth and ply > 0:
+			var v := int(hit[1])
+			match int(hit[2]):
+				TT_EXACT:
+					return v
+				TT_LOWER:
+					if v >= beta:
+						return v
+				TT_UPPER:
+					if v <= alpha:
+						return v
+	var start_alpha := alpha
 	var moves := legal(pos) if variant == "peones" else pos.pseudo_moves()
 	var best := -INF_SCORE
+	var best_move := -1
 	var any := false
-	for m in _order(pos, moves):
+	for m in _order(pos, moves, tt_move, ply):
 		var c := pos.after(m)
 		# Las jugadas se comprueban al hacerlas (más barato que pedir antes la lista de legales).
 		if variant != "peones" and c.attacked(c.king_sq(me), 1 - me):
@@ -149,33 +183,70 @@ func _search(pos: Chess, depth: int, alpha: int, beta: int, ply: int) -> int:
 			score = MATE - ply
 		else:
 			score = -_search(c, depth - 1, -beta, -alpha, ply + 1)
+		if _stopped:
+			return 0
 		if score > best:
 			best = score
+			best_move = m
 		if score > alpha:
 			alpha = score
-		if alpha >= beta or _stopped:
+		if alpha >= beta:
+			# Jugada tranquila que corta: se recuerda para probarla pronto en posiciones hermanas.
+			if pos.b[Chess.move_to(m)] == 0:
+				var k: Array = _killers.get(ply, [])
+				if not k.has(m):
+					k.push_front(m)
+					_killers[ply] = k.slice(0, 2)
+				_history[m] = int(_history.get(m, 0)) + depth * depth
 			break
 	if not any:
 		if variant == "peones":
 			return -MATE + ply
-		return -MATE + ply if pos.in_check() else 0
+		return -MATE + ply if in_check else 0
+	var flag := TT_EXACT
+	if best <= start_alpha:
+		flag = TT_UPPER
+	elif best >= beta:
+		flag = TT_LOWER
+	if _tt.size() > TT_MAX:
+		_tt.clear()
+	_tt[key] = [depth, best, flag, best_move]
 	return best
 
 
-## Solo capturas (y coronaciones), para no cortar la cuenta a mitad de un cambio de piezas.
+## Solo capturas (y coronaciones), para no cortar la cuenta a mitad de un cambio de piezas. Con el rey en jaque,
+## todas las jugadas que lo salvan (y si no hay ninguna, es mate): si no, un mate al final de la búsqueda no se ve.
 func _quiesce(pos: Chess, alpha: int, beta: int, ply: int, left: int) -> int:
 	nodes += 1
+	if (nodes & 255) == 0 and Time.get_ticks_msec() > _deadline:
+		_stopped = true
+	var me := pos.turn
+	if variant == "" and left > 0 and pos.in_check():
+		var any := false
+		var best := -INF_SCORE
+		for m in _order(pos, pos.pseudo_moves(), -1, ply):
+			var c := pos.after(m)
+			if c.attacked(c.king_sq(me), 1 - me):
+				continue
+			any = true
+			var score := -_quiesce(c, -beta, -alpha, ply + 1, left - 1)
+			if score > best:
+				best = score
+			if score > alpha:
+				alpha = score
+			if alpha >= beta:
+				break
+		return best if any else -MATE + ply
 	var stand := evaluate(pos)
 	if stand >= beta or left <= 0:
 		return stand
 	if stand > alpha:
 		alpha = stand
-	var me := pos.turn
 	var caps := PackedInt32Array()
 	for m in pos.pseudo_moves():
 		if pos.b[Chess.move_to(m)] != 0 or Chess.move_promo(m) == Chess.QUEEN or Chess.move_flag(m) == Chess.F_EN_PASSANT:
 			caps.append(m)
-	for m in _order(pos, caps):
+	for m in _order(pos, caps, -1, ply):
 		var c := pos.after(m)
 		if variant != "peones" and c.attacked(c.king_sq(me), 1 - me):
 			continue
@@ -189,16 +260,29 @@ func _quiesce(pos: Chess, alpha: int, beta: int, ply: int, left: int) -> int:
 	return alpha
 
 
-## Capturas primero (la pieza más valiosa con la atacante más barata), después coronaciones y el resto.
-func _order(pos: Chess, moves: PackedInt32Array) -> Array:
+## Clave de la posición para la tabla de transposiciones (casillas, turno, enroques y al paso).
+func _key(pos: Chess) -> int:
+	return hash([pos.b, pos.turn, pos.castle, pos.ep])
+
+
+## Orden de prueba: la de la tabla, capturas (la pieza más valiosa con la atacante más barata), coronaciones,
+## las dos jugadas que cortaron en esta profundidad y, entre el resto, las que más han cortado.
+func _order(pos: Chess, moves: PackedInt32Array, first: int = -1, ply: int = 0) -> Array:
 	var scored: Array = []
+	var killers: Array = _killers.get(ply, [])
 	for m in moves:
 		var victim := pos.b[Chess.move_to(m)]
 		var k := 0
-		if victim != 0:
-			k = 10000 + VALUE[victim & 7] * 10 - VALUE[pos.b[Chess.move_from(m)] & 7] / 10
-		if Chess.move_promo(m) == Chess.QUEEN:
-			k += 9000
+		if m == first:
+			k = 1000000
+		elif victim != 0:
+			k = 100000 + VALUE[victim & 7] * 10 - VALUE[pos.b[Chess.move_from(m)] & 7] / 10
+		elif Chess.move_promo(m) == Chess.QUEEN:
+			k = 90000
+		elif killers.has(m):
+			k = 80000 - killers.find(m)
+		else:
+			k = mini(int(_history.get(m, 0)), 70000)
 		scored.append([k, m])
 	scored.sort_custom(func(x: Array, y: Array) -> bool: return x[0] > y[0])
 	var out: Array = []
@@ -207,14 +291,35 @@ func _order(pos: Chess, moves: PackedInt32Array) -> Array:
 	return out
 
 
-## Evaluación desde el bando que mueve (centipeones).
+## Evaluación desde el bando que mueve (centipeones): material, casillas, estructura de peones (doblados, aislados,
+## pasados), torres en columnas abiertas, pareja de alfiles, desarrollo y refugio del rey. Todo propio y sencillo.
 func evaluate(pos: Chess) -> int:
-	var score := 0
+	var score := [0, 0]
 	var material := 0
+	var pawns := [PackedInt32Array(), PackedInt32Array()]
+	pawns[0].resize(8)
+	pawns[1].resize(8)
+	# Fila más adelantada y más atrasada de los peones de cada bando por columna (para los pasados).
+	var front := [PackedInt32Array([-1, -1, -1, -1, -1, -1, -1, -1]), PackedInt32Array([8, 8, 8, 8, 8, 8, 8, 8])]
+	var bishops := [0, 0]
 	for s in 64:
 		var p := pos.b[s]
-		if p != 0 and (p & 7) != Chess.KING and (p & 7) != Chess.PAWN:
-			material += VALUE[p & 7]
+		if p == 0:
+			continue
+		var t := p & 7
+		var c := Chess.color_of(p)
+		if t != Chess.KING and t != Chess.PAWN:
+			material += VALUE[t]
+		if t == Chess.PAWN:
+			var f := s & 7
+			var r := s >> 3
+			pawns[c][f] += 1
+			if c == 0:
+				front[0][f] = maxi(front[0][f], r)
+			else:
+				front[1][f] = mini(front[1][f], r)
+		elif t == Chess.BISHOP:
+			bishops[c] += 1
 	# 0 = apertura y medio juego con mucho material; 1 = final.
 	var endgame := clampf(1.0 - float(material - 1300) / 3000.0, 0.0, 1.0)
 	for s in 64:
@@ -234,12 +339,32 @@ func evaluate(pos: Chess) -> int:
 				v += rel * rel * (3 if variant == "peones" else 1) * (1 + int(endgame * 2.0))
 				if f >= 2 and f <= 5:
 					v += rel * 3
+				if pawns[c][f] > 1:
+					v -= 12
+				var left_mates: int = pawns[c][f - 1] if f > 0 else 0
+				var right_mates: int = pawns[c][f + 1] if f < 7 else 0
+				if left_mates + right_mates == 0:
+					v -= 12
+				# Pasado: ningún peón rival delante en su columna ni en las de al lado.
+				var passed := true
+				for df in [-1, 0, 1]:
+					var ff: int = f + df
+					if ff < 0 or ff > 7:
+						continue
+					if c == 0 and front[1][ff] < 8 and front[1][ff] > r:
+						passed = false
+					if c == 1 and front[0][ff] >= 0 and front[0][ff] < r:
+						passed = false
+				if passed:
+					v += int((10 + rel * rel * 4) * (0.5 + endgame))
 			Chess.KNIGHT:
 				v += 24 - 8 * center
 			Chess.BISHOP:
 				v += 12 - 4 * center
 			Chess.ROOK:
 				v += 12 if rel == 6 else 0
+				if pawns[c][f] == 0:
+					v += 18 if pawns[1 - c][f] == 0 else 9
 			Chess.QUEEN:
 				v += 6 - 2 * center
 				# La dama que sale demasiado pronto suele perder tiempo.
@@ -247,12 +372,24 @@ func evaluate(pos: Chess) -> int:
 					v -= 10
 			Chess.KING:
 				if endgame < 0.6:
-					# En el medio juego, el rey resguardado en su primera fila y en un lado.
+					# En el medio juego, el rey resguardado en su primera fila, en un lado y con peones delante.
 					v += (20 if rel == 0 and (f <= 2 or f >= 6) else 0) - rel * 18
+					var shelter := 0
+					for df in [-1, 0, 1]:
+						var ff: int = f + df
+						if ff < 0 or ff > 7:
+							continue
+						var ahead: int = s + (8 if c == 0 else -8) + df
+						if ahead >= 0 and ahead < 64 and pos.b[ahead] == (Chess.PAWN | (0 if c == 0 else 8)):
+							shelter += 1
+					v += int(shelter * 12 * (1.0 - endgame))
 				else:
 					v += int((20 - 6 * center) * endgame)
 		# Piezas menores sin desarrollar al principio.
 		if (t == Chess.KNIGHT or t == Chess.BISHOP) and rel == 0 and endgame < 0.4:
 			v -= 15
-		score += v if c == pos.turn else -v
-	return score
+		score[c] += v
+	for c in 2:
+		if bishops[c] >= 2:
+			score[c] += 30
+	return score[pos.turn] - score[1 - pos.turn]

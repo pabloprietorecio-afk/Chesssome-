@@ -1215,7 +1215,7 @@ func _fit_card() -> void:
 	# Si no cabe (una explicación larga en los problemas), la tarjeta sube por encima del tablero como una ventana
 	# semitransparente, hasta dejar a la vista la parte de arriba del tablero; lo que siga sin caber, se desplaza.
 	var lift := 0.0
-	if need > room and mode != "learn" and mode != "game":
+	if need > room and mode != "learn" and (mode != "game" or game_state == "review"):
 		lift = minf(need - room, board_slot.custom_minimum_size.y * 0.7 + top_gap.custom_minimum_size.y)
 	if absf(lift - _card_float) > 0.5:
 		_card_float = lift
@@ -4204,7 +4204,10 @@ func _build_game_actions() -> void:
 ## Abre el análisis: se calcula en otro hilo la primera vez (puede tardar unos segundos en el móvil).
 func _open_review() -> void:
 	if review_done:
-		_show_review_page()
+		if review.is_empty():
+			_show_review_page()
+		else:
+			_review_show(maxi(review_at, 0))
 		return
 	var page := _page("review")
 	var body: VBoxContainer = page["body"]
@@ -4232,7 +4235,11 @@ func _review_ready(found: Array, my_run: int) -> void:
 	review_done = true
 	_save_game_summary()
 	if progress_kind == "review":
-		_show_review_page()
+		# Directo al tablero, con el primer momento; la lista queda a un toque («Lista»).
+		if review.is_empty():
+			_show_review_page()
+		else:
+			_review_show(0)
 
 
 ## Lista de los momentos, cada uno con «Ver» y, si lo hay, con qué practicar.
@@ -4303,15 +4310,8 @@ func _review_show(i: int) -> void:
 	var mo: Dictionary = review[i]
 	view.interactive = false
 	view.set_fen(str(mo["fen"]))
-	var arrows: Array = []
-	var played := Chess.from_fen(str(mo["fen"])).find_uci(str(mo["played"]))
-	if played >= 0:
-		arrows.append({"from": Chess.move_from(played), "to": Chess.move_to(played), "tone": "bad"})
-	if str(mo["better"]) != "":
-		var better := Chess.from_fen(str(mo["fen"])).find_uci(str(mo["better"]))
-		if better >= 0:
-			arrows.append({"from": Chess.move_from(better), "to": Chess.move_to(better), "tone": "good"})
-	view.board.set_arrows(arrows)
+	view.set_orientation(game_color)
+	view.board.set_arrows(mo.get("arrows", []))
 	if int(mo.get("square", -1)) >= 0:
 		view.board.select(int(mo["square"]))
 	_say([_kid_line(GameReview.kids_key(str(mo["kind"])))])
@@ -4330,7 +4330,14 @@ func _build_review_card() -> void:
 	card_body.add_child(chips)
 	card_body.add_child(_para(_kid_line(GameReview.kids_key(str(mo.get("kind", "")))) if kids else str(mo.get("text", "")), F_BODY, _c("ink"), font_regular))
 	if not kids:
-		card_body.add_child(_para("Flecha roja: tu jugada. Verde: otra mejor." if str(mo.get("better", "")) != "" else "Flecha roja: tu jugada.", F_FOOT + 2, _c("quiet"), font_regular))
+		var legend := "Flecha roja: tu jugada."
+		if str(mo.get("better", "")) != "":
+			legend += " Verde: la otra."
+		if str(mo.get("kind", "")) == "hang":
+			legend += " Violeta: quién podía capturar."
+		elif str(mo.get("kind", "")) == "allowed_mate":
+			legend += " Violeta: el mate del rival."
+		card_body.add_child(_para(legend, F_FOOT + 2, _c("quiet"), font_regular))
 
 
 func _build_review_actions() -> void:
@@ -4344,7 +4351,7 @@ func _build_review_actions() -> void:
 	hint_button = null
 	step_button = null
 	left_button = _tool_button("back", "Anterior", _review_show.bind(review_at - 1), "sky")
-	var list := _tool_button("why", "Análisis", _review_back, "lilac")
+	var list := _tool_button("why", "Lista", _review_back, "lilac")
 	right_button = _tool_button("next", "Siguiente", _review_show.bind(review_at + 1), "mint")
 	left_button.disabled = review_at <= 0
 	left_button.modulate.a = 1.0 if review_at > 0 else 0.42

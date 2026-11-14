@@ -53,6 +53,7 @@ static func analyze(fens: Array, moves: Array, player: int, variant: String = ""
 		moved_count.erase(from)
 		moved_count[to] = times
 		if not found.is_empty():
+			found["arrows"] = _arrows(before, m, found)
 			found["ply"] = i
 			found["fen"] = str(fens[i])
 			found["played"] = str(moves[i])
@@ -135,6 +136,28 @@ static func _opening(before: Chess, m: int, ply: int, moved_count: Dictionary, m
 			return {"kind": "repeat", "better": "", "square": from,
 				"text": "En la jugada %d moviste tu %s por tercera vez (%s) mientras %d de tus caballos y alfiles seguían sin salir. En la apertura conviene sacar primero todas las piezas: cada jugada con la misma pieza es una que no usas para desarrollar otra." % [n, NAME[t], san, undeveloped]}
 	return {}
+
+
+## Lo que dice el texto, dibujado en el tablero (posición de antes de tu jugada): tu jugada en rojo, la otra en
+## verde y, si una pieza quedó a tiro, las piezas rivales que podían capturarla (en violeta).
+static func _arrows(before: Chess, m: int, found: Dictionary) -> Array:
+	var out: Array = [{"from": Chess.move_from(m), "to": Chess.move_to(m), "tone": "bad"}]
+	var better := before.find_uci(str(found.get("better", ""))) if str(found.get("better", "")) != "" else -1
+	if better >= 0:
+		out.append({"from": Chess.move_from(better), "to": Chess.move_to(better), "tone": "good"})
+	var after := before.after(m)
+	var sq := int(found.get("square", -1))
+	match str(found["kind"]):
+		"hang":
+			if sq >= 0:
+				for r in after.legal_moves():
+					if Chess.move_to(r) == sq:
+						out.append({"from": Chess.move_from(r), "to": sq, "tone": "info"})
+		"allowed_mate":
+			var mate := mate_in_one(after)
+			if mate >= 0:
+				out.append({"from": Chess.move_from(mate), "to": Chess.move_to(mate), "tone": "info"})
+	return out
 
 
 ## Jugada que da mate en una (−1 si no hay).

@@ -8,6 +8,12 @@ cada grupo de lecciones, acorde a lo aprendido.
 - Búsqueda alfa-beta propia en GDScript sobre las reglas de la app (`core/chess.gd`), con capturas al final de la
   búsqueda y profundización iterativa con límite de tiempo. Evaluación propia y sencilla (material, centro, avance de
   peones, desarrollo, refugio del rey); no se ha copiado de ningún motor.
+- Búsqueda (14 nov, tras ver Pablo que «Medio» cometía errores sin sentido): tabla de transposiciones, jugadas
+  asesinas e historial para ordenar, extensión por jaque y búsqueda de capturas que ve los mates (antes un mate al
+  final de la búsqueda no se veía y el rival no se defendía de amenazas de mate). Evaluación con estructura de
+  peones (doblados, aislados, pasados), torres en columnas abiertas, pareja de alfiles y refugio del rey.
+  «Medio» calcula ahora hasta 4 jugadas (antes 2); en partidas de prueba gana a «Fácil» y «Difícil» le gana o
+  hace tablas.
 - Cinco niveles: Muy fácil, Fácil, Medio, Difícil y Muy difícil. Cambian la profundidad, un ruido fijo por jugada
   (errores «humanos», no temblor) y la probabilidad de jugar al azar. Todos dan el mate en una si lo tienen.
 - **La fuerza no está medida contra jugadores reales.** Es un rival para principiantes y aficionados; el nivel más
@@ -57,7 +63,9 @@ y problemas.
   (salvo si la jugada daba jaque), y en la apertura: el rey movido sin enrocar y la misma pieza por tercera vez con
   dos o más piezas menores sin sacar. Como mucho seis momentos, los más importantes.
 - La vista es corta (una jugada y media): no ve combinaciones largas, planes ni estructura. La página lo dice.
-- En la app: tras la partida, «Análisis» → lista de momentos con «Ver» (posición en el tablero, flecha roja con tu
+- En la app (14 nov, petición de Pablo): «Análisis» lleva directamente al tablero con el primer momento: tu jugada
+  en rojo, la otra en verde y, si dejaste una pieza a tiro, las piezas rivales que podían capturarla en violeta (o el
+  mate del rival). Anterior / Lista / Siguiente. La lista de momentos tiene «Ver» (posición en el tablero, flecha roja con tu
   jugada y verde con la otra), «Lección» (la del curso que lo enseña) y «Problemas» (hasta 5 problemas de ese tema,
   cerca de tu nivel). Nivel Kids: frases fijas con voz.
 - Se guarda un resumen de cada partida analizada en `user://chessome_partidas.json` (fecha, nivel, resultado,
