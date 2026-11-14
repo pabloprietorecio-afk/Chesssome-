@@ -163,7 +163,7 @@ assert(/Pulsa ▶ en el vídeo/.test(await panel()), 'debe pedirse pulsar ▶: '
 assert((await fake(() => window.__fakeYT.last().state)) !== 1, 'el vídeo no debe arrancar solo en modo directo');
 await fake(() => window.__fakeYT.tapPlay());
 await sleep(400);
-assert(/En la partida se jugó Re5/.test(await panel()), 'texto de revelación: ' + (await panel()));
+assert((await panel()) === '', 'con el vídeo en marcha y el tablero sincronizado, no hay texto: ' + (await panel()));
 await page.evaluate(() => window.scrollTo(0, 0));
 await shot('06-revelacion');
 // Nada delante del reproductor y tamaño mínimo de 200 × 200.
@@ -264,6 +264,12 @@ assert(/¡Esa es!/.test(await panel()), 'Txf2 debe ser la buena: ' + (await pane
 await clickText('Siguiente pregunta');
 await waitAttr('question', 1);
 await clickText('Seguir viendo sin responder');
+await sleep(200);
+// Primero, encima del tablero, la jugada de la partida; el vídeo no sigue hasta pulsar OK.
+assert((await attr('phase')) === 'asking' && /En la partida se jugó Ad5/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso con la jugada antes de seguir');
+assert((await page.$('.vc-ask')) === null && (await page.$('.vc-tools')) === null, 'con el aviso, sin pregunta ni opciones');
+await shot('11b-sin-responder-aviso');
+await clickText('OK');
 await waitAttr('phase', 'reveal');
 await sleep(900);
 const afterReveal = await fake(() => ({ state: window.__fakeYT.last().state, calls: window.__fakeYT.calls.slice(-3) }));
@@ -400,6 +406,7 @@ await shot('19-pausa-cabe-todo');
 const fitAsking = await assertFits('en la pausa');
 await shot('13b-pausa-con-tablero');
 await clickText('Seguir viendo sin responder');
+await clickText('OK');
 await waitAttr('phase', 'reveal');
 await waitPly('110');
 bi = await boardInfo();

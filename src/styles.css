@@ -1906,3 +1906,9 @@ a {
 .vc-stage[data-fit='on'] .vc-foot {
   font-size: 0.82rem;
 }
+
+/* Aviso con botón encima del tablero: el botón sí recibe toques. */
+.vc-gate .vc-gap-card {
+  pointer-events: auto;
+  justify-items: center;
+}
