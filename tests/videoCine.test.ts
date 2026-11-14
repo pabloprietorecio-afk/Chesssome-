@@ -609,9 +609,9 @@ describe('abandonos', () => {
     for (const t of moves.split(/\s+/)) if (t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t)) g.move(t);
     return g.fen();
   };
-  it('la línea de cada abandono es legal desde la posición final y acaba coronando o dando mate el bando que gana', () => {
+  it('la línea de cada abandono es legal desde la posición final y acaba coronando, dando mate o dejando al que abandona con el rey solo', () => {
     const withRes = CLIPS.filter((c) => c.resignation);
-    expect(withRes.map((c) => c.id).sort()).toEqual(['ding-gukesh-2024-g14', 'gukesh-carlsen-2025-norway-r6', 'nepomniachtchi-ding-2023-wch-tb4']);
+    expect(withRes.map((c) => c.id).sort()).toEqual(['ding-gukesh-2024-g14', 'firouzja-gukesh-2025-superbet-r6', 'gukesh-carlsen-2025-norway-r6', 'nepomniachtchi-ding-2023-wch-tb4']);
     for (const c of withRes) {
       // El tablero de la app parte del final de la partida empaquetada: tiene que ser el final real.
       expect(finalFen(packed(c.id))).toBe(gameEnd(c.moves));
@@ -619,7 +619,11 @@ describe('abandonos', () => {
       expect(frames.length).toBe(c.resignation!.line.split(/\s+/).length);
       // Notación exacta (capturas con «x», jaques con «+»): es la que se enseña.
       expect(frames.map((f) => f.san).join(' ')).toBe(c.resignation!.line);
-      expect(frames.at(-1)!.san).toMatch(/=Q|#$/);
+      // Corona, da mate o deja al bando que abandona con el rey solo.
+      const lastFen = frames.at(-1)!.fen;
+      const loser = gameEnd(c.moves).split(' ')[1];
+      const loserPieces = lastFen.split(' ')[0].replace(/[^a-zA-Z]/g, '').split('').filter((ch) => (loser === 'w' ? ch === ch.toUpperCase() : ch === ch.toLowerCase()));
+      expect(/=Q|#$/.test(frames.at(-1)!.san) || loserPieces.join('') === (loser === 'w' ? 'K' : 'k')).toBe(true);
       expect(c.resignation!.why.length).toBeGreaterThan(40);
     }
     // Ding (blancas) abandona: corona el peón negro de g. Carlsen (negras) abandona: corona el peón blanco de h.

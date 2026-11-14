@@ -288,3 +288,11 @@ Las líneas se calcularon con Stockfish 19 Lite WASM a profundidad 30 por jugada
 - Plano lateral: el tablero no se lee. Las marcas salen de dos grabaciones de pantalla de Pablo (0:00–1:50 y 1:45–3:42; desfases medidos con el contador del reproductor): una marca por cada mano que mueve, en el orden de la partida. Encajan con la pantalla de la sala (0:16–0:20: posición tras 58…a3, relojes Ding 1:24 y Nepo 0:21) y con los relojes: 62.Rg2 tiene que ir en 1:08, porque Nepo no tenía tiempo para pensarla 50 s; quien piensa casi un minuto es Ding, 62…h5.
 - Tres preguntas: 59 blancas (59.Axg7, 59.h5 y 59.Dd5 hacen tablas; 59.Dc7?? pierde), 59…Dg6 (única que gana) y 62…h5 (única clara a profundidad 34). Lección de 8 pasos y «¿Por qué abandonó Nepo?» con mate en 8.
 - La pregunta 1 es de las blancas, pero el tablero sigue con la orientación del clip (negras abajo).
+
+## «La técnica de Firouzja» (Firouzja – Gukesh, Superbet 2025, ronda 6)
+
+- Vídeo de comentario de ChessBase India (T-7gJKWFp_g, 21:59), con imagen de la sala, tablero 2D y relojes. El comentario de Sagar Shah y su análisis en el tablero 2D pueden dar pistas; Pablo lo acepta.
+- Partida de ChessNinja, cotejada con el tablero 2D del vídeo (55.Tf7 … 69.Tb1). El tablero 2D también enseña análisis (flechas, piezas que aparecen): solo cuentan los cambios que coinciden con una mano moviendo y con la partida.
+- Marcas sobre una grabación de Pablo desde el 16:51 (desfase ±0,5 s). De 61…Rxh6 a 62…Rh7 el tablero 2D se puso al día de golpe; ahí mandan las manos.
+- Preguntas: 56.Txf6+ (la mejor con diferencia) y 63.Rf6! (única, con mate forzado según el empaquetado). Lección de 10 pasos y abandono: 69…Rh6 70.Th1+ Ah4 71.Txh4+.
+- `pipeline/build-video-cine.ts --only <id>` rehace un solo clip y conserva los demás del paquete.

@@ -16,7 +16,7 @@
  *
  * Si algo falla, el programa termina con error y no escribe el paquete.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { UciEngine } from './uci';
 import { CLIPS } from './video-clips';
@@ -35,6 +35,8 @@ const DEPTH = Number(arg('depth', '24'));
 const DEEPER = Number(arg('deeper', '10'));
 const OUT = arg('out', 'src/data/videocine.pack.json');
 const REPORT = arg('report', 'data/dev/videocine-report.json');
+/** --only <id>: analiza solo ese clip y conserva los demás tal como están en el paquete actual (OUT). */
+const ONLY = arg('only', '');
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 interface QReport {
@@ -191,6 +193,7 @@ const engine = await UciEngine.start('lite-single', 128);
 const clips: Clip[] = [];
 const reports: ClipReport[] = [];
 for (const src of CLIPS) {
+  if (ONLY && src.id !== ONLY) continue;
   const t = Date.now();
   const { clip, report } = await buildClip(engine, src);
   reports.push(report);
@@ -207,6 +210,12 @@ writeFileSync(REPORT, JSON.stringify({ engine: engine.name, depth: DEPTH, report
 if (reports.some((r) => !r.ok)) {
   console.error('Hay clips con errores: no se escribe el paquete.');
   process.exit(1);
+}
+if (ONLY) {
+  // Los demás clips se conservan del paquete actual, en el orden de las fuentes.
+  const old = JSON.parse(readFileSync(OUT, 'utf8')) as VideoCinePack;
+  const merged = CLIPS.map((s) => (s.id === ONLY ? clips[0] : old.clips.find((c) => c.id === s.id))).filter((c): c is Clip => !!c);
+  clips.splice(0, clips.length, ...merged);
 }
 const pack: VideoCinePack = { version: 1, engine: { name: engine.name, depth: DEPTH }, builtAt: new Date().toISOString().slice(0, 10), clips };
 mkdirSync(dirname(OUT), { recursive: true });

@@ -544,4 +544,167 @@ export const CLIPS: ClipSource[] = [
     notes:
       'Vídeo de ChessBase India grabado en la sala; plano lateral en el que no se lee el tablero. En 0:16–0:20 sale la pantalla de la sala con la posición tras 58…a3 y los relojes. Marcas medidas sobre dos grabaciones de pantalla de Pablo, sin comprobar aún en el móvil. La jugada 59…Dg6 llega a los 8 s de 59.Dc7: la pausa de 28,6 tiene unos 2 s de margen. Sin relojes de la retransmisión: Lichess no se puede descargar (robots.txt).',
   },
+  {
+    id: 'firouzja-gukesh-2025-superbet-r6',
+    title: 'La técnica de Firouzja',
+    subtitle: 'Firouzja – Gukesh · Superbet Chess Classic 2025, ronda 6',
+    event: 'Superbet Chess Classic Romania 2025 (Grand Chess Tour), ronda 6 · Bucarest',
+    year: 2025,
+    white: 'Alireza Firouzja',
+    black: 'Gukesh D',
+    video: {
+      provider: 'youtube',
+      id: 'T-7gJKWFp_g',
+      title: 'Alireza Firouzja - D Gukesh, Commentary by IM Sagar Shah',
+      channel: 'ChessBase India',
+      channelUrl: 'https://www.youtube.com/@ChessBaseIndiachannel',
+      // Enlace sacado de la crónica de ChessBase India de la ronda 6, que lo inserta como «Alireza Firouzja - D Gukesh,
+      // Commentary by IM Sagar Shah». En la grabación de Pablo se ve «@ChessBaseIndiachannel», el título «The absolutely
+      // stunning encounter between Firouzja…» y 21:59 de duración. La página de YouTube no se pudo abrir desde aquí.
+      official: true,
+      checked: '2026-11-15',
+      duration: 1319,
+    },
+    // Marcas medidas por Claude (15 nov 2026) sobre una grabación de pantalla de Pablo que empieza en el 16:51 del vídeo
+    // (desfase tomado como 1011,5 s, ±0,5: el contador solo da el segundo entero). Cada jugada sale de la mano que mueve,
+    // contrastada con el tablero 2D del vídeo, que cambia a la vez salvo de 61…Rxh6 a 62…Rh7: ahí el tablero se puso al día
+    // de golpe (en 74,5–76) y se usan las manos (69,0 · 72,6 · 75,2). El tablero 2D muestra también análisis de Sagar Shah
+    // (flechas, piezas que aparecen y desaparecen): esos cambios no son jugadas y no se usan.
+    start: 1012,
+    end: 1150.5,
+    marks: 'pending',
+    sync: {
+      startPly: 108,
+      marks: [
+        { ply: 109, at: 1017.5 },
+        { ply: 110, at: 1024.4 },
+        { ply: 111, at: 1028.9 },
+        { ply: 112, at: 1033.5 },
+        { ply: 113, at: 1038.4 },
+        { ply: 114, at: 1043.3 },
+        { ply: 115, at: 1048.8 },
+        { ply: 116, at: 1051.8 },
+        { ply: 117, at: 1057.3 },
+        { ply: 118, at: 1064.9 },
+        { ply: 119, at: 1065.6 },
+        { ply: 120, at: 1069.1 },
+        { ply: 121, at: 1074.5 },
+        { ply: 122, at: 1080.5 },
+        { ply: 123, at: 1084.1 },
+        { ply: 124, at: 1086.7 },
+        { ply: 125, at: 1092.2 },
+        { ply: 126, at: 1096.0 },
+        { ply: 127, at: 1104.0 },
+        { ply: 128, at: 1106.2 },
+        { ply: 129, at: 1109.3 },
+        { ply: 130, at: 1111.2 },
+        { ply: 131, at: 1114.1 },
+        { ply: 132, at: 1119.5 },
+        { ply: 133, at: 1124.8 },
+        { ply: 134, at: 1129.2 },
+        { ply: 135, at: 1133.5 },
+        { ply: 136, at: 1137.5 },
+        { ply: 137, at: 1144.0 },
+      ],
+    },
+    moves:
+      '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3 a6 6. Bg5 d6 7. Nbd2 Ba7 8. a4 Ne7 9. Bxf6 gxf6 10. O-O Ng6 11. d4 h5 12. Re1 Nf4 13. Nf1 c6 14. Ne3 d5 15. exd5 cxd5 16. Bf1 e4 17. Nh4 Be6 18. c4 Kf8 19. Qb3 Qd7 20. cxd5 Nxd5 21. Bc4 Nf4 22. Qa3+ Kg8 23. Nef5 Bb8 24. Qg3+ Ng6 25. Bxe6 Qxe6 26. Qe3 Ba7 27. Qxe4 Nxh4 28. Ne7+ Kg7 29. Qxh4 Qg4 30. Qxg4+ hxg4 31. Re4 Kf8 32. Rae1 Rd8 33. Rxg4 Bxd4 34. Nf5 Bxb2 35. Rge4 Bc3 36. Rb1 b5 37. axb5 axb5 38. h4 b4 39. g4 Kg8 40. Re7 Rd5 41. Kg2 Rxf5 42. Re8+ Kg7 43. Rxh8 Rxf2+ 44. Kxf2 Kxh8 45. Ke3 Kg7 46. Kd3 f5 47. gxf5 Kh6 48. Ke3 Kh5 49. Kf4 Kh6 50. Kg4 Kg7 51. h5 Kh6 52. f6 Bxf6 53. Rxb4 Bg5 54. Rb7 f6 55. Rf7 Bd2 56. Rxf6+ Kg7 57. Rd6 Bc1 58. Kf5 Be3 59. Rg6+ Kh7 60. h6 Bc1 61. Rg7+ Kxh6 62. Rg6+ Kh7 63. Kf6 Be3 64. Kf7 Ba7 65. Ra6 Bb8 66. Rb6 Bc7 67. Rb7 Bf4 68. Rb4 Bg5 69. Rb1 1-0',
+    gameSource:
+      'Partida pública, cotejada jugada a jugada en dos fuentes: ChessNinja (crónica de la ronda 6) y el tablero de la retransmisión que se ve en el vídeo (de 55.Tf7 a 69.Tb1). El principio coincide con 2700chess y el final (52.f6 Axf6 53.Txb4 Ag5) con ChessBase y Chess.com.',
+    orientation: 'w',
+    intro:
+      'Bucarest, 13 de mayo de 2025. Sexta ronda del Superbet Chess Classic. El campeón del mundo, Gukesh, defendía un final de torre contra alfil que parecía tablas, pero acaba de mover su alfil a g5 y ha perdido su último peón. Firouzja tiene que mostrar la técnica.',
+    // Comprobado con Stockfish 19 Lite (profundidad 24, 15 nov 2026): tras 55…Ad2, 56.Txf6+ es la mejor con diferencia
+    // (+2,6; la siguiente, +1,2). Tras 62…Rh7, 63.Rf6 es la única que gana (+5,8; el resto, tablas).
+    lesson: {
+      title: 'Cómo gana Firouzja con torre contra alfil',
+      takeaway: 'Con torre contra alfil, acerca tu rey: rey y torre juntos encierran al rey contrario en la esquina.',
+      from: 110,
+      steps: [
+        {
+          moves: '',
+          text: 'Las blancas tienen torre y peón de h; las negras, alfil y peón de f.',
+        },
+        {
+          moves: 'Rxf6+',
+          text: '56.Txf6+: la torre se come el último peón negro, y con jaque.',
+          arrows: [{ from: 'f6', to: 'h6', tone: 'good' }],
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6',
+          text: '56…Rg7 57.Td6: la torre sigue en la sexta fila.',
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5',
+          text: '57…Ac1 58.Rf5: el rey blanco se acerca al rey negro.',
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5 Be3 Rg6+',
+          text: '58…Ae3 59.Tg6+: jaque, y el rey negro se va al borde.',
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5 Be3 Rg6+ Kh7 h6',
+          text: '59…Rh7 60.h6: Firouzja ofrece el peón de h.',
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5 Be3 Rg6+ Kh7 h6 Bc1 Rg7+',
+          text: '60…Ac1 61.Tg7+.',
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5 Be3 Rg6+ Kh7 h6 Bc1 Rg7+ Kxh6 Rg6+',
+          text: '61…Rxh6 62.Tg6+: el rey negro se ha comido el peón, pero sigue en la esquina.',
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5 Be3 Rg6+ Kh7 h6 Bc1 Rg7+ Kxh6 Rg6+ Kh7 Kf6',
+          text: '62…Rh7 63.Rf6!: la única jugada que gana. El rey blanco se acerca para encerrar al rey negro.',
+          arrows: [{ from: 'f6', to: 'f7', tone: 'good' }],
+        },
+        {
+          moves: 'Rxf6+ Kg7 Rd6 Bc1 Kf5 Be3 Rg6+ Kh7 h6 Bc1 Rg7+ Kxh6 Rg6+ Kh7 Kf6 Be3 Kf7',
+          text: '63…Ae3 64.Rf7: el rey blanco controla g7 y g8, y la torre, h6. Al rey negro solo le queda h8.',
+          arrows: [
+            { from: 'f7', to: 'g8', tone: 'good' },
+            { from: 'g6', to: 'h6', tone: 'good' },
+          ],
+        },
+      ],
+    },
+    // Una pausa por pregunta. 1026,5: Gukesh pulsa el reloj tras 55…Ad2 hacia 1025,5 y la mano de Firouzja va al tablero
+    // hacia 1027,8. 1088,4: la mano de Gukesh deja el tablero (62…Rh7) hacia 1086,8 y la de Firouzja llega hacia 1089,8.
+    stops: [
+      {
+        at: 1026.5,
+        questions: [
+          {
+            ply: 111,
+            question: 'Juegan las blancas: Firouzja. Gukesh acaba de jugar 55…Ad2. ¿Qué jugarías?',
+            hint: 'Al negro le queda un solo peón.',
+            why: '56.Txf6+: la torre se come el último peón negro con jaque. Es la mejor con diferencia.',
+          },
+        ],
+      },
+      {
+        at: 1088.4,
+        questions: [
+          {
+            ply: 125,
+            question: 'El rey negro ha vuelto a h7. Juegan las blancas: ¿qué jugarías?',
+            hint: 'La torre sola no basta: hace falta el rey.',
+            why: '63.Rf6!: es la única que gana. El rey blanco se acerca para encerrar al rey negro: tras 63…Ae3 64.Rf7, al rey negro solo le queda h8.',
+          },
+        ],
+      },
+    ],
+    outro: 'Gukesh abandonó tras 69.Tb1. Firouzja se unió al grupo de cabeza; Gukesh, campeón del mundo, quedó último tras seis rondas.',
+    resignation: {
+      by: 'Gukesh',
+      hook: '¿Por qué, si todavía tiene el alfil?',
+      outcome: 'La torre se come el alfil: queda rey y torre contra rey solo, un mate seguro. Por eso Gukesh abandonó.',
+      why: 'Con la mejor defensa, el alfil tiene que ponerse delante del rey para tapar un jaque y la torre se lo come. Así habría seguido:',
+      line: 'Kh6 Rh1+ Bh4 Rxh4+',
+      source: 'Stockfish 19 Lite WASM, profundidad 26 por jugada (15 nov 2026), la mejor de cada bando; el motor llega a mate forzado para las blancas.',
+    },
+    notes:
+      'Vídeo de comentario de ChessBase India (IM Sagar Shah): imagen de la sala, tablero 2D y relojes. El comentario y el análisis en el tablero 2D pueden adelantar la respuesta; Pablo lo da por bueno (15 nov 2026). El error 53…Ag5?? ocurre antes del 16:51 y no está en el clip. Marcas sin comprobar en el móvil.',
+  },
 ];
