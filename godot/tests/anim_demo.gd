@@ -2,7 +2,7 @@ extends Node
 ## Vídeo de muestra de las animaciones con carácter: cada pieza se mueve y come una vez.
 ## Uso: xvfb-run godot --path godot --rendering-driver opengl3 --fixed-fps 30 --resolution 540x960 \
 ##        --write-movie /tmp/anim/f.png res://tests/anim_demo.tscn
-## Variables de entorno: ANIM_SET = "clasico" (por defecto) o "fichas".
+## Variables de entorno: ANIM_SET = juego de piezas ("clasico" por defecto, "fichas", "piratas"…); ANIM_PITCH = inclinación.
 
 # Posición preparada para que las seis piezas blancas tengan una jugada tranquila y una captura.
 const FEN := "4k3/6p1/2p1p3/3p1p2/1n5r/2NpP3/P1PBQPPP/R3K3 w - - 0 1"
@@ -29,7 +29,7 @@ func _ready() -> void:
 	view.set_board_style("madera", true)
 	view.board.anim_mode = Board3D.Anim.FULL
 	view.set_fen(FEN)
-	view.board.set_view(48.0, 0.0)
+	view.board.set_view(float(OS.get_environment("ANIM_PITCH")) if OS.get_environment("ANIM_PITCH") != "" else 48.0, 0.0)
 	await _frames(20)
 	for text: String in LINE:
 		var m := view.board.chess.find_uci(text.trim_suffix("x"))
@@ -38,7 +38,7 @@ func _ready() -> void:
 			continue
 		view.board.play_move(m)
 		# Las jugadas de relleno de las negras, deprisa; las blancas, con pausa para verlas.
-		await _frames(8 if text.begins_with("e8") or text.begins_with("d8") else 34)
+		await _frames(8 if text.begins_with("e8") or text.begins_with("d8") else 44)
 	await _frames(15)
 	print("ANIM DONE")
 	get_tree().quit()

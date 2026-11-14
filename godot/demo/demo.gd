@@ -2466,15 +2466,21 @@ func _apply_simple_view() -> void:
 	if view.board.is_simple():
 		view.set_tilt_enabled(false)
 		view.set_view_locked(true)
-		if piece_set == "simple":
-			top_view = true
-		_flat_view = true
+		top_view = true
 		view.center_view()
+		_flat_view = false
+	elif view.board.is_standee():
+		# Mundos Kids: el tablero se inclina para que los personajes se pongan de pie. Se puede seguir cambiando
+		# la vista con su botón; la preferencia del jugador no se toca.
+		view.set_view_locked(_saved_lock)
+		if not _flat_view:
+			view.default_view()
+		_flat_view = true
 	else:
 		view.set_view_locked(_saved_lock)
 		# Al salir de un mundo Kids, la vista vuelve a la que tenía el jugador.
-		if _flat_view and not top_view:
-			view.default_view()
+		if _flat_view and top_view:
+			view.center_view()
 		_flat_view = false
 
 

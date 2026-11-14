@@ -70,3 +70,15 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
 - Blancas: contorno blanco. Negras: oscurecidas y con contorno azul tinta. Cada personaje lleva una insignia pequeña
   con la pieza clásica que es. Con un mundo, el tablero se ve desde arriba (como «Simple»).
 - De momento los cinco son planos. El 3D de Espacio, Piratas y Dinos necesita modelos `.glb` (fase aparte).
+
+## Los mundos cobran vida (15 nov 2026)
+
+- Con un mundo, el tablero se inclina y los personajes se ponen de pie como recortables (`is_standee()`,
+  `_pose_flat` en `board_3d.gd`): miran siempre a la cámara, con los pies en el centro de su casilla.
+- Vida propia (solo con animaciones «Completas»): respiran cada uno a su ritmo y, de vez en cuando, uno da un
+  saltito, se balancea o se da una vuelta (`_live`).
+- Al mover: miran hacia donde van, cogen impulso y andan con el paso de su pieza (`_walk`). Al comer: la otra pieza
+  se asusta, saltan estrellitas (`_burst`), cae según quién la ataca (`_strike`) y el que come lo celebra con un salto.
+- Son dibujos planos animados como marionetas de papel: no mueven brazos ni piernas. Para eso harían falta modelos
+  3D con esqueleto (`.glb` con animaciones).
+- Vídeo de muestra: `tests/anim_demo.tscn` con `ANIM_SET=piratas` (ver la cabecera del guion).

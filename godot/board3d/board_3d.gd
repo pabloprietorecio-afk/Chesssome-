@@ -45,6 +45,8 @@ const FLAT_ATLAS := {
 const SIMPLE_ATLAS := "res://sets/simple/iconos.bin"
 ## Lado del dibujo en casillas, a vista de pájaro (con el tablero inclinado se encoge para caber en la casilla).
 const SIMPLE_SIZE := 0.96
+## Alto de un recortable de pie, en casillas.
+const STANDEE_SIZE := 1.6
 ## Tamaño del peón respecto a las demás fichas.
 const PAWN_TOKEN_SCALE := 0.84
 ## Medidas de la ficha (tools/pieces/fichas.mjs), en casillas.
@@ -108,7 +110,10 @@ const DEFAULT_PITCH := 64.0
 var chess: Chess = Chess.from_fen(START_FEN)
 ## 0 = blancas abajo, 1 = negras abajo.
 var orientation := 0
-var anim_mode: Anim = Anim.FAST
+var anim_mode: Anim = Anim.FAST:
+	set(value):
+		anim_mode = value
+		set_process(true)
 var set_id := "clasico"
 var show_coordinates := true
 ## Acabado: "madera", "marmol" o "metal" (realistas, ver FINISHES) o "ilustrado" (porcelana lisa).
@@ -145,6 +150,17 @@ var _token_mats: Array[ShaderMaterial] = []
 var _token_mesh: Mesh
 var _simple_tex: Texture2D
 var _flat_cache := {}
+## Ejes de la cámara (los calcula apply_camera): los recortables miran siempre hacia ella.
+var _cam_right := Vector3.RIGHT
+var _cam_up := Vector3.FORWARD
+var _cam_back := Vector3.UP
+## 0 con el tablero visto desde arriba, 1 con el tablero inclinado: lo «de pie» que está un recortable.
+var _stand := 0.0
+var _flat_size := 0.96
+var _life_t := 0.0
+var _idle_wait := 2.0
+var _idle_tween: Tween
+var _star_tex: Texture2D
 var _simple_pixel := 0.96 / 256.0
 var _icons_tex: Texture2D
 var _sfx_tweens: Array[Tween] = []
@@ -520,9 +536,18 @@ func is_tokens() -> bool:
 	return piece_set == "fichas"
 
 
-## Juego plano: «Simple» o uno de los mundos Kids.
-func is_simple() -> bool:
+## Juego plano (un dibujo por pieza): «Simple» o uno de los mundos Kids.
+func is_flat() -> bool:
 	return FLAT_ATLAS.has(piece_set)
+
+
+func is_simple() -> bool:
+	return piece_set == "simple"
+
+
+## Mundo Kids: recortables que se ponen de pie al inclinar el tablero y tienen vida propia.
+func is_standee() -> bool:
+	return is_flat() and piece_set != "simple"
 
 
 ## Cambia el juego de piezas ("clasico" o "fichas") sin tocar la posición.
@@ -545,6 +570,7 @@ func set_piece_set(set_name: String) -> void:
 		_rest(node, s)
 	_refresh_state()
 	apply_camera()
+	set_process(true)
 
 
 func _piece_material(side: int) -> ShaderMaterial:
@@ -559,7 +585,7 @@ func _piece_mesh(piece_type: int) -> Mesh:
 
 ## Altura de una pieza, para elegirla al tocar.
 func _piece_height(piece_type: int) -> float:
-	if is_simple():
+	if is_flat():
 		return 0.3
 	if is_tokens():
 		return float(TOKEN["height"])
@@ -590,15 +616,16 @@ func _dress(node: Node3D) -> void:
 	if mesh != null:
 		var r := mesh.get_aabb().size.x * 0.5 * small.x + OUTLINE_WIDTH
 		disc.scale = Vector3(r, 1.0, r)
-	hull.visible = outline and not is_simple()
-	disc.visible = outline and not is_simple()
-	body.visible = not is_simple()
+	hull.visible = outline and not is_flat()
+	disc.visible = outline and not is_flat()
+	body.visible = not is_flat()
 	var flat := node.get_node_or_null("Plano") as Sprite3D
-	if is_simple():
+	if is_flat():
 		if flat == null:
 			flat = Sprite3D.new()
 			flat.name = "Plano"
-			flat.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			# Sin «billboard»: la orientación hacia la cámara la pone _pose_flat, que además lo inclina, lo
+			# aplasta y lo voltea como a un recortable de papel.
 			flat.no_depth_test = true
 			flat.shaded = false
 			flat.double_sided = true
@@ -610,9 +637,11 @@ func _dress(node: Node3D) -> void:
 		flat.texture = _simple_texture()
 		var px := float(flat.texture.get_height()) * 0.5 if flat.texture != null else 256.0
 		flat.region_rect = Rect2((piece_type - 1) * px, side * px, px, px)
-		flat.pixel_size = _simple_pixel
+		flat.pixel_size = 1.0 / px
 		flat.position = Vector3(0.0, 0.02, 0.0)
 		flat.visible = true
+		if not node.has_meta("phase"):
+			node.set_meta("phase", randf() * TAU)
 	elif flat != null:
 		flat.visible = false
 
@@ -839,17 +868,20 @@ func _simple_texture() -> Texture2D:
 ## Con el tablero inclinado, el dibujo (que mira a la cámara) se encoge lo justo para caber en el fondo aparente de
 ## su casilla.
 func _size_simple(pitch: float) -> void:
-	var tex := _simple_texture() if is_simple() else _simple_tex
+	var tex := _simple_texture() if is_flat() else _simple_tex
 	if tex == null:
 		return
 	var px := float(tex.get_height()) * 0.5
-	_simple_pixel = SIMPLE_SIZE * clampf(sin(pitch), 0.55, 1.0) / px
-	if not is_simple():
+	_simple_pixel = 1.0 / px
+	# «Simple» cabe siempre en el fondo aparente de su casilla. Los recortables de los mundos se ponen de pie al
+	# inclinar el tablero (con los pies en el centro de la casilla) y entonces pueden ser más altos que ella.
+	_stand = clampf((1.0 - sin(pitch)) / 0.2, 0.0, 1.0) if is_standee() else 0.0
+	_flat_size = lerpf(SIMPLE_SIZE * clampf(sin(pitch), 0.55, 1.0), STANDEE_SIZE, _stand)
+	if not is_flat():
 		return
-	for s: int in _pieces:
-		var flat := (_pieces[s] as Node3D).get_node_or_null("Plano") as Sprite3D
-		if flat != null:
-			flat.pixel_size = _simple_pixel
+	if not _running > 0:
+		for s: int in _pieces:
+			_rest(_pieces[s], s)
 
 
 ## Selección: el contorno de la pieza se vuelve del color de acento.
@@ -875,6 +907,9 @@ func _rest(node: Node3D, s: int) -> void:
 func _pose(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: float = 1.0, size: float = 1.0) -> void:
 	if not is_instance_valid(node):
 		return
+	if is_flat():
+		_pose_flat(node, pos, axis, angle, squash, size)
+		return
 	var yaw: float = node.get_meta("yaw", 0.0)
 	var bas := Basis(Vector3.UP, yaw)
 	if absf(angle) > 0.0001 and axis.length_squared() > 0.25:
@@ -882,6 +917,41 @@ func _pose(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: floa
 	var sc := PIECE_SCALE * maxf(size, 0.001)
 	var wide := sc * PIECE_GIRTH / sqrt(maxf(squash, 0.05))
 	node.transform = Transform3D(bas * Basis.from_scale(Vector3(wide, sc * squash, wide)), pos)
+
+
+## Pose de un recortable: mira a la cámara y traduce el giro de la pieza a gestos de papel. Girar sobre el eje
+## vertical lo voltea (se ve de canto y se da la vuelta); inclinarse de lado lo balancea sobre los pies; inclinarse
+## hacia la cámara o lejos de ella lo acorta. Además respira un poco, cada pieza a su ritmo.
+func _pose_flat(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: float, size: float) -> void:
+	node.transform = Transform3D(Basis.IDENTITY, pos)
+	var flat := node.get_node_or_null("Plano") as Sprite3D
+	if flat == null:
+		return
+	var sx := 1.0
+	var sy := 1.0
+	var roll := 0.0
+	if absf(angle) > 0.0001 and axis.length_squared() > 0.25:
+		var ax := axis.normalized()
+		var spin := ax.y
+		var toward := Vector3(_cam_back.x, 0.0, _cam_back.z)
+		toward = toward.normalized() if toward.length() > 0.15 else Vector3(_cam_up.x, 0.0, _cam_up.z).normalized()
+		var side := Vector3.UP.cross(toward)
+		if absf(spin) > 0.7:
+			sx = cos(angle * spin)
+			sx = signf(sx) * maxf(absf(sx), 0.06) if sx != 0.0 else 0.06
+		else:
+			roll = angle * ax.dot(toward)
+			sy = maxf(cos(clampf(angle * ax.dot(side), -1.3, 1.3)), 0.25)
+	var breath := 0.0
+	if is_standee() and anim_mode == Anim.FULL:
+		breath = 0.028 * sin(_life_t * 2.3 + float(node.get_meta("phase", 0.0)))
+	var sc := _flat_size * maxf(size, 0.001)
+	var wide := sc / sqrt(maxf(squash, 0.05))
+	var bas := Basis(_cam_right, _cam_up, _cam_back) * Basis(Vector3.BACK, roll)
+	flat.transform = Transform3D(bas * Basis.from_scale(Vector3(wide * sx * (1.0 - breath * 0.5), sc * squash * sy * (1.0 + breath), 1.0)), Vector3(0.0, 0.02, 0.0))
+	# De pie, los pies van en el centro de la casilla; visto desde arriba, el dibujo va centrado.
+	var px := float(flat.region_rect.size.y)
+	flat.offset = Vector2(0.0, px * 0.46 * _stand)
 
 
 func set_fen(fen: String) -> void:
@@ -1008,6 +1078,9 @@ func apply_camera() -> void:
 	var back := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
 	var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 	var up := back.cross(right)
+	_cam_right = right
+	_cam_up = up
+	_cam_back = back
 	# Encuadre: la cámara se coloca a la menor distancia a la que caben, dentro de la vista y con su margen,
 	# las esquinas del marco y la altura de las piezas. En un móvil en vertical manda el ancho: el tablero
 	# va de lado a lado. Si la vista es baja (o se gira el tablero), manda el alto y la cámara se aleja.
@@ -1020,7 +1093,7 @@ func apply_camera() -> void:
 	var pa := PackedFloat32Array()
 	var pb := PackedFloat32Array()
 	var pc := PackedFloat32Array()
-	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() or is_simple() else FIT_HEIGHT
+	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() or is_flat() else FIT_HEIGHT
 	_size_simple(pitch)
 	for ix: int in [-1, 1]:
 		for iz: int in [-1, 1]:
@@ -1238,8 +1311,12 @@ func goals_left() -> int:
 
 ## Las estrellas miran a la cámara, se balancean un poco y flotan.
 func _process(delta: float) -> void:
+	var alive := is_standee() and anim_mode == Anim.FULL
+	if alive:
+		_live(delta)
 	if _goals.is_empty():
-		set_process(false)
+		if not alive:
+			set_process(false)
 		return
 	_goal_t += delta
 	var yaw := deg_to_rad(cam_yaw + (180.0 if orientation == 1 else 0.0))
@@ -1254,6 +1331,89 @@ func _process(delta: float) -> void:
 		mi.basis = Basis.looking_at(-face, up)
 		mi.position.y = 0.34 + 0.05 * sin(phase * 0.8)
 		i += 1
+
+
+## Vida propia de los recortables: respiran y, de vez en cuando, uno da un saltito o se balancea.
+func _live(delta: float) -> void:
+	_life_t += delta
+	if _running > 0:
+		return
+	var busy: Node3D = null
+	if _idle_tween != null and _idle_tween.is_valid() and _idle_tween.is_running():
+		busy = _idle_tween.get_meta("node", null)
+	for s: int in _pieces:
+		var node: Node3D = _pieces[s]
+		if node != busy and node.visible and float(node.get_meta("topple", 0.0)) == 0.0:
+			_rest(node, s)
+	_idle_wait -= delta
+	if _idle_wait > 0.0 or busy != null or _pieces.is_empty():
+		return
+	_idle_wait = randf_range(1.2, 2.8)
+	var squares := _pieces.keys()
+	var sq: int = squares[randi() % squares.size()]
+	var who: Node3D = _pieces[sq]
+	if sq == selected or float(who.get_meta("topple", 0.0)) != 0.0:
+		return
+	_idle_tween = create_tween()
+	_idle_tween.set_meta("node", who)
+	var at := sq_pos(sq)
+	match randi() % 3:
+		0:
+			_idle_tween.tween_method(_pose_hop.bind(who, at, 0.16), 0.0, 1.0, 0.36)
+			_idle_tween.tween_method(_pose_land.bind(who, at, 0.1), 0.0, 1.0, 0.12)
+		1:
+			_idle_tween.tween_method(_pose_sway.bind(who, at, 0.22), 0.0, 1.0, 0.7)
+		_:
+			_idle_tween.tween_method(_pose_twirl.bind(who, at, at), 0.0, 1.0, 0.5)
+
+
+func _stop_idle() -> void:
+	if _idle_tween != null and _idle_tween.is_valid():
+		_idle_tween.kill()
+	_idle_tween = null
+
+
+func _pose_hop(t: float, node: Node3D, pos: Vector3, height: float) -> void:
+	_pose(node, pos + Vector3(0.0, height * sin(PI * t), 0.0), Vector3.UP, 0.0, 1.0 + 0.1 * sin(PI * t))
+
+
+func _pose_sway(t: float, node: Node3D, pos: Vector3, amount: float) -> void:
+	_pose(node, pos, _cam_back, amount * sin(TAU * 1.5 * t) * sin(PI * t))
+
+
+## Estrellitas que saltan donde un recortable come a otro.
+func _burst(at: Vector3) -> void:
+	if _star_tex == null:
+		var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+		for y in 64:
+			for x in 64:
+				var v := Vector2(float(x) - 31.5, float(y) - 31.5) / 31.5
+				var ang := atan2(v.y, v.x)
+				var edge := 0.55 + 0.42 * cos(ang * 5.0 + PI * 0.5)
+				var a := clampf((edge - v.length()) * 10.0, 0.0, 1.0)
+				img.set_pixel(x, y, Color(1.0, 0.86, 0.25, a))
+		_star_tex = ImageTexture.create_from_image(img)
+	for i in 7:
+		var star := Sprite3D.new()
+		star.texture = _star_tex
+		star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		star.no_depth_test = true
+		star.shaded = false
+		star.pixel_size = 0.0045
+		star.render_priority = 2
+		star.position = at + Vector3(0.0, 0.3, 0.0)
+		_pieces_root_for_fx().add_child(star)
+		var ang := TAU * float(i) / 7.0 + randf() * 0.5
+		var out := (_cam_right * cos(ang) + _cam_up * sin(ang)) * randf_range(0.5, 0.85)
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(star, "position", star.position + out, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(star, "modulate:a", 0.0, 0.38).set_ease(Tween.EASE_IN)
+		tw.tween_property(star, "pixel_size", 0.0015, 0.38)
+		tw.chain().tween_callback(star.queue_free)
+
+
+func _pieces_root_for_fx() -> Node:
+	return self
 
 
 ## Recoge la estrella de una casilla: sube, crece un poco y desaparece.
@@ -1414,6 +1574,7 @@ func _on_tween_finished() -> void:
 
 
 func _kill_tweens() -> void:
+	_stop_idle()
 	for tw in _tweens:
 		if tw.is_valid():
 			tw.kill()
@@ -1471,6 +1632,7 @@ func _apply_promotion(node: Node3D) -> void:
 ## Con dropped = true la pieza ya está en su sitio (la soltó el dedo): solo se asienta.
 func play_move(m: int, dropped: bool = false) -> void:
 	finish_animations()
+	_stop_idle()
 	var from := Chess.move_from(m)
 	var to := Chess.move_to(m)
 	var flag := Chess.move_flag(m)
@@ -1566,6 +1728,14 @@ func play_move(m: int, dropped: bool = false) -> void:
 		_sfx("slide", 0.0, dur)
 	_sfx(landing, dur + (0.02 if dropped else 0.0))
 	var tw := _tw()
+	var lively := full and is_standee() and not dropped
+	if lively:
+		# El recortable mira hacia donde va y coge impulso antes de salir.
+		var flat := mover.get_node_or_null("Plano") as Sprite3D
+		var across := dir.dot(_cam_right)
+		if flat != null and absf(across) > 0.3:
+			flat.flip_h = across < 0.0
+		tw.tween_method(_pose_land.bind(mover, a, 0.18), 0.0, 1.0, 0.12)
 	if dropped:
 		tw.tween_method(_pose_line.bind(mover, a, b), 0.0, 1.0, 0.06)
 	elif is_knight:
@@ -1585,13 +1755,22 @@ func play_move(m: int, dropped: bool = false) -> void:
 		if full:
 			thud = 0.16 if kind == Chess.ROOK else (0.12 if kind == Chess.KING or (is_knight and victim != null) else 0.08)
 		tw.tween_method(_pose_land.bind(mover, b, thud), 0.0, 1.0, 0.1 if full else 0.06)
+		if lively and victim != null:
+			# Después de comer, lo celebra con un saltito.
+			tw.tween_interval(0.12)
+			tw.tween_method(_pose_hop.bind(mover, b, 0.3), 0.0, 1.0, 0.3)
+			tw.tween_method(_pose_land.bind(mover, b, 0.1), 0.0, 1.0, 0.1)
 
 	if victim != null:
 		var tv := _tw()
 		var vpos := sq_pos(victim_sq)
 		if full:
 			# La pieza comida se asusta cuando ve venir el ataque y cae según quién la ataca.
-			var hit := maxf(dur * (0.9 if is_knight else 0.72), 0.01)
+			var hit := maxf(dur * (0.9 if is_knight else 0.72), 0.01) + (0.12 if lively else 0.0)
+			if lively:
+				var tb := _tw()
+				tb.tween_interval(hit)
+				tb.tween_callback(_burst.bind(vpos))
 			var fear := minf(hit * 0.5, 0.14)
 			tv.tween_interval(hit - fear)
 			tv.tween_method(_pose_fear.bind(victim, vpos, dir), 0.0, 1.0, fear)
