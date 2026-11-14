@@ -24,10 +24,16 @@ func _ready() -> void:
 	bg.color = Color("eaf1fb")
 	bg.size = size
 	add_child(bg)
+	# La vista 3D pinta su fondo con el color de la pantalla: no debe notarse dónde acaba.
 	view = BoardView3D.new()
-	view.position = Vector2(0.0, (size.y - size.x) * 0.5)
-	view.size = Vector2(size.x, size.x)
+	var h := minf(size.y, size.x * 1.25)
+	view.position = Vector2(0.0, (size.y - h) * 0.5)
+	view.size = Vector2(size.x, h)
+	view.edge_fade = 40.0
+	view.set_board_theme("light", bg.color)
 	add_child(view)
+	view.board.fit_pad = Vector4(0.012, 0.09, 0.012, 0.09)
+	view.board.apply_camera()
 	print("SHOTS driver=%s pantalla=%s lienzo=%s" % [DisplayServer.get_name(), str(DisplayServer.window_get_size()), str(size)])
 	await _run()
 	print("SHOTS DONE")
@@ -58,6 +64,19 @@ func _run() -> void:
 	board.anim_mode = Board3D.Anim.NONE
 	await _frames(8)
 	await _shot("01_inicio")
+	var maple := load("res://textures/arce.jpg") as Texture2D
+	if maple != null:
+		var img := maple.get_image()
+		print("TEXTURA arce %s formato=%d mipmaps=%s" % [str(maple.get_size()), img.get_format(), str(img.has_mipmaps())])
+	# Los otros acabados: mármol, metal e ilustrado (con su contorno de tinta); y la madera con contorno.
+	for other: String in ["marmol", "metal", "ilustrado"]:
+		view.set_board_style(other)
+		await _frames(4)
+		await _shot("01_" + other)
+	view.set_board_style("madera", true)
+	await _frames(3)
+	await _shot("01_madera_con_contorno")
+	view.set_board_style("madera")
 
 	# Medio juego: última jugada, jaque y pieza seleccionada con sus destinos.
 	view.set_fen(MID_FEN)
@@ -85,12 +104,12 @@ func _run() -> void:
 	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
 
 	# Tema oscuro.
-	board.set_theme("dark")
 	bg.color = Color("0a0f1e")
+	view.set_board_theme("dark", bg.color)
 	await _frames(3)
 	await _shot("06_oscuro")
-	board.set_theme("light")
 	bg.color = Color("eaf1fb")
+	view.set_board_theme("light", bg.color)
 
 	# Con negras.
 	view.set_orientation(1)
@@ -100,6 +119,8 @@ func _run() -> void:
 
 	# Primer plano para juzgar formas y materiales.
 	view.set_fen(Board3D.START_FEN)
+	board.camera.fov = 26.0
+	board.camera.near = 0.2
 	var eye := Vector3(2.9, 2.3, 6.9)
 	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.2, 0.55, 2.7) - eye, Vector3.UP), eye)
 	await _frames(3)
@@ -108,6 +129,11 @@ func _run() -> void:
 	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.6, 0.6, -3.3) - eye, Vector3.UP), eye)
 	await _frames(3)
 	await _shot("09_primer_plano_negras")
+	for other: String in ["marmol", "metal"]:
+		view.set_board_style(other)
+		await _frames(4)
+		await _shot("09_primer_plano_" + other)
+	view.set_board_style("madera")
 	board.apply_camera()
 
 	# Animaciones completas, a mitad de recorrido.
@@ -119,19 +145,19 @@ func _run() -> void:
 	await _shot("10_salto_del_caballo")
 	await _frames(6)
 	await _shot("11_captura")
-	await _frames(20)
+	await _frames(2)
 	view.set_fen(MID_FEN)
 	await _frames(2)
 	if view.show_move("e1c1"):
 		await _frames(11)
 		await _shot("12_enroque")
-		await _frames(20)
+		await _frames(2)
 	view.set_fen(PROMO_FEN)
 	await _frames(2)
 	view.show_move("e7e8q")
 	await _frames(13)
 	await _shot("13_promocion")
-	await _frames(20)
+	await _frames(2)
 	view.set_fen(MATE_FEN)
 	await _frames(2)
 	view.show_move("a1a8")
@@ -145,42 +171,740 @@ func _run() -> void:
 	view.set_fen(Board3D.START_FEN)
 	board.select(_sq("g1"))
 	await _frames(2)
-	var canvas := get_viewport().get_visible_rect().size
-	board.drag_piece(_sq("g1"), Vector2(canvas.x * 0.62, canvas.x * 0.6))
+	board.drag_piece(_sq("g1"), board.camera.unproject_position(Board3D.sq_pos(_sq("f3")) + Vector3(0.0, 0.3, 0.0)))
 	await _frames(3)
 	await _shot("16_arrastre")
+	board.cancel_drag()
+	board.deselect()
 
+	await _token_shots()
 	await _demo_shots()
 
 
+## Fichas planas con el icono de la pieza en relieve, en los cuatro acabados; de cerca, en picado, con negras y en el mate.
+func _token_shots() -> void:
+	var board := view.board
+	board.anim_mode = Board3D.Anim.NONE
+	view.set_fen(Board3D.START_FEN)
+	view.set_piece_set("fichas")
+	for finish: String in ["madera", "marmol", "metal", "ilustrado"]:
+		view.set_board_style(finish)
+		await _frames(4)
+		await _shot("17_fichas_" + finish)
+	view.set_board_style("madera")
+	view.set_fen(MID_FEN)
+	view.show_move("b5d6")
+	board.select(_sq("e8"))
+	await _frames(3)
+	await _shot("17_fichas_jaque_y_seleccion")
+	board.deselect()
+	board.set_view(90.0, 0.0)
+	await _frames(3)
+	await _shot("17_fichas_cenital")
+	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
+	view.set_orientation(1)
+	await _frames(3)
+	await _shot("17_fichas_negras")
+	view.set_orientation(0)
+	# De cerca, para juzgar el relieve de los iconos.
+	view.set_fen(Board3D.START_FEN)
+	board.camera.fov = 26.0
+	board.camera.near = 0.2
+	var eye := Vector3(1.6, 2.6, 5.6)
+	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.3, 0.0, 2.9) - eye, Vector3.UP), eye)
+	for finish: String in ["madera", "marmol", "metal", "ilustrado"]:
+		view.set_board_style(finish)
+		await _frames(4)
+		await _shot("18_fichas_de_cerca_" + finish)
+	view.set_board_style("madera")
+	eye = Vector3(-1.2, 2.4, -1.4)
+	board.camera.transform = Transform3D(Basis.looking_at(Vector3(0.4, 0.0, -3.1) - eye, Vector3.UP), eye)
+	await _frames(3)
+	await _shot("18_fichas_de_cerca_oscuras")
+	board.apply_camera()
+	# Mate: la ficha del rey se da la vuelta. Y los avisos de sonido de una jugada con captura y de un mate.
+	var heard: Array[String] = []
+	var listen := func(kind: String, _amount: float) -> void: heard.append(kind)
+	board.sound.connect(listen)
+	board.anim_mode = Board3D.Anim.FULL
+	view.set_fen(MID_FEN)
+	await _frames(2)
+	view.show_move("b5d4")
+	await _frames(24)
+	view.set_fen(MATE_FEN)
+	await _frames(2)
+	view.show_move("a1a8")
+	await _frames(14)
+	await _shot("19_fichas_mate")
+	await _frames(24)
+	await _shot("19_fichas_mate_final")
+	board.sound.disconnect(listen)
+	print("SONIDOS avisos=%s grabaciones: arrastre=%s posar=%s captura=%s jaque=%s caida=%s" % [str(heard), str(view.sounds.has_sound("slide")), str(view.sounds.has_sound("place")), str(view.sounds.has_sound("capture")), str(view.sounds.has_sound("check")), str(view.sounds.has_sound("fall"))])
+	board.anim_mode = Board3D.Anim.FAST
+	view.set_piece_set("clasico")
+	view.set_fen(Board3D.START_FEN)
+	await _frames(2)
+
+
+## Primera jugada legal que no es la de la solución (para fallar a propósito).
+func _wrong_move(chess: Chess, solution: String) -> String:
+	for m in chess.legal_moves():
+		var uci := Chess.uci(m)
+		if uci != solution and not chess.after(m).is_checkmate() and uci.length() == 4:
+			return uci
+	return ""
+
+
 ## La demo de verdad (escena principal del APK), jugada con toques simulados por el mismo camino que un dedo.
+## El tiempo corre al doble para no alargar la CI: aquí no se juzgan animaciones, sino la pantalla.
 func _demo_shots() -> void:
 	view.visible = false
 	bg.visible = false
+	Engine.time_scale = 2.0
 	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
+	# Sin ajustes guardados ni bienvenida automática: las capturas salen siempre del mismo estado.
+	demo.use_settings = false
 	add_child(demo)
-	await _frames(55)
+	await _frames(30)
 	await _shot("20_demo")
+	var missing: Array[String] = []
+	for icon_name: String in ["bulb", "step", "eye", "skip", "retry", "next", "why", "line", "chart", "tap", "sliders", "pin", "pin_on", "view", "search", "spark", "copy", "open", "close", "sound", "phone", "sun", "moon", "outline", "info", "whatif", "book", "back", "zoom", "play", "first", "piece_knight", "token_pawn", "cap", "clock", "flag", "target", "wrong", "piece_pawn", "piece_queen", "check"]:
+		if UiIcons.texture(icon_name) == null:
+			missing.append(icon_name)
+	print("ICONOS %d en el atlas, faltan=%s emblema=%s" % [UiIcons.names().size(), str(missing), str(UiIcons.emblem() != null)])
+	print("DEMO pista de gestos visible=%s botones=«%s» «%s» «%s» «%s»" % [str(demo.gesture_tip.visible), demo.button_label(demo.hint_button), demo.button_label(demo.step_button), demo.button_label(demo.left_button), demo.button_label(demo.right_button)])
 	var dview: BoardView3D = demo.view
 	var moves: Array = demo.puzzle["moves"]
 	var solution := str(moves[1])
+	print("DEMO explicaciones=%s puntos=%d" % [str(demo.explain.ok), demo.explain.point_count()])
+	# Un fallo a propósito: la tarjeta cuenta qué hace la jugada y qué permite, sin decir cuál era la mejor.
+	var wrong := _wrong_move(dview.board.chess, solution)
+	if wrong != "":
+		_tap(dview, _sq(wrong.substr(0, 2)))
+		await _frames(3)
+		_tap(dview, _sq(wrong.substr(2, 2)))
+		await _frames(22)
+		await _shot("20b_demo_fallo")
+		print("DEMO fallo=%s titulo=«%s» fase=%d parcial=%s interactivo=%s" % [wrong, demo.title.text, demo.phase, str(demo.exp_partial), str(dview.interactive)])
+		var levels: Array = demo.expl.get("levels", [])
+		if levels.size() == 4:
+			print("DEMO fallo dice: %s" % " | ".join(PackedStringArray(levels[0]["paragraphs"])))
+			for line: Dictionary in levels[2]["lines"]:
+				if str(line["tone"]) == "bad":
+					demo._step_line(line, 0)
+					await _frames(10)
+					demo._step_line(line, 1)
+					await _frames(12)
+					await _shot("20c_demo_fallo_variante")
+					demo._leave_line()
+					await _frames(4)
+					break
+		print("DEMO tras la variante: fase=%d interactivo=%s" % [demo.phase, str(dview.interactive)])
 	_tap(dview, _sq(solution.substr(0, 2)))
-	await _frames(4)
+	await _frames(3)
 	await _shot("21_demo_pieza_tocada")
 	print("DEMO seleccionada=%d (esperada %d)" % [dview.board.selected, _sq(solution.substr(0, 2))])
 	_tap(dview, _sq(solution.substr(2, 2)))
-	await _frames(45)
-	await _shot("22_demo_jugada_hecha")
+	await _frames(3)
+	await _shot("22_demo_bien")
 	print("DEMO titulo=«%s» paso=%d" % [demo.title.text, demo.step])
-	demo._on_toggle_theme()
-	demo._on_center()
+	await _frames(24)
+	await _shot("23_demo_sigue")
+	print("DEMO titulo=«%s» paso=%d" % [demo.title.text, demo.step])
+	# «Ver solución» y, al acabar, «Repetir» y «Siguiente».
+	demo._on_left()
+	await _frames(50)
+	await _shot("24_demo_solucion")
+	print("DEMO titulo=«%s» izquierda=«%s» derecha=«%s»" % [demo.title.text, demo.button_label(demo.left_button), demo.button_label(demo.right_button)])
+	# La explicación, nivel a nivel: el concepto, la variante (jugada en el tablero) y las cifras del motor.
+	for deeper in 3:
+		demo._on_why()
+		await _frames(8)
+		await _shot("24%s_demo_nivel_%d" % ["bcd"[deeper], deeper + 2])
+	print("DEMO nivel=%d flechas=%d alto de la tarjeta=%d" % [demo.exp_level, dview.board._arrows_root.get_child_count(), int(demo.card.size.y)])
+	demo.card_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("24e_demo_nivel_4_final")
+	demo.card_scroll.scroll_vertical = 0
+	var shown_levels: Array = demo.expl.get("levels", [])
+	if shown_levels.size() == 4 and not (shown_levels[2]["lines"] as Array).is_empty():
+		demo._step_line(shown_levels[2]["lines"][0], 0)
+		await _frames(12)
+		await _shot("24f_demo_variante")
+		demo._leave_line()
+		await _frames(3)
+	# «¿Y si juego…?»: se prueba otra jugada en la posición de la decisión.
+	demo._toggle_whatif()
+	await _frames(6)
+	await _shot("24g_demo_y_si_juego")
+	var other := _wrong_move(dview.board.chess, demo.explain.point_solution(demo.exp_point))
+	if other != "":
+		_tap(dview, _sq(other.substr(0, 2)))
+		await _frames(3)
+		_tap(dview, _sq(other.substr(2, 2)))
+		await _frames(22)
+		await _shot("24h_demo_y_si_juego_jugada")
+		print("DEMO y si juego %s: titulo=«%s» interactivo=%s" % [other, demo.title.text, str(dview.interactive)])
+	# «Pregunta a una IA»: el texto que se lleva, con la posición y el análisis.
+	demo._open_ai()
+	await _frames(8)
+	await _shot("24i_demo_pregunta_a_una_ia")
+	print("DEMO texto para la IA: %d caracteres, empieza «%s»" % [demo._ai_text().length(), demo._ai_text().substr(0, 60)])
+	demo._close_options()
+	demo._toggle_whatif()
+	await _frames(4)
+	print("DEMO lichess=%s" % demo._lichess_url(demo._decision_fen()))
+	# Opciones en hoja inferior, en claro y en oscuro.
+	demo._open_options()
+	await _frames(6)
+	await _shot("25_demo_opciones")
+	demo._set_dark(true)
+	await _frames(5)
+	await _shot("26_demo_opciones_oscuro")
+	demo._close_options()
+	await _frames(3)
+	await _shot("27_demo_oscuro")
+	demo._on_toggle_view()
+	await _frames(12)
+	await _shot("28_demo_oscuro_picado")
+	# «Repetir»: el mismo problema desde el principio.
+	demo._on_left()
+	await _frames(30)
+	await _shot("29_demo_repetido")
+	print("DEMO titulo=«%s» paso=%d problema=%d" % [demo.title.text, demo.step, demo.index])
+
+	# Pellizco con dos dedos: el tablero se amplía y puede ser más ancho que la pantalla.
+	# (Antes, de vuelta al tema claro y a la vista inclinada.)
+	demo._set_dark(false)
+	demo._on_toggle_view()
 	await _frames(20)
-	await _shot("23_demo_oscuro_centrado")
+	dview.board.deselect()
+	var c := dview.get_global_rect().get_center()
+	_touch(0, c + Vector2(-90.0, 0.0), true)
+	_touch(1, c + Vector2(90.0, 0.0), true)
+	for i in 8:
+		var off := 90.0 + 13.0 * float(i + 1)
+		_drag(0, c + Vector2(-off, 0.0), Vector2(-13.0, 0.0))
+		_drag(1, c + Vector2(off, 0.0), Vector2(13.0, 0.0))
+		await _frames(1)
+	_touch(0, c + Vector2(-194.0, 0.0), false)
+	_touch(1, c + Vector2(194.0, 0.0), false)
+	await _frames(3)
+	await _shot("30_demo_ampliado")
+	print("DEMO ampliado zoom=%.2f desplazamiento=%s" % [dview.board.zoom, str(dview.board.pan)])
+	# Con el tablero ampliado, un dedo que arrastra desde una casilla sin pieza propia lo desplaza.
+	var empty := -1
+	for s in 64:
+		if dview.board.chess.b[s] == 0 and (s & 7) >= 2 and (s & 7) <= 5 and (s >> 3) >= 2 and (s >> 3) <= 5:
+			empty = s
+			break
+	dview.board.deselect()
+	var from: Vector2 = dview.get_global_transform() * dview.view_to_local(dview.board.camera.unproject_position(Board3D.sq_pos(empty)))
+	_touch(0, from, true)
+	for i in 10:
+		_drag(0, from + Vector2(26.0 * float(i + 1), 12.0 * float(i + 1)), Vector2(26.0, 12.0))
+		await _frames(1)
+	_touch(0, from + Vector2(260.0, 120.0), false)
+	await _frames(3)
+	await _shot("31_demo_desplazado")
+	print("DEMO desplazado zoom=%.2f desplazamiento=%s seleccionada=%d" % [dview.board.zoom, str(dview.board.pan), dview.board.selected])
+	# El botón de vista devuelve el tablero a su tamaño.
+	demo._on_toggle_view()
+	await _frames(16)
+	await _shot("32_demo_entero_otra_vez")
+	print("DEMO entero zoom=%.2f desplazamiento=%s picado=%s" % [dview.board.zoom, str(dview.board.pan), str(demo.top_view)])
+	# Problema resuelto: la explicación de la solución. Se resuelve entero con toques.
+	demo._on_right()
+	await _frames(34)
+	var guard := 0
+	while demo.phase != 4 and guard < 8:
+		guard += 1
+		if demo.phase == 1 and dview.interactive and demo.step < demo.puzzle["moves"].size():
+			var next_move := str(demo.puzzle["moves"][demo.step])
+			_tap(dview, _sq(next_move.substr(0, 2)))
+			await _frames(3)
+			_tap(dview, _sq(next_move.substr(2, 2)))
+		await _frames(34)
+	await _frames(20)
+	await _shot("33_demo_resuelto")
+	print("DEMO resuelto: fase=%d titulo=«%s» problema=%d" % [demo.phase, demo.title.text, demo.index])
+	demo._on_why()
+	await _frames(10)
+	await _shot("34_demo_resuelto_por_que")
+	# Con fichas, y la bienvenida.
+	demo._set_pieces_index(1)
+	await _frames(6)
+	await _shot("35_demo_fichas")
+	demo._on_right()
+	await _frames(40)
+	await _shot("36_demo_fichas_problema")
+	demo._open_options()
+	await _frames(8)
+	await _shot("37_demo_opciones_fichas")
+	demo.sheet_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("37b_demo_opciones_final")
+	demo._close_options()
+	await _help_shots(demo)
+	await _level_shots(demo)
+	await _course_shots(demo)
+	await _kids_shots(demo)
+	await _game_shots(demo)
+	demo._open_welcome()
+	await _frames(6)
+	await _shot("38_demo_bienvenida")
+	demo._set_dark(true)
+	await _frames(6)
+	demo._open_welcome()
+	await _frames(6)
+	await _shot("39_demo_bienvenida_oscuro")
+	demo._close_welcome()
+	Engine.time_scale = 1.0
+
+
+## Pista, «Un paso», la chincheta del giro y el giro con dos dedos.
+func _help_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._set_pieces_index(0)
+	demo._on_right()
+	await _frames(40)
+	# Pista: primero el tema; después, además, la pieza (queda elegida en el tablero).
+	demo._on_hint()
+	await _frames(10)
+	await _shot("40_demo_pista")
+	demo._on_hint()
+	await _frames(10)
+	await _shot("41_demo_pista_pieza")
+	var expected := str(demo.puzzle["moves"][demo.ask_step]).substr(0, 2)
+	print("AYUDA pista nivel=%d pieza elegida=%d (esperada %d) fase=%d" % [demo.hint_level, dview.board.selected, _sq(expected), demo.phase])
+	# Un paso: se juega solo esa jugada, con su explicación; «Seguir» devuelve el turno al jugador.
+	var before_step: int = demo.step
+	demo._on_step()
+	await _frames(26)
+	await _shot("42_demo_un_paso")
+	print("AYUDA un paso: fase=%d titulo=«%s» paso %d→%d botones=«%s» «%s»" % [demo.phase, demo.title.text, before_step, demo.step, demo.button_label(demo.left_button), demo.button_label(demo.right_button)])
+	if demo.phase == 7:
+		demo._on_why()
+		await _frames(10)
+		await _shot("43_demo_un_paso_por_que")
+		demo._on_right()
+		await _frames(40)
+		await _shot("44_demo_tras_el_paso")
+		print("AYUDA tras seguir: fase=%d titulo=«%s» paso=%d interactivo=%s" % [demo.phase, demo.title.text, demo.step, str(dview.interactive)])
+	# Chincheta: con el giro fijado, girar dos dedos no mueve el tablero; al soltarla, sí (y hacia el mismo lado).
+	demo._set_gesture_hint(true)
+	await _frames(4)
+	demo._on_toggle_pin()
+	await _frames(6)
+	await _shot("45_demo_giro_fijado")
+	var c := dview.get_global_rect().get_center()
+	await _twist(c, 150.0, 0.0, 30.0)
+	print("AYUDA giro fijado=%s: tras girar dos dedos 30°, giro=%.1f pista de gestos=%s" % [str(dview.view_locked), dview.board.cam_yaw, str(demo.gesture_hint)])
+	demo._on_toggle_pin()
+	await _frames(4)
+	await _twist(c, 150.0, 0.0, 30.0)
+	await _frames(4)
+	await _shot("46_demo_girado_con_dos_dedos")
+	print("AYUDA giro libre: tras girar dos dedos 30° a la derecha, giro=%.1f inclinación=%.1f pista de gestos=%s" % [dview.board.cam_yaw, dview.board.cam_pitch, str(demo.gesture_hint)])
+	# Casi derecho al soltar: se endereza solo.
+	await _twist(c, 150.0, 30.0, 5.0)
+	await _frames(12)
+	print("AYUDA casi derecho al soltar: giro=%.1f" % dview.board.cam_yaw)
+	await _shot("47_demo_enderezado")
+
+
+## El test de nivel, de principio a fin: experiencia, problemas con un solo intento, resultado con perfil y
+## plan, y el entrenamiento adaptado. Dos problemas se contestan con toques de verdad (uno mal y otro bien);
+## el resto del test se completa con respuestas fijas por el mismo camino de anotación.
+func _level_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_experience()
+	await _frames(8)
+	await _shot("50_experiencia")
+	demo._start_test("casual")
+	await _frames(40)
+	await _shot("51_test_problema")
+	print("NIVEL test: modo=%s fase=%d contador=«%s» botón=«%s» problema=%s dificultad=%d" % [demo.mode, demo.phase, demo.counter.text, demo.button_label(demo.left_button), str(demo.puzzle["id"]), int(demo.puzzle["rating"])])
+	# Primer problema: una jugada equivocada. Un solo intento: se explica y se pasa al siguiente.
+	var wrong := _wrong_move(dview.board.chess, str(demo.puzzle["moves"][1]))
+	_tap(dview, _sq(wrong.substr(0, 2)))
+	await _frames(3)
+	_tap(dview, _sq(wrong.substr(2, 2)))
+	await _frames(30)
+	await _shot("52_test_fallo")
+	var first: Dictionary = (demo.player["tries"] as Array).back()
+	print("NIVEL fallo %s: fase=%d anotados=%d error=«%s» paso=%d tiempo=%d ms nivel=%.0f±%.0f botón=«%s»" % [wrong, demo.phase, (demo.player["tries"] as Array).size(), str(first["error"]), int(first["failStep"]), int(first["msFirst"]), float(demo.player["rating"]["r"]), float(demo.player["rating"]["rd"]), demo.button_label(demo.right_button)])
+	# Segundo problema: resuelto entero con toques.
+	demo._on_right()
+	await _frames(40)
+	var guard := 0
+	while demo.phase != 4 and guard < 8:
+		guard += 1
+		if demo.phase == 1 and dview.interactive and demo.step < demo.puzzle["moves"].size():
+			var next_move := str(demo.puzzle["moves"][demo.step])
+			_tap(dview, _sq(next_move.substr(0, 2)))
+			await _frames(3)
+			_tap(dview, _sq(next_move.substr(2, 2)))
+		await _frames(34)
+	await _frames(10)
+	await _shot("53_test_acierto")
+	var second: Dictionary = (demo.player["tries"] as Array).back()
+	print("NIVEL acierto: fase=%d anotados=%d correcto=%s nivel=%.0f±%.0f" % [demo.phase, (demo.player["tries"] as Array).size(), str(second["correct"]), float(demo.player["rating"]["r"]), float(demo.player["rating"]["rd"])])
+	# Tercero: «No lo sé».
+	demo._on_right()
+	await _frames(40)
+	demo._on_left()
+	await _frames(60)
+	await _shot("54_test_no_lo_se")
+	var third: Dictionary = (demo.player["tries"] as Array).back()
+	print("NIVEL no lo sé: fase=%d anotados=%d ayuda=«%s» titulo=«%s»" % [demo.phase, (demo.player["tries"] as Array).size(), str(third["help"]), demo.title.text])
+	# El resto del test, con respuestas fijas: falla los mates y los problemas largos, y acierta lo demás.
+	var kinds := ["mate", "hangMoved", "hangOther", "missed"]
+	var i := 0
+	while not bool(demo.player["done"]):
+		var item: Dictionary = Assessment.next_test_item(demo.player, demo.pool, 0.5)
+		if item.is_empty():
+			break
+		var fails: bool = bool(item["mate"]) or int(item["steps"]) >= 3
+		var outcome := {"correct": not fails, "failStep": (1 if int(item["steps"]) >= 3 else 0) if fails else -1, "error": kinds[i % kinds.size()] if fails else "", "help": "", "msFirst": 4000.0 if fails else 21000.0, "ms": 30000.0}
+		demo.player = Assessment.record_try(demo.player, item, outcome, "test")
+		i += 1
+	demo._finish_test()
+	await _frames(10)
+	await _shot("55_resultado")
+	var pr: Dictionary = Assessment.profile(demo.player["tries"])
+	var todo: Dictionary = Assessment.plan(demo.player["rating"], pr)
+	print("NIVEL resultado: problemas=%d nivel=%.0f±%.0f mates=%d/%d largos=%d/%d fallos=%d respuesta=%d precipitados=%d plan=%s hábitos=%s modo=%s página=%s" % [(demo.player["tries"] as Array).size(), float(demo.player["rating"]["r"]), float(demo.player["rating"]["rd"]), int(pr["mate"]["correct"]), int(pr["mate"]["n"]), int(pr["long"]["correct"]), int(pr["long"]["n"]), int(pr["fails"]), int(pr["replyBlind"]), int(pr["time"]["rushed"]), str(todo["focus"]), str(todo["habits"]), demo.mode, demo.progress_kind])
+	demo.progress_scroll.scroll_vertical = 700
+	await _frames(3)
+	await _shot("55b_resultado_perfil")
+	demo.progress_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("55c_resultado_plan")
+	# Entrenamiento: el problema lo elige el nivel y el perfil; al terminar se ve cómo cambia el nivel.
+	demo._start_training()
+	await _frames(40)
+	await _shot("56_entrenamiento")
+	print("NIVEL entrenamiento: modo=%s problema=%s dificultad=%d (objetivo %.0f) píldora=«%s» visible=%s" % [demo.mode, str(demo.puzzle["id"]), int(demo.puzzle["rating"]), float(todo["target"]), (demo.level_pill.get_meta("label_node") as Label).text, str(demo.level_pill.visible)])
+	guard = 0
+	while demo.phase != 4 and guard < 8:
+		guard += 1
+		if demo.phase == 1 and dview.interactive and demo.step < demo.puzzle["moves"].size():
+			var move := str(demo.puzzle["moves"][demo.step])
+			_tap(dview, _sq(move.substr(0, 2)))
+			await _frames(3)
+			_tap(dview, _sq(move.substr(2, 2)))
+		await _frames(34)
+	await _frames(10)
+	await _shot("57_entrenamiento_resuelto")
+	print("NIVEL tras resolver: fase=%d anotados=%d cambio=%s" % [demo.phase, (demo.player["tries"] as Array).size(), str(demo._rating_shown)])
+	demo._open_progress("progress")
+	await _frames(8)
+	await _shot("58_progreso")
+	demo._close_progress()
+	# Repaso de errores: tras tres problemas nuevos vuelve el primer fallo del test, con todas las ayudas.
+	var seen_before: int = (demo.player["tries"] as Array).size()
+	var reviews := 0
+	for attempt in 5:
+		demo._on_right()
+		await _frames(4)
+		if demo.is_review:
+			reviews += 1
+			await _frames(40)
+			await _shot("58b_repaso")
+			print("NIVEL repaso: problema=%s es el primer fallo del test=%s ayudas=«%s» «%s» anotados=%d (antes %d + %d nuevos)" % [str(demo.puzzle["id"]), str(str(demo.puzzle["id"]) == str(demo.player["tries"][0]["id"])), demo.button_label(demo.hint_button), demo.button_label(demo.step_button), (demo.player["tries"] as Array).size(), seen_before, attempt])
+			demo._on_left()
+			await _frames(70)
+			print("NIVEL repaso visto: fase=%d repasados=%s nivel sin cambio=%s" % [demo.phase, str(demo.reviewed.keys()), str(demo._rating_shown.is_empty())])
+			break
+		# Un problema nuevo, que se deja sin resolver pidiendo la solución (cuenta como intento).
+		await _frames(36)
+		demo._on_left()
+		await _frames(4)
+	print("NIVEL repasos servidos=%d" % reviews)
+	demo._set_dark(true)
+	await _frames(6)
+	demo._open_progress("progress")
+	await _frames(8)
+	await _shot("59_progreso_oscuro")
+	demo._open_experience()
+	await _frames(8)
+	await _shot("59b_experiencia_oscuro")
+	demo._close_progress()
+	# «Saltar test» a mitad del test: se empieza desde el nivel más bajo y se conserva lo contestado.
+	demo._start_test("regular")
+	await _frames(40)
+	await _shot("59c_test_saltar")
+	demo._on_hint()
+	var before: int = (demo.player["tries"] as Array).size()
+	demo._skip_test()
+	await _frames(40)
+	print("NIVEL saltar test: modo=%s nivel=%.0f saltado=%s anotados=%d→%d dificultad del problema=%d" % [demo.mode, float(demo.player["rating"]["r"]), str(demo.test_skipped), before, (demo.player["tries"] as Array).size(), int(demo.puzzle["rating"])])
+	demo._set_dark(false)
+	await _frames(6)
+
+
+## El curso «Aprende a jugar»: el mapa, una lección con estrellas resuelta con toques, una captura que deja la
+## pieza a tiro, un mate con un intento fallido y el enroque.
+func _course_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_course()
+	await _frames(8)
+	await _shot("60_curso")
+	print("CURSO lecciones=%d página=%s" % [demo._course_lessons().size(), demo.progress_kind])
+	demo._start_lesson("torre")
+	await _frames(12)
+	await _shot("61_leccion_intro")
+	demo._next_lesson_step()
+	demo._next_lesson_step()
+	await _frames(12)
+	await _shot("62_leccion_estrellas")
+	for uci: String in demo.ex["solution"]:
+		_tap(dview, _sq(uci.substr(0, 2)))
+		await _frames(3)
+		_tap(dview, _sq(uci.substr(2, 2)))
+		await _frames(20)
+	await _frames(10)
+	await _shot("63_leccion_estrellas_hecho")
+	print("CURSO estrellas: estado=%s jugadas=%d mínimo=%d quedan=%d texto=«%s»" % [demo.ex_state, demo.ex_moves, int(demo.ex["par"]), dview.board.goals_left(), demo.ex_text])
+	# Captura a salvo: capturar primero la pieza defendida acaba en fallo.
+	demo._start_lesson("a-salvo")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a6"))
+	await _frames(24)
+	await _shot("64_leccion_a_salvo_fallo")
+	print("CURSO a salvo: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	# Jaque mate: primero una jugada que no es mate y después la buena.
+	demo._start_lesson("mate")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a7"))
+	await _frames(14)
+	await _shot("65_leccion_mate_fallo")
+	print("CURSO mate fallo: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	await _frames(60)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a8"))
+	await _frames(40)
+	await _shot("66_leccion_mate")
+	print("CURSO mate: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	# Enroque: mover el rey dos casillas.
+	demo._start_lesson("enroque")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("e1"))
+	await _frames(3)
+	_tap(dview, _sq("g1"))
+	await _frames(40)
+	await _shot("67_leccion_enroque")
+	print("CURSO enroque: estado=%s texto=«%s»" % [demo.ex_state, demo.ex_text])
+	# Fin de lección.
+	demo.lesson_ex = (demo.lesson["exercises"] as Array).size()
+	demo._show_lesson_step()
+	await _frames(10)
+	await _shot("68_leccion_fin")
+	print("CURSO fin: estado=%s hecha=%s" % [demo.ex_state, str(demo.course_done)])
+
+
+## Nivel Kids: el botón de la bienvenida, las lecciones con sus textos sencillos, la pista, la puerta para
+## adultos y las opciones. La voz no suena en las pruebas (no hay salida de audio), pero se anota qué diría.
+func _kids_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_home()
+	await _frames(10)
+	await _shot("69_inicio")
+	print("INICIO página=%s" % demo.progress_kind)
+	demo._open_welcome()
+	await _frames(10)
+	await _shot("70_bienvenida_kids")
+	demo._close_welcome()
+	demo._close_progress()
+	demo.kids = true
+	demo._open_home()
+	await _frames(10)
+	await _shot("69b_inicio_kids")
+	demo._open_course()
+	await _frames(8)
+	await _shot("71_kids_curso")
+	demo._start_lesson("caballo")
+	await _frames(12)
+	await _shot("72_kids_intro")
+	print("KIDS intro: «%s» voz=%s" % [" / ".join(demo._voice_last), str(demo._has_voice(demo._voice_last))])
+	demo._next_lesson_step()
+	await _frames(12)
+	await _shot("73_kids_ejercicio")
+	print("KIDS ejercicio: «%s»" % demo._ex_text(demo.ex))
+	demo._start_lesson("mate")
+	demo._next_lesson_step()
+	await _frames(12)
+	_tap(dview, _sq("a1"))
+	await _frames(3)
+	_tap(dview, _sq("a7"))
+	await _frames(14)
+	await _shot("74_kids_mate_fallo")
+	print("KIDS mate fallo: «%s»" % demo.ex_text)
+	demo._start_lesson("mates-1")
+	demo._next_lesson_step()
+	await _frames(12)
+	demo._learn_hint()
+	await _frames(12)
+	await _shot("75_kids_pista")
+	print("KIDS pista: «%s» seleccionada=%d" % [demo.ex_text, dview.board.selected])
+	demo._open_options()
+	await _frames(10)
+	await _shot("76_kids_opciones")
+	demo._close_options()
+	demo._open_gate(demo._leave_kids)
+	await _frames(10)
+	await _shot("77_kids_puerta")
+	demo._on_gate(-99)
+	await _frames(4)
+	print("KIDS puerta con respuesta mala: kids=%s" % str(demo.kids))
+	demo._open_gate(demo._leave_kids)
+	demo._on_gate(demo._gate_answer)
+	await _frames(10)
+	print("KIDS puerta con respuesta buena: kids=%s modo=%s" % [str(demo.kids), demo.mode])
+	demo._close_progress()
+	await _frames(4)
+
+
+## Partidas contra el rival: elegir nivel, una jugada con su respuesta, pista, deshacer, rendirse, la guerra de
+## peones (ganada al coronar) y un mate que gana la partida.
+func _game_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_game_setup()
+	await _frames(10)
+	await _shot("80_partida_elegir")
+	demo._start_game({"variant": "", "level": 0, "title": "Partida · Muy fácil", "text": "", "kids": "", "unit": ""}, 0)
+	await _frames(12)
+	_tap(dview, _sq("e2"))
+	await _frames(3)
+	_tap(dview, _sq("e4"))
+	await _wait_bot(demo)
+	await _shot("81_partida_respuesta")
+	print("PARTIDA tras e4: estado=%s nota=«%s» jugadas=%d" % [demo.game_state, demo.game_note, demo.game_history.size()])
+	demo._game_hint()
+	await _frames(12)
+	await _shot("82_partida_pista")
+	print("PARTIDA pista: «%s»" % demo.game_note)
+	demo._game_undo()
+	await _frames(12)
+	print("PARTIDA deshacer: jugadas=%d turno=%d interactivo=%s" % [demo.game_history.size(), dview.board.chess.turn, str(dview.interactive)])
+	demo._game_resign()
+	await _frames(12)
+	await _shot("83_partida_rendirse")
+	print("PARTIDA rendirse: estado=%s resultado=«%s»" % [demo.game_state, demo.game_result])
+	# Guerra de peones: la partida de la primera unidad, y una coronación que la gana.
+	demo._start_unit_game("piezas")
+	await _frames(12)
+	await _shot("84_partida_peones")
+	var race := "8/1P6/8/8/8/8/6p1/8 w - - 0 1"
+	dview.set_fen(race)
+	demo.game_history = [race]
+	dview.show_move("b7b8q")
+	demo._game_move("b7b8q")
+	await _frames(30)
+	await _shot("85_partida_peones_ganada")
+	print("PARTIDA peones: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	# Un mate en una dentro de una partida.
+	demo._start_game({"variant": "", "level": 2, "title": "Partida · Medio", "text": "", "kids": "", "unit": ""}, 0)
+	var mate := "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"
+	dview.set_fen(mate)
+	demo.game_history = [mate]
+	dview.show_move("a1a8")
+	demo._game_move("a1a8")
+	await _frames(30)
+	await _shot("86_partida_mate")
+	print("PARTIDA mate: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	# Con reloj: el ritmo «Otro» con sus botones, una partida 10+0 y el tiempo que se acaba.
+	demo.game_tc_pick = 7
+	demo._open_game_setup()
+	await _frames(10)
+	await _shot("87_partida_ritmo")
+	demo.game_tc_pick = 3
+	demo._start_game({"variant": "", "level": 1, "title": "Partida · Fácil", "text": "", "kids": "", "unit": "", "clock": []}, -1)
+	await _frames(20)
+	await _shot("88_partida_reloj")
+	print("RELOJ: con reloj=%s blancas=%.0f negras=%.0f acciones=%d" % [str(demo.game_clocked), demo.game_clock[0], demo.game_clock[1], demo.actions.get_child_count()])
+	# Pulsar el reloj: tras la jugada, el tiempo del jugador sigue corriendo hasta que lo pulsa; a los 15 s, aviso.
+	if demo.view.board.chess.turn == demo.game_color:
+		var mv: int = demo.view.board.chess.legal_moves()[0]
+		demo.view.show_move(Chess.uci(mv))
+		demo._game_move(Chess.uci(mv))
+		await _frames(10)
+		var before: float = demo.game_clock[demo.game_color]
+		demo._press_since -= 16000
+		await _frames(20)
+		await _shot("88b_partida_pulsar")
+		print("RELOJ pulsar: estado=%s corre=%s aviso=%s nota=«%s» su reloj baja=%s" % [demo.game_state, str(demo.game_clock_side == demo.game_color), str(demo._press_warned), demo.game_note, str(demo.game_clock[demo.game_color] < before)])
+		demo._press_game_clock()
+		await _wait_bot(demo)
+		print("RELOJ tras pulsar: estado=%s" % demo.game_state)
+	if demo.view.board.chess.turn == demo.game_color:
+		demo.game_clock[demo.game_color] = 300.0
+		await _frames(30)
+	print("RELOJ sin tiempo: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	await _shot("89_partida_tiempo")
+	demo.game_tc_pick = 0
+	demo._leave_game()
+	await _frames(6)
+	demo._close_progress()
+	print("PARTIDA salir: modo=%s" % demo.mode)
+
+
+func _wait_bot(demo: Control) -> void:
+	# El rival piensa en tiempo real (en otro hilo): se espera por reloj, no por fotogramas.
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 15000:
+		await _frames(1)
+		if demo.game_state != "think":
+			break
+	await _frames(20)
+
+
+## Dos dedos que giran alrededor de un punto, de un ángulo a otro (grados; positivo = a la derecha, como las agujas del reloj).
+func _twist(c: Vector2, radius: float, from_deg: float, to_deg: float) -> void:
+	var at := func(deg: float, side: float) -> Vector2:
+		return c + Vector2(cos(deg_to_rad(deg)), sin(deg_to_rad(deg))) * radius * side
+	_touch(0, at.call(from_deg, -1.0), true)
+	_touch(1, at.call(from_deg, 1.0), true)
+	var steps := 10
+	var prev := from_deg
+	for i in steps:
+		var deg := lerpf(from_deg, to_deg, float(i + 1) / float(steps))
+		_drag(0, at.call(deg, -1.0), at.call(deg, -1.0) - at.call(prev, -1.0))
+		_drag(1, at.call(deg, 1.0), at.call(deg, 1.0) - at.call(prev, 1.0))
+		prev = deg
+		await _frames(1)
+	_touch(0, at.call(to_deg, -1.0), false)
+	_touch(1, at.call(to_deg, 1.0), false)
+
+
+func _touch(index: int, canvas_pos: Vector2, pressed: bool) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = index
+	e.position = canvas_pos
+	e.pressed = pressed
+	get_viewport().push_input(e, true)
+
+
+func _drag(index: int, canvas_pos: Vector2, relative: Vector2) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.position = canvas_pos
+	e.relative = relative
+	get_viewport().push_input(e, true)
 
 
 func _tap(v: BoardView3D, square: int) -> void:
-	var local := v.board.camera.unproject_position(Board3D.sq_pos(square) + Vector3(0.0, 0.3, 0.0))
-	var canvas_pos: Vector2 = v.get_global_transform() * local
+	var in_view := v.board.camera.unproject_position(Board3D.sq_pos(square) + Vector3(0.0, 0.3, 0.0))
+	var canvas_pos: Vector2 = v.get_global_transform() * v.view_to_local(in_view)
 	for pressed: bool in [true, false]:
 		var e := InputEventScreenTouch.new()
 		e.index = 0

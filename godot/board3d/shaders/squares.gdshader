@@ -27,7 +27,12 @@ void fragment() {
 	vec3 col = dark ? dark_sq.rgb : light_sq.rgb;
 	// Bisel muy suave en el borde de cada casilla: da relieve sin estorbar.
 	float edge = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
-	col *= mix(0.9, 1.0, smoothstep(0.0, 0.045, edge));
+	col *= mix(0.92, 1.0, smoothstep(0.0, 0.04, edge));
+	// El borde del tablero se oscurece un poco hacia el marco: la superficie de juego parece encajada en él.
+	float rim = min(min(q.x, 8.0 - q.x), min(q.y, 8.0 - q.y));
+	col *= mix(0.8, 1.0, smoothstep(0.0, 0.07, rim));
+	// Y la luz cae un poco más en el centro que en las esquinas: da profundidad sin texturas.
+	col *= mix(1.04, 0.94, smoothstep(0.15, 1.0, length(q - vec2(4.0)) / 5.66));
 
 	vec4 st = texelFetch(state, ivec2(cell), 0);
 	int hi = int(st.r * 255.0 + 0.5);
@@ -45,7 +50,7 @@ void fragment() {
 	}
 	// Sombra de contacto bajo cada pieza (B = casilla ocupada): la asienta y la separa de la casilla.
 	if (st.b > 0.5) {
-		col *= 1.0 - 0.3 * (1.0 - smoothstep(0.18, 0.5, d));
+		col *= 1.0 - 0.26 * (1.0 - smoothstep(0.22, 0.5, d));
 	}
 	if (mark == 1) {
 		col = mix(col, c_hint.rgb, (1.0 - smoothstep(0.15 - aa, 0.15 + aa, d)) * 0.42);

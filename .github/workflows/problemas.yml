@@ -1,0 +1,97 @@
+name: Problemas fáciles de Lichess (CC0)
+
+# Descarga el volcado oficial de problemas de Lichess (CC0), se queda con los fáciles, elige una muestra
+# estratificada por dificultad y la analiza con Stockfish en paralelo. El resultado queda en la rama
+# «problemas-src» (puzzles.json + analysis-*.jsonl) para empaquetarlo después (npm run pipeline:report).
+# Solo se ejecuta al empujar a la rama «problemas-fetch» o a mano.
+on:
+  push:
+    branches: [problemas-fetch]
+  workflow_dispatch:
+
+env:
+  # Problemas por debajo de este rating; tramos de 50 puntos y cuántos de cada tramo.
+  MAX_RATING: "1300"
+  BIN: "50"
+  PER_BIN: "70"
+
+jobs:
+  fetch:
+    name: Descargar y elegir
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Descargar el volcado oficial y quedarse con los fáciles
+        run: |
+          set -euo pipefail
+          mkdir -p data/raw
+          wget -nv --tries=6 --waitretry=15 https://database.lichess.org/lichess_db_puzzle.csv.zst -O data/raw/p.csv.zst
+          ls -lh data/raw/p.csv.zst
+          # Columnas: PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,GameUrl,OpeningTags
+          # Fáciles, bien valorados (popularidad ≥ 80) y muy jugados (≥ 1000 veces): rating más fiable.
+          zstd -dc data/raw/p.csv.zst | awk -F, -v max="$MAX_RATING" 'NR==1 || ($4+0 < max && $6+0 >= 80 && $7+0 >= 1000)' > data/raw/faciles.csv
+          wc -l data/raw/faciles.csv
+          head -3 data/raw/faciles.csv
+          rm data/raw/p.csv.zst
+      - name: Muestra estratificada
+        run: |
+          npx tsx pipeline/import-lichess.ts --in data/raw/faciles.csv --out data/easy/puzzles.json \
+            --via "https://database.lichess.org/lichess_db_puzzle.csv.zst" --bin "$BIN" --per-bin "$PER_BIN" --seed 13
+      - uses: actions/upload-artifact@v4
+        with:
+          name: muestra
+          path: data/easy/puzzles.json
+
+  analyze:
+    name: Analizar con Stockfish (${{ matrix.shard }}/12)
+    needs: fetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: muestra
+          path: data/easy
+      - name: Analizar
+        run: npx tsx pipeline/analyze.ts --in data/easy/puzzles.json --out data/easy/analysis-${{ matrix.shard }}.jsonl --shard ${{ matrix.shard }}/12
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analisis-${{ matrix.shard }}
+          path: data/easy/analysis-${{ matrix.shard }}.jsonl
+
+  publish:
+    name: Publicar en la rama problemas-src
+    needs: analyze
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - run: |
+          cd out
+          ls -la
+          wc -l analysis-*.jsonl || true
+          git init -q
+          git checkout -q -b problemas-src
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Problemas fáciles analizados (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" problemas-src

@@ -1,0 +1,25 @@
+name: Texturas candidatas (CC0)
+
+# Solo se ejecuta al empujar a la rama «assets-fetch»: descarga candidatas y las deja en la rama «assets-src».
+on:
+  push:
+    branches: [assets-fetch]
+
+jobs:
+  fetch:
+    name: Descargar candidatas de Poly Haven y ambientCG
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar
+        run: bash tools/assets/fetch.sh
+      - name: Publicar en la rama assets-src
+        run: |
+          cd build/assets
+          git init -q
+          git checkout -q -b assets-src
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Texturas candidatas (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" assets-src

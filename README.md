@@ -50,13 +50,13 @@ godot --headless --path godot --import
 godot --headless --path godot -s tests/test_glicko2.gd      # prueba de oro de Glicko-2
 ```
 
-La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas de oro en Godot (reglas y Glicko-2), dibuja 20 capturas del tablero 3D y de la demo (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
+La CI (`.github/workflows/ci.yml`) ejecuta en cada push los tests de TypeScript, las pruebas en Godot (reglas, Glicko-2 y explicaciones), dibuja 66 capturas del tablero 3D y de la pantalla de problema (rama `ci-shots`) y genera un APK de depuración con enlace fijo:
 
 https://github.com/pabloprietorecio-afk/Chesssome-/releases/download/ultimo-apk/Chessome-debug.apk
 
 `android_firma/debug.keystore` es una clave solo de depuración y se sube a propósito para que cada APK se instale encima del anterior; la clave de publicación nunca debe subirse al repositorio.
 
-El tablero 3D usa el renderizador «Mobile» (Vulkan) y una colección de piezas propia generada por código (`tools/pieces`). Resumen técnico en `docs/sistema-3d.md`.
+El tablero 3D usa el renderizador «Mobile» (Vulkan) y piezas propias generadas por código (`tools/pieces`): figuras y fichas planas con el icono en relieve. La pantalla de problema enseña las explicaciones (`npm run godot:demo` las exporta ya redactadas), las ayudas y el sonido. Resumen técnico en `docs/sistema-3d.md`.
 
 ## Estructura
 
@@ -86,7 +86,16 @@ data/dev/        Problemas importados, análisis del motor e informe de calidad
 | Piezas 2D | Propias | Dibujadas para el proyecto |
 | Glicko-2 | Dominio público | Implementación propia (TypeScript y port a GDScript) |
 | Godot Engine 4.7.2 | MIT | Motor de la app Android |
-| Piezas y tablero 3D | Propias | Modeladas por código del proyecto (`tools/pieces`); sin modelos ni texturas de terceros |
+| Piezas y tablero 3D | Propias | Modeladas por código del proyecto (`tools/pieces`); sin modelos de terceros |
+| Inter e Inter Display 4.1.1 | SIL OFL 1.1 | Tipografía de la app Godot (`godot/fonts`, con su licencia) |
+| Texturas de madera (Poly Haven) | CC0 | Acabado «Madera». Detalle en `godot/textures/LEEME.md` |
+| Texturas de mármol y metal (ambientCG) | CC0 1.0 | Acabados «Mármol» y «Metal». Detalle en `godot/textures/LEEME.md` |
+| Sonidos de madera y de arrastre (OpenGameArt) | CC0 | «100 CC0 metal and wood SFX», de rubberduck, y «Scrapes». Detalle en `godot/sounds/LEEME.md` |
+| Timbales (VSCO 2: Community Edition, Versilian Studios) | CC0 1.0 | Aviso de jaque. Detalle en `godot/sounds/LEEME.md` |
+| Iconos de las fichas | Propios | Generados por código a partir de las piezas 3D propias (`tools/pieces/fichas.mjs`) |
+| Iconos de la interfaz (Phosphor Icons 2.1.1) | MIT | Bombilla, huellas, chincheta, etc. Detalle y aviso de licencia en `godot/ui/` |
+| Voz del nivel Kids (Kokoro-82M, voz `ef_dora`) | Apache-2.0 (pesos) | Audios generados en la CI; espeak-ng (GPL-3.0) solo se usa allí, no va en la app. Ver `docs/kids.md` |
+| Emblema y siluetas de piezas de la interfaz | Propios | Generados desde las piezas 3D propias (`tools/ui/icons.mjs`) |
 
 El paquete de datos está marcado como `provisional: true`: es una muestra de desarrollo, no el catálogo de producción.
 
@@ -97,8 +106,11 @@ El paquete de datos está marcado como `provisional: true`: es una muestra de de
 - Hecho: estilo 2D inspirado en WakeAgenda (tokens, componentes, barra flotante y tablero «cielo»; ver `docs/estilo-2d.md`).
 - Hecho: tema claro, oscuro o automático (Ajustes).
 - Diseñado, sin implementar: fondos de escena con piezas de ajedrez bajo el tiempo del usuario (MET Norway, opcional; ver `docs/estilo-2d.md`).
-- Prototipo (web 2D): «Cine de finales» con vídeo real de YouTube que se para solo antes de la jugada y pregunta «¿Qué jugarías?», con editor de marcas de tiempo. Probado con un reproductor simulado; falta la prueba con YouTube real y marcar el primer clip. Web de pruebas en la rama `gh-pages` (ver `docs/cine-finales.md`). Las películas generadas sin vídeo quedan aparcadas.
-- Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor», tablero 3D con toque y arrastre, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista, y demo con 60 problemas reales (`docs/sistema-3d.md`).
+- Prototipo (web 2D, rama `cine-video`): «Cine de finales» con vídeo real de YouTube que se para solo antes de cada jugada clave y pregunta «¿Qué jugarías?», tablero sincronizado con el vídeo, lecciones paso a paso y editor de marcas. Tres clips (Ding–Gukesh 2024; Gukesh–Carlsen 2025 en dos clips). Web de pruebas en la rama `gh-pages` (ver `docs/cine-finales.md`).
+- Hecho (Godot): reglas portadas y verificadas contra chess.js, colección 3D «Clásico de autor» con contorno de tinta, tablero 3D de lado a lado con toque y arrastre, zoom con dos dedos, cuatro modos de animación, temas claro y oscuro, vista en picado, giro con dos dedos, seguir al móvil y fijar vista (`docs/sistema-3d.md`).
+- Hecho (Godot): pantalla de problema para móvil con 330 problemas reales (niveles 0 a 10): tarjeta del entrenador bajo el tablero, ayudas graduadas y opciones en una hoja inferior.
+- Hecho (Godot): test de nivel enriquecido (tipo de error, visión de mate, cálculo, tiempo), perfil, plan y entrenamiento adaptado. Qué mide y qué no, en `docs/evaluacion.md`.
+- Hecho (Godot): cuatro acabados a elegir: madera, mármol y metal (realistas, con texturas fotográficas CC0 y reflejos de estudio) e ilustrado.
 - Sin verificar: el APK en un teléfono real (rendimiento, tacto y sentido del giro con los sensores).
 - Pendiente (Godot): tablero 2D y alternancia 2D/3D para medir H3, explicaciones y entrenamiento, niveles de calidad, sonido y partículas.
 - Provisional (web): `src/ui/Board3D.tsx` sigue desactivado (`BOARD_3D_READY` en `src/ui/boardTypes.ts`); el 3D real es el de Godot.

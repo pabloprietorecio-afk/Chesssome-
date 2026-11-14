@@ -1,7 +1,7 @@
 shader_type spatial;
 // Material de las piezas: acabado mate tipo porcelana, con la oclusión horneada en el color de vértice
-// y un contorno por fresnel que separa la pieza del fondo (oscurece el borde de las claras y aclara el
-// de las oscuras), para que la silueta se lea sobre cualquier casilla.
+// y un borde por fresnel que modela el volumen (oscurece el canto de las claras y aclara el de las oscuras).
+// El contorno de verdad lo pone outline.gdshader.
 
 uniform vec4 base_color : source_color = vec4(0.94, 0.9, 0.82, 1.0);
 uniform vec4 rim_color : source_color = vec4(0.6, 0.54, 0.45, 1.0);
@@ -25,5 +25,5 @@ void fragment() {
 	AO = ao;
 	AO_LIGHT_AFFECT = 0.3;
 	// Selección: solo un borde luminoso, la pieza conserva su color.
-	EMISSION = glow_color.rgb * glow * fres * 0.7;
+	EMISSION = glow_color.rgb * glow * fres * 0.35;
 }

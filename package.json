@@ -14,8 +14,13 @@
     "pipeline:import": "tsx pipeline/import-lichess.ts",
     "pipeline:analyze": "tsx pipeline/analyze.ts",
     "pipeline:report": "tsx pipeline/build-pack.ts",
-    "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts",
-    "pieces": "node tools/pieces/generate.mjs"
+    "golden": "tsx scripts/export-golden.ts && tsx scripts/export-golden-chess.ts && tsx scripts/export-golden-assessment.ts",
+    "pieces": "node tools/pieces/generate.mjs",
+    "pieces:fichas": "node tools/pieces/fichas.mjs",
+    "ui:icons": "node tools/ui/icons.mjs",
+    "godot:demo": "tsx scripts/export-godot-demo.ts",
+    "course": "tsx scripts/export-course.ts",
+    "voice": "tsx scripts/export-voice.ts"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
@@ -24,6 +29,8 @@
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

@@ -1,0 +1,650 @@
+[
+ {
+  "id": "115e98484238",
+  "text": "¡Perfecto!"
+ },
+ {
+  "id": "2c0ab017ea63",
+  "text": "¡Muy bien!"
+ },
+ {
+  "id": "b74342ab40dc",
+  "text": "¡Muy bien! Se puede con menos jugadas. ¿Lo intentas otra vez?"
+ },
+ {
+  "id": "33e6d53de665",
+  "text": "Casi. ¡Prueba otra vez!"
+ },
+ {
+  "id": "71eb5b61fb69",
+  "text": "¡Uy! En esa casilla te capturarían. Prueba otra vez."
+ },
+ {
+  "id": "0e34e86b4809",
+  "text": "¡Lección terminada!"
+ },
+ {
+  "id": "c715f74cf089",
+  "text": "¡Has terminado el curso! Ya sabes jugar al ajedrez."
+ },
+ {
+  "id": "3a079b91a236",
+  "text": "Pista: mira esta pieza."
+ },
+ {
+  "id": "af2382032cef",
+  "text": "Esto es para mayores. Pide ayuda a un adulto."
+ },
+ {
+  "id": "a454621f1f93",
+  "text": "¡Hola! Soy tu entrenador de ajedrez. ¿Empezamos?"
+ },
+ {
+  "id": "930bc2d4a583",
+  "text": "¡Muy bien! Ahora, a jugar una partida con lo que has aprendido."
+ },
+ {
+  "id": "40bf092f08b8",
+  "text": "¡A jugar! Tú llevas las blancas."
+ },
+ {
+  "id": "d10d947681b9",
+  "text": "¡A jugar! Tú llevas las negras."
+ },
+ {
+  "id": "a18b915e347a",
+  "text": "¡Guerra de peones! Gana quien llegue primero al final del tablero."
+ },
+ {
+  "id": "cf6415b99fb2",
+  "text": "Peones y caballos. Gana quien corone un peón o capture todas las piezas del rival."
+ },
+ {
+  "id": "c5385a942c94",
+  "text": "¡Cuidado! Tu rey está en jaque."
+ },
+ {
+  "id": "ae2ffda2cf01",
+  "text": "¡Jaque mate! ¡Has ganado!"
+ },
+ {
+  "id": "21f4af5a6daa",
+  "text": "Esta vez ha ganado el rival. ¡Juega otra!"
+ },
+ {
+  "id": "0e71d0b3e1cd",
+  "text": "¡Tablas! Nadie gana."
+ },
+ {
+  "id": "171a065d5027",
+  "text": "¡Has ganado!"
+ },
+ {
+  "id": "d75524f822b7",
+  "text": "Ha ganado el rival. ¡Otra vez!"
+ },
+ {
+  "id": "e7efe8c0b663",
+  "text": "Pista: prueba con esta pieza."
+ },
+ {
+  "id": "28c81c2299ed",
+  "text": "El tablero"
+ },
+ {
+  "id": "725ee247bc4a",
+  "text": "¡Hola! Vamos a aprender ajedrez."
+ },
+ {
+  "id": "027761f346f8",
+  "text": "Se juega en un tablero con 64 casillas, claras y oscuras. Juegan dos: blancas y negras. Siempre empiezan las blancas."
+ },
+ {
+  "id": "a9612629c124",
+  "text": "¡Ya conoces el tablero!"
+ },
+ {
+  "id": "250f50ac84a1",
+  "text": "Así empieza una partida. Cada jugador tiene 16 piezas. Tú llevas las blancas, las que están cerca de ti."
+ },
+ {
+  "id": "f0ee634f4031",
+  "text": "Cada casilla tiene un nombre: una letra y un número, como en el juego de hundir la flota."
+ },
+ {
+  "id": "b1fc1eb3fa61",
+  "text": "La torre"
+ },
+ {
+  "id": "5ee64e586fcb",
+  "text": "La torre va en línea recta: hacia delante, hacia atrás y a los lados. Todo lo lejos que quiera."
+ },
+ {
+  "id": "3e9cb3a9f0ce",
+  "text": "Pero no puede saltar por encima de otras piezas."
+ },
+ {
+  "id": "eeaf8dbf58f5",
+  "text": "La torre va en línea recta."
+ },
+ {
+  "id": "233eff016e78",
+  "text": "Lleva la torre hasta la estrella."
+ },
+ {
+  "id": "08d1b2fb145b",
+  "text": "Ahora recoge las dos estrellas."
+ },
+ {
+  "id": "2f7da3e2ddb2",
+  "text": "Recoge las tres estrellas."
+ },
+ {
+  "id": "80994f57e6df",
+  "text": "Tus peones están en medio. La torre no puede saltarlos. ¡Busca otro camino!"
+ },
+ {
+  "id": "7d6ecc94f8f7",
+  "text": "El alfil"
+ },
+ {
+  "id": "0b6f24d08b49",
+  "text": "El alfil va en diagonal, como si cortara las casillas por las esquinas. Todo lo lejos que quiera."
+ },
+ {
+  "id": "eb78861e699b",
+  "text": "Por eso siempre pisa casillas del mismo color."
+ },
+ {
+  "id": "7b5d7c73cf35",
+  "text": "El alfil va en diagonal."
+ },
+ {
+  "id": "fa87784db232",
+  "text": "Lleva el alfil hasta la estrella."
+ },
+ {
+  "id": "d689f46b471c",
+  "text": "Recoge las dos estrellas."
+ },
+ {
+  "id": "7fee8cd95b85",
+  "text": "Este alfil solo pisa casillas claras. Recoge las tres estrellas."
+ },
+ {
+  "id": "37a908f9fd63",
+  "text": "Un peón le tapa el camino. ¡Busca otro!"
+ },
+ {
+  "id": "2417bdfe49af",
+  "text": "La dama"
+ },
+ {
+  "id": "92cfd1c3425f",
+  "text": "La dama es la pieza más fuerte de todas."
+ },
+ {
+  "id": "d1d1c22068f6",
+  "text": "Puede ir en línea recta, como la torre, y en diagonal, como el alfil."
+ },
+ {
+  "id": "b53a3a56aed0",
+  "text": "La dama va recta y en diagonal."
+ },
+ {
+  "id": "e63bdf3f77e8",
+  "text": "Recoge las cuatro estrellas con las menos jugadas que puedas."
+ },
+ {
+  "id": "6707547efc33",
+  "text": "El rey"
+ },
+ {
+  "id": "88d2c82b8b59",
+  "text": "El rey es la pieza más importante. ¡Hay que cuidarlo mucho!"
+ },
+ {
+  "id": "2b1bed929bf9",
+  "text": "Pero anda despacio: solo una casilla cada vez, hacia cualquier lado."
+ },
+ {
+  "id": "8e4799360880",
+  "text": "El rey anda de una en una casilla."
+ },
+ {
+  "id": "82cb7ea2dc56",
+  "text": "Lleva el rey hasta la estrella."
+ },
+ {
+  "id": "0bdb234fde63",
+  "text": "Recoge las dos estrellas, paso a paso."
+ },
+ {
+  "id": "f9fffe884058",
+  "text": "Recoge las dos estrellas. El rey también puede ir en diagonal."
+ },
+ {
+  "id": "29c65cc2c4c3",
+  "text": "El caballo"
+ },
+ {
+  "id": "22297fcf636f",
+  "text": "El caballo salta haciendo una ele: dos casillas hacia un lado y una más hacia el otro."
+ },
+ {
+  "id": "50445654d44b",
+  "text": "Es la única pieza que puede saltar por encima de las demás."
+ },
+ {
+  "id": "60cda111b693",
+  "text": "El caballo salta haciendo una ele."
+ },
+ {
+  "id": "3fd049f2963e",
+  "text": "Lleva el caballo hasta la estrella."
+ },
+ {
+  "id": "4209fd0b10a4",
+  "text": "¡El caballo salta por encima de tus peones!"
+ },
+ {
+  "id": "43079b9a68c4",
+  "text": "El peón"
+ },
+ {
+  "id": "24f9907671c2",
+  "text": "El peón anda hacia delante, una casilla. La primera vez que se mueve, puede avanzar dos."
+ },
+ {
+  "id": "46bc1e5c9dc7",
+  "text": "Nunca va hacia atrás. Y para capturar, va en diagonal."
+ },
+ {
+  "id": "2ae5f36c85a8",
+  "text": "El peón anda recto y captura en diagonal."
+ },
+ {
+  "id": "7432b69ccac2",
+  "text": "La primera vez, el peón puede avanzar dos casillas. ¡Hazlo de una vez!"
+ },
+ {
+  "id": "830475da8d87",
+  "text": "Captura las dos piezas negras. Recuerda: el peón captura en diagonal."
+ },
+ {
+  "id": "d081abac24ac",
+  "text": "Captura las tres piezas. Fíjate bien hacia dónde captura el peón."
+ },
+ {
+  "id": "5adc271447bf",
+  "text": "Capturar"
+ },
+ {
+  "id": "a07c2ad16f3d",
+  "text": "Capturar es llevar tu pieza a la casilla de una pieza rival. La quitas del tablero y te pones en su sitio."
+ },
+ {
+  "id": "d628946cccb2",
+  "text": "Capturar es quitar una pieza rival."
+ },
+ {
+  "id": "ee98a445e59d",
+  "text": "Captura las dos piezas negras con la torre."
+ },
+ {
+  "id": "55ce18cf7edd",
+  "text": "Captura las tres piezas con el alfil."
+ },
+ {
+  "id": "aeb9b9de4a91",
+  "text": "Captura las tres piezas con el caballo."
+ },
+ {
+  "id": "e32b5b71c1db",
+  "text": "Captura las cuatro piezas con la dama, con las menos jugadas que puedas."
+ },
+ {
+  "id": "8092570bfd78",
+  "text": "¡Que no te capturen!"
+ },
+ {
+  "id": "8f853dd9f102",
+  "text": "Las piezas negras también pueden capturar."
+ },
+ {
+  "id": "78733ff2db60",
+  "text": "Antes de mover, mira si la casilla a la que vas está atacada."
+ },
+ {
+  "id": "97e1caf8e683",
+  "text": "Antes de mover, mira qué ataca el rival."
+ },
+ {
+  "id": "28c3f77c631a",
+  "text": "Captura las dos piezas sin que te capturen. ¿Por cuál empiezas?"
+ },
+ {
+  "id": "b74ca55a4f3a",
+  "text": "El peón negro protege al caballo. Captura los dos sin perder tu dama."
+ },
+ {
+  "id": "d9c706824b34",
+  "text": "Captura las tres piezas. ¡Cuidado con los peones negros!"
+ },
+ {
+  "id": "0eb4b87fe964",
+  "text": "Lo que vale cada pieza"
+ },
+ {
+  "id": "c4b5fe5309dc",
+  "text": "Unas piezas valen más que otras. El peón vale 1. El caballo y el alfil, 3. La torre, 5. Y la dama, 9."
+ },
+ {
+  "id": "2f4847a0dcab",
+  "text": "El rey no se puede capturar nunca."
+ },
+ {
+  "id": "098adb5bb327",
+  "text": "La dama vale más que todas."
+ },
+ {
+  "id": "65d0c0410866",
+  "text": "Puedes capturar tres piezas. ¡Llévate la que más vale!"
+ },
+ {
+  "id": "445564ce9c0e",
+  "text": "Esa jugada no captura nada. ¡Prueba otra!"
+ },
+ {
+  "id": "f76fd74df196",
+  "text": "El caballo vale 3. Hay otra que vale más."
+ },
+ {
+  "id": "f5620422ed96",
+  "text": "El peón vale 1. Hay otra que vale más."
+ },
+ {
+  "id": "403b6c9e6545",
+  "text": "¡Bien! La torre vale 5: es la que más vale."
+ },
+ {
+  "id": "98063e50a1ac",
+  "text": "El caballo puede capturar tres piezas. ¿Cuál te llevas?"
+ },
+ {
+  "id": "e6fc0c8f8556",
+  "text": "¡Bien! La dama vale 9: es la que más vale."
+ },
+ {
+  "id": "cc136ec9a633",
+  "text": "El peón puede capturar a los dos lados. ¡Elige bien!"
+ },
+ {
+  "id": "88ed8e3fd105",
+  "text": "El jaque"
+ },
+ {
+  "id": "2d8f38d61ff3",
+  "text": "Dar jaque es atacar al rey del rival. Cuando su rey está en jaque, tiene que salvarlo enseguida."
+ },
+ {
+  "id": "86e565f4ba8d",
+  "text": "Jaque es atacar al rey."
+ },
+ {
+  "id": "d2b193bd68ad",
+  "text": "Da jaque al rey negro con la torre."
+ },
+ {
+  "id": "33af08cc58e3",
+  "text": "Esa jugada no ataca al rey negro. ¡Prueba otra!"
+ },
+ {
+  "id": "4cd203be93e0",
+  "text": "¡Jaque! Con tu torre atacas al rey negro."
+ },
+ {
+  "id": "eaf4d59cd040",
+  "text": "Da jaque con el alfil."
+ },
+ {
+  "id": "d4f97506bbc2",
+  "text": "¡Jaque! Con tu alfil atacas al rey negro."
+ },
+ {
+  "id": "5948901bef7e",
+  "text": "Da jaque con el caballo."
+ },
+ {
+  "id": "3a62a97f8e14",
+  "text": "¡Jaque! Con tu caballo atacas al rey negro."
+ },
+ {
+  "id": "a93f2b06c58c",
+  "text": "Salir del jaque"
+ },
+ {
+  "id": "9ecb6f6d5223",
+  "text": "Para salvar al rey del jaque hay tres maneras: moverlo, capturar la pieza que ataca, o poner otra pieza en medio."
+ },
+ {
+  "id": "a5005eaf3814",
+  "text": "El rey se salva moviéndose, capturando o tapando."
+ },
+ {
+  "id": "0d1028149961",
+  "text": "¡Tu rey está en jaque! Aquí solo puedes salvarlo moviéndolo."
+ },
+ {
+  "id": "61623a5b9790",
+  "text": "¡Bien! Has salvado a tu rey moviéndolo."
+ },
+ {
+  "id": "20797ef92008",
+  "text": "¡Jaque otra vez! Ahora, captura la pieza que ataca."
+ },
+ {
+  "id": "b0c1f8b31a0e",
+  "text": "¡Bien! Has salvado a tu rey capturando la pieza que atacaba."
+ },
+ {
+  "id": "ab01620cb604",
+  "text": "Y ahora, pon una pieza en medio."
+ },
+ {
+  "id": "ad7e29b0bb48",
+  "text": "¡Bien! Has salvado a tu rey tapando el jaque."
+ },
+ {
+  "id": "6b27593de068",
+  "text": "El jaque mate"
+ },
+ {
+  "id": "715dec483cca",
+  "text": "Jaque mate es un jaque del que el rey no se puede salvar. ¡Quien da jaque mate gana la partida!"
+ },
+ {
+  "id": "b6d9fc50c2d9",
+  "text": "¡Jaque mate es ganar!"
+ },
+ {
+  "id": "b673e672a00a",
+  "text": "Da jaque mate. Los peones negros no dejan escapar a su rey."
+ },
+ {
+  "id": "28ff13ef1e3e",
+  "text": "Esa jugada no da jaque. ¡Prueba otra!"
+ },
+ {
+  "id": "8716d0586761",
+  "text": "¡Jaque mate! El rey negro no se puede salvar."
+ },
+ {
+  "id": "c41a9ec01166",
+  "text": "Da jaque mate con la dama. Tu rey la ayuda."
+ },
+ {
+  "id": "c9baba01e1ea",
+  "text": "Es jaque, pero el rey negro se puede escapar. ¡Prueba otra!"
+ },
+ {
+  "id": "706c67a99b53",
+  "text": "Da jaque mate con el caballo."
+ },
+ {
+  "id": "86e8e467dd51",
+  "text": "Da jaque mate con la torre."
+ },
+ {
+  "id": "ff7b83e7522c",
+  "text": "El ahogado"
+ },
+ {
+  "id": "0e5fcc6d66c9",
+  "text": "Ojo: si el rey rival no está en jaque, pero no puede moverse a ningún sitio, es ahogado. Y entonces es empate."
+ },
+ {
+  "id": "cf4e3cb1d1a3",
+  "text": "Ahogado es empate. ¡Cuidado!"
+ },
+ {
+  "id": "9ef11a09fb00",
+  "text": "Da jaque mate. ¡Pero no lo ahogues!"
+ },
+ {
+  "id": "3741932638eb",
+  "text": "¡Ahogado! El rey negro no está en jaque, pero no se puede mover. Eso es empate."
+ },
+ {
+  "id": "2a5430f07bde",
+  "text": "Otra vez: jaque mate, sin ahogarlo."
+ },
+ {
+  "id": "9a1004fc0ea8",
+  "text": "Es jaque, pero te pueden capturar esa pieza. ¡Prueba otra!"
+ },
+ {
+  "id": "37771d552133",
+  "text": "El enroque"
+ },
+ {
+  "id": "e4dfa2e2d1d4",
+  "text": "El enroque es una jugada especial: mueves el rey y la torre a la vez, para esconder al rey."
+ },
+ {
+  "id": "886c2c933d49",
+  "text": "Para hacerlo, mueve el rey dos casillas hacia la torre. La torre salta sola al otro lado."
+ },
+ {
+  "id": "84ff33bacd59",
+  "text": "Con el enroque, el rey se esconde."
+ },
+ {
+  "id": "748132092c24",
+  "text": "Haz el enroque hacia el lado de la torre más cercana."
+ },
+ {
+  "id": "4aefa8f84d7b",
+  "text": "Para enrocar, mueve el rey dos casillas hacia la torre."
+ },
+ {
+  "id": "7bfb4b8176c8",
+  "text": "¡Enroque! Tu rey ya está escondido."
+ },
+ {
+  "id": "3ae5267bef47",
+  "text": "Ese enroque es hacia el otro lado."
+ },
+ {
+  "id": "c6bf7cf040a4",
+  "text": "Ahora hazlo hacia el otro lado."
+ },
+ {
+  "id": "105082b518a2",
+  "text": "Coronar"
+ },
+ {
+  "id": "dc43a1814904",
+  "text": "Si un peón llega hasta el final del tablero, ¡se convierte en otra pieza! Casi siempre, en dama."
+ },
+ {
+  "id": "d70230c58158",
+  "text": "Un peón que llega al final se convierte en dama."
+ },
+ {
+  "id": "c0f80a808270",
+  "text": "Lleva el peón hasta el final y conviértelo en dama."
+ },
+ {
+  "id": "459b9f585c43",
+  "text": "Se puede, pero la dama es la más fuerte. ¡Elige dama!"
+ },
+ {
+  "id": "ad8b2c10acfc",
+  "text": "¡Coronado! Tu peón ahora es una dama."
+ },
+ {
+  "id": "08294de40d6b",
+  "text": "Lleva el peón hasta el final del tablero."
+ },
+ {
+  "id": "2f9952c4e9b0",
+  "text": "Captura y corona a la vez."
+ },
+ {
+  "id": "0dade7028170",
+  "text": "La captura al paso"
+ },
+ {
+  "id": "c21c24b62892",
+  "text": "Esta jugada es un poco rara. Si un peón rival avanza dos casillas y se pone al lado del tuyo, puedes capturarlo como si solo hubiera avanzado una."
+ },
+ {
+  "id": "e106a8eb71d5",
+  "text": "Pero solo justo en ese momento."
+ },
+ {
+  "id": "5608ccd2490f",
+  "text": "Al paso: solo justo después."
+ },
+ {
+  "id": "3c3f8790cd78",
+  "text": "El peón negro acaba de avanzar dos casillas. ¡Captúralo al paso!"
+ },
+ {
+  "id": "e691b5c7cc07",
+  "text": "Mueve tu peón en diagonal, justo detrás del peón negro."
+ },
+ {
+  "id": "b4c535f108ed",
+  "text": "¡Al paso! Has capturado el peón negro."
+ },
+ {
+  "id": "57707f85bb2f",
+  "text": "Otra vez: el peón negro acaba de llegar. ¡Aprovecha!"
+ },
+ {
+  "id": "f3a633dcc0f1",
+  "text": "Mates de partidas reales 1"
+ },
+ {
+  "id": "944180eadbce",
+  "text": "Estas posiciones son de partidas de verdad. En todas puedes dar jaque mate con una sola jugada."
+ },
+ {
+  "id": "758b49d6cc33",
+  "text": "Mira bien todo el tablero."
+ },
+ {
+  "id": "73871b06bdbf",
+  "text": "¡Eres un cazador de reyes!"
+ },
+ {
+  "id": "5262435feb07",
+  "text": "Busca el jaque mate."
+ },
+ {
+  "id": "1adce4ca6956",
+  "text": "Mates de partidas reales 2"
+ }
+]

@@ -7,18 +7,85 @@ extends Node3D
 ## (las blancas quedan hacia +Z, que es donde se pone la cámara cuando juegan blancas).
 
 signal animations_finished
+## Momentos de la partida que suenan (los pone en sonido BoardSounds): "slide" (la pieza se arrastra; amount es
+## lo que dura), "place" (se asienta), "capture", "check" y "fall" (cae el rey en el mate).
+signal sound(kind: String, amount: float)
 
 enum Anim { FULL, FAST, MINIMAL, NONE }
 
 const PIECE_FILES := {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen", 6: "king"}
 ## Altura de cada pieza en casillas (para elegirla al tocar).
 const PIECE_HEIGHT := {1: 0.84, 2: 1.09, 3: 1.25, 4: 0.99, 5: 1.53, 6: 1.76}
-const PIECE_SCALE := 0.94
-const PICK_RADIUS := 0.34
+const PIECE_SCALE := 1.0
+## Las piezas van algo más anchas que el modelo: llenan mejor la casilla sin tapar más las de detrás.
+const PIECE_GIRTH := 1.06
+const PICK_RADIUS := 0.38
+## Semilado y grosor del marco (tools/pieces/board.mjs).
+const FRAME_HALF := 4.14
+const FRAME_THICK := 0.36
+## Altura que se reserva para las piezas al encuadrar (un rey en una casilla de esquina).
+const FIT_HEIGHT := 1.8
+## Grosor del contorno de las piezas, en casillas.
+const OUTLINE_WIDTH := 0.026
+## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
+const PIECE_SETS := ["clasico", "fichas"]
+## Medidas de la ficha (tools/pieces/fichas.mjs), en casillas.
+const TOKEN := {"radius": 0.4, "height": 0.165, "field_radius": 0.343, "face_height": 0.152, "icon_radius": 0.31, "sd_range": 0.05}
+## Con fichas no hay piezas altas que tapen ni que se salgan por arriba: el tablero puede llenar más la vista.
+const FIT_HEIGHT_TOKENS := 0.3
+## Acabados realistas: materiales con textura fotográfica (godot/textures) y reflejos del entorno de estudio.
+## El tablero abarca los tonos medios y las piezas, los extremos: las claras son más claras que las casillas
+## claras y las oscuras, más oscuras que las casillas oscuras. Así cada pieza destaca sobre las dos casillas.
+const FINISHES := {
+	"madera": {
+		"light": {"tex": "arce", "normal": "arce_normal", "tint": Color(0.98, 0.94, 0.86), "grain": 0.24, "turn": 1.0},
+		"dark": {"tex": "nogal", "normal": "nogal_normal", "tint": Color(0.8, 0.72, 0.66), "grain": 0.16, "turn": 0.0},
+		"board": {"rough": 0.3, "coat": 0.4, "metallic": 0.0, "normal_depth": 0.6, "joint": 0.5},
+		"frame": {"tex": "palisandro", "tint": Color(0.62, 0.56, 0.54), "rough": 0.3, "coat": 0.4, "metallic": 0.0, "grain": 0.22},
+		"pieces": [
+			{"tex": "boj", "tint": Color(1.08, 1.02, 0.9), "grain": 0.3, "rough": 0.36, "coat": 0.35, "metallic": 0.0, "rim": 0.0},
+			{"tex": "ebano", "tint": Color(0.34, 0.31, 0.3), "grain": 0.3, "rough": 0.27, "coat": 0.35, "metallic": 0.0, "rim": 0.14},
+		],
+		"labels": [Color("f6e9cf"), Color("5b3d27")],
+		"outline": [Color("2b1a10"), Color("050302")],
+		"swatch": [Color("e7cf9c"), Color("2b2422")],
+		"light_setup": {"key": 1.0, "ambient": 0.62, "sky": 1.0, "rim": 0.3},
+	},
+	"marmol": {
+		"light": {"tex": "marmol_crema", "normal": "", "tint": Color(0.96, 0.95, 0.93), "grain": 0.3, "turn": 0.0},
+		"dark": {"tex": "marmol_pizarra", "normal": "", "tint": Color(0.86, 0.9, 0.96), "grain": 0.3, "turn": 0.0},
+		"board": {"rough": 0.16, "coat": 0.0, "metallic": 0.0, "normal_depth": 0.0, "joint": 0.42},
+		"frame": {"tex": "marmol_negro", "tint": Color(0.5, 0.5, 0.52), "rough": 0.16, "coat": 0.0, "metallic": 0.0, "grain": 0.3},
+		"pieces": [
+			{"tex": "marmol_blanco", "tint": Color(0.9, 0.9, 0.91), "grain": 0.45, "rough": 0.2, "coat": 0.0, "metallic": 0.0, "rim": 0.0},
+			{"tex": "marmol_negro", "tint": Color(0.55, 0.55, 0.57), "grain": 0.45, "rough": 0.16, "coat": 0.0, "metallic": 0.0, "rim": 0.12},
+		],
+		"labels": [Color("eef2f8"), Color("5a5348")],
+		"outline": [Color("3a3a40"), Color("050506")],
+		"swatch": [Color("f1f0ee"), Color("2a2b2e")],
+		"light_setup": {"key": 0.95, "ambient": 0.6, "sky": 1.0, "rim": 0.3},
+	},
+	"metal": {
+		"light": {"tex": "acero", "normal": "acero_normal", "tint": Color(1.22, 1.24, 1.28), "grain": 0.3, "turn": 0.0},
+		"dark": {"tex": "acero", "normal": "acero_normal", "tint": Color(0.46, 0.5, 0.58), "grain": 0.3, "turn": 1.0},
+		"board": {"rough": 0.42, "coat": 0.0, "metallic": 1.0, "normal_depth": 1.0, "joint": 0.6},
+		"frame": {"tex": "bronce", "tint": Color(0.7, 0.7, 0.72), "rough": 0.36, "coat": 0.0, "metallic": 1.0, "grain": 0.3},
+		"pieces": [
+			{"tex": "laton", "tint": Color(1.0, 0.86, 0.6), "grain": 0.4, "rough": 0.24, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
+			{"tex": "bronce", "tint": Color(0.6, 0.7, 0.95), "grain": 0.4, "rough": 0.26, "coat": 0.0, "metallic": 1.0, "rim": 0.0},
+		],
+		"labels": [Color("eef1f6"), Color("30343c")],
+		"outline": [Color("3a2c10"), Color("040506")],
+		"swatch": [Color("e2bd62"), Color("33363e")],
+		"light_setup": {"key": 0.85, "ambient": 0.7, "sky": 1.25, "rim": 0.25},
+	},
+}
 const START_FEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const PITCH_MIN := 36.0
 const PITCH_MAX := 90.0
-const DEFAULT_PITCH := 58.0
+## Ampliación máxima con el pellizco de dos dedos (1 = el tablero encuadrado a lo ancho).
+const ZOOM_MAX := 3.0
+const DEFAULT_PITCH := 64.0
 
 var chess: Chess = Chess.from_fen(START_FEN)
 ## 0 = blancas abajo, 1 = negras abajo.
@@ -26,11 +93,26 @@ var orientation := 0
 var anim_mode: Anim = Anim.FAST
 var set_id := "clasico"
 var show_coordinates := true
+## Acabado: "madera", "marmol" o "metal" (realistas, ver FINISHES) o "ilustrado" (porcelana lisa).
+var style := "madera"
+## Contorno de tinta alrededor de las piezas (ver set_style y set_outline).
+var outline := false
+## Juego de piezas: "clasico" o "fichas" (ver set_piece_set).
+var piece_set := "clasico"
 
 var camera: Camera3D
 var cam_pitch := DEFAULT_PITCH
 var cam_yaw := 0.0
-var cam_fov := 26.0
+## Campo de visión horizontal: muy estrecho, para que las casillas del fondo apenas se encojan
+## (con 14° y la vista inclinada, la fila del fondo mide un 90 % de la de delante).
+var cam_fov := 14.0
+## Margen libre alrededor del tablero al encuadrar, en fracción del ancho o del alto de la vista:
+## izquierda, arriba, derecha, abajo.
+var fit_pad := Vector4(0.012, 0.02, 0.012, 0.02)
+## Ampliación elegida por el jugador: 1 = tablero encuadrado; más = el tablero no cabe entero en la vista.
+var zoom := 1.0
+## Desplazamiento de la vista cuando está ampliada, en casillas sobre el plano de la cámara (derecha, arriba).
+var pan := Vector2.ZERO
 
 var last_from := -1
 var last_to := -1
@@ -40,10 +122,27 @@ var _targets := PackedInt32Array()
 var _pieces := {}
 var _meshes := {}
 var _mats: Array[ShaderMaterial] = []
+var _tex_mats: Array[ShaderMaterial] = []
+var _token_mats: Array[ShaderMaterial] = []
+var _token_mesh: Mesh
+var _icons_tex: Texture2D
+var _sfx_tweens: Array[Tween] = []
+var _squares_tex: ShaderMaterial
+var _frame_tex: ShaderMaterial
+var _textures := {}
+var _squares_node: MeshInstance3D
+var _frame_node: MeshInstance3D
+var _sky: Sky
+var _sky_mat: ShaderMaterial
+var _rim_light: DirectionalLight3D
+var _outline_mats: Array[ShaderMaterial] = []
+var _disc_mats: Array[ShaderMaterial] = []
+var _disc_mesh: ArrayMesh
+var _label_font: Font
 var _squares_mat: ShaderMaterial
 var _frame_mat: StandardMaterial3D
-var _backdrop_mat: ShaderMaterial
 var _shadow_mat: ShaderMaterial
+var _shadow_node: MeshInstance3D
 var _env: Environment
 var _key: DirectionalLight3D
 var _fill: DirectionalLight3D
@@ -52,30 +151,50 @@ var _state_img: Image
 var _state_tex: ImageTexture
 var _pieces_root: Node3D
 var _arrows_root: Node3D
+## Lecciones: estrellas que recoger (casilla → nodo) y la única pieza que se puede mover (−1 = cualquiera propia).
+var _goals_root: Node3D
+var _goals := {}
+var _goal_t := 0.0
+var only_square := -1
 var _labels: Array[Node3D] = []
 var _tweens: Array[Tween] = []
 var _running := 0
 var _dying: Array[Node3D] = []
 var _cam_tween: Tween
 var _theme_name := "light"
+## Color (tal como debe verse) del fondo de la pantalla que contiene el tablero.
+var _backdrop := Color("eaf1fb")
 var _drag_sq := -1
 var _built := false
+## Datos del último encuadre, para ampliar y desplazar: tangentes del medio campo de visión y distancia.
+var _fit_th := 0.1
+var _fit_tv := 0.1
+var _fit_dist := 30.0
 
 
 func _ready() -> void:
 	_build()
+	_apply_style()
 	set_theme(_theme_name)
 	set_fen(chess.fen())
 	set_orientation(orientation)
+	# El encuadre depende de la forma de la vista: se rehace cada vez que cambia de tamaño.
+	get_viewport().size_changed.connect(apply_camera)
 
 
 # ---------------------------------------------------------------- construcción
 
 func _build() -> void:
 	_env = Environment.new()
+	# Fondo liso del mismo color que la pantalla que contiene el tablero (ver set_backdrop): la vista es opaca
+	# y, aun así, no se nota dónde acaba. (Una vista transparente no sirve aquí: el renderizador «Mobile»
+	# solo guarda 2 bits de transparencia y las sombras suaves salen a franjas.)
 	_env.background_mode = Environment.BG_COLOR
+	_env.background_color = pre_tonemap(_backdrop)
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	_env.tonemap_exposure = 1.0
+	_env.tonemap_white = 1.0
 	var world_env := WorldEnvironment.new()
 	world_env.environment = _env
 	add_child(world_env)
@@ -83,36 +202,41 @@ func _build() -> void:
 	_light_rig = Node3D.new()
 	add_child(_light_rig)
 	_key = DirectionalLight3D.new()
-	_key.rotation = Vector3(deg_to_rad(-56.0), deg_to_rad(-34.0), 0.0)
+	# Luz alta: sombras cortas, que no ensucian las casillas vecinas.
+	_key.rotation = Vector3(deg_to_rad(-66.0), deg_to_rad(-34.0), 0.0)
 	_key.shadow_enabled = true
 	_key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	_key.directional_shadow_max_distance = 42.0
-	_key.shadow_blur = 1.6
+	_key.shadow_blur = 1.8
+	_key.shadow_opacity = 0.72
 	_key.light_angular_distance = 1.0
 	_light_rig.add_child(_key)
 	_fill = DirectionalLight3D.new()
 	_fill.rotation = Vector3(deg_to_rad(-32.0), deg_to_rad(138.0), 0.0)
 	_fill.shadow_enabled = false
 	_light_rig.add_child(_fill)
+	# Luz de contra, baja y desde el fondo: dibuja el filo de las piezas en el acabado realista.
+	_rim_light = DirectionalLight3D.new()
+	_rim_light.rotation = Vector3(deg_to_rad(-24.0), deg_to_rad(205.0), 0.0)
+	_rim_light.shadow_enabled = false
+	_rim_light.light_energy = 0.0
+	_light_rig.add_child(_rim_light)
+	# Entorno de estudio (solo para la luz ambiente y los reflejos del acabado realista; no se ve de fondo).
+	_sky_mat = ShaderMaterial.new()
+	_sky_mat.shader = load("res://board3d/shaders/studio_sky.gdshader") as Shader
+	_sky = Sky.new()
+	_sky.sky_material = _sky_mat
+	_sky.radiance_size = Sky.RADIANCE_SIZE_256
+	_sky.process_mode = Sky.PROCESS_MODE_QUALITY
 
 	camera = Camera3D.new()
 	camera.fov = cam_fov
 	camera.near = 0.5
-	camera.far = 120.0
+	camera.far = 160.0
+	# El campo de visión es el horizontal: el tablero se encuadra a lo ancho sea cual sea el alto de la vista.
+	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	add_child(camera)
 	camera.make_current()
-
-	# Fondo: un plano lejano pegado a la cámara.
-	var quad := QuadMesh.new()
-	quad.size = Vector2(60.0, 60.0)
-	var backdrop := MeshInstance3D.new()
-	backdrop.mesh = quad
-	_backdrop_mat = ShaderMaterial.new()
-	_backdrop_mat.shader = load("res://board3d/shaders/backdrop.gdshader") as Shader
-	backdrop.material_override = _backdrop_mat
-	backdrop.position = Vector3(0.0, 0.0, -100.0)
-	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	camera.add_child(backdrop)
 
 	# Sombra de contacto.
 	var shadow_plane := PlaneMesh.new()
@@ -121,8 +245,12 @@ func _build() -> void:
 	shadow.mesh = shadow_plane
 	_shadow_mat = ShaderMaterial.new()
 	_shadow_mat.shader = load("res://board3d/shaders/soft_shadow.gdshader") as Shader
+	# Sombra que nace bajo el marco y se pierde en media casilla: asienta el tablero sin parecer otra losa.
+	_shadow_mat.set_shader_parameter("half_size", FRAME_HALF - 0.45)
+	_shadow_mat.set_shader_parameter("spread", 1.05)
 	shadow.material_override = _shadow_mat
-	shadow.position = Vector3(0.0, -0.43, 0.0)
+	shadow.position = Vector3(0.0, -FRAME_THICK - 0.02, 0.0)
+	_shadow_node = shadow
 	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(shadow)
 
@@ -134,6 +262,7 @@ func _build() -> void:
 	_frame_mat.roughness = 0.5
 	frame.material_override = _frame_mat
 	add_child(frame)
+	_frame_node = frame
 
 	# Casillas.
 	var plane := PlaneMesh.new()
@@ -150,43 +279,139 @@ func _build() -> void:
 	_squares_mat.set_shader_parameter("state", _state_tex)
 	squares.material_override = _squares_mat
 	add_child(squares)
+	_squares_node = squares
+	# Materiales de los acabados realistas: sus texturas y parámetros se ponen al elegir el acabado (_apply_style).
+	_squares_tex = ShaderMaterial.new()
+	_squares_tex.shader = load("res://board3d/shaders/squares_textured.gdshader") as Shader
+	_squares_tex.set_shader_parameter("state", _state_tex)
+	_frame_tex = ShaderMaterial.new()
+	_frame_tex.shader = load("res://board3d/shaders/frame_textured.gdshader") as Shader
 
-	# Coordenadas: un juego para cada lado, se enseña el del lado que juega abajo.
+	# Coordenadas dentro de las casillas del borde, como en los tableros en pantalla: así el marco puede ser
+	# fino y el tablero ocupa casi todo el ancho. Un juego para cada lado; se enseña el del lado que juega abajo.
+	if ResourceLoader.exists("res://fonts/Inter-SemiBold.woff2"):
+		_label_font = load("res://fonts/Inter-SemiBold.woff2") as Font
 	for side in 2:
 		var group := Node3D.new()
 		var sgn := 1.0 if side == 0 else -1.0
 		var yaw := 0.0 if side == 0 else PI
+		var edge := 0 if side == 0 else 7
 		for i in 8:
-			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5, 0.012, 4.26 * sgn), yaw))
-			group.add_child(_make_label(str(i + 1), Vector3(-4.26 * sgn, 0.012, 3.5 - i), yaw))
+			# Letra de la columna: esquina inferior derecha de la casilla de la fila más cercana.
+			group.add_child(_make_label("abcdefgh"[i], Vector3(i - 3.5 + 0.385 * sgn, 0.012, 3.865 * sgn), yaw, (i + edge) % 2 == 0))
+			# Número de la fila: esquina inferior izquierda de la casilla de la columna de la izquierda, pegado
+			# al borde. Ahí no lo tapan ni la base de la pieza de su casilla ni el cuerpo de la de delante.
+			group.add_child(_make_label(str(i + 1), Vector3(-3.922 * sgn, 0.012, 3.5 - i + 0.36 * sgn), yaw, (edge + i) % 2 == 0))
 		add_child(group)
 		_labels.append(group)
 
 	_arrows_root = Node3D.new()
 	add_child(_arrows_root)
+	_goals_root = Node3D.new()
+	add_child(_goals_root)
 	_pieces_root = Node3D.new()
 	add_child(_pieces_root)
 
 	var piece_shader := load("res://board3d/shaders/piece.gdshader") as Shader
+	var outline_shader := load("res://board3d/shaders/outline.gdshader") as Shader
+	var disc_shader := load("res://board3d/shaders/outline_disc.gdshader") as Shader
+	var textured_shader := load("res://board3d/shaders/piece_textured.gdshader") as Shader
+	var token_shader := load("res://board3d/shaders/piece_token.gdshader") as Shader
 	for side in 2:
 		var m := ShaderMaterial.new()
 		m.shader = piece_shader
 		_mats.append(m)
+		var tm := ShaderMaterial.new()
+		tm.shader = textured_shader
+		_tex_mats.append(tm)
+		var km := ShaderMaterial.new()
+		km.shader = token_shader
+		for key: String in ["icon_radius", "field_radius", "face_height", "sd_range"]:
+			km.set_shader_parameter(key, TOKEN[key])
+		_token_mats.append(km)
+		var om := ShaderMaterial.new()
+		om.shader = outline_shader
+		om.set_shader_parameter("width", OUTLINE_WIDTH)
+		_outline_mats.append(om)
+		var dm := ShaderMaterial.new()
+		dm.shader = disc_shader
+		_disc_mats.append(dm)
+	_disc_mesh = _make_disc()
 	for t: int in PIECE_FILES:
 		_meshes[t] = _load_mesh("res://sets/%s/%s.glb" % [set_id, PIECE_FILES[t]])
+	_token_mesh = _load_mesh("res://sets/fichas/token.glb")
+	_icons_tex = _load_icons("res://sets/fichas/iconos.bin")
+	for km in _token_mats:
+		km.set_shader_parameter("icons", _icons_tex)
 	_built = true
 
 
-func _make_label(text: String, pos: Vector3, yaw: float) -> Label3D:
+## Atlas de iconos de las fichas. Es un PNG de datos (normales y distancias, no colores): se carga tal cual,
+## sin pasar por el importador de texturas, para que no lo comprima con pérdida.
+static func _load_icons(path: String) -> Texture2D:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var img := Image.new()
+	if bytes.is_empty() or img.load_png_from_buffer(bytes) != OK:
+		push_error("No se pueden cargar los iconos de las fichas: " + path)
+		img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0.5, 0.5, 0.0, 1.0))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+## Textura de godot/textures por su nombre ("" = ninguna). Se cargan al usarlas por primera vez.
+func _texture(texture_name: String) -> Texture2D:
+	if texture_name == "":
+		return null
+	if not _textures.has(texture_name):
+		var path := "res://textures/%s.jpg" % texture_name
+		if ResourceLoader.exists(path):
+			_textures[texture_name] = load(path) as Texture2D
+		else:
+			push_error("Falta la textura " + path)
+			_textures[texture_name] = null
+	return _textures[texture_name]
+
+
+func is_realistic() -> bool:
+	return FINISHES.has(style)
+
+
+## Colores de las piezas claras y oscuras del acabado actual, para dibujarlas en la interfaz (marca del turno).
+func piece_swatches() -> Array:
+	if is_realistic():
+		return FINISHES[style]["swatch"]
+	return [Color("f8f0e0"), Color("2a3557")]
+
+
+func _make_label(text: String, pos: Vector3, yaw: float, on_dark: bool) -> Label3D:
 	var l := Label3D.new()
 	l.text = text
-	l.font_size = 44
-	l.pixel_size = 0.0046
+	if _label_font != null:
+		l.font = _label_font
+	l.font_size = 48
+	l.pixel_size = 0.004
 	l.outline_size = 0
 	l.shaded = false
 	l.position = pos
 	l.rotation = Vector3(-PI / 2.0, yaw, 0.0)
+	# Sobre casilla oscura va en el color de las claras y al revés.
+	l.set_meta("on_dark", on_dark)
 	return l
+
+
+## Disco de radio 1 en el plano del tablero, para el contorno de la base de cada pieza.
+func _make_disc() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var steps := 40
+	for i in steps:
+		var a0 := TAU * float(i) / float(steps)
+		var a1 := TAU * float(i + 1) / float(steps)
+		for v: Vector3 in [Vector3.ZERO, Vector3(cos(a1), 0.0, sin(a1)), Vector3(cos(a0), 0.0, sin(a0))]:
+			st.set_normal(Vector3.UP)
+			st.add_vertex(v)
+	return st.commit()
 
 
 static func _load_mesh(path: String) -> Mesh:
@@ -213,39 +438,258 @@ static func _find_mesh(n: Node) -> MeshInstance3D:
 
 # ---------------------------------------------------------------- tema
 
+## Color de fondo de la pantalla que contiene el tablero, tal como debe verse.
+func set_backdrop(color: Color) -> void:
+	_backdrop = Color(color.r, color.g, color.b, 1.0)
+	if _built:
+		_env.background_color = pre_tonemap(_backdrop)
+
+
+## Color que hay que dar a un fondo sin iluminar para que, después del tonemapper fílmico de la escena
+## (blanco = 1, exposición = 1), se vea en pantalla como «color».
+static func pre_tonemap(color: Color) -> Color:
+	var lin := color.srgb_to_linear()
+	return Color(_inverse_filmic(lin.r), _inverse_filmic(lin.g), _inverse_filmic(lin.b), 1.0).linear_to_srgb()
+
+
+## Inversa de la curva fílmica de Godot (constantes de su tonemapper, con el sesgo de exposición ya aplicado).
+static func _inverse_filmic(y: float) -> float:
+	var a := 0.88
+	var b := 0.6
+	var c := 0.1
+	var d := 0.2
+	var e := 0.01
+	var f := 0.3
+	var white := (a + c * b + d * e) / (a + b + d * f) - e / f
+	var t := clampf(y, 0.0, 1.0) * white + e / f
+	# t·(a·x² + b·x + d·f) = a·x² + c·b·x + d·e
+	var qa := a * (t - 1.0)
+	var qb := b * (t - c)
+	var qc := d * (t * f - e)
+	if absf(qa) < 0.000001:
+		return maxf(-qc / qb, 0.0)
+	var disc := maxf(qb * qb - 4.0 * qa * qc, 0.0)
+	return maxf((-qb - sqrt(disc)) / (2.0 * qa), 0.0)
+
+
+## Cambia el acabado: "madera", "marmol", "metal" o "ilustrado". El contorno de tinta va con el ilustrado,
+## salvo que se indique otra cosa.
+func set_style(style_name: String, with_outline: Variant = null) -> void:
+	style = style_name if (FINISHES.has(style_name) or style_name == "ilustrado") else "madera"
+	outline = (style == "ilustrado") if with_outline == null else bool(with_outline)
+	if not _built:
+		return
+	_apply_style()
+	set_theme(_theme_name)
+
+
+## Contorno de tinta alrededor de las piezas, en cualquier acabado.
+func set_outline(on: bool) -> void:
+	outline = on
+	if not _built:
+		return
+	for node: Node3D in _pieces.values():
+		_dress(node)
+	for node: Node3D in _dying:
+		if is_instance_valid(node):
+			_dress(node)
+
+
+func is_tokens() -> bool:
+	return piece_set == "fichas"
+
+
+## Cambia el juego de piezas ("clasico" o "fichas") sin tocar la posición.
+func set_piece_set(set_name: String) -> void:
+	var wanted := set_name if PIECE_SETS.has(set_name) else "clasico"
+	if wanted == piece_set:
+		return
+	piece_set = wanted
+	if not _built:
+		return
+	finish_animations()
+	for s: int in _pieces:
+		var node: Node3D = _pieces[s]
+		node.set_meta("yaw", _yaw_for(node.get_meta("piece")))
+		# Un rey volcado por el mate se queda volcado, a la manera de su juego de piezas.
+		if float(node.get_meta("topple", 0.0)) != 0.0:
+			node.set_meta("topple", PI if is_tokens() else 1.5)
+			node.set_meta("topple_lift", TOKEN["height"] if is_tokens() else 0.0)
+		_dress(node)
+		_rest(node, s)
+	_refresh_state()
+	apply_camera()
+
+
+func _piece_material(side: int) -> ShaderMaterial:
+	if is_tokens():
+		return _token_mats[side]
+	return _tex_mats[side] if is_realistic() else _mats[side]
+
+
+func _piece_mesh(piece_type: int) -> Mesh:
+	return _token_mesh if is_tokens() else _meshes[piece_type]
+
+
+## Altura de una pieza, para elegirla al tocar.
+func _piece_height(piece_type: int) -> float:
+	if is_tokens():
+		return float(TOKEN["height"])
+	return float(PIECE_HEIGHT[piece_type]) * PIECE_SCALE
+
+
+## Pone a una pieza la malla y el material de su juego y de su acabado, y enseña u oculta su contorno.
+func _dress(node: Node3D) -> void:
+	var piece: int = node.get_meta("piece")
+	var side := Chess.color_of(piece)
+	var piece_type := Chess.type_of(piece)
+	var mesh := _piece_mesh(piece_type)
+	var body := node.get_node("Malla") as MeshInstance3D
+	var hull := node.get_node("Contorno") as MeshInstance3D
+	var disc := node.get_node("Peana") as MeshInstance3D
+	if body.mesh != mesh:
+		body.mesh = mesh
+		hull.mesh = mesh
+		_fit_disc(node, mesh)
+	body.material_override = _piece_material(side)
+	# Icono de la ficha: su casilla en el atlas (tres columnas, dos filas, en el orden de PIECE_FILES).
+	var cell := piece_type - 1
+	body.set_instance_shader_parameter("icon_cell", Vector2(float(cell % 3), floorf(float(cell) / 3.0)))
+	hull.visible = outline
+	disc.visible = outline
+
+
+func _apply_style() -> void:
+	var real := is_realistic()
+	if real:
+		var fin: Dictionary = FINISHES[style]
+		for key: String in ["light", "dark"]:
+			var half: Dictionary = fin[key]
+			_squares_tex.set_shader_parameter(key + "_tex", _texture(half["tex"]))
+			_squares_tex.set_shader_parameter(key + "_normal", _texture(half["normal"]))
+			_squares_tex.set_shader_parameter(key + "_tint", half["tint"])
+			_squares_tex.set_shader_parameter(key + "_grain", half["grain"])
+			_squares_tex.set_shader_parameter(key + "_turn", half["turn"])
+		var board: Dictionary = fin["board"]
+		_squares_tex.set_shader_parameter("rough", board["rough"])
+		_squares_tex.set_shader_parameter("coat", board["coat"])
+		_squares_tex.set_shader_parameter("metallic", board["metallic"])
+		_squares_tex.set_shader_parameter("normal_depth", board["normal_depth"])
+		_squares_tex.set_shader_parameter("joint_dark", board["joint"])
+		var frame: Dictionary = fin["frame"]
+		_frame_tex.set_shader_parameter("wood", _texture(frame["tex"]))
+		for key: String in ["tint", "rough", "coat", "metallic", "grain"]:
+			_frame_tex.set_shader_parameter(key, frame[key])
+		for side in 2:
+			var piece: Dictionary = fin["pieces"][side]
+			_tex_mats[side].set_shader_parameter("wood", _texture(piece["tex"]))
+			_tex_mats[side].set_shader_parameter("tint", piece["tint"])
+			_tex_mats[side].set_shader_parameter("grain_scale", piece["grain"])
+			_tex_mats[side].set_shader_parameter("rough", piece["rough"])
+			_tex_mats[side].set_shader_parameter("coat", piece["coat"])
+			_tex_mats[side].set_shader_parameter("metallic", piece["metallic"])
+			_tex_mats[side].set_shader_parameter("rim_amount", piece["rim"])
+			_tex_mats[side].set_shader_parameter("rim_color", Color("c9d6f2"))
+	# Fichas: el cuerpo es del material de su bando y el icono, del material del bando contrario.
+	for side in 2:
+		var km := _token_mats[side]
+		if real:
+			var own: Dictionary = FINISHES[style]["pieces"][side]
+			var other: Dictionary = FINISHES[style]["pieces"][1 - side]
+			km.set_shader_parameter("use_textures", 1.0)
+			km.set_shader_parameter("wood", _texture(own["tex"]))
+			km.set_shader_parameter("inlay_tex", _texture(other["tex"]))
+			km.set_shader_parameter("tint", own["tint"])
+			km.set_shader_parameter("inlay_tint", other["tint"])
+			km.set_shader_parameter("grain_scale", own["grain"])
+			km.set_shader_parameter("rough", own["rough"])
+			km.set_shader_parameter("inlay_rough", other["rough"])
+			km.set_shader_parameter("metallic", own["metallic"])
+			km.set_shader_parameter("inlay_metallic", other["metallic"])
+			km.set_shader_parameter("coat", own["coat"])
+			km.set_shader_parameter("rim_amount", own["rim"])
+			km.set_shader_parameter("rim_color", Color("c9d6f2"))
+		else:
+			var flat: Array[Color] = [Color("f8f0e0"), Color("2a3557")]
+			km.set_shader_parameter("use_textures", 0.0)
+			km.set_shader_parameter("tint", flat[side])
+			km.set_shader_parameter("inlay_tint", flat[1 - side])
+			km.set_shader_parameter("rough", 0.42)
+			km.set_shader_parameter("inlay_rough", 0.42)
+			km.set_shader_parameter("metallic", 0.0)
+			km.set_shader_parameter("inlay_metallic", 0.0)
+			km.set_shader_parameter("coat", 0.0)
+			km.set_shader_parameter("rim_amount", 0.36 if side == 0 else 0.56)
+			km.set_shader_parameter("rim_color", Color("94846c") if side == 0 else Color("9db2e0"))
+	_squares_node.material_override = _squares_tex if real else _squares_mat
+	_frame_node.material_override = _frame_tex if real else _frame_mat
+	# Los acabados realistas se iluminan con el entorno de estudio (luz ambiente y reflejos); el ilustrado, con
+	# un color de ambiente liso y sin reflejos.
+	_env.sky = _sky if real else null
+	_env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY if real else Environment.AMBIENT_SOURCE_COLOR
+	_env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if real else Environment.REFLECTION_SOURCE_DISABLED
+	for node: Node3D in _pieces.values():
+		_dress(node)
+	for node: Node3D in _dying:
+		if is_instance_valid(node):
+			_dress(node)
+
+
 func set_theme(theme_name: String) -> void:
 	_theme_name = theme_name
 	if not _built:
 		return
 	var dark := theme_name == "dark"
-	_env.background_color = Color("0c1224") if dark else Color("e6eef9")
-	_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
-	_env.ambient_light_energy = 0.4 if dark else 0.4
-	_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
-	_key.light_energy = 0.92 if dark else 0.74
-	_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
-	_fill.light_energy = 0.2 if dark else 0.16
-	# El fondo es el de la app (docs/estilo-2d.md) con un halo suave detrás del tablero.
-	_backdrop_mat.set_shader_parameter("top_color", Color("0a0f1e") if dark else Color("eaf1fb"))
-	_backdrop_mat.set_shader_parameter("bottom_color", Color("0a0f1e") if dark else Color("eaf1fb"))
-	_backdrop_mat.set_shader_parameter("halo_color", Color("24325e") if dark else Color("ffffff"))
-	_backdrop_mat.set_shader_parameter("halo", 0.6 if dark else 0.55)
-	_shadow_mat.set_shader_parameter("shadow_color", Color("02040c") if dark else Color("1f2d55"))
-	_shadow_mat.set_shader_parameter("strength", 0.55 if dark else 0.32)
-	_frame_mat.albedo_color = Color("222d4d") if dark else Color("2b3859")
-	_squares_mat.set_shader_parameter("light_sq", Color("d3deef") if dark else Color("d2ddec"))
-	_squares_mat.set_shader_parameter("dark_sq", Color("7d94b8") if dark else Color("8299be"))
-	# Claras: marfil con el borde algo más oscuro. Oscuras: azul tinta con el borde más claro.
-	_mats[0].set_shader_parameter("base_color", Color("efe4cf"))
-	_mats[0].set_shader_parameter("rim_color", Color("7f6c52"))
-	_mats[0].set_shader_parameter("rim_amount", 0.62)
-	_mats[1].set_shader_parameter("base_color", Color("2a3554"))
-	_mats[1].set_shader_parameter("rim_color", Color("8ea4d2"))
-	_mats[1].set_shader_parameter("rim_amount", 0.5)
-	var label_color := Color("93a4c8") if dark else Color("aebcd8")
+	_shadow_mat.set_shader_parameter("shadow_color", Color("000208") if dark else Color("203060"))
+	_shadow_mat.set_shader_parameter("strength", 0.75 if dark else 0.36)
+	var outline_colors: Array[Color] = [Color("262e4c"), Color("0a0f22")]
+	var light_label := Color.WHITE
+	var dark_label := Color.BLACK
+	if is_realistic():
+		# Estudio: luz principal cálida con sombra, ambiente y reflejos del entorno, y una contra suave.
+		var fin: Dictionary = FINISHES[style]
+		var setup: Dictionary = fin["light_setup"]
+		_env.ambient_light_sky_contribution = 1.0
+		_env.ambient_light_energy = setup["ambient"]
+		_sky_mat.set_shader_parameter("intensity", setup["sky"])
+		_key.light_color = Color("fff1dc")
+		_key.light_energy = setup["key"]
+		_fill.light_energy = 0.0
+		_rim_light.light_color = Color("dfe9ff")
+		_rim_light.light_energy = setup["rim"]
+		outline_colors[0] = fin["outline"][0]
+		outline_colors[1] = fin["outline"][1]
+		light_label = fin["labels"][0]
+		dark_label = fin["labels"][1]
+	else:
+		_env.ambient_light_color = Color("aebbe0") if dark else Color("dfe8f6")
+		_env.ambient_light_energy = 0.42
+		_key.light_color = Color("fff0dc") if dark else Color("fff5e6")
+		_key.light_energy = 0.9 if dark else 0.76
+		_fill.light_color = Color("9db4ff") if dark else Color("cfe0ff")
+		_fill.light_energy = 0.2 if dark else 0.16
+		_rim_light.light_energy = 0.0
+		_frame_mat.albedo_color = Color("202b4e") if dark else Color("27335a")
+		# Casillas con cuerpo: las claras no llegan al blanco, para que las piezas de marfil destaquen sobre ellas.
+		var light_sq := Color("bfcfea") if dark else Color("bdcdea")
+		var dark_sq := Color("6481b5") if dark else Color("6683b7")
+		_squares_mat.set_shader_parameter("light_sq", light_sq)
+		_squares_mat.set_shader_parameter("dark_sq", dark_sq)
+		# Claras: marfil limpio. Oscuras: azul tinta con el canto más claro.
+		_mats[0].set_shader_parameter("base_color", Color("f8f0e0"))
+		_mats[0].set_shader_parameter("rim_color", Color("94846c"))
+		_mats[0].set_shader_parameter("rim_amount", 0.36)
+		_mats[1].set_shader_parameter("base_color", Color("2a3557"))
+		_mats[1].set_shader_parameter("rim_color", Color("9db2e0"))
+		_mats[1].set_shader_parameter("rim_amount", 0.56)
+		light_label = light_sq.lightened(0.65)
+		dark_label = dark_sq.darkened(0.3)
+	for i in 2:
+		_outline_mats[i].set_shader_parameter("outline_color", outline_colors[i])
+		_disc_mats[i].set_shader_parameter("outline_color", outline_colors[i])
 	for group in _labels:
 		for l in group.get_children():
-			(l as Label3D).modulate = label_color
+			(l as Label3D).modulate = light_label if l.get_meta("on_dark", false) else dark_label
 
 
 # ---------------------------------------------------------------- posición y piezas
@@ -257,6 +701,9 @@ static func sq_pos(s: int) -> Vector3:
 ## Giro de cada pieza para que se lea bien desde el lado del jugador:
 ## los caballos miran al rival en tres cuartos y el corte del alfil queda hacia la cámara.
 func _yaw_for(p: int) -> float:
+	if is_tokens():
+		# El icono queda derecho para quien juega abajo, sea del color que sea la ficha.
+		return 0.0 if orientation == 0 else PI
 	var t := Chess.type_of(p)
 	var white := Chess.color_of(p) == 0
 	var yaw := PI if white else 0.0
@@ -271,16 +718,51 @@ func _yaw_for(p: int) -> float:
 
 func _make_piece(p: int, s: int) -> Node3D:
 	var node := Node3D.new()
+	var mesh := _piece_mesh(Chess.type_of(p))
+	var side := Chess.color_of(p)
 	var mi := MeshInstance3D.new()
 	mi.name = "Malla"
-	mi.mesh = _meshes[Chess.type_of(p)]
-	mi.material_override = _mats[Chess.color_of(p)]
+	mi.mesh = mesh
 	node.add_child(mi)
+	# Contorno: la misma malla con el material de casco invertido. No proyecta sombra.
+	var hull := MeshInstance3D.new()
+	hull.name = "Contorno"
+	hull.mesh = mesh
+	hull.material_override = _outline_mats[side]
+	hull.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	hull.visible = outline
+	node.add_child(hull)
+	# Y un disco bajo la base, que cierra el contorno donde la pieza toca el tablero.
+	var disc := MeshInstance3D.new()
+	disc.name = "Peana"
+	disc.mesh = _disc_mesh
+	disc.material_override = _disc_mats[side]
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	disc.position = Vector3(0.0, 0.007, 0.0)
+	disc.visible = outline
+	node.add_child(disc)
+	_fit_disc(node, mesh)
 	node.set_meta("piece", p)
 	node.set_meta("yaw", _yaw_for(p))
+	_dress(node)
 	_pieces_root.add_child(node)
 	_rest(node, s)
 	return node
+
+
+## El disco de la base mide lo que la base de la malla más el grosor del contorno.
+func _fit_disc(node: Node3D, mesh: Mesh) -> void:
+	var radius := 0.33
+	if mesh != null:
+		radius = mesh.get_aabb().size.x * 0.5
+	var r := radius + OUTLINE_WIDTH
+	(node.get_node("Peana") as MeshInstance3D).scale = Vector3(r, 1.0, r)
+
+
+## Selección: el contorno de la pieza se vuelve del color de acento.
+func _set_glow(node: Node3D, amount: float) -> void:
+	for part: String in ["Malla", "Contorno", "Peana"]:
+		(node.get_node(part) as MeshInstance3D).set_instance_shader_parameter("glow", amount)
 
 
 ## Deja la pieza en reposo en su casilla.
@@ -289,7 +771,8 @@ func _rest(node: Node3D, s: int) -> void:
 	_pose(node, sq_pos(s) + Vector3(0.0, lift, 0.0), Vector3.UP, 0.0)
 	var topple: float = node.get_meta("topple", 0.0)
 	if topple != 0.0:
-		_pose(node, sq_pos(s), node.get_meta("topple_axis", Vector3.RIGHT), topple)
+		var lift_up: float = node.get_meta("topple_lift", 0.0)
+		_pose(node, sq_pos(s) + Vector3(0.0, lift_up, 0.0), node.get_meta("topple_axis", Vector3.RIGHT), topple)
 
 
 func _pose(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: float = 1.0, size: float = 1.0) -> void:
@@ -300,7 +783,7 @@ func _pose(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash: floa
 	if absf(angle) > 0.0001 and axis.length_squared() > 0.25:
 		bas = Basis(axis.normalized(), angle) * bas
 	var sc := PIECE_SCALE * maxf(size, 0.001)
-	var wide := sc / sqrt(maxf(squash, 0.05))
+	var wide := sc * PIECE_GIRTH / sqrt(maxf(squash, 0.05))
 	node.transform = Transform3D(bas * Basis.from_scale(Vector3(wide, sc * squash, wide)), pos)
 
 
@@ -330,6 +813,9 @@ func set_orientation(o: int) -> void:
 	if not _built:
 		return
 	_light_rig.rotation.y = PI if o == 1 else 0.0
+	_env.sky_rotation = Vector3(0.0, PI if o == 1 else 0.0, 0.0)
+	# La sombra del tablero cae un poco hacia el lado del jugador.
+	_shadow_node.position.z = -0.16 if o == 1 else 0.16
 	_labels[0].visible = show_coordinates and o == 0
 	_labels[1].visible = show_coordinates and o == 1
 	for s: int in _pieces:
@@ -360,6 +846,18 @@ func _refresh_state() -> void:
 	for s in 64:
 		_state_img.set_pixel(s & 7, s >> 3, Color8(hi[s], mark[s], 255 if chess.b[s] != 0 else 0, 255))
 	_state_tex.update(_state_img)
+	# Con fichas, el rey en jaque se tiñe: la ficha tapa casi toda la casilla resaltada.
+	var alert_sq := chess.king_sq(chess.turn) if is_tokens() and chess.in_check() else -1
+	for s: int in _pieces:
+		((_pieces[s] as Node3D).get_node("Malla") as MeshInstance3D).set_instance_shader_parameter("alert", 1.0 if s == alert_sq else 0.0)
+
+
+## Marca una jugada como la última sin moverla: para recuperar el resaltado al volver a una posición anterior.
+func mark_last_move(from: int, to: int) -> void:
+	last_from = from
+	last_to = to
+	if _built:
+		_refresh_state()
 
 
 ## Flechas de las explicaciones: lista de diccionarios {from: int, to: int, tone: "good" | "bad" | "info"}.
@@ -403,20 +901,125 @@ func _arrow_mesh(a: Vector3, b: Vector3, occupied: bool) -> ArrayMesh:
 # ---------------------------------------------------------------- cámara
 
 func apply_camera() -> void:
-	if camera == null:
+	if camera == null or not is_inside_tree():
+		return
+	var vp := get_viewport().get_visible_rect().size
+	if vp.x < 2.0 or vp.y < 2.0:
 		return
 	var yaw := deg_to_rad(cam_yaw + (180.0 if orientation == 1 else 0.0))
 	var pitch := deg_to_rad(clampf(cam_pitch, PITCH_MIN, PITCH_MAX))
 	var back := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
 	var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 	var up := back.cross(right)
-	# Distancia para que el tablero con su marco quepa a lo ancho en el borde más cercano.
-	var half := tan(deg_to_rad(cam_fov) * 0.5)
-	var dist := 4.85 / half + 4.5 * cos(pitch)
-	# El punto de mira baja un poco con la cámara inclinada: las piezas del fondo sobresalen hacia arriba.
-	var target := Vector3(0.0, 0.25, 0.0) - Vector3(sin(yaw), 0.0, cos(yaw)) * (0.55 * cos(pitch))
-	camera.fov = cam_fov
-	camera.transform = Transform3D(Basis(right, up, back), target + back * dist)
+	# Encuadre: la cámara se coloca a la menor distancia a la que caben, dentro de la vista y con su margen,
+	# las esquinas del marco y la altura de las piezas. En un móvil en vertical manda el ancho: el tablero
+	# va de lado a lado. Si la vista es baja (o se gira el tablero), manda el alto y la cámara se aleja.
+	var th := tan(deg_to_rad(cam_fov) * 0.5)
+	var tv := th * vp.y / vp.x
+	var lim_l := -1.0 + 2.0 * fit_pad.x
+	var lim_r := 1.0 - 2.0 * fit_pad.z
+	var lim_t := 1.0 - 2.0 * fit_pad.y
+	var lim_b := -1.0 + 2.0 * fit_pad.w
+	var pa := PackedFloat32Array()
+	var pb := PackedFloat32Array()
+	var pc := PackedFloat32Array()
+	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() else FIT_HEIGHT
+	for ix: int in [-1, 1]:
+		for iz: int in [-1, 1]:
+			var fx := float(ix)
+			var fz := float(iz)
+			for q: Vector3 in [Vector3(fx * FRAME_HALF, 0.0, fz * FRAME_HALF), Vector3(fx * FRAME_HALF, -FRAME_THICK, fz * FRAME_HALF), Vector3(fx * 3.5, fit_height, fz * 3.5)]:
+				pa.append(q.dot(right))
+				pb.append(q.dot(up))
+				pc.append(q.dot(back))
+	var n := pa.size()
+	var sx := 0.0
+	var sy := 0.0
+	var dist := 10.0
+	for _pass in 8:
+		dist = -1.0e9
+		for i in n:
+			dist = maxf(dist, (pa[i] - sx) / (lim_r * th) + pc[i])
+			dist = maxf(dist, (pa[i] - sx) / (lim_l * th) + pc[i])
+			dist = maxf(dist, (pb[i] - sy) / (lim_t * tv) + pc[i])
+			dist = maxf(dist, (pb[i] - sy) / (lim_b * tv) + pc[i])
+		# Con esa distancia, se centra lo que sobra a cada lado.
+		var x_min := 1.0e9
+		var x_max := -1.0e9
+		var y_min := 1.0e9
+		var y_max := -1.0e9
+		for i in n:
+			var depth := dist - pc[i]
+			var xn := (pa[i] - sx) / (depth * th)
+			var yn := (pb[i] - sy) / (depth * tv)
+			x_min = minf(x_min, xn)
+			x_max = maxf(x_max, xn)
+			y_min = minf(y_min, yn)
+			y_max = maxf(y_max, yn)
+		sx -= ((lim_r - x_max) - (x_min - lim_l)) * 0.5 * th * dist
+		sy -= ((lim_t - y_max) - (y_min - lim_b)) * 0.5 * tv * dist
+	# Lo que ocupa el tablero en la vista con ese encuadre (coordenadas de −1 a 1).
+	var ext_l := 1.0e9
+	var ext_r := -1.0e9
+	var ext_b := 1.0e9
+	var ext_t := -1.0e9
+	for i in n:
+		var d := dist - pc[i]
+		ext_l = minf(ext_l, (pa[i] - sx) / (d * th))
+		ext_r = maxf(ext_r, (pa[i] - sx) / (d * th))
+		ext_b = minf(ext_b, (pb[i] - sy) / (d * tv))
+		ext_t = maxf(ext_t, (pb[i] - sy) / (d * tv))
+	_fit_th = th
+	_fit_tv = tv
+	_fit_dist = dist
+	# Ampliación: se estrecha el campo de visión (la perspectiva no cambia) y la cámara se desplaza de lado.
+	# El desplazamiento se limita para que el tablero siga cubriendo la zona que ocupaba sin ampliar.
+	zoom = clampf(zoom, 1.0, ZOOM_MAX)
+	var hx := th * dist / zoom
+	var hy := tv * dist / zoom
+	var lo_x := ext_l * th * dist - lim_l * hx
+	var hi_x := ext_r * th * dist - lim_r * hx
+	pan.x = clampf(pan.x, lo_x, hi_x) if lo_x <= hi_x else (lo_x + hi_x) * 0.5
+	var lo_y := ext_b * tv * dist - lim_b * hy
+	var hi_y := ext_t * tv * dist - lim_t * hy
+	pan.y = clampf(pan.y, lo_y, hi_y) if lo_y <= hi_y else (lo_y + hi_y) * 0.5
+	camera.fov = rad_to_deg(2.0 * atan(th / zoom))
+	# Planos de recorte ceñidos al tablero: con la cámara lejos, así no se pierde precisión de profundidad.
+	camera.near = maxf(0.5, dist - 16.0)
+	camera.far = dist + 30.0
+	camera.transform = Transform3D(Basis(right, up, back), right * (sx + pan.x) + up * (sy + pan.y) + back * dist)
+	_key.directional_shadow_max_distance = dist + 12.0
+
+
+## Amplía o reduce alrededor de un punto de la vista (en píxeles): lo que está bajo los dedos se queda bajo ellos.
+func zoom_at(factor: float, view_pos: Vector2) -> void:
+	var vp := get_viewport().get_visible_rect().size
+	var before := zoom
+	var after := clampf(zoom * factor, 1.0, ZOOM_MAX)
+	if vp.x < 2.0 or vp.y < 2.0 or is_equal_approx(before, after):
+		return
+	var m := Vector2(view_pos.x / vp.x * 2.0 - 1.0, 1.0 - view_pos.y / vp.y * 2.0)
+	var k := 1.0 / before - 1.0 / after
+	pan += Vector2(m.x * _fit_th, m.y * _fit_tv) * _fit_dist * k
+	zoom = after
+	apply_camera()
+
+
+## Desplaza la vista ampliada siguiendo al dedo (en píxeles de la vista).
+func pan_by(delta: Vector2) -> void:
+	var vp := get_viewport().get_visible_rect().size
+	if vp.x < 2.0 or vp.y < 2.0 or zoom <= 1.0:
+		return
+	pan.x -= delta.x * 2.0 * _fit_th * _fit_dist / (zoom * vp.x)
+	pan.y += delta.y * 2.0 * _fit_tv * _fit_dist / (zoom * vp.y)
+	apply_camera()
+
+
+## Vuelve al tablero encuadrado, sin ampliar.
+func reset_zoom() -> void:
+	zoom = 1.0
+	pan = Vector2.ZERO
+	apply_camera()
 
 
 func set_view(pitch: float, yaw: float) -> void:
@@ -425,19 +1028,26 @@ func set_view(pitch: float, yaw: float) -> void:
 	apply_camera()
 
 
-func _view_step(t: float, p0: float, y0: float, p1: float, y1: float) -> void:
+func _view_step(t: float, p0: float, y0: float, p1: float, y1: float, z0: float, pan0: Vector2, unzoom: bool) -> void:
+	if unzoom:
+		zoom = lerpf(z0, 1.0, t)
+		pan = pan0.lerp(Vector2.ZERO, t)
 	set_view(lerpf(p0, p1, t), lerpf(y0, y1, t))
 
 
-## Lleva la cámara con suavidad a una vista (por ejemplo, en picado: pitch = 90).
-func animate_view(pitch: float, yaw: float, seconds: float = 0.4) -> void:
+## Lleva la cámara con suavidad a una vista (por ejemplo, en picado: pitch = 90). Por defecto, además,
+## deshace la ampliación: el tablero vuelve a verse entero.
+func animate_view(pitch: float, yaw: float, seconds: float = 0.4, unzoom: bool = true) -> void:
 	if _cam_tween != null and _cam_tween.is_valid():
 		_cam_tween.kill()
 	if seconds <= 0.0 or anim_mode == Anim.NONE:
+		if unzoom:
+			zoom = 1.0
+			pan = Vector2.ZERO
 		set_view(pitch, yaw)
 		return
 	_cam_tween = create_tween()
-	_cam_tween.tween_method(_view_step.bind(cam_pitch, cam_yaw, pitch, yaw), 0.0, 1.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_method(_view_step.bind(cam_pitch, cam_yaw, pitch, yaw, zoom, pan, unzoom), 0.0, 1.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 # ---------------------------------------------------------------- toque
@@ -455,17 +1065,19 @@ func pick(screen_pos: Vector2) -> Vector2i:
 			plane_sq = f + 8 * r
 	var best := INF
 	var piece_sq := -1
+	# Las fichas son más anchas que el pie de las figuras.
+	var reach := 0.43 if is_tokens() else PICK_RADIUS
 	for s: int in _pieces:
 		var node: Node3D = _pieces[s]
 		var c := sq_pos(s)
-		var h: float = PIECE_HEIGHT[Chess.type_of(node.get_meta("piece"))] * PIECE_SCALE
+		var h := _piece_height(Chess.type_of(node.get_meta("piece")))
 		var ox := o.x - c.x
 		var oz := o.z - c.z
 		var qa := d.x * d.x + d.z * d.z
 		var t := INF
 		if qa > 1e-9:
 			var qb := 2.0 * (ox * d.x + oz * d.z)
-			var qc := ox * ox + oz * oz - PICK_RADIUS * PICK_RADIUS
+			var qc := ox * ox + oz * oz - reach * reach
 			var disc := qb * qb - 4.0 * qa * qc
 			if disc >= 0.0:
 				var t0 := (-qb - sqrt(disc)) / (2.0 * qa)
@@ -477,7 +1089,7 @@ func pick(screen_pos: Vector2) -> Vector2i:
 			var tt := (h - o.y) / d.y
 			var px := o.x + d.x * tt - c.x
 			var pz := o.z + d.z * tt - c.z
-			if tt > 0.0 and px * px + pz * pz <= PICK_RADIUS * PICK_RADIUS:
+			if tt > 0.0 and px * px + pz * pz <= reach * reach:
 				t = tt
 		if t < best:
 			best = t
@@ -486,7 +1098,118 @@ func pick(screen_pos: Vector2) -> Vector2i:
 
 
 func is_own(s: int) -> bool:
+	if only_square >= 0 and s != only_square:
+		return false
 	return s >= 0 and chess.b[s] != 0 and Chess.color_of(chess.b[s]) == chess.turn
+
+
+# ---------------------------------------------------------------- estrellas de las lecciones
+
+## Pone una estrella dorada, flotando, en cada casilla de la lista (las de antes se quitan).
+func set_goals(squares: Array) -> void:
+	for n in _goals_root.get_children():
+		_goals_root.remove_child(n)
+		n.queue_free()
+	_goals = {}
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("ffc93c")
+	mat.emission_enabled = true
+	mat.emission = Color("ffb300")
+	mat.emission_energy_multiplier = 0.45
+	mat.roughness = 0.35
+	mat.metallic = 0.2
+	var mesh := _star_mesh()
+	for sq: Variant in squares:
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mi.position = sq_pos(int(sq)) + Vector3(0.0, 0.32, 0.0)
+		_goals_root.add_child(mi)
+		_goals[int(sq)] = mi
+	set_process(true)
+
+
+func has_goal(s: int) -> bool:
+	return _goals.has(s)
+
+
+func goals_left() -> int:
+	return _goals.size()
+
+
+## Las estrellas miran a la cámara, se balancean un poco y flotan.
+func _process(delta: float) -> void:
+	if _goals.is_empty():
+		set_process(false)
+		return
+	_goal_t += delta
+	var yaw := deg_to_rad(cam_yaw + (180.0 if orientation == 1 else 0.0))
+	var pitch := deg_to_rad(clampf(cam_pitch, PITCH_MIN, PITCH_MAX))
+	var back := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
+	var i := 0
+	for sq: int in _goals:
+		var mi: Node3D = _goals[sq]
+		var phase := _goal_t * 2.2 + float(i) * 0.9
+		var face := back.rotated(Vector3.UP, sin(phase) * 0.45)
+		var up := Vector3.UP if absf(face.y) < 0.98 else Vector3.FORWARD
+		mi.basis = Basis.looking_at(-face, up)
+		mi.position.y = 0.34 + 0.05 * sin(phase * 0.8)
+		i += 1
+
+
+## Recoge la estrella de una casilla: sube, crece un poco y desaparece.
+func take_goal(s: int) -> void:
+	if not _goals.has(s):
+		return
+	var mi: Node3D = _goals[s]
+	_goals.erase(s)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "position:y", mi.position.y + 0.6, 0.35).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mi, "scale", Vector3.ONE * 1.5, 0.35)
+	tw.chain().tween_callback(mi.queue_free)
+	sound.emit("place", 0.6)
+
+
+## Estrella de cinco puntas con algo de grosor, de pie, para que se vea desde la cámara inclinada.
+func _star_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var outer := 0.37
+	var inner := 0.16
+	var depth := 0.06
+	var pts: Array[Vector2] = []
+	for i in 10:
+		var r := outer if i % 2 == 0 else inner
+		var a := PI * 0.5 + TAU * float(i) / 10.0
+		pts.append(Vector2(cos(a), sin(a)) * r)
+	for side: float in [-1.0, 1.0]:
+		var n := Vector3(0.0, 0.0, side)
+		for i in 10:
+			var p0 := pts[i]
+			var p1 := pts[(i + 1) % 10]
+			st.set_normal(n)
+			st.add_vertex(Vector3(0.0, 0.0, depth * side))
+			if side > 0.0:
+				st.add_vertex(Vector3(p0.x, p0.y, depth * 0.4 * side))
+				st.add_vertex(Vector3(p1.x, p1.y, depth * 0.4 * side))
+			else:
+				st.add_vertex(Vector3(p1.x, p1.y, depth * 0.4 * side))
+				st.add_vertex(Vector3(p0.x, p0.y, depth * 0.4 * side))
+	for i in 10:
+		var p0 := pts[i]
+		var p1 := pts[(i + 1) % 10]
+		var e := (p1 - p0).normalized()
+		var n := Vector3(e.y, -e.x, 0.0)
+		var a0 := Vector3(p0.x, p0.y, depth * 0.4)
+		var a1 := Vector3(p1.x, p1.y, depth * 0.4)
+		var b0 := Vector3(p0.x, p0.y, -depth * 0.4)
+		var b1 := Vector3(p1.x, p1.y, -depth * 0.4)
+		for v: Vector3 in [a0, b0, a1, a1, b0, b1]:
+			st.set_normal(n)
+			st.add_vertex(v)
+	return st.commit()
 
 
 func is_target(s: int) -> bool:
@@ -517,7 +1240,7 @@ func select(s: int) -> void:
 		if q >= 0 and _pieces.has(q):
 			var node: Node3D = _pieces[q]
 			_rest(node, q)
-			(node.get_node("Malla") as MeshInstance3D).set_instance_shader_parameter("glow", 1.0 if q == s else 0.0)
+			_set_glow(node, 1.0 if q == s else 0.0)
 	_refresh_state()
 
 
@@ -598,6 +1321,21 @@ func _kill_tweens() -> void:
 			tw.kill()
 	_tweens.clear()
 	_running = 0
+	for tw in _sfx_tweens:
+		if tw.is_valid():
+			tw.kill()
+	_sfx_tweens.clear()
+
+
+## Avisa de un sonido ahora o dentro de un rato. Si las animaciones se cortan, los avisos pendientes se pierden.
+func _sfx(kind: String, delay: float = 0.0, amount: float = 0.0) -> void:
+	if delay <= 0.001:
+		sound.emit(kind, amount)
+		return
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(sound.emit.bind(kind, amount))
+	_sfx_tweens.append(tw)
 
 
 ## Termina de golpe cualquier animación en curso: el tablero queda en su estado final.
@@ -628,7 +1366,7 @@ func _apply_promotion(node: Node3D) -> void:
 	node.remove_meta("promote_to")
 	node.set_meta("piece", p)
 	node.set_meta("yaw", _yaw_for(p))
-	(node.get_node("Malla") as MeshInstance3D).mesh = _meshes[Chess.type_of(p)]
+	_dress(node)
 
 
 ## Juega una jugada legal: actualiza la posición al instante y anima según el modo.
@@ -652,7 +1390,7 @@ func play_move(m: int, dropped: bool = false) -> void:
 	# Estado lógico primero: nada de lo que sigue puede bloquear el juego.
 	chess.apply(m)
 	if selected >= 0 and _pieces.has(selected):
-		(_pieces[selected].get_node("Malla") as MeshInstance3D).set_instance_shader_parameter("glow", 0.0)
+		_set_glow(_pieces[selected], 0.0)
 	selected = -1
 	_drag_sq = -1
 	_targets = PackedInt32Array()
@@ -686,6 +1424,17 @@ func play_move(m: int, dropped: bool = false) -> void:
 		return
 
 	var mode := anim_mode
+	var check := chess.in_check()
+	var mate := check and chess.legal_moves().is_empty()
+	var landing := "capture" if victim != null else "place"
+	if mode == Anim.NONE or mode == Anim.MINIMAL:
+		# Sin animación que acompañar: la pieza se posa y, si toca, suena el jaque o la caída del rey.
+		_sfx(landing)
+		if mate:
+			_mark_fallen_king(to)
+			_sfx("fall", 0.12)
+		elif check:
+			_sfx("check", 0.1)
 	if mode == Anim.NONE:
 		_settle()
 		return
@@ -695,8 +1444,6 @@ func play_move(m: int, dropped: bool = false) -> void:
 	var dir := Vector3(b.x - a.x, 0.0, b.z - a.z)
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
 	var is_knight := Chess.type_of(mover.get_meta("piece")) == Chess.KNIGHT
-	var check := chess.in_check()
-	var mate := check and chess.legal_moves().is_empty()
 
 	if mode == Anim.MINIMAL:
 		var tm := _tw()
@@ -712,6 +1459,10 @@ func play_move(m: int, dropped: bool = false) -> void:
 		dur = clampf(0.26 + 0.035 * dist, 0.28, 0.46) if full else 0.16
 		if is_knight and full:
 			dur = 0.42
+	# Sonido: las piezas que se deslizan se oyen arrastrarse hasta que llegan; todas se oyen al posarse.
+	if not dropped and not is_knight:
+		_sfx("slide", 0.0, dur)
+	_sfx(landing, dur + (0.02 if dropped else 0.0))
 	var tw := _tw()
 	if dropped:
 		tw.tween_method(_pose_line.bind(mover, a, b), 0.0, 1.0, 0.06)
@@ -747,6 +1498,7 @@ func play_move(m: int, dropped: bool = false) -> void:
 			tr.tween_interval(maxf(dur * 0.8, 0.01))
 			tr.tween_method(_pose_jump.bind(rook, ra, ra.lerp(rb, 0.5), rb, 0.75), 0.0, 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			tr.tween_method(_pose_land.bind(rook, rb, 0.07), 0.0, 1.0, 0.09)
+			_sfx("place", maxf(dur * 0.8, 0.01) + 0.28)
 		else:
 			tr.tween_method(_pose_slide.bind(rook, ra, rb, (rb - ra).normalized(), 0.05, 0.0), 0.0, 1.0, maxf(dur, 0.12)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
@@ -757,15 +1509,40 @@ func play_move(m: int, dropped: bool = false) -> void:
 			var tk := _tw()
 			tk.tween_interval(dur + 0.05)
 			if mate:
-				var away := sq_pos(king_sq) - b
-				away.y = 0.0
-				away = away.normalized() if away.length() > 0.01 else Vector3.RIGHT
-				var axis := Vector3.UP.cross(away)
-				king.set_meta("topple_axis", axis)
-				king.set_meta("topple", 1.5)
-				tk.tween_method(_pose_topple.bind(king, sq_pos(king_sq), axis), 0.0, 1.0, 0.7 if full else 0.3).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			elif full:
-				tk.tween_method(_pose_wobble.bind(king, sq_pos(king_sq)), 0.0, 1.0, 0.36)
+				var axis := _mark_fallen_king(to)
+				var fall := 0.7 if full else 0.3
+				if is_tokens():
+					# La ficha del rey se da la vuelta: queda bocabajo.
+					tk.tween_method(_pose_flip.bind(king, sq_pos(king_sq), axis), 0.0, 1.0, fall * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+					_sfx("fall", dur + 0.05 + fall * 0.62)
+				else:
+					tk.tween_method(_pose_topple.bind(king, sq_pos(king_sq), axis), 0.0, 1.0, fall).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+					# El rey toca el tablero por primera vez a un tercio de la caída (primer rebote).
+					_sfx("fall", dur + 0.05 + fall * 0.36)
+			else:
+				_sfx("check", dur + 0.05)
+				if full:
+					tk.tween_method(_pose_wobble.bind(king, sq_pos(king_sq)), 0.0, 1.0, 0.36)
+		elif mate:
+			_sfx("fall", dur + 0.1)
+		else:
+			_sfx("check", dur + 0.05)
+
+
+## Deja anotado que el rey del bando que mueve ha caído (mate) y hacia dónde: así se queda volcado.
+## Devuelve el eje del vuelco.
+func _mark_fallen_king(attacker_sq: int) -> Vector3:
+	var king_sq := chess.king_sq(chess.turn)
+	var away := sq_pos(king_sq) - sq_pos(attacker_sq)
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.01 else Vector3.RIGHT
+	var axis := Vector3.UP.cross(away)
+	var king: Node3D = _pieces.get(king_sq)
+	if king != null:
+		king.set_meta("topple_axis", axis)
+		king.set_meta("topple", PI if is_tokens() else 1.5)
+		king.set_meta("topple_lift", TOKEN["height"] if is_tokens() else 0.0)
+	return axis
 
 
 func _hide(node: Node3D) -> void:
@@ -808,3 +1585,9 @@ func _pose_wobble(t: float, node: Node3D, pos: Vector3) -> void:
 
 func _pose_topple(t: float, node: Node3D, pos: Vector3, axis: Vector3) -> void:
 	_pose(node, pos, axis, 1.5 * t)
+
+
+## Vuelco de una ficha: salta, gira media vuelta y cae bocabajo.
+func _pose_flip(t: float, node: Node3D, pos: Vector3, axis: Vector3) -> void:
+	var h: float = TOKEN["height"]
+	_pose(node, pos + Vector3(0.0, h * t + 0.5 * sin(PI * t), 0.0), axis, PI * t)

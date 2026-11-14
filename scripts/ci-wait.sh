@@ -12,5 +12,5 @@ done
 echo "$LINE"
 ID=${LINE%% *}
 gh api "repos/$REPO/actions/runs/$ID/jobs" --jq '.jobs[] | "\(.name): \(.conclusion) " + ([.steps[] | select(.conclusion=="failure") | .name] | join(", "))'
-./scripts/fetch-shots.sh > /dev/null 2>&1 && git log -1 --format='capturas: %s' origin/ci-shots
+./scripts/fetch-shots.sh 2>/dev/null | head -1 | sed 's/^/capturas: /'
 grep -E "SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|FALLA|HAY FALLOS" shots/ci/*.log 2>/dev/null | cut -c1-220 | sort | uniq -c | head -20 || true

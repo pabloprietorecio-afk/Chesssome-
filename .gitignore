@@ -11,3 +11,4 @@ godot/export_credentials.cfg
 # Nunca subir claves de publicación (la de depuración de android_firma/ sí se sube, a propósito)
 *.jks
 release.keystore
+godot/data/version.json
