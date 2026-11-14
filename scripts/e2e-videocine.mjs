@@ -547,7 +547,19 @@ await page.waitForSelector('.vc-lesson');
 assert(/Por qué 61\.Cc4\+ gana/.test(await page.$eval('.vc-lesson', (e) => e.textContent)), 'título de la lección');
 await clickText('Siguiente'); await sleep(200);
 await shot('17c-leccion-paso-2');
-for (let k = 2; k < 8; k++) { await clickText('Siguiente'); await sleep(150); }
+for (let k = 2; k < 8; k++) {
+  await clickText('Siguiente');
+  if (k === 6) {
+    // Paso con dos jugadas (63…Rd3 64.b4): primero se ve la del rey y después la del peón.
+    await sleep(150);
+    const mid = await page.$eval('.vc-board-box', (e) => e.dataset.fen.split(' ')[0]);
+    assert(mid.split('/')[5] === '1P1kN3' && mid.split('/')[4] === '5K2', 'primero solo 63…Rd3: ' + mid);
+    await sleep(1300);
+    const end = await page.$eval('.vc-board-box', (e) => e.dataset.fen.split(' ')[0]);
+    assert(end.split('/')[4] === '1P3K2', 'después 64.b4: ' + end);
+  }
+  await sleep(150);
+}
 const lastStep = await page.$eval('.vc-lesson', (e) => e.textContent);
 assert(/Por eso abandonó Carlsen/.test(lastStep) && /paso 8 de 8/.test(lastStep), 'último paso: ' + lastStep);
 await shot('17c-leccion');

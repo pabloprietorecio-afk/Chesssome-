@@ -338,21 +338,32 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   useEffect(() => {
     if (lessonStep != null) lessonRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [lessonStep]);
-  // Paso con dos jugadas: se ve primero la primera (animada) y, un momento después, la segunda. Así no desaparece
-  // ninguna pieza sin que se vea cómo.
+  // Al avanzar, se ven todas las jugadas del paso, una tras otra, y la última se anima al final. Si el paso vuelve a la
+  // posición de partida («Volvamos atrás»), primero se ve esa posición. Así no aparece ni desaparece ninguna pieza sin
+  // que se vea cómo.
   const [lessonFrame, setLessonFrame] = useState<BoardState | null>(null);
   useEffect(() => {
     setLessonFrame(null);
     const lesson = clip.lesson;
-    if (lessonStep == null || !lesson || lessonPrev.current !== lessonStep - 1 || !lessonContinues(lesson, lessonStep)) return;
+    if (lessonStep == null || !lesson || lessonStep === 0 || lessonPrev.current !== lessonStep - 1) return;
     const cur = lesson.steps[lessonStep].moves.split(/\s+/).filter(Boolean);
-    const prev = lesson.steps[lessonStep - 1].moves.split(/\s+/).filter(Boolean);
-    if (cur.length - prev.length < 2) return;
-    const c = new Chess(lessonPos[lessonStep - 1].fen);
-    const m = c.move(cur[prev.length]);
-    setLessonFrame({ fen: c.fen(), last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: !!m.captured } });
-    const id = window.setTimeout(() => setLessonFrame(null), 900);
-    return () => window.clearTimeout(id);
+    const cont = lessonContinues(lesson, lessonStep) || lesson.steps[lessonStep].moves === lesson.steps[lessonStep - 1].moves;
+    const prevLen = cont ? lesson.steps[lessonStep - 1].moves.split(/\s+/).filter(Boolean).length : 0;
+    const base = cont ? lessonPos[lessonStep - 1].fen : fenAfter(clip, lesson.from);
+    if (!base) return;
+    const frames: BoardState[] = [];
+    if (!cont) frames.push({ fen: base, last: null, anim: null });
+    const c = new Chess(base);
+    for (const san of cur.slice(prevLen, -1)) {
+      const m = c.move(san);
+      frames.push({ fen: c.fen(), last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: !!m.captured } });
+    }
+    if (!frames.length) return;
+    const ids: number[] = [];
+    frames.forEach((f, i) => ids.push(window.setTimeout(() => setLessonFrame(f), i * 900)));
+    ids.push(window.setTimeout(() => setLessonFrame(null), frames.length * 900));
+    setLessonFrame(frames[0]);
+    return () => ids.forEach((id) => window.clearTimeout(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonStep]);
   const animKey = useRef(0);
@@ -577,9 +588,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           : null;
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
-  // Al avanzar un paso de la lección, se anima la última jugada del paso.
+  // Al avanzar un paso de la lección, la última jugada del paso se anima (las anteriores, en `lessonFrame`).
   const lessonAnim: MoveAnim | null =
-    lessonNow && lessonNow.pos.last && lessonPrev.current != null && lessonPrev.current === lessonStep! - 1 && lessonContinues(clip.lesson!, lessonStep!)
+    lessonNow && lessonNow.pos.last && lessonPrev.current != null && lessonPrev.current === lessonStep! - 1 && lessonNow.step.moves !== clip.lesson!.steps[lessonStep! - 1].moves
       ? { ...lessonNow.pos.last, key: 1000 + lessonStep! }
       : null;
   const shown = lessonNow
@@ -794,7 +805,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               </p>
             )}
             <div className="vc-board-fit" data-gap={gap ? 'on' : undefined}>
-              <div className="vc-board-box">
+              <div className="vc-board-box" data-fen={shown.fen}>
                 <Board2D
                   fen={shown.fen}
                   orientation={boardSide}
