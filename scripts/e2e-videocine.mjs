@@ -418,6 +418,20 @@ const waitPly = async (ply, ms = 8000) => { const t0 = Date.now(); while ((await
 let bi = await boardInfo();
 assert(bi.kind === 'video' && bi.ply === '108' && /tras 54…Re5/.test(bi.label), 'tablero del vídeo al empezar: ' + JSON.stringify(bi));
 await shot('13-viendo-con-tablero');
+// Avance y retroceso rápidos: se mantiene pulsado y, al soltar, el vídeo sigue a su ritmo.
+const hold = async (i, ms) => {
+  const b = await page.$$eval('.vc-seek-btn', (bs, i) => { const r = bs[i].getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, i);
+  await page.mouse.move(b.x, b.y); await page.mouse.down(); await sleep(ms); await page.mouse.up(); await sleep(200);
+};
+const t0 = await fake(() => window.__fakeYT.last().time);
+await hold(1, 1200);
+const t1 = await fake(() => window.__fakeYT.last().time);
+assert(t1 - t0 > 4 && t1 < 138, `el avance rápido adelanta varios segundos sin pasarse de la pausa: ${t0} → ${t1}`);
+await sleep(400);
+assert(Math.abs((await fake(() => window.__fakeYT.last().time)) - t1) < 0.01, 'al soltar, deja de avanzar');
+await hold(0, 600);
+const t2 = await fake(() => window.__fakeYT.last().time);
+assert(t2 < t1 - 1.5 && t2 >= 3.5, `el retroceso rápido vuelve atrás sin pasar del inicio: ${t1} → ${t2}`);
 await fake(() => { window.__fakeYT.rate = 25; window.__fakeYT.tapPlay(); });
 await waitPly('109');
 assert(/tras 55\.Tf2/.test((await boardInfo()).label), 'Ding juega 55.Tf2 en el vídeo: ' + (await boardInfo()).label);

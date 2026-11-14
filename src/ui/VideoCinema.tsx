@@ -267,7 +267,8 @@ function useDirector(clip: Clip, mount: RefObject<HTMLDivElement | null>) {
 
   const time = useCallback(() => adapter.current?.snapshot()?.time ?? null, []);
   const playNow = useCallback(() => adapter.current?.play(), []);
-  return { st, send, player, blocked, playing, time, now, playNow };
+  const seekTo = useCallback((t: number) => adapter.current?.seek(t), []);
+  return { st, send, player, blocked, playing, time, now, playNow, seekTo };
 }
 
 /** Desplaza hasta el elemento si no está a la vista en más de la mitad; resuelve cuando ya lo está. */
@@ -322,7 +323,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const videoBox = useRef<HTMLDivElement>(null);
   const askBox = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const { st, send, player, blocked, playing, time, now, playNow } = useDirector(clip, mount);
+  const { st, send, player, blocked, playing, time, now, playNow, seekTo } = useDirector(clip, mount);
 
   const [qi, setQi] = useState(0);
   const [answer, setAnswer] = useState<ClipAnswer | null>(null);
@@ -624,6 +625,21 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               </>
             )
           : null;
+  // Avance y retroceso rápidos (mantener pulsado): solo con el vídeo en marcha hacia una pausa o hacia el final, y sin
+  // pasarse de la siguiente pausa (para que la pregunta siga saltando).
+  const seekable = (st.phase === 'watching' || st.phase === 'reveal') && player === 'ready' && st.videoOn && st.errorCode == null;
+  const seekMax = (() => {
+    const next = st.phase === 'watching' ? clip.stops[st.stop] : st.phase === 'reveal' && st.missed === 'none' ? clip.stops[st.stop + 1] : undefined;
+    if (next?.at != null) return next.at - 0.4;
+    return (clip.end ?? Infinity) - 0.3;
+  })();
+  const seekMin = clip.start ?? 0;
+  const seekBy = (delta: number) => {
+    const t = time();
+    if (t == null) return;
+    seekTo(Math.min(seekMax, Math.max(seekMin, t + delta)));
+  };
+
   // Acciones de la botonera (undefined = botón apagado).
   const asking = st.phase === 'asking' && !!q && !gate && !busy;
   const lastInStop = qi + 1 >= totalQuestions;
@@ -1091,6 +1107,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         // Botonera fija de dos filas: arriba, lo que se hace con la pregunta; abajo, moverse por el clip. Siempre los
         // mismos botones en el mismo sitio; cada uno se activa cuando tiene sentido.
         <nav className="vc-dock vc-dock-2" aria-label="Opciones del clip">
+          <SeekButton dir={-1} onSeek={seekable ? seekBy : undefined} />
+          <div className="vc-dock-rows">
           <div className="vc-dock-row">
             {answer && canRetry && !gate ? (
               <DockButton icon="retry" label="Repetir" onClick={retry} />
@@ -1128,6 +1146,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             />
             {canEditMarks(packed) && (st.phase === 'ended' || devFlag(LOCAL_MARKS_FLAG)) && <DockButton icon="edit" label="Marcas" onClick={onEdit} />}
           </div>
+          </div>
+          <SeekButton dir={1} onSeek={seekable ? seekBy : undefined} />
         </nav>
       ) : (
         <nav className="vc-dock" aria-label="Opciones del clip">
@@ -1154,6 +1174,61 @@ const DOCK_ICONS: Record<string, string> = {
   restart: 'M15 6a6 6 0 1 0 1 6M16 3v4h-4',
   edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
 };
+
+/**
+ * Retroceso o avance rápido del vídeo mientras se mantiene pulsado; al soltar, sigue a ritmo normal. Cuanto más rato
+ * se mantiene, más rápido va (4, 8 y 16 s de vídeo por segundo). Si la pantalla informa de la presión del dedo (no
+ * todas lo hacen: en muchos Android vale siempre lo mismo), apretar más también acelera.
+ */
+function SeekButton({ dir, onSeek }: { dir: 1 | -1; onSeek?: (delta: number) => void }): JSX.Element {
+  const timer = useRef<number | null>(null);
+  const started = useRef(0);
+  const pressure = useRef(0.5);
+  const cb = useRef(onSeek);
+  cb.current = onSeek;
+  const stop = () => {
+    if (timer.current != null) window.clearInterval(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => stop, []);
+  useEffect(() => {
+    if (!onSeek) stop();
+  }, [onSeek]);
+  const TICK = 0.15;
+  const tick = () => {
+    const held = (performance.now() - started.current) / 1000;
+    const rate = held < 1 ? 4 : held < 2 ? 8 : 16;
+    const force = 0.5 + pressure.current; // 1 con la presión por defecto (0,5)
+    cb.current?.(dir * rate * TICK * force);
+  };
+  return (
+    <button
+      className="vc-seek-btn"
+      disabled={!onSeek}
+      aria-label={dir < 0 ? 'Retroceder (mantener pulsado)' : 'Avanzar (mantener pulsado)'}
+      onPointerDown={(e) => {
+        if (!onSeek) return;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        pressure.current = e.pressure > 0 ? e.pressure : 0.5;
+        started.current = performance.now();
+        stop();
+        tick();
+        timer.current = window.setInterval(tick, TICK * 1000);
+      }}
+      onPointerMove={(e) => {
+        if (e.pressure > 0) pressure.current = e.pressure;
+      }}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      onLostPointerCapture={stop}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true">
+        <path d={dir < 0 ? 'M16 5l-7 5 7 5zM9 5l-7 5 7 5z' : 'M4 5l7 5-7 5zM11 5l7 5-7 5z'} />
+      </svg>
+    </button>
+  );
+}
 
 /** Botón de la botonera inferior del cine: icono encima y texto corto debajo. */
 function DockButton({ icon, label, onClick }: { icon: keyof typeof DOCK_ICONS; label: string; onClick?: () => void }): JSX.Element {

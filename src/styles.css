@@ -2134,3 +2134,55 @@ a {
   padding: 1px 10px;
   font-size: 0.72rem;
 }
+
+/* Botonera más estrecha, con retroceso y avance rápido a los lados. */
+.vc-dock-2 {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+}
+.vc-dock-rows {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vc-dock-row {
+  height: 42px;
+}
+.vc-dock-btn {
+  gap: 1px;
+}
+.vc-dock-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.vc-seek-btn {
+  flex: none;
+  width: 40px;
+  border: 0;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+.vc-seek-btn svg {
+  fill: var(--accent);
+  stroke: none;
+}
+.vc-seek-btn:active {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.vc-seek-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.vc-seek-btn:disabled svg {
+  fill: var(--quiet);
+}
