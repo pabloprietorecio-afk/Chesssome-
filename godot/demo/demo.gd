@@ -239,6 +239,9 @@ var top_gap: Control
 var card_pad: MarginContainer
 var card: PanelContainer
 var card_scroll: ScrollContainer
+var card_style: StyleBoxFlat
+## Cuánto sube ahora la tarjeta por encima de su sitio, sobre el tablero (0 = en su sitio).
+var _card_float := 0.0
 var card_body: VBoxContainer
 var counter: Label
 var title: Label
@@ -1009,7 +1012,7 @@ func _build_chrome() -> void:
 	card_pad.resized.connect(_fit_card)
 	chrome.add_child(card_pad)
 	card = PanelContainer.new()
-	var card_style := StyleBoxFlat.new()
+	card_style = StyleBoxFlat.new()
 	card_style.bg_color = _c("surface")
 	card_style.set_corner_radius_all(52)
 	card_style.content_margin_left = 42.0
@@ -1144,12 +1147,9 @@ func _card_room() -> float:
 		return 620.0
 	if mode == "game":
 		return 560.0
-	var e := _shown_exp()
-	if whatif or (not e.is_empty() and not exp_partial and exp_level >= 2):
-		return INF
-	if not e.is_empty():
-		return 900.0 if exp_partial else 980.0
-	return CARD_MIN + 60.0 + (170.0 if hint_level > 0 else 0.0)
+	# En los problemas, igual: el tablero no se mueve. Una explicación larga sale en una ventana semitransparente
+	# que sube por encima del tablero (ver _fit_card).
+	return CARD_MIN + 230.0
 
 
 ## Reparte el alto: el hueco del tablero es tan alto como hace falta para que el tablero vaya de lado a lado
@@ -1187,7 +1187,17 @@ func _fit_card() -> void:
 	# menos el margen de la tarjeta y su relleno.
 	var room := get_viewport_rect().size.y - _fixed_height - board_slot.custom_minimum_size.y - top_gap.custom_minimum_size.y - 20.0 - 64.0
 	var need := card_body.get_combined_minimum_size().y
-	var want := clampf(need, 60.0, maxf(room, 60.0))
+	# Si no cabe (una explicación larga en los problemas), la tarjeta sube por encima del tablero como una ventana
+	# semitransparente, hasta dejar a la vista la parte de arriba del tablero; lo que siga sin caber, se desplaza.
+	var lift := 0.0
+	if need > room and mode != "learn" and mode != "game":
+		lift = minf(need - room, board_slot.custom_minimum_size.y * 0.7 + top_gap.custom_minimum_size.y)
+	if absf(lift - _card_float) > 0.5:
+		_card_float = lift
+		card_pad.add_theme_constant_override("margin_top", int(20.0 - lift))
+		var paper := _c("surface")
+		card_style.bg_color = Color(paper.r, paper.g, paper.b, 0.9 if lift > 0.0 else 1.0)
+	var want := clampf(need, 60.0, maxf(room + lift, 60.0))
 	if absf(card_scroll.custom_minimum_size.y - want) > 0.5:
 		card_scroll.custom_minimum_size = Vector2(0.0, want)
 
