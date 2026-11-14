@@ -28,7 +28,7 @@ const ICONS = {
   sound: 'speaker_high_volume_flat',
   party: 'party_popper_flat',
   book: 'open_book_flat',
-  first: 'house_flat',
+  home: 'house_flat',
   sliders: 'gear_flat',
   close: 'cross_mark_flat',
   eye: 'eyes_flat',

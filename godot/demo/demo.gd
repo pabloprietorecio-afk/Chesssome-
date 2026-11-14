@@ -1003,7 +1003,7 @@ func _build_chrome() -> void:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar_pad.add_child(bar)
 	# Inicio, siempre a mano (en todas las pantallas con tablero).
-	home_button = _round_button("first", _go_home)
+	home_button = _round_button("home", _go_home)
 	bar.add_child(home_button)
 	var lilac := _tint("lilac")
 	level_pill = _button("cap", "Nivel", _open_progress.bind("progress"), lilac[0], lilac[1], {"font_size": F_SUB, "height": 100.0, "icon": 54.0, "pad_x": 30.0})
@@ -2099,7 +2099,7 @@ func _build_sheet() -> void:
 		return
 	if use_settings:
 		var home_tint := _tint("peach")
-		box.add_child(_button("first", "Inicio", _open_home, home_tint[0], home_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
+		box.add_child(_button("home", "Inicio", _open_home, home_tint[0], home_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	if not course.is_empty():
 		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
 		if kids:
@@ -3035,7 +3035,7 @@ func _open_course() -> void:
 	if not kids and not _has_player():
 		footer.add_child(_button("cap", "Ya sé mover las piezas: test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if use_settings:
-		footer.add_child(_button("first", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if mode == "learn" and not lesson.is_empty():
 		footer.add_child(_button("", "Volver a la lección", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 
@@ -4297,7 +4297,7 @@ func _show_review_page() -> void:
 		footer.add_child(_spacer(10.0))
 	footer.add_child(_button("", "Volver a la partida", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 	if use_settings:
-		footer.add_child(_button("first", "Inicio", _go_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("home", "Inicio", _go_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## Lleva el tablero a la posición del momento i, con la jugada hecha (roja) y la otra (verde).
@@ -4770,7 +4770,7 @@ func _open_experience() -> void:
 	else:
 		footer.add_child(_button("", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 		if use_settings and welcome_seen:
-			footer.add_child(_button("first", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+			footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## Opción grande: tesela con dibujo, titular, una línea de texto y una flecha.
@@ -5040,7 +5040,7 @@ func _open_progress(kind: String = "progress") -> void:
 		footer.add_child(_spacer(8.0))
 		footer.add_child(_button("retry", "Repetir el test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 	if use_settings:
-		footer.add_child(_button("first", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## La frase, con su primera letra en mayúscula.

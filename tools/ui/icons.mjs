@@ -65,6 +65,7 @@ const ICONS = {
   zoom: ['arrows-out', 'duotone'],
   play: ['play', 'fill'],
   first: ['skip-back', 'fill'],
+  home: ['house', 'duotone'],
   cap: ['graduation-cap', 'duotone'],
   clock: ['timer', 'duotone'],
   flag: ['flag-checkered', 'duotone'],

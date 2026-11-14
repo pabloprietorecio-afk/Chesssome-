@@ -149,49 +149,53 @@
    4,
    4
   ],
-  "cap": [
+  "home": [
    5,
+   4
+  ],
+  "cap": [
+   6,
    4
   ],
   "clock": [
-   6,
+   7,
    4
   ],
   "flag": [
-   7,
-   4
-  ],
-  "trend": [
    0,
    5
   ],
-  "piece_pawn": [
+  "trend": [
    1,
    5
   ],
-  "piece_knight": [
+  "piece_pawn": [
    2,
    5
   ],
-  "piece_bishop": [
+  "piece_knight": [
    3,
    5
   ],
-  "piece_rook": [
+  "piece_bishop": [
    4,
    5
   ],
-  "piece_queen": [
+  "piece_rook": [
    5,
    5
   ],
-  "piece_king": [
+  "piece_queen": [
    6,
    5
   ],
-  "token_pawn": [
+  "piece_king": [
    7,
    5
+  ],
+  "token_pawn": [
+   0,
+   6
   ]
  }
 }
