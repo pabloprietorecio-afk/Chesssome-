@@ -41,7 +41,7 @@ view.set_board_theme("dark", Color("0a0f1e"))  # tema y color de fondo de la pan
 view.edge_fade = 48.0                   # franja en la que la vista se funde con ese fondo, arriba y abajo
 view.board.fit_pad = Vector4(0.012, 0.06, 0.012, 0.08)  # margen del encuadre: izquierda, arriba, derecha, abajo
 view.set_board_style("marmol")          # acabado: "madera", "marmol", "metal" o "ilustrado"
-view.board.set_outline(true)            # contorno de tinta (por defecto, solo en el ilustrado)
+view.board.set_outline(true)            # contorno de tinta (en la app va puesto por defecto)
 view.set_piece_set("fichas")            # juego de piezas: "clasico" (figuras) o "fichas"
 view.set_sound_enabled(false)           # sonido de las jugadas
 view.center_view()                      # vista en picado; default_view() vuelve a la inclinada (las dos deshacen el zoom)
@@ -278,4 +278,5 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
   esto (clave `app/vista_por_defecto_2`); después manda lo que elija. La vista elegida (inclinada o en picado) se
   guarda ahora entre sesiones.
 - Las piezas negras llevan el contorno amarillo (`BLACK_OUTLINE`), para separarlas de la pieza de delante o de
+- Contorno de las piezas puesto por defecto en toda la app y con cualquier acabado (clave `app/contorno_por_defecto`: quien tenía ajustes de antes pasa una vez a tenerlo). Cambiar de acabado ya no lo quita ni lo pone.
   detrás en la vista 3D.

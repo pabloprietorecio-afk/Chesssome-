@@ -81,11 +81,11 @@ var dark := false
 var phase: Phase = Phase.INTRO
 var options_open := false
 var top_view := false
-## Acabado del tablero (ver Board3D.FINISHES). El contorno de tinta va por defecto con el ilustrado.
+## Acabado del tablero (ver Board3D.FINISHES). El contorno de las piezas va puesto por defecto en toda la app.
 const STYLES := ["madera", "marmol", "metal", "ilustrado"]
 const STYLE_NAMES := ["Madera", "Mármol", "Metal", "Ilustrado"]
 var board_style := "madera"
-var board_outline := false
+var board_outline := true
 ## Juego de piezas: figuras o fichas planas con el icono en relieve (Board3D.PIECE_SETS).
 const SETS := ["clasico", "fichas", "simple"]
 const SET_NAMES := ["Figuras", "Fichas", "Simple"]
@@ -722,7 +722,9 @@ func _load_settings() -> void:
 	var style := str(cfg.get_value("tablero", "acabado", board_style))
 	if STYLES.has(style):
 		board_style = style
-	board_outline = bool(cfg.get_value("tablero", "contorno", board_style == "ilustrado"))
+	# El contorno va puesto por defecto: quien tenía ajustes de antes pasa una vez a tenerlo; después manda lo que elija.
+	if cfg.has_section_key("app", "contorno_por_defecto"):
+		board_outline = bool(cfg.get_value("tablero", "contorno", true))
 	var pieces := str(cfg.get_value("tablero", "piezas", piece_set))
 	if SETS.has(pieces) and not fresh_defaults:
 		piece_set = pieces
@@ -750,6 +752,7 @@ func _save_settings() -> void:
 	cfg.set_value("tablero", "piezas", piece_set)
 	cfg.set_value("vista", "en_picado", top_view)
 	cfg.set_value("app", "vista_por_defecto_2", true)
+	cfg.set_value("app", "contorno_por_defecto", true)
 	cfg.set_value("tablero", "animaciones", int(view.board.anim_mode) if view != null else _saved_anim)
 	cfg.set_value("pantalla", "oscuro", dark)
 	cfg.set_value("sonido", "activo", sound_on)
@@ -2384,8 +2387,7 @@ func _apply_simple_view() -> void:
 
 func _set_style_index(i: int) -> void:
 	board_style = STYLES[clampi(i, 0, STYLES.size() - 1)]
-	# Cada acabado tiene su contorno por defecto: el ilustrado lo lleva; los realistas, no.
-	board_outline = board_style == "ilustrado"
+	# El contorno no cambia con el acabado: se queda como lo tenga el jugador (puesto, por defecto).
 	view.set_board_style(board_style, board_outline)
 	_save_settings()
 	_keep_scroll = true
