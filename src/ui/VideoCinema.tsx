@@ -426,6 +426,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
   /** «Seguir viendo sin responder»: primero un aviso con la jugada de la partida; el vídeo sigue al pulsar OK. */
   const [gate, setGate] = useState(false);
+  /** La ventana de la pregunta (o del veredicto) sobre el tablero se quita al tocarla, para jugar o mirar. */
+  const [cardHidden, setCardHidden] = useState(false);
+  useEffect(() => setCardHidden(false), [qi, answer, st.phase]);
   const skip = () => {
     if (!stop || !lastQ) return;
     clearTimers();
@@ -563,9 +566,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </header>
         )}
 
-        {/* Mientras se pregunta, el vídeo está parado: se recoge (sin desmontarlo) y la pregunta ocupa su sitio, para que
-            el tablero conserve su tamaño. Nunca se dibuja nada delante del reproductor (normas de YouTube). */}
-        <div className="vc-video" ref={videoBox} data-collapsed={st.phase === 'asking' ? 'on' : 'off'}>
+        <div className="vc-video" ref={videoBox}>
           {/* El reproductor de YouTube ocupa este hueco entero. Nunca se dibuja nada delante de él. */}
           <div className="vc-player" ref={mount} />
           {player === 'none' && (
@@ -651,7 +652,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
         {/* En la pausa: la pregunta (o el veredicto) encima del tablero y las acciones debajo, para que el vídeo y el
             tablero quepan a la vez en un móvil. */}
-        {st.phase === 'asking' && q && !answer && !gate && (
+        {st.phase === 'asking' && q && !answer && !gate && !fit && (
           <div className="cm-hint vc-panel vc-ask" ref={askBox}>
             <p className="cm-kicker">
               {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
@@ -660,7 +661,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </div>
         )}
 
-        {st.phase === 'asking' && q && answer && !gate && (
+        {st.phase === 'asking' && q && answer && !gate && !fit && (
           <div className={`cm-hint vc-panel vc-answer vc-o-${answer.outcome}`}>
             <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
             <p>{answer.text}</p>
@@ -701,6 +702,16 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         {shown && st.phase !== 'idle' && (
           <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
             {synced && !lessonNow && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
+            {!synced && fit && st.phase === 'asking' && q && (
+              <p className="cm-kicker vc-board-label">
+                {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
+                {!gate && cardHidden && (
+                  <button className="vc-reopen" onClick={() => setCardHidden(false)}>
+                    {answer ? 'Ver la explicación' : 'Ver la pregunta'}
+                  </button>
+                )}
+              </p>
+            )}
             <div className="vc-board-fit" data-gap={gap ? 'on' : undefined}>
               <div className="vc-board-box">
                 <Board2D
@@ -714,6 +725,36 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                   coordinates={s.settings.coordinates}
                   onMove={onMove}
                 />
+                {fit && st.phase === 'asking' && q && !gate && !cardHidden && (
+                  <div className="vc-gap vc-card-over" onClick={() => setCardHidden(true)} role="dialog" aria-label="Pregunta">
+                    {!answer ? (
+                      <div className="vc-gap-card vc-glass vc-ask">
+                        {busy ? <p className="cm-quiet">Así siguió la partida…</p> : <p className="vc-question">{q.question}</p>}
+                        {hint && q.hint && <p className="vc-hint">{q.hint}</p>}
+                        {!busy && <p className="cm-quiet cm-small">Toca para jugar en el tablero</p>}
+                      </div>
+                    ) : (
+                      <div className={`vc-gap-card vc-glass vc-answer vc-o-${answer.outcome}`}>
+                        <p className="cm-kicker">{OUTCOME_LABEL[answer.outcome]}</p>
+                        <p>{answer.text}</p>
+                        {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
+                        {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
+                        {canRetry && (
+                          <button
+                            className="cm-why vc-retry"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              retry();
+                            }}
+                          >
+                            Repetir
+                          </button>
+                        )}
+                        <p className="cm-quiet cm-small">Toca para ver el tablero</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {gate && st.phase === 'asking' && (
                   <div className="vc-gap vc-gate">
                     <div className="vc-gap-card vc-glass">
@@ -743,12 +784,24 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </div>
         )}
 
+      {fit && !(st.phase === 'asking' && q && !gate) && <div className="vc-tools" aria-hidden="true" />}
       {st.phase === 'asking' && q && !answer && !gate && (
         <div className="vc-tools">
           {!busy && (
             <>
               <div className="cm-row">
-                {q.hint && (hint ? <p className="vc-hint">{q.hint}</p> : <button className="cm-why" onClick={() => setHint(true)}>Pista</button>)}
+                {q.hint &&
+                  (fit ? (
+                    !hint && (
+                      <button className="cm-why" onClick={() => { setHint(true); setCardHidden(false); }}>
+                        Pista
+                      </button>
+                    )
+                  ) : hint ? (
+                    <p className="vc-hint">{q.hint}</p>
+                  ) : (
+                    <button className="cm-why" onClick={() => setHint(true)}>Pista</button>
+                  ))}
                 <button className="cm-link" onClick={showAnswer}>
                   Ver la respuesta
                 </button>
@@ -761,8 +814,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
       {st.phase === 'asking' && q && answer && !gate && (
         <div className="vc-tools">
-          {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
-          {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
+          {!fit && answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
+          {!fit && answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
           {qi + 1 < totalQuestions ? (
             <button className="cm-primary" onClick={nextQuestion} disabled={busy}>
               Siguiente pregunta
@@ -776,7 +829,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               Ver cómo ocurrió en el vídeo
             </button>
           )}
-          {qi + 1 < totalQuestions && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={skip} onFinish={() => send({ type: 'finish' })} />}
+          {!fit && qi + 1 < totalQuestions && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={skip} onFinish={() => send({ type: 'finish' })} />}
         </div>
       )}
 
@@ -862,7 +915,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             Ir ya a la pregunta
           </button>
         )}
-        {fit && st.phase === 'asking' && q && !answer && !gate && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={skip} onFinish={() => send({ type: 'finish' })} />}
+        {fit && st.phase === 'asking' && q && !gate && (!answer || qi + 1 < totalQuestions) && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={skip} onFinish={() => send({ type: 'finish' })} />}
         {st.phase === 'reveal' && quietReveal && (
           <button className="cm-link" onClick={() => send({ type: 'finish' })}>
             Terminar

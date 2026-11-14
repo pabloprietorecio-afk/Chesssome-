@@ -1913,18 +1913,52 @@ a {
   justify-items: center;
 }
 
-/* Vídeo recogido durante la pregunta: sigue montado (no se pierde el punto), pero no ocupa sitio ni se ve. */
-.vc-video[data-collapsed='on'] {
-  aspect-ratio: auto;
-  min-height: 0;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-}
 /* El tablero no crece más que su ancho: las opciones quedan pegadas debajo y el sitio que sobre, al final. */
 .vc-stage[data-fit='on'] {
   container-type: inline-size;
 }
 .vc-stage[data-fit='on'] > .vc-board {
   max-height: calc(100cqw + 32px);
+}
+
+/* Pregunta y veredicto: ventana translúcida sobre el tablero; al tocarla se quita. */
+.vc-card-over {
+  pointer-events: auto;
+  cursor: pointer;
+  align-items: flex-start;
+  padding-top: 10%;
+}
+.vc-card-over .vc-gap-card {
+  text-align: left;
+  max-height: 100%;
+  overflow: auto;
+}
+.vc-card-over .vc-gap-card p {
+  margin: 0;
+}
+/* Hueco fijo para las opciones bajo el tablero: el tablero no cambia de tamaño entre fases. */
+.vc-stage[data-fit='on'] .vc-tools {
+  height: 50px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.vc-stage[data-fit='on'] .vc-board-label {
+  height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* En la línea de encima del tablero, un enlace pequeño para volver a ver la pregunta o el veredicto. */
+.vc-reopen {
+  margin-left: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
 }

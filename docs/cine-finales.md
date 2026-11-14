@@ -248,4 +248,4 @@ Cuatro películas sin vídeo (oposición, Saavedra 1895, Lucena, Philidor) con f
 ## Diseño de pantalla (Pablo, 14 nov 2026)
 
 - Pantalla «estática»: los textos no empujan el tablero. Los avisos van en ventanas translúcidas encima del tablero y el tablero se mantiene grande.
-- Nunca se dibuja nada delante del reproductor de YouTube (normas de la API de YouTube). Mientras se pregunta, el vídeo está parado y se recoge (sigue montado, sin ocupar sitio): la pregunta ocupa su lugar.
+- Nunca se dibuja nada delante del reproductor de YouTube (normas de la API de YouTube). La pregunta y el veredicto van en una ventana translúcida sobre el tablero, que se quita al tocarla («Ver la pregunta» / «Ver la explicación» la recupera). El vídeo no se mueve ni se recoge, y el tablero tiene el mismo tamaño viendo, en la pausa y al revelar (hueco fijo para las opciones).

@@ -76,9 +76,11 @@ const clickText = async (t) => {
 const hasButton = (t) => page.evaluate((t) => [...document.querySelectorAll('button')].some((x) => x.textContent.trim().startsWith(t)), t);
 const attr = (name) => page.$eval('.vc', (e, n) => e.dataset[n], name);
 const waitAttr = async (name, value, ms = 20000) => { const t = Date.now(); while ((await attr(name)) !== String(value)) { if (Date.now() - t > ms) throw new Error(`No llega ${name}=${value} (está en ${await attr(name)})`); await sleep(80); } };
-const panel = () => page.$$eval('.vc-panel, .vc-watch-note', (els) => els.map((e) => e.textContent).join(' | '));
+const panel = () => page.$$eval('.vc-panel, .vc-watch-note, .vc-card-over', (els) => els.map((e) => e.textContent).join(' | '));
 const fake = (fn, ...args) => page.evaluate(fn, ...args);
 async function move(uci, orientation = 'b') {
+  // La pregunta va en una ventana sobre el tablero: se toca para quitarla y jugar.
+  if (await page.$('.vc-card-over')) { await page.click('.vc-card-over'); await sleep(150); }
   const box = await page.evaluate(() => { const r = document.querySelector('.vc-board svg').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; });
   const sq = async (s) => { const f = s.charCodeAt(0) - 97, r = Number(s[1]) - 1, z = box.w / 8; const c = orientation === 'w' ? f : 7 - f, w = orientation === 'w' ? 7 - r : r; await page.mouse.click(box.x + c * z + z / 2, box.y + w * z + z / 2); };
   await sq(uci.slice(0, 2)); await sleep(150); await sq(uci.slice(2, 4)); await sleep(350);
@@ -267,7 +269,7 @@ await clickText('Seguir viendo sin responder');
 await sleep(200);
 // Primero, encima del tablero, la jugada de la partida; el vídeo no sigue hasta pulsar OK.
 assert((await attr('phase')) === 'asking' && /En la partida se jugó Ad5/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso con la jugada antes de seguir');
-assert((await page.$('.vc-ask')) === null && (await page.$('.vc-tools')) === null, 'con el aviso, sin pregunta ni opciones');
+assert((await page.$('.vc-ask')) === null && (await page.$$eval('.vc-tools button', (b) => b.length)) === 0, 'con el aviso, sin pregunta ni opciones');
 await shot('11b-sin-responder-aviso');
 await clickText('OK');
 await waitAttr('phase', 'reveal');
@@ -414,6 +416,7 @@ assert(bi.kind === 'video' && /tras 55…Txf2/.test(bi.label), 'tras la pausa, e
 await waitPly('111');
 assert(/tras 56\.Rxf2/.test((await boardInfo()).label), 'etiqueta: ' + (await boardInfo()).label);
 const fitReveal = await assertFits('al revelar');
+assert([fitAsking, fitReveal].every((f) => JSON.stringify(f.board) === JSON.stringify(fitWatching.board)), 'el tablero no se mueve ni cambia de tamaño entre ver, la pausa y revelar: ' + JSON.stringify([fitWatching.board, fitAsking.board, fitReveal.board]));
 await shot('15-tablero-sigue-al-video');
 await fake(() => { window.__fakeYT.rate = 25; });
 await waitAttr('phase', 'ended', 20000);
