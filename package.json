@@ -22,7 +22,7 @@
     "course": "tsx scripts/export-course.ts",
     "voice": "tsx scripts/export-voice.ts",
     "ui:kids": "node tools/ui/kids.mjs",
-    "pieces:simple": "node tools/pieces/simple.mjs"
+    "pieces:simple": "python3 tools/pieces/simple_arte.py"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

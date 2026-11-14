@@ -31,7 +31,7 @@ const OUTLINE_WIDTH := 0.026
 const BLACK_OUTLINE := Color("f5c542")
 ## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
 const PIECE_SETS := ["clasico", "fichas", "simple"]
-## Juego «Simple»: el dibujo plano de cada pieza (tools/pieces/simple.mjs), mirando siempre a la cámara y lo más
+## Juego «Simple»: el dibujo plano de cada pieza (tools/pieces/simple_arte.py), mirando siempre a la cámara y lo más
 ## grande que cabe en su casilla, sin relieve ni contorno 3D.
 const SIMPLE_ATLAS := "res://sets/simple/iconos.bin"
 ## Lado del dibujo en casillas, a vista de pájaro (con el tablero inclinado se encoge para caber en la casilla).

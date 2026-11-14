@@ -270,9 +270,9 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 
 ## Piezas «Simple» y vista por defecto (14 nov 2026, peticiones de Pablo)
 
-- Tercer juego de piezas, «Simple», para jugadores clásicos: el dibujo plano de cada pieza (nuestras siluetas,
-  `tools/pieces/simple.mjs` → `godot/sets/simple/iconos.bin`), lo más grande posible dentro de su casilla, sin
-  relieve. Blancas en marfil con contorno azul tinta; negras en azul tinta con contorno marfil. Con «Simple» el
+- Tercer juego de piezas, «Simple», para jugadores clásicos: el dibujo plano de cada pieza (la imagen que aportó
+  Pablo, `tools/pieces/simple/fuente.png`, recortada por `tools/pieces/simple_arte.py` → `godot/sets/simple/iconos.bin`),
+  lo más grande posible dentro de su casilla. Licencia del dibujo pendiente de confirmar (ver el LEEME de esa carpeta). Con «Simple» el
   tablero se ve siempre desde arriba y solo se puede ampliar (no girar ni inclinar).
 - Por defecto, en toda la app: fichas y tablero visto desde arriba. Quien ya tenía ajustes guardados pasa una vez a
   esto (clave `app/vista_por_defecto_2`); después manda lo que elija. La vista elegida (inclinada o en picado) se
