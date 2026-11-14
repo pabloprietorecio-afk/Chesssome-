@@ -66,6 +66,7 @@ export const CLIPS: ClipSource[] = [
     // 58…Re5 es la única que gana (+6,0; Re6 y Rd6 0,0); tras 58…Re5, todas las blancas pierden (−13,9).
     lesson: {
       title: 'Cómo se ganó el Mundial con un final de peones',
+      takeaway: 'Antes de cambiar piezas, mira el final que queda: en los finales de peones, la oposición puede decidir la partida.',
       from: 108,
       steps: [
         {
@@ -196,6 +197,7 @@ export const CLIPS: ClipSource[] = [
     // 52…g5 0,0; Tg8, Th8 y Ta8 entre −0,3 y −0,5. Tras 52…Ce2+, 53.Txe2+ +6,8 para las blancas.
     lesson: {
       title: 'Por qué 52…Ce2+ fue un error',
+      takeaway: 'Antes de dar un jaque, mira qué piezas tuyas quedan atacadas.',
       from: 103,
       steps: [
         {
@@ -286,6 +288,7 @@ export const CLIPS: ClipSource[] = [
     // defensa es 62…d2 63.Cxe3 Rd3 64.b4 d1=D 65.Cxd1, con ventaja decisiva de las blancas.
     lesson: {
       title: 'Por qué 61.Cc4+ gana y por qué abandonó Carlsen',
+      takeaway: 'Contra peones que avanzan, gana el jaque que además ataca un peón y vigila su camino.',
       from: 120,
       steps: [
         {

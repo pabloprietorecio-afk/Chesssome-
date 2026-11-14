@@ -2008,3 +2008,9 @@ a {
 .vc-mark-bad {
   stroke: #c4553f;
 }
+
+.vc-takeaway {
+  font-weight: 600;
+  border-left: 3px solid var(--accent-fill);
+  padding-left: 10px;
+}

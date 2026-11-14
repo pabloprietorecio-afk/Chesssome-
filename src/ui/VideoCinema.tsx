@@ -741,6 +741,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             </p>
             {lessonStep === 0 && <h3 className="vc-lesson-title">{clip.lesson!.title}</h3>}
             <p>{lessonNow.step.text}</p>
+            {lessonStep === clip.lesson!.steps.length - 1 && <p className="vc-takeaway">Lo que te llevas: {clip.lesson!.takeaway}</p>}
             <div className="cm-row">
               {lessonStep! > 0 && (
                 <button className="cm-why" onClick={() => setLessonStep(lessonStep! - 1)}>

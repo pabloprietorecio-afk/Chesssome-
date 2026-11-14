@@ -9,6 +9,7 @@ import {
   fenAfter,
   gapPlies,
   lessonPositions,
+  toCourseLesson,
   initialDirector,
   judgeAnswer,
   marksOf,
@@ -549,4 +550,17 @@ describe('regla de las lecciones: sin saltos bruscos', () => {
       });
     });
   }
+});
+
+describe('lecciones del cine en el formato del curso', () => {
+  it.each(PACK.clips.filter((c) => c.lesson).map((c) => [c.id, c] as const))('%s: se convierte en una lección del curso', (_id, c) => {
+    const l = toCourseLesson(c)!;
+    expect(l.title).toBe(c.lesson!.title);
+    expect(l.takeaway.length).toBeGreaterThan(10);
+    expect(l.exercises).toHaveLength(c.lesson!.steps.length);
+    l.exercises.forEach((e, i) => {
+      expect(e.kind).toBe('info');
+      expect(e.fen).toBe(lessonPositions(c)[i].fen);
+    });
+  });
 });

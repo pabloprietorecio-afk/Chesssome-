@@ -18,6 +18,7 @@
  *    vuelve a pausar. Responder es siempre opcional.
  */
 import { Chess } from 'chess.js';
+import type { Lesson as CourseLesson } from '../course/course';
 import type { Color } from './types';
 import { DRAW_SPOILS_CP, lineText, type FilmResult, type MoveVerdict, type VerdictClass } from './cinema';
 import type { ClockData } from './clockSync';
@@ -75,9 +76,17 @@ export interface LessonStep {
   arrows?: { from: string; to: string; tone: 'good' | 'bad' | 'info' }[];
 }
 
-/** Lección sobre la jugada clave del clip: se abre al acabar, paso a paso en el tablero. */
+/**
+ * Lección sobre la jugada clave del clip: se abre al acabar, paso a paso en el tablero.
+ * Sigue la forma de las lecciones del curso (src/course/course.ts: título, introducción, pasos y lo que te llevas) y
+ * `toCourseLesson` la convierte a ese formato, para que el reproductor de lecciones de Godot pueda mostrarla igual.
+ */
 export interface ClipLesson {
   title: string;
+  /** Frases de introducción, como en el curso (opcional). */
+  intro?: string[];
+  /** Lo que se lleva el jugador al terminar (una frase), como en el curso. */
+  takeaway: string;
   /** La lección empieza en la posición tras esta media jugada de la partida. */
   from: number;
   steps: LessonStep[];
@@ -680,4 +689,22 @@ export function lessonPositions(clip: Pick<Clip, 'timeline'> & { lesson?: ClipLe
     }
     return { fen: c.fen(), last };
   });
+}
+
+/**
+ * La lección del clip en el formato del curso: cada paso, un ejercicio «info» sobre su posición. Las jugadas y flechas
+ * de cada paso van aparte (`steps`), porque el curso aún no las tiene.
+ */
+export function toCourseLesson(clip: Pick<Clip, 'id' | 'timeline'> & { lesson?: ClipLesson }): CourseLesson | null {
+  const lesson = clip.lesson;
+  if (!lesson) return null;
+  const pos = lessonPositions(clip);
+  return {
+    id: `cine-${clip.id}`,
+    title: lesson.title,
+    icon: 'piece_king',
+    intro: lesson.intro ?? [],
+    exercises: lesson.steps.map((st, i) => ({ kind: 'info' as const, at: { pieces: {} }, fen: pos[i].fen, text: st.text })),
+    takeaway: lesson.takeaway,
+  };
 }
