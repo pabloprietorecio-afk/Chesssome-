@@ -378,4 +378,170 @@ export const CLIPS: ClipSource[] = [
     notes:
       'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil (60.Cb2 365,9; 60…e3 371,2; pausa 371,4; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). La pausa tiene ~0,3 s de margen antes de que Gukesh mueva la mano. La pregunta de 57.Ca4 se retiró: el vídeo no enseña esa jugada. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
   },
+  {
+    id: 'nepomniachtchi-ding-2023-wch-tb4',
+    title: 'El último error del Mundial',
+    subtitle: 'Nepomniachtchi – Ding · Mundial 2023, desempate 4',
+    event: 'Campeonato del Mundo de la FIDE 2023, desempate (partida rápida 4) · Astana',
+    year: 2023,
+    white: 'Ian Nepomniachtchi',
+    black: 'Ding Liren',
+    video: {
+      provider: 'youtube',
+      id: 'W79Fse7LZQA',
+      title: 'DING is the new KING',
+      channel: 'ChessBase India',
+      channelUrl: 'https://www.youtube.com/@ChessBaseIndiachannel',
+      // Canal y duración comprobados en la página del vídeo (14 nov 2026): ChessBase India, 4:23, 30 de abril de 2023.
+      official: true,
+      checked: '2026-11-14',
+      duration: 263,
+    },
+    // Marcas medidas por Claude (14 nov 2026) sobre dos grabaciones de pantalla de Pablo, sin comprobar aún en el móvil:
+    // la primera cubre de 0:00,6 a 1:50 y la segunda de 1:45,75 a 3:42 (desfases sacados del contador del reproductor).
+    // El tablero no se lee en el plano de la sala: cada jugada sale de la mano que mueve, en el orden de la partida, y
+    // cuadra con la pantalla de la sala que se ve en 0:16–0:20 (posición tras 58…a3, relojes Ding 1:24, Nepo 0:21) y con
+    // los relojes: Nepo, en apuros, no podía pensar 62.Rg2 cincuenta segundos; Ding sí 62…h5 (1:08 → 1:56).
+    start: 11,
+    end: 217,
+    marks: 'pending',
+    sync: {
+      startPly: 116,
+      marks: [
+        { ply: 117, at: 23.6 },
+        { ply: 118, at: 31.6 },
+        { ply: 119, at: 51.6 },
+        { ply: 120, at: 54.6 },
+        { ply: 121, at: 55.9 },
+        { ply: 122, at: 64.6 },
+        { ply: 123, at: 68.2 },
+        { ply: 124, at: 116.2 },
+        { ply: 125, at: 117.4 },
+        { ply: 126, at: 121.3 },
+        { ply: 127, at: 140.0 },
+        { ply: 128, at: 143.3 },
+        { ply: 129, at: 150.4 },
+        { ply: 130, at: 152.5 },
+        { ply: 131, at: 162.3 },
+        { ply: 132, at: 173.7 },
+        { ply: 133, at: 176.1 },
+        { ply: 134, at: 191.3 },
+        { ply: 135, at: 198.6 },
+        { ply: 136, at: 212.6 },
+      ],
+    },
+    moves:
+      '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. d3 b5 7. Bb3 d6 8. a4 Bd7 9. h3 O-O 10. Be3 Na5 11. Ba2 bxa4 12. Nc3 Rb8 13. Bb1 Qe8 14. b3 c5 15. Nxa4 Nc6 16. Nc3 a5 17. Nd2 Be6 18. Nc4 d5 19. exd5 Nxd5 20. Bd2 Nxc3 21. Bxc3 Bxc4 22. bxc4 Bd8 23. Bd2 Bc7 24. c3 f5 25. Re1 Rd8 26. Ra2 Qg6 27. Qe2 Qd6 28. g3 Rde8 29. Qf3 e4 30. dxe4 Ne5 31. Qg2 Nd3 32. Bxd3 Qxd3 33. exf5 Rxe1+ 34. Bxe1 Qxc4 35. Ra1 Rxf5 36. Bd2 h6 37. Qc6 Rf7 38. Re1 Kh7 39. Be3 Be5 40. Qe8 Bxc3 41. Rc1 Rf6 42. Qd7 Qe2 43. Qd5 Bb4 44. Qe4+ Kg8 45. Qd5+ Kh7 46. Qe4+ Rg6 47. Qf5 c4 48. h4 Qd3 49. Qf3 Rf6 50. Qg4 c3 51. Rd1 Qg6 52. Qc8 Rc6 53. Qa8 Rd6 54. Rxd6 Qxd6 55. Qe4+ Qg6 56. Qc4 Qb1+ 57. Kh2 a4 58. Bd4 a3 59. Qc7 Qg6 60. Qc4 c2 61. Be3 Bd6 62. Kg2 h5 63. Kf1 Be5 64. g4 hxg4 65. h5 Qf5 66. Qd5 g3 67. f4 a2 68. Qxa2 Bxf4 0-1',
+    gameSource:
+      'Partida pública, cotejada jugada a jugada en dos fuentes: The Washington Times (2 de mayo de 2023) y The Spectator (6 de mayo de 2023). El final (de 57.Rh2 a 68…Axf4) coincide con la crónica en directo de The Guardian, y la posición tras 58…a3 con la pantalla de la sala que se ve en el vídeo.',
+    orientation: 'b',
+    intro:
+      'Astana, 30 de abril de 2023. Cuarta y última partida rápida del desempate del Mundial: si acaba en tablas, se jugarán partidas relámpago. Las negras de Ding tienen dos peones pasados, pero a Nepomniachtchi le basta con no fallar… y le quedan unos 20 segundos.',
+    // Comprobado con Stockfish 19 Lite (profundidad 26, 14 nov 2026): tras 58…a3, 59.Axg7 y 59.h5 hacen tablas y 59.Dc7
+    // pierde; tras 59.Axg7 Rxg7 60.Dc7+, jaque perpetuo (0,00). Tras 59.Dc7, solo 59…Dg6 gana (59…Af8 hace tablas;
+    // el resto pierde, la mayoría con mate). 62…h5 es la mejor de la posición (+3,4; la siguiente, +2,2).
+    lesson: {
+      title: 'Cómo pudo salvarse Nepo y cómo ganó Ding',
+      takeaway: 'Con poco tiempo, mira primero los jaques: a veces un sacrificio da tablas por jaque perpetuo.',
+      from: 116,
+      steps: [
+        {
+          moves: '',
+          text: 'Las negras tienen dos peones pasados, en a3 y c3, muy cerca de coronar. Nepo, con unos 20 segundos, tiene que encontrar cómo salvarse.',
+          arrows: [
+            { from: 'a3', to: 'a1', tone: 'bad' },
+            { from: 'c3', to: 'c1', tone: 'bad' },
+          ],
+        },
+        {
+          moves: 'Bxg7',
+          text: '59.Axg7!: un sacrificio. El alfil se come el peón que protege al rey negro.',
+        },
+        {
+          moves: 'Bxg7 Kxg7 Qc7+',
+          text: '59…Rxg7 60.Dc7+: la dama da jaque tras jaque y el rey negro no tiene dónde esconderse. Tablas por jaque perpetuo.',
+          arrows: [{ from: 'c7', to: 'g7', tone: 'good' }],
+        },
+        {
+          moves: 'Qc7',
+          text: 'En la partida, Nepo jugó 59.Dc7??. Amenaza Dxg7 mate: la dama y el alfil de d4 apuntan a g7.',
+          arrows: [
+            { from: 'c7', to: 'g7', tone: 'bad' },
+            { from: 'd4', to: 'g7', tone: 'bad' },
+          ],
+        },
+        {
+          moves: 'Qc7 Qg6',
+          text: '59…Dg6!: defiende g7 y la dama negra vuelve al juego. Era la única jugada que ganaba.',
+          arrows: [{ from: 'g6', to: 'g7', tone: 'good' }],
+        },
+        {
+          moves: 'Qc7 Qg6 Qc4 c2',
+          text: '60.Dc4 c2: el peón de c ya está a un paso de coronar.',
+          arrows: [{ from: 'c2', to: 'c1', tone: 'bad' }],
+        },
+        {
+          moves: 'Qc7 Qg6 Qc4 c2 Be3 Bd6',
+          text: '61.Ae3 Ad6: los dos peones negros quedan protegidos, el de a3 por el alfil y el de c2 por la dama.',
+          arrows: [
+            { from: 'd6', to: 'a3', tone: 'good' },
+            { from: 'g6', to: 'c2', tone: 'good' },
+          ],
+        },
+        {
+          moves: 'Qc7 Qg6 Qc4 c2 Be3 Bd6 Kg2 h5',
+          text: '62.Rg2 h5!: frena el peón blanco de h4 y deja al rey negro a salvo. Con el rey seguro, los peones deciden.',
+          arrows: [{ from: 'h5', to: 'h4', tone: 'good' }],
+        },
+      ],
+    },
+    // Una pausa por pregunta. 21,4: Nepo empieza a mover la mano hacia 22,1. 28,6: Nepo pulsa el reloj hacia 25,1 y la
+    // mano de Ding sale hacia 30,6. 113,5: Ding piensa 62…h5 desde 68,2 y mueve hacia 115,8.
+    stops: [
+      {
+        at: 21.4,
+        questions: [
+          {
+            ply: 117,
+            question: 'Juega Nepo, con blancas y unos 20 segundos en el reloj. Si no pierde, habrá partidas relámpago. ¿Qué jugarías?',
+            hint: 'Mira el peón de g7: es lo único que protege al rey negro.',
+            why: '59.Axg7! Rxg7 60.Dc7+ y jaque perpetuo: tablas. También 59.h5 y 59.Dd5 mantenían las tablas. En la partida, Nepo jugó 59.Dc7??, que amenaza Dxg7 mate, pero pierde.',
+          },
+        ],
+      },
+      {
+        at: 28.6,
+        questions: [
+          {
+            ply: 118,
+            question: 'Nepo ha jugado 59.Dc7 y amenaza Dxg7 mate. Juega Ding: ¿qué jugarías?',
+            hint: 'Defiende g7, pero sin dejar tu dama fuera de juego.',
+            why: '59…Dg6!: defiende g7 y la dama vuelve al centro de la partida. Es la única que gana: con 59…Af8 también se defiende g7, pero solo se hacen tablas.',
+          },
+        ],
+      },
+      {
+        at: 113.5,
+        questions: [
+          {
+            ply: 124,
+            question: 'Nepo acaba de jugar 62.Rg2. Ding pensó casi un minuto. ¿Qué jugarías?',
+            hint: 'Antes de correr con los peones, asegura tu rey.',
+            why: '62…h5: frena el peón blanco de h4 y deja al rey negro a salvo. Con el rey seguro, los peones de a y c deciden la partida.',
+          },
+        ],
+      },
+    ],
+    outro: 'Nepomniachtchi abandonó tras 68…Axf4. Ding Liren se convirtió en el 17.º campeón del mundo, el primero de China.',
+    resignation: {
+      by: 'Nepo',
+      hook: '¿Por qué, si todavía tiene dama y alfil?',
+      outcome: 'Mate. Con la mejor defensa, las negras coronan el peón de c y dan mate en ocho jugadas. Por eso Nepo abandonó.',
+      why: 'El alfil negro se come el de e3 con jaque, el peón de c corona y la dama blanca no basta para frenar los peones negros. Así habría seguido con la mejor defensa de las blancas:',
+      line: 'Qa6 Bxe3+ Kg2 c1=Q Qg6+ Qxg6 hxg6+ Kxg6 Kf3 Kf5 Kxg3 Qf1 Kh4 g5+ Kg3 Bf4#',
+      source: 'Stockfish 19 Lite WASM, profundidad 28 por jugada (14 nov 2026), la mejor de cada bando; el motor da mate en 8 para las negras con cualquier defensa.',
+    },
+    notes:
+      'Vídeo de ChessBase India grabado en la sala; plano lateral en el que no se lee el tablero. En 0:16–0:20 sale la pantalla de la sala con la posición tras 58…a3 y los relojes. Marcas medidas sobre dos grabaciones de pantalla de Pablo, sin comprobar aún en el móvil. La jugada 59…Dg6 llega a los 8 s de 59.Dc7: la pausa de 28,6 tiene unos 2 s de margen. Sin relojes de la retransmisión: Lichess no se puede descargar (robots.txt).',
+  },
 ];

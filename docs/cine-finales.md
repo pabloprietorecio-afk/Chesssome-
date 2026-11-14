@@ -281,3 +281,10 @@ Si la partida acabó con un abandono, el clip lleva `resignation`: quién abando
 Las líneas se calcularon con Stockfish 19 Lite WASM a profundidad 30 por jugada (14 nov 2026) y acaban cuando el bando que gana corona. Un test comprueba que son legales desde el final real de la partida y que acaban en coronación.
 - Ding (36 medias jugadas): las blancas, siempre la mejor del motor. Las negras eligen 59…f4, 60…f3+, 61…Rd5 y 62…Rd4, todas dadas por ganadoras, y después la mejor del motor; desde 65…Rd2 el motor da mate forzado. Se eligió así porque la línea pura del motor daba rodeos con el rey (Rd6, Rc4) que despistan. Hay jugadas de espera (triangulación) que son propias del final.
 - Carlsen: la primera línea del motor (mate en 13), hasta 67.h8=D.
+
+## «El último error del Mundial» (Nepomniachtchi – Ding, desempate 4, 2023)
+
+- Vídeo «DING is the new KING» de ChessBase India (W79Fse7LZQA, 4:23), comprobado el 14 nov 2026.
+- Plano lateral: el tablero no se lee. Las marcas salen de dos grabaciones de pantalla de Pablo (0:00–1:50 y 1:45–3:42; desfases medidos con el contador del reproductor): una marca por cada mano que mueve, en el orden de la partida. Encajan con la pantalla de la sala (0:16–0:20: posición tras 58…a3, relojes Ding 1:24 y Nepo 0:21) y con los relojes: 62.Rg2 tiene que ir en 1:08, porque Nepo no tenía tiempo para pensarla 50 s; quien piensa casi un minuto es Ding, 62…h5.
+- Tres preguntas: 59 blancas (59.Axg7, 59.h5 y 59.Dd5 hacen tablas; 59.Dc7?? pierde), 59…Dg6 (única que gana) y 62…h5 (única clara a profundidad 34). Lección de 8 pasos y «¿Por qué abandonó Nepo?» con mate en 8.
+- La pregunta 1 es de las blancas, pero el tablero sigue con la orientación del clip (negras abajo).

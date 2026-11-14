@@ -609,9 +609,9 @@ describe('abandonos', () => {
     for (const t of moves.split(/\s+/)) if (t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t)) g.move(t);
     return g.fen();
   };
-  it('la línea de cada abandono es legal desde la posición final y acaba coronando el bando que gana', () => {
+  it('la línea de cada abandono es legal desde la posición final y acaba coronando o dando mate el bando que gana', () => {
     const withRes = CLIPS.filter((c) => c.resignation);
-    expect(withRes.map((c) => c.id).sort()).toEqual(['ding-gukesh-2024-g14', 'gukesh-carlsen-2025-norway-r6']);
+    expect(withRes.map((c) => c.id).sort()).toEqual(['ding-gukesh-2024-g14', 'gukesh-carlsen-2025-norway-r6', 'nepomniachtchi-ding-2023-wch-tb4']);
     for (const c of withRes) {
       // El tablero de la app parte del final de la partida empaquetada: tiene que ser el final real.
       expect(finalFen(packed(c.id))).toBe(gameEnd(c.moves));
@@ -619,7 +619,7 @@ describe('abandonos', () => {
       expect(frames.length).toBe(c.resignation!.line.split(/\s+/).length);
       // Notación exacta (capturas con «x», jaques con «+»): es la que se enseña.
       expect(frames.map((f) => f.san).join(' ')).toBe(c.resignation!.line);
-      expect(frames.at(-1)!.san).toMatch(/=Q/);
+      expect(frames.at(-1)!.san).toMatch(/=Q|#$/);
       expect(c.resignation!.why.length).toBeGreaterThan(40);
     }
     // Ding (blancas) abandona: corona el peón negro de g. Carlsen (negras) abandona: corona el peón blanco de h.
@@ -627,5 +627,9 @@ describe('abandonos', () => {
     expect(resignationFrames(gameEnd(d.moves), d.resignation!.line).at(-1)!.fen.split(' ')[0]).toMatch(/q/);
     const g = CLIPS.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
     expect(resignationFrames(gameEnd(g.moves), g.resignation!.line).at(-1)!.fen.split(' ')[0]).toMatch(/Q/);
+    // Nepo (blancas) abandona: las negras dan mate.
+    const n = CLIPS.find((c) => c.id === 'nepomniachtchi-ding-2023-wch-tb4')!;
+    const last = resignationFrames(gameEnd(n.moves), n.resignation!.line).at(-1)!;
+    expect(new Chess(last.fen).isCheckmate() && last.fen.split(' ')[1] === 'w').toBe(true);
   });
 });
