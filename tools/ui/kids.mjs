@@ -34,7 +34,7 @@ const ICONS = {
   eye: 'eyes_flat',
   why: 'red_question_mark_flat',
   target: 'star_flat',
-  flag: 'chequered_flag_flat',
+  flag: 'white_flag_flat',
   piece_knight: 'carousel_horse_flat',
   clock: 'alarm_clock_flat',
   trend: 'chart_increasing_flat',
@@ -45,6 +45,13 @@ const ICONS = {
   pin_on: 'pushpin_flat',
   trophy: 'trophy_flat',
   spark: 'glowing_star_flat',
+  view: 'camera_flat',
+  zoom: 'magnifying_glass_tilted_left_flat',
+  play: 'play_button_flat',
+  phone: 'mobile_phone_flat',
+  outline: 'artist_palette_flat',
+  open: 'link_flat',
+  copy: 'clipboard_flat',
 };
 
 /** Juguetes y peluches del fondo. */

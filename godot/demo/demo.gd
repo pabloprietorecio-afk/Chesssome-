@@ -271,6 +271,8 @@ var hint_button: Button
 var step_button: Button
 var pin_button: Button
 var home_button: Button
+var view_button: Button
+var options_button: Button
 var gesture_tip: GestureHint
 var _actions_mode := ""
 var _tip_note := false
@@ -843,7 +845,7 @@ func _spacer(height: float, grow: bool = false) -> Control:
 	return c
 
 
-func _style_button(b: Button, fill: Color, fg: Color, radius: int, font_size: int, font: Font, glow: Color = Color(0, 0, 0, 0), border: Color = Color(0, 0, 0, 0)) -> void:
+func _style_button(b: Button, fill: Color, fg: Color, radius: int, font_size: int, font: Font, glow: Color = Color(0, 0, 0, 0), border: Color = Color(0, 0, 0, 0), candy: bool = false) -> void:
 	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = fill.darkened(0.08) if state == "pressed" else fill
@@ -855,6 +857,16 @@ func _style_button(b: Button, fill: Color, fg: Color, radius: int, font_size: in
 		if border.a > 0.0:
 			sb.border_color = border
 			sb.set_border_width_all(5)
+		if candy:
+			# Canto inferior más oscuro y un borde blanco: aspecto de botón de juguete. Al pulsarlo, el canto se
+			# encoge, como si se hundiera.
+			sb.border_color = fill.darkened(0.22)
+			sb.border_width_bottom = 4 if state == "pressed" else 12
+			sb.border_width_left = 0
+			sb.border_width_right = 0
+			sb.border_width_top = 0
+			sb.expand_margin_top = 0.0
+			sb.content_margin_top = 16.0 + (8.0 if state == "pressed" else 0.0)
 		if glow.a > 0.0 and state != "pressed":
 			sb.shadow_color = glow
 			sb.shadow_size = 18
@@ -923,11 +935,25 @@ func _button(icon_name: String, text: String, on_press: Callable, fill: Color, f
 	var vertical := bool(opt.get("vertical", false))
 	var font_size := int(opt.get("font_size", F_BODY))
 	var height := float(opt.get("height", 112.0))
+	# Nivel Kids: botones de caramelo, más grandes, con letra redonda y un canto más oscuro debajo (como si se
+	# pudieran apretar). Los enlaces sin fondo y los botones redondos de la barra solo crecen un poco.
+	var candy := kids and fill.a > 0.5 and text != ""
+	if kids:
+		var grow := 1.22 if candy else 1.08
+		height *= grow
+		font_size += 6 if candy else 2
+		opt = opt.duplicate()
+		opt["icon"] = float(opt.get("icon", 52.0)) * (1.45 if candy else 1.2)
+		if candy:
+			opt["font"] = font_display
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.mouse_filter = Control.MOUSE_FILTER_PASS
 	b.pressed.connect(on_press)
-	_style_button(b, fill, fg, int(opt.get("radius", 40 if vertical else int(height * 0.5))), font_size, font_semibold, opt.get("glow", Color(0, 0, 0, 0)), opt.get("border", Color(0, 0, 0, 0)))
+	var radius := int(opt.get("radius", 40 if vertical else int(height * 0.5)))
+	if candy:
+		radius = int(minf(height * 0.5, 64.0)) if vertical else int(height * 0.5)
+	_style_button(b, fill, fg, radius, font_size, font_semibold, opt.get("glow", Color(0, 0, 0, 0)), opt.get("border", Color(0, 0, 0, 0)), candy)
 	var box: BoxContainer = VBoxContainer.new() if vertical else HBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 4 if vertical else 16)
@@ -1110,8 +1136,10 @@ func _build_chrome() -> void:
 	bar.add_child(counter)
 	pin_button = _pin_button()
 	bar.add_child(pin_button)
-	bar.add_child(_round_button("view", _on_toggle_view))
-	bar.add_child(_round_button("sliders", _open_options))
+	view_button = _round_button("view", _on_toggle_view)
+	bar.add_child(view_button)
+	options_button = _round_button("sliders", _open_options)
+	bar.add_child(options_button)
 
 	# Cielo sobre el tablero: mientras se resuelve, el tablero queda más cerca del pulgar; cuando llega la
 	# explicación completa, este hueco se cierra y el tablero sube (ver _layout).
@@ -3609,6 +3637,27 @@ func _open_home() -> void:
 	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
 
+## Iconos de la barra al entrar o salir del nivel Kids (a color o los normales).
+func _sync_bar_icons() -> void:
+	for pair: Array in [[home_button, "home"], [view_button, "view"], [options_button, "sliders"]]:
+		var b: Button = pair[0]
+		if b == null or not is_instance_valid(b):
+			continue
+		for pic in b.find_children("*", "TextureRect", true, false):
+			var kid_tex := UiIcons.kids_texture(str(pair[1])) if kids else null
+			(pic as TextureRect).texture = kid_tex if kid_tex != null else UiIcons.texture(str(pair[1]))
+			(pic as TextureRect).modulate = Color.WHITE if kid_tex != null else _c("ink")
+	if pin_button != null and is_instance_valid(pin_button):
+		var bar := pin_button.get_parent()
+		var at := pin_button.get_index()
+		var fresh := _pin_button()
+		pin_button.visible = false
+		pin_button.queue_free()
+		bar.add_child(fresh)
+		bar.move_child(fresh, at)
+		pin_button = fresh
+
+
 ## Botón de inicio de la barra: deja lo que se esté haciendo (una partida en curso se abandona) y abre el inicio.
 func _go_home() -> void:
 	if mode == "game" and game_state != "over" and game_state != "":
@@ -4914,6 +4963,8 @@ func _set_kids(on: bool) -> void:
 		return
 	if on:
 		kids = true
+		_actions_mode = ""
+		_sync_bar_icons()
 		_save_settings()
 		_close_options()
 		_open_home()
@@ -4925,6 +4976,8 @@ func _set_kids(on: bool) -> void:
 
 func _leave_kids() -> void:
 	kids = false
+	_actions_mode = ""
+	_sync_bar_icons()
 	_stop_voice()
 	_save_settings()
 	if mode == "learn" and not lesson.is_empty():

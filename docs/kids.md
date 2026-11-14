@@ -24,6 +24,9 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
 - Iconos a color en los botones (Fluent Emoji de Microsoft, estilo Flat, licencia MIT; `tools/ui/kids.mjs`):
   bombilla, flechas, casa, engranaje, caballito de tiovivo para «Partida», etc. Si un icono no tiene versión Kids,
   se usa el normal.
+- Botones «de caramelo» (14 nov, petición de Pablo): un 20 % más grandes, letra redonda más grande, iconos a
+  color un 45 % más grandes y un canto inferior más oscuro que se hunde al pulsar. Todos los iconos de botones
+  tienen versión Kids (cámara para la vista, lupa, bandera blanca para rendirse, etc.).
 - Fondo de peluches y juguetes en tonos pastel (osito, cometa, globo, pato, pelota, cohete, tren, dado…), en mosaico
   sobre el cielo y en las páginas, y dentro de la ventana del resultado.
 - El tablero no se mueve en las lecciones ni en las partidas (para todos, no solo en Kids). Al acabar un ejercicio,
