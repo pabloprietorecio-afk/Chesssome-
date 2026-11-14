@@ -27,6 +27,8 @@ const FRAME_THICK := 0.36
 const FIT_HEIGHT := 1.8
 ## Grosor del contorno de las piezas, en casillas.
 const OUTLINE_WIDTH := 0.026
+## Color del contorno de las piezas negras (amarillo, para que se vea sobre piezas y casillas oscuras).
+const BLACK_OUTLINE := Color("f5c542")
 ## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
 const PIECE_SETS := ["clasico", "fichas"]
 ## Medidas de la ficha (tools/pieces/fichas.mjs), en casillas.
@@ -684,6 +686,9 @@ func set_theme(theme_name: String) -> void:
 		_mats[1].set_shader_parameter("rim_amount", 0.56)
 		light_label = light_sq.lightened(0.65)
 		dark_label = dark_sq.darkened(0.3)
+	# Las negras llevan el contorno amarillo: en tinta oscura no se veía, y así una pieza negra se separa bien de la
+	# que tiene delante o detrás en la vista 3D (petición de Pablo).
+	outline_colors[1] = BLACK_OUTLINE
 	for i in 2:
 		_outline_mats[i].set_shader_parameter("outline_color", outline_colors[i])
 		_disc_mats[i].set_shader_parameter("outline_color", outline_colors[i])
