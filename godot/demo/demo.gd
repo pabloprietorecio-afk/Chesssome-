@@ -290,6 +290,7 @@ var progress_kind := ""
 var progress_scroll: ScrollContainer
 ## Píldora de la barra con el nivel del jugador (solo en el entrenamiento): abre el progreso.
 var level_pill: Button
+var level_slot: Button
 
 var font_regular: Font
 var font_medium: Font
@@ -388,6 +389,39 @@ class PastelBackdrop extends Control:
 
 ## Pista animada sobre el tablero: dos dedos que primero se separan (el tablero crece) y luego giran (el
 ## tablero gira con ellos), junto a un texto. También sirve para avisos breves (por ejemplo, al fijar el giro).
+## Insignia del nivel: un círculo del color del rango con su pieza (peón, caballo, alfil, torre, dama, rey), un
+## aro que se va llenando hasta el nivel siguiente y el número del nivel en una burbuja.
+class LevelBadge extends Control:
+	var fill := Color.WHITE
+	var ring := Color.BLACK
+	var track := Color.GRAY
+	var bubble := Color.WHITE
+	var bubble_ink := Color.BLACK
+	var progress := 0.0
+	var level := 0
+	var font: Font
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.5
+		draw_circle(c, r, Color(0, 0, 0, 0.08))
+		draw_circle(c, r - 2.0, fill)
+		var w := maxf(5.0, r * 0.1)
+		draw_arc(c, r - w * 0.5 - 1.0, 0.0, TAU, 64, track, w, true)
+		if progress > 0.0:
+			draw_arc(c, r - w * 0.5 - 1.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(progress, 0.0, 1.0), 64, ring, w, true)
+		# Burbuja con el número, abajo a la derecha.
+		var br := r * 0.36
+		var bc := c + Vector2(r * 0.7, r * 0.7)
+		draw_circle(bc, br + 3.0, fill)
+		draw_circle(bc, br, bubble)
+		if font != null:
+			var t := str(level)
+			var fs := int(br * 1.15)
+			var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(font, bc + Vector2(-tw * 0.5, fs * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, bubble_ink)
+
+
 ## Confeti: papelitos de colores que saltan desde un punto y caen girando. Se borra solo al acabar.
 class Confetti extends Control:
 	var bits: Array = []
@@ -1054,7 +1088,15 @@ func _build_chrome() -> void:
 	level_pill.mouse_filter = Control.MOUSE_FILTER_STOP
 	level_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	level_pill.visible = false
-	bar.add_child(level_pill)
+	# Insignia del nivel, siempre a la vista cuando ya hay nivel (toca para ver «Mi nivel y mi plan»).
+	level_slot = Button.new()
+	level_slot.flat = true
+	level_slot.focus_mode = Control.FOCUS_NONE
+	level_slot.custom_minimum_size = Vector2(112.0, 112.0)
+	level_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	level_slot.pressed.connect(_open_progress.bind("progress"))
+	level_slot.visible = false
+	bar.add_child(level_slot)
 	counter = _text("", F_SUB, _c("quiet"), font_medium)
 	counter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	counter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1318,14 +1360,15 @@ func _refresh(animate: bool = true) -> void:
 	if card_body == null or not is_instance_valid(card_body):
 		return
 	var total := puzzles.size()
-	level_pill.visible = mode == "train" and _has_player()
+	level_pill.visible = false
+	_sync_level_badge()
 	if mode == "learn":
 		counter.text = "Aprende a jugar"
 	elif mode == "game":
 		counter.text = "Partida"
-	elif level_pill.visible:
-		(level_pill.get_meta("label_node") as Label).text = "Nivel %d" % Assessment.level_of(float(player["rating"]["r"]))
-		counter.text = ""
+	elif mode == "train" and _has_player():
+		var lv := Assessment.level_of(float(player["rating"]["r"]))
+		counter.text = "Nivel %d · %s" % [lv, str(_rank(lv)[1])]
 	elif mode == "test":
 		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
 		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
@@ -3508,6 +3551,25 @@ func _open_home() -> void:
 	body.add_child(_centered(_para("Chessome", F_LARGE, _c("ink"), font_display)))
 	var sub := "¿A qué jugamos hoy?" if kids else "¿Qué quieres hacer?"
 	body.add_child(_centered(_para(sub, F_HEAD, _c("quiet"), font_medium)))
+	if _has_player():
+		# Tu insignia: nivel, rango y lo que falta para el siguiente.
+		var r := float(player["rating"]["r"])
+		var lv := Assessment.level_of(r)
+		var rank_row := HBoxContainer.new()
+		rank_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		rank_row.add_theme_constant_override("separation", 22)
+		rank_row.add_child(_level_badge(r, 150.0))
+		var words := VBoxContainer.new()
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.add_theme_constant_override("separation", 0)
+		words.add_child(_para("Nivel %d · %s" % [lv, str(_rank(lv)[1])], F_HEAD + 4, _c("ink"), font_display))
+		var left_text := "¡Nivel máximo!"
+		if lv + 1 < Assessment.LEVEL_FLOORS.size():
+			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
+		words.add_child(_para(left_text, F_SUB, _c("quiet"), font_medium))
+		rank_row.add_child(words)
+		body.add_child(_spacer(22.0))
+		body.add_child(rank_row)
 	body.add_child(_spacer(36.0))
 	var lessons := _course_lessons()
 	var done := 0
@@ -4249,6 +4311,71 @@ func _build_game_actions() -> void:
 
 
 
+# ---------------------------------------------------------------- insignia del nivel
+
+## Rango de cada nivel: pieza, nombre y color (niveles 0–1 peón … 10 rey).
+const RANKS := [["piece_pawn", "Peón", "mint"], ["piece_knight", "Caballo", "sky"], ["piece_bishop", "Alfil", "butter"], ["piece_rook", "Torre", "peach"], ["piece_queen", "Dama", "rose"], ["piece_king", "Rey", "lilac"]]
+
+
+func _rank(level: int) -> Array:
+	return RANKS[clampi(level / 2, 0, RANKS.size() - 1)]
+
+
+## Lo que llevas del nivel actual hacia el siguiente (0–1; 1 en el último nivel).
+func _level_progress(rating: float) -> float:
+	var lv := Assessment.level_of(rating)
+	if lv + 1 >= Assessment.LEVEL_FLOORS.size():
+		return 1.0
+	var lo := float(Assessment.LEVEL_FLOORS[lv])
+	var hi := float(Assessment.LEVEL_FLOORS[lv + 1])
+	return clampf((rating - lo) / maxf(hi - lo, 1.0), 0.0, 1.0)
+
+
+func _level_badge(rating: float, side: float) -> Control:
+	var lv := Assessment.level_of(rating)
+	var rank := _rank(lv)
+	var tint := _tint(str(rank[2]))
+	var badge := LevelBadge.new()
+	badge.custom_minimum_size = Vector2(side, side)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.fill = tint[0]
+	badge.ring = tint[1]
+	badge.track = Color(tint[1].r, tint[1].g, tint[1].b, 0.18)
+	badge.bubble = tint[1]
+	badge.bubble_ink = Color.WHITE
+	badge.progress = _level_progress(rating)
+	badge.level = lv
+	badge.font = font_display
+	var icon := _icon(str(rank[0]), side * 0.5, tint[1])
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.offset_left = side * 0.25
+	icon.offset_top = side * 0.22
+	icon.offset_right = -side * 0.25
+	icon.offset_bottom = -side * 0.28
+	badge.add_child(icon)
+	return badge
+
+
+## Botón de la barra con la insignia: lleva a «Mi nivel y mi plan».
+func _sync_level_badge() -> void:
+	if level_slot == null or not is_instance_valid(level_slot):
+		return
+	var show := _has_player() and mode != "test"
+	level_slot.visible = show
+	if not show:
+		return
+	var r := float(player["rating"]["r"])
+	var key := "%d:%d:%s" % [Assessment.level_of(r), int(_level_progress(r) * 40.0), str(dark)]
+	if str(level_slot.get_meta("key", "")) == key:
+		return
+	level_slot.set_meta("key", key)
+	for child in level_slot.get_children():
+		child.queue_free()
+	var badge := _level_badge(r, 112.0)
+	badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+	level_slot.add_child(badge)
+
+
 # ---------------------------------------------------------------- enhorabuenas
 
 const CHEERS := ["¡Sigue así!", "¡Vas mejorando!", "¡Muy bien pensado!", "¡Así se juega!", "¡Otro más!", "¡Qué buena vista!"]
@@ -4365,6 +4492,10 @@ func _level_up(level_now: int, before: float, now: float) -> void:
 	column.add_child(trophy)
 	column.add_child(_centered(_para("¡Enhorabuena!", F_LARGE, _c("ink"), font_display)))
 	column.add_child(_centered(_para("Has subido al nivel %d" % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
+	var badge := _level_badge(now, 170.0)
+	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(badge)
+	column.add_child(_centered(_para("Rango: %s" % str(_rank(level_now)[1]), F_SUB, _c("quiet"), font_semibold)))
 	column.add_child(_centered(_para("%d → %d puntos" % [int(round(before)), int(round(now))], F_SUB, _c("quiet"), font_medium)))
 	column.add_child(_spacer(10.0))
 	var pad := _pad(80, 0, 80, 0)

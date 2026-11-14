@@ -585,7 +585,7 @@ func _level_shots(demo: Control) -> void:
 	demo._start_training()
 	await _frames(40)
 	await _shot("56_entrenamiento")
-	print("NIVEL entrenamiento: modo=%s problema=%s dificultad=%d (objetivo %.0f) píldora=«%s» visible=%s" % [demo.mode, str(demo.puzzle["id"]), int(demo.puzzle["rating"]), float(todo["target"]), (demo.level_pill.get_meta("label_node") as Label).text, str(demo.level_pill.visible)])
+	print("NIVEL entrenamiento: modo=%s problema=%s dificultad=%d (objetivo %.0f) barra=«%s» insignia=%s" % [demo.mode, str(demo.puzzle["id"]), int(demo.puzzle["rating"]), float(todo["target"]), demo.counter.text, str(demo.level_slot.visible)])
 	guard = 0
 	while demo.phase != 4 and guard < 8:
 		guard += 1
