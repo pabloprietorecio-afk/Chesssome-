@@ -568,7 +568,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const lineBlock = answer?.line ? (
     <div className="vc-line">
       <p className="cm-line-text">
-        {answer.outcome === 'answer' || answer.outcome === 'also-good' ? 'Cómo sigue' : 'Qué pasaría'} tras {sanEs(answer.lineSans?.[0] ?? '')}: {answer.line}
+        Tras {sanEs(answer.lineSans?.[0] ?? '')}: {answer.line}
       </p>
       {answer.lineSans && (
         <button
@@ -578,7 +578,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             playLine();
           }}
         >
-          ▶ Ver
+          ▶ {answer.outcome === 'answer' || answer.outcome === 'also-good' ? '¿Cómo sigue?' : '¿Qué pasaría?'}
         </button>
       )}
     </div>

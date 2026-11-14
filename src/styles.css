@@ -2539,3 +2539,6 @@ a {
   color: inherit;
   font-size: 1.15em;
 }
+.vc-line-btn {
+  white-space: nowrap;
+}

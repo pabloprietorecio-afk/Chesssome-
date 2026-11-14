@@ -144,7 +144,7 @@ await page.evaluate(() => document.querySelector('.vc-answer')?.scrollIntoView({
 await sleep(200);
 await shot('04-respuesta-mala');
 // «▶ Ver»: la jugada del jugador y la línea del motor se juegan en el tablero, una tras otra.
-assert(/Qué pasaría tras Tb1\+/.test(await panel()), 'la línea se presenta como «Qué pasaría tras Tb1+»: ' + (await panel()));
+assert(/Tras Tb1\+:/.test(await panel()) && /¿Qué pasaría\?/.test(await page.$eval('.vc-line-btn', (e) => e.textContent)), 'la línea, «Tras Tb1+:» con el botón «¿Qué pasaría?»: ' + (await panel()));
 const fenNow = () => page.$eval('.vc-board-box', (e) => e.dataset.fen);
 const fenQ = await fenNow();
 const lineLen = await page.evaluate(() => document.querySelector('.vc-line .cm-line-text').textContent.split(':')[1].trim().split(/\s+/).filter((t) => !/^\d+\.$/.test(t)).length);
