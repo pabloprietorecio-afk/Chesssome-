@@ -832,6 +832,20 @@ func _game_shots(demo: Control) -> void:
 	await _frames(20)
 	await _shot("88_partida_reloj")
 	print("RELOJ: con reloj=%s blancas=%.0f negras=%.0f acciones=%d" % [str(demo.game_clocked), demo.game_clock[0], demo.game_clock[1], demo.actions.get_child_count()])
+	# Pulsar el reloj: tras la jugada, el tiempo del jugador sigue corriendo hasta que lo pulsa; a los 15 s, aviso.
+	if demo.view.board.chess.turn == demo.game_color:
+		var mv: int = demo.view.board.chess.legal_moves()[0]
+		demo.view.show_move(Chess.uci(mv))
+		demo._game_move(Chess.uci(mv))
+		await _frames(10)
+		var before: float = demo.game_clock[demo.game_color]
+		demo._press_since -= 16000
+		await _frames(20)
+		await _shot("88b_partida_pulsar")
+		print("RELOJ pulsar: estado=%s corre=%s aviso=%s nota=«%s» su reloj baja=%s" % [demo.game_state, str(demo.game_clock_side == demo.game_color), str(demo._press_warned), demo.game_note, str(demo.game_clock[demo.game_color] < before)])
+		demo._press_game_clock()
+		await _wait_bot(demo)
+		print("RELOJ tras pulsar: estado=%s" % demo.game_state)
 	if demo.view.board.chess.turn == demo.game_color:
 		demo.game_clock[demo.game_color] = 300.0
 		await _frames(30)
@@ -845,7 +859,9 @@ func _game_shots(demo: Control) -> void:
 
 
 func _wait_bot(demo: Control) -> void:
-	for i in 400:
+	# El rival piensa en tiempo real (en otro hilo): se espera por reloj, no por fotogramas.
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 15000:
 		await _frames(1)
 		if demo.game_state != "think":
 			break

@@ -33,6 +33,9 @@ cada grupo de lecciones, acorde a lo aprendido.
   jugada. Con reloj no hay deshacer ni pistas, como en una partida oficial; quien se queda sin tiempo pierde, salvo
   que el rival no tenga material para dar mate (tablas; regla simplificada: solo rey, o rey y una pieza menor). El
   rival reparte su tiempo (1/30 de lo que le queda más casi todo el incremento). En el nivel Kids no hay reloj.
+- **Pulsar el reloj** (petición de Pablo; ajuste en Opciones, activado por defecto): tras cada jugada, tu tiempo
+  sigue corriendo hasta que pulsas «Pulsar reloj» (el incremento se suma al pulsar). Si no lo pulsas en 15 s, aviso
+  en la tarjeta y vibración (otro ajuste, también activado por defecto).
 - Durante la partida: Salir, Deshacer (vuelve a la última vez que te tocaba), Pista (lo que jugaría «Medio», con
   una flecha) y Rendirse. Fin: jaque mate, ahogado, 50 jugadas, triple repetición y material insuficiente.
 - En el nivel Kids: sin notación, con voz al empezar, al recibir jaque y al acabar.

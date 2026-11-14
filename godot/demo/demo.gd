@@ -161,6 +161,14 @@ var game_clocked := false
 var game_clock := [0.0, 0.0]
 var game_inc_ms := 0.0
 var _clock_labels: Array = []
+## Pulsar el reloj tras cada jugada, como en una partida de verdad (ajuste; por defecto, sí), y avisar si no se
+## pulsa en PRESS_REMINDER segundos (ajuste; por defecto, sí). Bando cuyo reloj corre ahora.
+var press_clock := true
+var press_reminder := true
+const PRESS_REMINDER := 15.0
+var game_clock_side := 0
+var _press_since := 0
+var _press_warned := false
 ## Respuesta correcta de la puerta para adultos abierta (−1 si no hay ninguna).
 var _gate_answer := -1
 var _gate_then: Callable
@@ -595,6 +603,8 @@ func _load_settings() -> void:
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	kids = bool(cfg.get_value("app", "kids", false))
+	press_clock = bool(cfg.get_value("partida", "pulsar_reloj", true))
+	press_reminder = bool(cfg.get_value("partida", "aviso_reloj", true))
 	voice_on = bool(cfg.get_value("sonido", "voz", true))
 	gesture_hint = bool(cfg.get_value("vista", "pista_de_gestos", gesture_hint))
 	_saved_lock = bool(cfg.get_value("vista", "giro_fijado", false))
@@ -613,6 +623,8 @@ func _save_settings() -> void:
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
+	cfg.set_value("partida", "pulsar_reloj", press_clock)
+	cfg.set_value("partida", "aviso_reloj", press_reminder)
 	cfg.set_value("sonido", "voz", voice_on)
 	cfg.set_value("vista", "pista_de_gestos", gesture_hint)
 	cfg.set_value("vista", "giro_fijado", view.view_locked if view != null else _saved_lock)
@@ -2025,6 +2037,11 @@ func _build_sheet() -> void:
 	if not course.is_empty():
 		var learn_tint := _tint("butter")
 		box.add_child(_button("book", "Aprende a jugar", _open_course, learn_tint[0], learn_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
+	if not kids:
+		box.add_child(_caption("Partidas con reloj"))
+		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
+		if press_clock:
+			box.add_child(_switch_row("bulb", "butter", "Aviso si no lo pulsas", "A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo." % int(PRESS_REMINDER), press_reminder, _set_press_reminder))
 	box.add_child(_caption("Piezas"))
 	box.add_child(_picture_tiles([["piece_knight", "Figuras"], ["token_pawn", "Fichas"]], SETS.find(piece_set), _set_pieces_index))
 	box.add_child(_caption("Material"))
@@ -2153,6 +2170,21 @@ func _set_style_index(i: int) -> void:
 func _set_outline(on: bool) -> void:
 	board_outline = on
 	view.board.set_outline(on)
+	_save_settings()
+	_sync_sheet()
+
+
+func _set_press_clock(on: bool) -> void:
+	press_clock = on
+	_save_settings()
+	_sync_sheet()
+	# Si se quita a mitad de una jugada sin pulsar, se pulsa solo.
+	if not on and mode == "game" and game_state == "press":
+		_press_game_clock()
+
+
+func _set_press_reminder(on: bool) -> void:
+	press_reminder = on
 	_save_settings()
 	_sync_sheet()
 
@@ -3474,6 +3506,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	view.set_fen(fen)
 	view.set_orientation(color)
 	game_history = [view.board.chess.fen()]
+	game_clock_side = view.board.chess.turn
 	game_state = "play"
 	game_won = 0
 	game_result = ""
@@ -3496,16 +3529,37 @@ func _game_move(uci: String) -> void:
 	var before := Chess.from_fen(str(game_history[game_history.size() - 1]))
 	var m := before.find_uci(uci)
 	game_history.append(view.board.chess.fen())
-	if game_clocked:
-		game_clock[game_color] += game_inc_ms
 	view.board.set_arrows([])
 	game_note = ""
 	if _game_check_end(before, m):
 		return
+	if game_clocked and press_clock:
+		# Como en una partida de verdad: tu reloj sigue corriendo hasta que lo pulsas.
+		game_state = "press"
+		view.interactive = false
+		game_clock_side = game_color
+		_press_since = Time.get_ticks_msec()
+		_press_warned = false
+		_refresh()
+		return
+	if game_clocked:
+		game_clock[game_color] += game_inc_ms
+	_game_bot_turn()
+
+
+## El jugador pulsa su reloj: se suma su incremento y empieza a correr el del rival.
+func _press_game_clock() -> void:
+	if mode != "game" or game_state != "press":
+		return
+	game_clock[game_color] += game_inc_ms
+	game_note = ""
+	if sound_on:
+		view.board.sound.emit("place", 0.5)
 	_game_bot_turn()
 
 
 func _game_bot_turn() -> void:
+	game_clock_side = 1 - game_color
 	game_state = "think"
 	view.interactive = false
 	_refresh()
@@ -3523,20 +3577,25 @@ func _game_bot_turn() -> void:
 
 ## El reloj de la partida corre para el bando que mueve.
 func _process(delta: float) -> void:
-	if mode != "game" or not game_clocked or not (game_state in ["play", "think"]):
+	if mode != "game" or not game_clocked or not (game_state in ["play", "think", "press"]):
 		return
-	var side := view.board.chess.turn
+	var side := game_clock_side
 	game_clock[side] = maxf(0.0, float(game_clock[side]) - delta * 1000.0)
 	if float(game_clock[side]) <= 0.0:
 		_game_flag(side)
 		return
+	if game_state == "press" and press_reminder and not _press_warned and Time.get_ticks_msec() - _press_since > int(PRESS_REMINDER * 1000.0):
+		_press_warned = true
+		game_note = "¡Pulsa el reloj! Tu tiempo sigue corriendo."
+		Input.vibrate_handheld(300)
+		_refresh()
 	_show_clocks()
 
 
 func _show_clocks() -> void:
 	if _clock_labels.size() != 2:
 		return
-	var side := view.board.chess.turn
+	var side := game_clock_side
 	for i in 2:
 		var l: Label = _clock_labels[i]
 		if not is_instance_valid(l):
@@ -3612,6 +3671,7 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	if _game_check_end(pos, m):
 		return
 	game_state = "play"
+	game_clock_side = game_color
 	view.interactive = true
 	if str(game.get("variant", "")) == "" and view.board.chess.in_check():
 		game_note = _kid_line("inCheck") if kids else "El rival ha jugado %s: tu rey está en jaque." % san
@@ -3810,6 +3870,8 @@ func _build_game_card() -> void:
 	match game_state:
 		"play":
 			head = "¡Te toca!" if kids else "Te toca"
+		"press":
+			head = "Pulsa el reloj"
 		"think":
 			head = "Piensa el rival…"
 		"over":
@@ -3858,6 +3920,8 @@ func _build_game_card() -> void:
 
 func _build_game_actions() -> void:
 	var key := "game:%s:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked)]
+	if game_state == "press":
+		key += ":" + str(_press_warned)
 	if key == _actions_mode:
 		for b in [left_button, hint_button]:
 			if b != null and is_instance_valid(b):
@@ -3895,6 +3959,11 @@ func _build_game_actions() -> void:
 			left_button = null
 			hint_button = null
 			row = [out, right_button]
+			if game_state == "press":
+				var press := _button("clock", "Pulsar reloj", _press_game_clock, _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": BAR_HEIGHT, "icon": 56.0, "radius": 60, "glow": _c("glow")})
+				row.append(press)
+				# El botón grande ocupa el doble que los otros dos.
+				press.size_flags_stretch_ratio = 2.0
 		for b in [left_button, hint_button]:
 			if b != null:
 				b.disabled = game_state != "play"
