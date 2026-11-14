@@ -203,7 +203,7 @@ export function judgePause(pause: PausePack, beforeFen: string, playedUci: strin
   const line = v.line.length ? lineText(after.fen(), v.line) : undefined;
   if (v.cls === 'keeps') {
     const goal = target === 'win' ? 'también gana' : 'también mantiene las tablas';
-    return { outcome: 'also-good', text: `Según el motor, ${mine} ${goal}. La película sigue con ${answerEs}, que es la idea del final.`, line };
+    return { outcome: 'also-good', text: `${mine} ${goal}. La película sigue con ${answerEs}, que es la idea del final.`, line };
   }
   if (v.cls === 'spoils') {
     const lost = target === 'win' ? 'deja escapar la victoria' : 'pierde';
@@ -215,7 +215,7 @@ export function judgePause(pause: PausePack, beforeFen: string, playedUci: strin
           : v.lineEnd === 'insufficient'
             ? ' La línea acaba sin material para dar mate: tablas.'
             : '';
-    return { outcome: 'spoils', text: `Según el motor, ${mine} ${lost}.${end}`, line };
+    return { outcome: 'spoils', text: `${mine} ${lost}.${end}`, line };
   }
   return { outcome: 'unclear', text: `El motor no da un veredicto claro sobre ${mine}. La película sigue con ${answerEs}.`, line };
 }

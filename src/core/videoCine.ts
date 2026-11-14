@@ -443,19 +443,19 @@ export function judgeAnswer(q: ClipQuestion, uci: string): ClipAnswer {
   if (uci === q.playedUci) {
     if (q.playedCls === 'keeps') return { outcome: 'answer', text: q.why };
     const best = q.verdicts.find((x) => x.cls === 'keeps');
-    const better = best ? ` Según el motor, lo correcto era ${sanEs(best.san)}.` : '';
-    return { outcome: 'played-error', text: `Es lo que se jugó en la partida, pero según el motor ${mine} ${lost}.${lineEndText(v)}${better}`, line };
+    const better = best ? ` Lo correcto era ${sanEs(best.san)}.` : '';
+    return { outcome: 'played-error', text: `Es lo que se jugó en la partida, pero ${mine} ${lost}.${lineEndText(v)}${better}`, line };
   }
   if (v.cls === 'keeps' && q.playedCls !== 'keeps') {
     // La partida tuvo aquí un error: encontrar una jugada que mantiene el resultado es la respuesta.
     const goal = q.target === 'win' ? 'gana' : 'mantiene las tablas';
-    return { outcome: 'answer', text: `Según el motor, ${mine} ${goal}. ${q.why}`, line };
+    return { outcome: 'answer', text: `${mine} ${goal}. ${q.why}`, line };
   }
   if (v.cls === 'keeps') {
     const goal = q.target === 'win' ? 'también gana' : 'también mantiene las tablas';
-    return { outcome: 'also-good', text: `Según el motor, ${mine} ${goal}. En la partida se jugó ${playedEs}.`, line };
+    return { outcome: 'also-good', text: `${mine} ${goal}. En la partida se jugó ${playedEs}.`, line };
   }
-  if (v.cls === 'spoils') return { outcome: 'spoils', text: `Según el motor, ${mine} ${lost}.${lineEndText(v)}`, line };
+  if (v.cls === 'spoils') return { outcome: 'spoils', text: `${mine} ${lost}.${lineEndText(v)}`, line };
   return { outcome: 'unclear', text: `El motor no da un veredicto claro sobre ${mine}. En la partida se jugó ${playedEs}.`, line };
 }
 

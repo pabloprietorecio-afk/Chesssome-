@@ -1835,3 +1835,10 @@ a {
   margin: 0;
   font-size: 1.1rem;
 }
+
+/* Aviso mientras se ve el vídeo: ventana translúcida encima del tablero, sin ocupar sitio en la página. */
+.vc-glass {
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}

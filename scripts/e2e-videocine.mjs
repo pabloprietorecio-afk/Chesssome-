@@ -76,7 +76,7 @@ const clickText = async (t) => {
 const hasButton = (t) => page.evaluate((t) => [...document.querySelectorAll('button')].some((x) => x.textContent.trim().startsWith(t)), t);
 const attr = (name) => page.$eval('.vc', (e, n) => e.dataset[n], name);
 const waitAttr = async (name, value, ms = 20000) => { const t = Date.now(); while ((await attr(name)) !== String(value)) { if (Date.now() - t > ms) throw new Error(`No llega ${name}=${value} (está en ${await attr(name)})`); await sleep(80); } };
-const panel = () => page.$$eval('.vc-panel', (els) => els.map((e) => e.textContent).join(' | '));
+const panel = () => page.$$eval('.vc-panel, .vc-watch-note', (els) => els.map((e) => e.textContent).join(' | '));
 const fake = (fn, ...args) => page.evaluate(fn, ...args);
 async function move(uci, orientation = 'b') {
   const box = await page.evaluate(() => { const r = document.querySelector('.vc-board svg').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; });
@@ -234,6 +234,12 @@ await sleep(900);
 assert((await attr('phase')) === 'watching', 'durante un anuncio no debe pasar nada');
 assert(/Anuncio de YouTube/.test(await panel()), 'debe avisar del anuncio: ' + (await panel()));
 await fake(() => { window.__fakeYT.ad = false; });
+// En cuanto el vídeo arranca, el aviso desaparece y el tablero no se mueve de sitio.
+const boardTop = () => page.$eval('.vc-board', (e) => Math.round(e.getBoundingClientRect().top + window.scrollY));
+const topBefore = await boardTop();
+await sleep(700);
+assert((await page.$('.vc-watch-note')) === null, 'con el vídeo en marcha no hay aviso encima del tablero');
+assert((await boardTop()) === topBefore, 'el tablero no se mueve al arrancar el vídeo');
 await waitAttr('phase', 'asking', 20000);
 const paused = await fake(() => ({ state: window.__fakeYT.last().state, time: window.__fakeYT.last().time, calls: window.__fakeYT.calls.slice() }));
 assert(paused.state === 2, 'el vídeo debe quedar en pausa');

@@ -464,6 +464,15 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     const m = moveAt(clip, synced.ply);
     if (cur.key >= 0 && m) syncedAnim = { from: m.from, to: m.to, key: cur.key, captured: m.captured };
   } else prevSynced.current = null;
+  // Mientras se ve el vídeo, el aviso va encima del tablero (sin mover nada) y desaparece en cuanto el vídeo arranca.
+  const watchNote: JSX.Element | null =
+    st.phase !== 'watching'
+      ? null
+      : st.adSuspected
+        ? <p>Anuncio de YouTube. La pausa esperará a que empiece el vídeo.</p>
+        : !playing
+          ? <p><strong>Pulsa ▶ en el vídeo.</strong> Se parará solo justo antes de la jugada clave.</p>
+          : null;
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
   // Al avanzar un paso de la lección, se anima la última jugada del paso.
@@ -589,7 +598,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           </div>
         )}
 
-        {st.phase === 'watching' && (
+        {st.phase === 'watching' && !synced && (
           <div className="cm-hint vc-panel" aria-live="polite">
             {st.adSuspected ? (
               <p>Anuncio de YouTube. La pausa esperará a que empiece el vídeo.</p>
@@ -671,6 +680,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                   coordinates={s.settings.coordinates}
                   onMove={onMove}
                 />
+                {watchNote && !gap && (
+                  <div className="vc-gap vc-watch-note" role="status" aria-live="polite">
+                    <div className="vc-gap-card vc-glass">{watchNote}</div>
+                  </div>
+                )}
                 {gap && (
                   <div className="vc-gap" role="status">
                     <div className="vc-gap-card">
@@ -801,6 +815,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         <button className="cm-link" onClick={onClose}>
           Volver a la cartelera
         </button>
+        {st.phase === 'watching' && synced && (
+          <button className="cm-link" onClick={() => send({ type: 'ask', now: performance.now() })}>
+            Ir ya a la pregunta
+          </button>
+        )}
         {canEditMarks(packed) && (
           <button className="cm-link" onClick={onEdit}>
             Editor de marcas

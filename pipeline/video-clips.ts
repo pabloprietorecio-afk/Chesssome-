@@ -137,7 +137,7 @@ export const CLIPS: ClipSource[] = [
             ply: 104,
             question: 'Juegan las negras: Carlsen, con segundos en el reloj. ¿Qué jugarías?',
             hint: 'Tu torre de f8 está atacada.',
-            why: 'La torre de f8 está atacada por el caballo de d7. Según el motor, apartarla (Te8, Tg8, Th8 o Ta8) mantiene el equilibrio, y 52…g5 también. En la partida, Carlsen jugó 52…Ce2+??: tras 53.Txe2+ Rxe2 54.Cxf8, las blancas quedaron con una pieza de más.',
+            why: 'La torre de f8 está atacada por el caballo de d7. Apartarla (Te8, Tg8, Th8 o Ta8) mantiene el equilibrio, y 52…g5 también. En la partida, Carlsen jugó 52…Ce2+??: tras 53.Txe2+ Rxe2 54.Cxf8, las blancas quedaron con una pieza de más.',
           },
         ],
       },
@@ -197,7 +197,7 @@ export const CLIPS: ClipSource[] = [
       steps: [
         {
           moves: '',
-          text: 'Los peones negros de d3 y e3 están a dos pasos de coronar. Si las blancas no los frenan ya, …e2 y no hay forma de pararlos: por ejemplo, tras 61.h6? e2, según el motor ganan las negras.',
+          text: 'Los peones negros de d3 y e3 están a dos pasos de coronar. Si las blancas no los frenan ya, …e2 y no hay forma de pararlos: por ejemplo, tras 61.h6? e2, ganan las negras.',
           arrows: [
             { from: 'e3', to: 'e1', tone: 'bad' },
             { from: 'd3', to: 'd1', tone: 'bad' },
@@ -213,7 +213,7 @@ export const CLIPS: ClipSource[] = [
         },
         {
           moves: 'Nc4+ Ke2',
-          text: 'Carlsen apartó el rey a e2, desde donde defiende los dos peones. Según el motor, cualquier jugada de rey pierde aquí.',
+          text: 'Carlsen apartó el rey a e2, desde donde defiende los dos peones. Cualquier jugada de rey pierde aquí.',
           arrows: [
             { from: 'e2', to: 'e3', tone: 'info' },
             { from: 'e2', to: 'd3', tone: 'info' },
@@ -221,7 +221,7 @@ export const CLIPS: ClipSource[] = [
         },
         {
           moves: 'Nc4+ Ke2 Kf4',
-          text: '62.Rf4: el rey blanco también ataca e3. Ahora ese peón está atacado dos veces (rey y caballo) y defendido una sola (rey negro). Ojo: correr con el peón, 62.h6?, habría dejado la posición igualada según el motor.',
+          text: '62.Rf4: el rey blanco también ataca e3. Ahora ese peón está atacado dos veces (rey y caballo) y defendido una sola (rey negro). Ojo: correr con el peón, 62.h6?, habría dejado la posición igualada.',
           arrows: [
             { from: 'f4', to: 'e3', tone: 'good' },
             { from: 'c4', to: 'e3', tone: 'good' },
@@ -244,7 +244,7 @@ export const CLIPS: ClipSource[] = [
         },
         {
           moves: 'Nc4+ Ke2 Kf4 d2 Nxe3 Kd3 b4 d1=Q Nxd1',
-          text: '64…d1=D 65.Cxd1: la dama nueva cae enseguida. Quedan caballo y dos peones contra el rey solo, una victoria clara según el motor. Por eso abandonó Carlsen.',
+          text: '64…d1=D 65.Cxd1: la dama nueva cae enseguida. Quedan caballo y dos peones contra el rey solo, una victoria clara. Por eso abandonó Carlsen.',
         },
       ],
     },
@@ -256,7 +256,7 @@ export const CLIPS: ClipSource[] = [
             ply: 121,
             question: 'Juegan las blancas: Gukesh. Carlsen acaba de empujar 60…e3. ¿Qué jugarías?',
             hint: 'Busca un jaque que, además, ataque un peón.',
-            why: '61.Cc4+: jaque al rey de d2 y, a la vez, el caballo ataca el peón de e3. Según el motor, es la única que gana. Tras 61…Re2 62.Rf4, Carlsen abandonó.',
+            why: '61.Cc4+: jaque al rey de d2 y, a la vez, el caballo ataca el peón de e3. Es la única que gana. Tras 61…Re2 62.Rf4, Carlsen abandonó.',
           },
         ],
       },
