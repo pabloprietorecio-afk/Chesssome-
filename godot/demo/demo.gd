@@ -139,6 +139,19 @@ var voice_index := {}
 var voice_player: AudioStreamPlayer
 var _voice_queue: Array = []
 var _voice_last: Array = []
+## Partida contra el rival (core/bot.gd): ajustes ({variant, level, fen, title, text, kids, unit}), color del
+## jugador, posiciones tras cada jugada (para deshacer y para las repeticiones), estado ("play", "think", "over"),
+## resultado (1 gana, 0 tablas, −1 pierde) y lo que se cuenta en la tarjeta.
+var game := {}
+var game_color := 0
+var game_pick_color := 0
+var game_bot: Bot
+var game_history: Array = []
+var game_state := ""
+var game_won := 0
+var game_result := ""
+var game_note := ""
+var _game_thread: Thread
 ## Respuesta correcta de la puerta para adultos abierta (−1 si no hay ninguna).
 var _gate_answer := -1
 var _gate_then: Callable
@@ -537,6 +550,8 @@ func _notification(what: int) -> void:
 			_toggle_whatif()
 		elif mode == "learn":
 			_open_course()
+		elif mode == "game":
+			_leave_game()
 
 
 func _load_font(file: String) -> Font:
@@ -1086,6 +1101,8 @@ func _place_tip() -> void:
 func _card_room() -> float:
 	if mode == "learn":
 		return 820.0 if ex_state in ["intro", "end", "done", "fail"] else CARD_MIN + 160.0
+	if mode == "game":
+		return 640.0 if game_state == "over" or game_history.size() <= 2 else CARD_MIN + 120.0
 	var e := _shown_exp()
 	if whatif or (not e.is_empty() and not exp_partial and exp_level >= 2):
 		return INF
@@ -1184,6 +1201,8 @@ func _refresh(animate: bool = true) -> void:
 	level_pill.visible = mode == "train" and _has_player()
 	if mode == "learn":
 		counter.text = "Aprende a jugar"
+	elif mode == "game":
+		counter.text = "Partida"
 	elif level_pill.visible:
 		(level_pill.get_meta("label_node") as Label).text = "Nivel %d" % Assessment.level_of(float(player["rating"]["r"]))
 		counter.text = ""
@@ -1205,6 +1224,9 @@ func _build_actions() -> void:
 		return
 	if mode == "learn":
 		_build_learn_actions()
+		return
+	if mode == "game":
+		_build_game_actions()
 		return
 	var done := phase == Phase.SOLVED or phase == Phase.SHOWN
 	var kind := "done" if done else ("step" if phase == Phase.STEP else "solve")
@@ -1284,6 +1306,10 @@ func _build_card() -> void:
 		_build_learn_card()
 		_fit_card.call_deferred()
 		card_scroll.set_deferred("scroll_vertical", scroll_to)
+		return
+	if mode == "game":
+		_build_game_card()
+		_fit_card.call_deferred()
 		return
 	var total := puzzles.size()
 	var theme_name := str(puzzle.get("theme", ""))
@@ -1998,6 +2024,8 @@ func _build_sheet() -> void:
 	if _has_player() and not kids:
 		var mine_tint := _tint("lilac")
 		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
+	var play_tint := _tint("mint")
+	box.add_child(_button("piece_knight", "Jugar una partida", _open_game_setup, play_tint[0], play_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	if not course.is_empty():
 		var learn_tint := _tint("butter")
 		box.add_child(_button("book", "Aprende a jugar", _open_course, learn_tint[0], learn_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
@@ -2537,6 +2565,9 @@ func _on_move_played(uci: String) -> void:
 	if mode == "learn":
 		_learn_move(uci)
 		return
+	if mode == "game":
+		_game_move(uci)
+		return
 	var my_run := run_id
 	view.board.set_arrows([])
 	if whatif:
@@ -2947,6 +2978,8 @@ func _show_lesson_step() -> void:
 		var said := [_kid_line("lessonDone"), str(_lesson_text("takeaway"))]
 		if _is_last_lesson():
 			said.append(_kid_line("courseDone"))
+		elif _unit_of(id).has("game") and _is_last_of_unit(id):
+			said.append(_kid_line("unitGame"))
 		_say(said)
 	else:
 		ex = exercises[lesson_ex]
@@ -3126,7 +3159,10 @@ func _build_learn_actions() -> void:
 		"done":
 			row = [_button("retry", "Repetir", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"end":
-			if last_lesson and kids:
+			var unit := _unit_of(str(lesson.get("id", "")))
+			if not unit.is_empty() and unit.has("game") and _is_last_of_unit(str(lesson.get("id", ""))):
+				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("piece_knight", "Partida", _start_unit_game.bind(str(unit["id"])), _c("accent"), _c("accent_ink"), go)]
+			elif last_lesson and kids:
 				row = [_button("retry", "Repetir", _start_lesson.bind(str(lesson.get("id", ""))), _c("accent_soft"), _c("accent_text"), wide), _button("next", "Curso", _open_course, _c("accent"), _c("accent_ink"), go)]
 			elif last_lesson:
 				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Test de nivel", _after_course, _c("accent"), _c("accent_ink"), go)]
@@ -3184,6 +3220,444 @@ func _after_course() -> void:
 	else:
 		_start_test("rules")
 
+
+
+
+# ---------------------------------------------------------------- partidas contra el rival
+
+const GAME_LEVEL_TEXT := [
+	"Se equivoca a menudo. Para tus primeras partidas.",
+	"Ve las capturas sencillas, pero se despista.",
+	"Calcula un par de jugadas y no regala piezas.",
+	"Calcula más lejos y casi no falla en lo sencillo.",
+	"Lo más fuerte que tiene la app. Piensa unos segundos.",
+]
+
+
+func _unit_of(lesson_id: String) -> Dictionary:
+	for unit: Dictionary in course:
+		for l: Dictionary in unit["lessons"]:
+			if str(l["id"]) == lesson_id:
+				return unit
+	return {}
+
+
+func _is_last_of_unit(lesson_id: String) -> bool:
+	var unit := _unit_of(lesson_id)
+	if unit.is_empty():
+		return false
+	var lessons: Array = unit["lessons"]
+	return str(lessons[lessons.size() - 1]["id"]) == lesson_id
+
+
+## Elegir rival: color y cinco niveles.
+func _open_game_setup() -> void:
+	if sheet_kind != "":
+		_close_options()
+	var page := _page("game_setup")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var tile := _icon_tile("piece_knight", "mint", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Juega una partida", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_centered(_para("Pon en práctica lo que has aprendido.", F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_spacer(30.0))
+	body.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(12.0))
+	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color))
+	body.add_child(_spacer(30.0))
+	body.add_child(_text("RIVAL", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(12.0))
+	var tints := ["mint", "sky", "butter", "peach", "rose"]
+	var icons := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen"]
+	for i in Bot.LEVELS.size():
+		var cfg := {"variant": "", "level": i, "title": "Partida · %s" % str(Bot.LEVELS[i]["name"]), "text": "", "kids": "", "unit": ""}
+		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
+		body.add_child(_spacer(14.0))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("", "Cancelar", _close_game_setup, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+
+
+func _set_game_color(i: int) -> void:
+	game_pick_color = i
+
+
+func _close_game_setup() -> void:
+	_close_progress()
+	if mode == "game" and game_state == "":
+		_leave_game()
+
+
+## La partida del final de una unidad del curso.
+func _start_unit_game(unit_id: String) -> void:
+	for unit: Dictionary in course:
+		if str(unit["id"]) == unit_id and unit.has("game"):
+			var cfg: Dictionary = (unit["game"] as Dictionary).duplicate()
+			cfg["unit"] = unit_id
+			_start_game(cfg, 0)
+			return
+
+
+## Empieza una partida. color: 0 blancas, 1 negras, −1 lo elegido en la página (con «Al azar»).
+func _start_game(cfg: Dictionary, color: int) -> void:
+	_close_progress()
+	_stop_game_thread()
+	run_id += 1
+	_clear_explanation()
+	_try = {}
+	_gap_limit = INF
+	mode = "game"
+	game = cfg
+	if color < 0:
+		color = game_pick_color if game_pick_color < 2 else _rng.randi_range(0, 1)
+	game_color = color
+	game_bot = Bot.new(int(cfg.get("level", 0)), str(cfg.get("variant", "")))
+	var fen := str(cfg.get("fen", ""))
+	if fen == "":
+		fen = Board3D.START_FEN
+	view.board.set_arrows([])
+	view.board.set_goals([])
+	view.board.only_square = -1
+	view.set_fen(fen)
+	view.set_orientation(color)
+	game_history = [view.board.chess.fen()]
+	game_state = "play"
+	game_won = 0
+	game_result = ""
+	game_note = ""
+	var line := str(cfg.get("kids", ""))
+	if line == "":
+		line = _kid_line("gameWhite" if color == 0 else "gameBlack")
+	_say([line])
+	if view.board.chess.turn != game_color:
+		_game_bot_turn()
+	else:
+		view.interactive = true
+		_refresh()
+
+
+## Jugada del jugador (el tablero ya la ha hecho).
+func _game_move(uci: String) -> void:
+	if game_state != "play":
+		return
+	var before := Chess.from_fen(str(game_history[game_history.size() - 1]))
+	var m := before.find_uci(uci)
+	game_history.append(view.board.chess.fen())
+	view.board.set_arrows([])
+	game_note = ""
+	if _game_check_end(before, m):
+		return
+	_game_bot_turn()
+
+
+func _game_bot_turn() -> void:
+	game_state = "think"
+	view.interactive = false
+	_refresh()
+	var pos := view.board.chess.copy()
+	var my_run := run_id
+	_stop_game_thread()
+	_game_thread = Thread.new()
+	var started := Time.get_ticks_msec()
+	_game_thread.start(_game_think.bind(game_bot, pos, my_run, started))
+
+
+## En otro hilo: el rival piensa sin congelar la pantalla.
+func _game_think(bot: Bot, pos: Chess, my_run: int, started: int) -> void:
+	var m := bot.choose(pos)
+	_game_bot_done.call_deferred(pos, m, my_run, started)
+
+
+func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
+	_stop_game_thread()
+	if my_run != run_id or mode != "game":
+		return
+	# Que no conteste de golpe: medio segundo como mínimo.
+	var waited := Time.get_ticks_msec() - started
+	if waited < 550:
+		await _wait(float(550 - waited) / 1000.0)
+		if my_run != run_id or mode != "game":
+			return
+	if m < 0:
+		_game_check_end(null, -1)
+		return
+	var san := SanEs.san(pos, m)
+	view.show_move(Chess.uci(m))
+	game_history.append(view.board.chess.fen())
+	game_note = "Ha movido el rival. ¡Te toca!" if kids else "El rival ha jugado %s." % san
+	if _game_check_end(pos, m):
+		return
+	game_state = "play"
+	view.interactive = true
+	if str(game.get("variant", "")) == "" and view.board.chess.in_check():
+		game_note = _kid_line("inCheck") if kids else "El rival ha jugado %s: tu rey está en jaque." % san
+		_say([_kid_line("inCheck")])
+	_refresh()
+
+
+func _stop_game_thread() -> void:
+	if _game_thread != null:
+		if _game_thread.is_started():
+			_game_thread.wait_to_finish()
+		_game_thread = null
+
+
+## ¿Se ha acabado la partida tras la jugada m (hecha desde before)? Si es así, la cierra y devuelve true.
+## Con m == −1: el que mueve no tiene jugadas.
+func _game_check_end(before: Chess, m: int) -> bool:
+	var pos := view.board.chess
+	var variant := str(game.get("variant", ""))
+	var winner := -2
+	var why := ""
+	if variant == "peones":
+		if m >= 0:
+			winner = Bot.peones_result(pos, m)
+			if winner >= 0:
+				why = "corona" if Chess.move_promo(m) != 0 else "piezas"
+		if winner < 0 and pos.pseudo_moves().is_empty():
+			winner = 1 - pos.turn
+			why = "bloqueo"
+		if winner < 0:
+			return false
+	else:
+		if pos.legal_moves().is_empty():
+			winner = 1 - pos.turn if pos.in_check() else -1
+			why = "mate" if pos.in_check() else "ahogado"
+		elif pos.half >= 100:
+			winner = -1
+			why = "50"
+		elif _game_repeated(3):
+			winner = -1
+			why = "repeticion"
+		elif _game_bare():
+			winner = -1
+			why = "material"
+		else:
+			return false
+	game_state = "over"
+	view.interactive = false
+	game_won = 0 if winner < 0 else (1 if winner == game_color else -1)
+	var texts := {
+		"mate": ["¡Jaque mate! Has ganado.", "Jaque mate: gana el rival."],
+		"corona": ["¡Has coronado! Has ganado.", "El rival ha coronado: gana él."],
+		"piezas": ["¡Has capturado todas sus piezas!", "El rival ha capturado todas tus piezas."],
+		"bloqueo": ["El rival se ha quedado sin jugadas: ¡has ganado!", "Te has quedado sin jugadas: gana el rival."],
+	}
+	var draws := {"ahogado": "Ahogado: el rey no está en jaque y no puede mover. Tablas.", "50": "Cincuenta jugadas sin capturas ni movimientos de peón: tablas.", "repeticion": "La misma posición tres veces: tablas.", "material": "No queda material para dar mate: tablas."}
+	if game_won == 0:
+		game_result = str(draws.get(why, "Tablas."))
+		_say([_kid_line("gameDraw")])
+	else:
+		game_result = str((texts[why] as Array)[0 if game_won > 0 else 1])
+		if variant == "peones":
+			_say([_kid_line("pawnsWin" if game_won > 0 else "pawnsLose")])
+		else:
+			_say([_kid_line("gameWin" if game_won > 0 else "gameLose")])
+	if game_won > 0 and str(game.get("unit", "")) != "":
+		course_done["partida-" + str(game["unit"])] = 1
+		_save_course_progress()
+	_refresh()
+	return true
+
+
+func _game_repeated(times: int) -> bool:
+	var counts := {}
+	for f: Variant in game_history:
+		var key := " ".join(str(f).split(" ").slice(0, 4))
+		counts[key] = int(counts.get(key, 0)) + 1
+		if int(counts[key]) >= times:
+			return true
+	return false
+
+
+## Solo reyes, o rey y una pieza menor contra rey: nadie puede dar mate.
+func _game_bare() -> bool:
+	var minors := 0
+	for p in view.board.chess.b:
+		if p == 0:
+			continue
+		var t := Chess.type_of(p)
+		if t == Chess.PAWN or t == Chess.ROOK or t == Chess.QUEEN:
+			return false
+		if t == Chess.KNIGHT or t == Chess.BISHOP:
+			minors += 1
+	return minors <= 1
+
+
+## Deshacer: vuelve a la última vez que le tocaba al jugador (su jugada y la respuesta del rival).
+func _game_undo() -> void:
+	if game_state == "think" or game_history.size() < 2:
+		return
+	run_id += 1
+	var keep := game_history.size() - 1
+	while keep > 0:
+		var turn_char := str(game_history[keep - 1]).split(" ")[1]
+		keep -= 1
+		if (turn_char == "w") == (game_color == 0):
+			break
+	if keep < 0:
+		return
+	game_history = game_history.slice(0, keep + 1)
+	view.set_fen(str(game_history[keep]))
+	view.board.set_arrows([])
+	game_state = "play"
+	game_note = "Jugada deshecha."
+	view.interactive = view.board.chess.turn == game_color
+	if not view.interactive:
+		_game_bot_turn()
+		return
+	_refresh()
+
+
+## Pista: lo que jugaría el rival «Medio» en tu lugar, con una flecha.
+func _game_hint() -> void:
+	if game_state != "play":
+		return
+	var helper := Bot.new(2, str(game.get("variant", "")))
+	var m := helper.choose(view.board.chess.copy())
+	if m < 0:
+		return
+	view.board.set_arrows([{"from": Chess.move_from(m), "to": Chess.move_to(m), "tone": "info"}])
+	game_note = _kid_line("gameHint") if kids else "Pista: %s." % SanEs.san(view.board.chess, m)
+	_say([_kid_line("gameHint")])
+	_refresh()
+
+
+func _game_resign() -> void:
+	if game_state == "over":
+		return
+	_stop_game_thread()
+	run_id += 1
+	game_state = "over"
+	game_won = -1
+	game_result = "Te has rendido."
+	view.interactive = false
+	_refresh()
+
+
+func _game_again() -> void:
+	_start_game(game, game_color)
+
+
+func _leave_game() -> void:
+	_stop_game_thread()
+	run_id += 1
+	view.interactive = false
+	view.board.set_arrows([])
+	var unit := str(game.get("unit", ""))
+	game_state = ""
+	view.set_orientation(0)
+	if unit != "" or kids or not _has_player():
+		if lesson.is_empty():
+			mode = "free"
+			_idle()
+		else:
+			mode = "learn"
+			_show_lesson_step()
+		_open_course()
+	else:
+		_start_training()
+
+
+## Tras la partida de una unidad: la primera lección de la siguiente (o el mapa del curso).
+func _game_next_lesson() -> void:
+	var unit := str(game.get("unit", ""))
+	_stop_game_thread()
+	game_state = ""
+	var found := false
+	view.set_orientation(0)
+	for u: Dictionary in course:
+		if found:
+			_start_lesson(str((u["lessons"] as Array)[0]["id"]))
+			return
+		found = str(u["id"]) == unit
+	# Fin del curso: sin nivel todavía, el test (salvo en el nivel Kids).
+	if not kids and not _has_player():
+		game_state = ""
+		_after_course()
+	else:
+		_leave_game()
+
+
+func _build_game_card() -> void:
+	var head := ""
+	var tone := _c("ink")
+	match game_state:
+		"play":
+			head = "¡Te toca!" if kids else "Te toca"
+		"think":
+			head = "Piensa el rival…"
+		"over":
+			head = "¡Has ganado!" if game_won > 0 else ("Tablas" if game_won == 0 else ("Ha ganado el rival" if kids else "Has perdido"))
+			tone = _c("good") if game_won > 0 else (_c("ink") if game_won == 0 else _c("bad"))
+	title = _para(head, F_TITLE, tone, font_display)
+	if kids and voice_on and _has_voice(_voice_last):
+		var top := HBoxContainer.new()
+		top.add_theme_constant_override("separation", 16)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(title)
+		top.add_child(_round_button("sound", _say_again, 96.0, _c("field"), _c("ink"), false))
+		card_body.add_child(top)
+	else:
+		card_body.add_child(title)
+	var chips := HFlowContainer.new()
+	chips.add_theme_constant_override("h_separation", 12)
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chips.add_child(_chip(str(game.get("title", "Partida")), _c("field"), _c("ink")))
+	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet")))
+	card_body.add_child(chips)
+	if game_state == "over":
+		card_body.add_child(_para(game_result, F_BODY, _c("ink"), font_medium))
+		return
+	if game_history.size() <= 2 and str(game.get("text", "")) != "":
+		card_body.add_child(_para(str(game.get("kids", "")) if kids and str(game.get("kids", "")) != "" else str(game["text"]), F_BODY, _c("ink"), font_regular))
+	if game_note != "":
+		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
+
+
+func _build_game_actions() -> void:
+	var key := "game:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", ""))]
+	if key == _actions_mode:
+		for b in [left_button, hint_button]:
+			if b != null and is_instance_valid(b):
+				b.disabled = game_state != "play"
+				b.modulate.a = 1.0 if game_state == "play" else 0.42
+		return
+	_actions_mode = key
+	for old in actions.get_children():
+		(old as CanvasItem).visible = false
+		old.queue_free()
+	hint_button = null
+	step_button = null
+	var wide := {"font_size": F_BODY, "height": BAR_HEIGHT, "icon": 56.0, "radius": 60}
+	var go := wide.duplicate()
+	go["glow"] = _c("glow")
+	go["trailing"] = true
+	var row: Array[Button] = []
+	if game_state == "over":
+		var next: Button
+		if str(game.get("unit", "")) != "":
+			next = _button("next", "Seguir", _game_next_lesson, _c("accent"), _c("accent_ink"), go)
+		else:
+			next = _button("next", "Salir", _leave_game, _c("accent"), _c("accent_ink"), go)
+		row = [_button("retry", "Otra partida", _game_again, _c("accent_soft"), _c("accent_text"), wide), next]
+		left_button = row[0]
+		right_button = row[1]
+	else:
+		left_button = _tool_button("back", "Deshacer", _game_undo, "sky")
+		hint_button = _tool_button("bulb", "Pista", _game_hint, "butter")
+		right_button = _tool_button("flag", "Rendirse", _game_resign, "rose")
+		var out := _tool_button("close", "Salir", _leave_game, "lilac")
+		row = [out, left_button, hint_button, right_button]
+		for b in [left_button, hint_button]:
+			b.disabled = game_state != "play"
+			b.modulate.a = 1.0 if game_state == "play" else 0.42
+	for b: Button in row:
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		actions.add_child(b)
 
 
 # ---------------------------------------------------------------- nivel Kids: textos sencillos y voz
@@ -3428,6 +3902,8 @@ func _leave_progress() -> void:
 		_start_training()
 	elif progress_kind == "gate":
 		_close_gate()
+	elif progress_kind == "game_setup":
+		_close_game_setup()
 	elif progress_kind == "progress" or (progress_kind in ["experience", "course"] and (_has_player() or mode == "learn")):
 		_close_progress()
 

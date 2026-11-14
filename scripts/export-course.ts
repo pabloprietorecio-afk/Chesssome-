@@ -287,6 +287,19 @@ function matesUnit(): { id: string; title: string; lessons: Lesson[] } {
   return { id: 'practica', title: 'Practica el mate', lessons };
 }
 
+/**
+ * Partida al final de cada unidad, con lo aprendido hasta ahí. Las dos primeras, sin reyes (todavía no se ha
+ * visto el jaque): la guerra de peones y peones con caballos. Después, partidas enteras contra rivales cada vez
+ * más fuertes (niveles de godot/core/bot.gd).
+ */
+const UNIT_GAMES: Record<string, { variant: string; level: number; fen?: string; title: string; text: string; kids: keyof typeof KIDS_LINES }> = {
+  piezas: { variant: 'peones', level: 0, fen: '8/pppppppp/8/8/8/8/PPPPPPPP/8 w - - 0 1', title: 'Guerra de peones', text: 'Solo peones. Gana quien llegue primero al final del tablero, quien capture todos los peones del rival o quien lo deje sin jugadas.', kids: 'pawnsStart' },
+  capturar: { variant: 'peones', level: 1, fen: '1n4n1/pppppppp/8/8/8/8/PPPPPPPP/1N4N1 w - - 0 1', title: 'Peones y caballos', text: 'Gana quien corone un peón, quien capture todas las piezas del rival o quien lo deje sin jugadas. Vigila qué casillas atacan sus caballos.', kids: 'knightsStart' },
+  jaque: { variant: '', level: 0, title: 'Tu primera partida', text: 'Una partida entera contra el rival más fácil. Gana quien dé jaque mate.', kids: 'gameWhite' },
+  especiales: { variant: '', level: 1, title: 'Partida contra «Fácil»', text: 'Enroca pronto para proteger a tu rey y busca piezas que el rival deje sin defender.', kids: 'gameWhite' },
+  practica: { variant: '', level: 2, title: 'Partida contra «Medio»', text: 'Antes de cada jugada, mira si tienes un jaque mate y qué amenaza el rival.', kids: 'gameWhite' },
+};
+
 const KIDS_MATES: { intro: string[]; exercise: string; takeaway: string } = {
   intro: ['Estas posiciones son de partidas de verdad. En todas puedes dar jaque mate con una sola jugada.', 'Mira bien todo el tablero.'],
   exercise: 'Busca el jaque mate.',
@@ -299,6 +312,7 @@ export function buildCourse() {
   const units = [...COURSE, matesUnit()].map((u) => ({
     id: u.id,
     title: u.title,
+    ...(UNIT_GAMES[u.id] ? { game: { ...UNIT_GAMES[u.id], kids: KIDS_LINES[UNIT_GAMES[u.id].kids] } } : {}),
     lessons: u.lessons.map((l) => {
       if (ids.has(l.id)) throw new Error(`Lección repetida: ${l.id}`);
       ids.add(l.id);
@@ -321,6 +335,8 @@ export function buildCourse() {
     }),
   }));
   for (const id of Object.keys(KIDS)) if (!ids.has(id)) throw new Error(`Texto Kids de una lección que no existe: ${id}`);
+  for (const id of Object.keys(UNIT_GAMES)) if (!units.some((u) => u.id === id)) throw new Error(`Partida de una unidad que no existe: ${id}`);
+  for (const g of Object.values(UNIT_GAMES)) if (g.fen && !g.fen.includes(' w ')) throw new Error(`Las partidas de unidad empiezan con blancas: ${g.fen}`);
   return { generatedBy: 'scripts/export-course.ts (contenido: src/course/course.ts y src/course/kids.ts; mates: Lichess, CC0)', lessons: ids.size, exercises, kidsLines: KIDS_LINES, units };
 }
 

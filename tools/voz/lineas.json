@@ -40,6 +40,54 @@
   "text": "¡Hola! Soy tu entrenador de ajedrez. ¿Empezamos?"
  },
  {
+  "id": "930bc2d4a583",
+  "text": "¡Muy bien! Ahora, a jugar una partida con lo que has aprendido."
+ },
+ {
+  "id": "40bf092f08b8",
+  "text": "¡A jugar! Tú llevas las blancas."
+ },
+ {
+  "id": "d10d947681b9",
+  "text": "¡A jugar! Tú llevas las negras."
+ },
+ {
+  "id": "a18b915e347a",
+  "text": "¡Guerra de peones! Gana quien llegue primero al final del tablero."
+ },
+ {
+  "id": "cf6415b99fb2",
+  "text": "Peones y caballos. Gana quien corone un peón o capture todas las piezas del rival."
+ },
+ {
+  "id": "c5385a942c94",
+  "text": "¡Cuidado! Tu rey está en jaque."
+ },
+ {
+  "id": "ae2ffda2cf01",
+  "text": "¡Jaque mate! ¡Has ganado!"
+ },
+ {
+  "id": "21f4af5a6daa",
+  "text": "Esta vez ha ganado el rival. ¡Juega otra!"
+ },
+ {
+  "id": "0e71d0b3e1cd",
+  "text": "¡Tablas! Nadie gana."
+ },
+ {
+  "id": "171a065d5027",
+  "text": "¡Has ganado!"
+ },
+ {
+  "id": "d75524f822b7",
+  "text": "Ha ganado el rival. ¡Otra vez!"
+ },
+ {
+  "id": "e7efe8c0b663",
+  "text": "Pista: prueba con esta pieza."
+ },
+ {
   "id": "28c81c2299ed",
   "text": "El tablero"
  },

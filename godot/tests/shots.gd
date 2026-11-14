@@ -449,6 +449,7 @@ func _demo_shots() -> void:
 	await _level_shots(demo)
 	await _course_shots(demo)
 	await _kids_shots(demo)
+	await _game_shots(demo)
 	demo._open_welcome()
 	await _frames(6)
 	await _shot("38_demo_bienvenida")
@@ -764,6 +765,68 @@ func _kids_shots(demo: Control) -> void:
 	print("KIDS puerta con respuesta buena: kids=%s modo=%s" % [str(demo.kids), demo.mode])
 	demo._close_progress()
 	await _frames(4)
+
+
+## Partidas contra el rival: elegir nivel, una jugada con su respuesta, pista, deshacer, rendirse, la guerra de
+## peones (ganada al coronar) y un mate que gana la partida.
+func _game_shots(demo: Control) -> void:
+	var dview: BoardView3D = demo.view
+	demo._open_game_setup()
+	await _frames(10)
+	await _shot("80_partida_elegir")
+	demo._start_game({"variant": "", "level": 0, "title": "Partida · Muy fácil", "text": "", "kids": "", "unit": ""}, 0)
+	await _frames(12)
+	_tap(dview, _sq("e2"))
+	await _frames(3)
+	_tap(dview, _sq("e4"))
+	await _wait_bot(demo)
+	await _shot("81_partida_respuesta")
+	print("PARTIDA tras e4: estado=%s nota=«%s» jugadas=%d" % [demo.game_state, demo.game_note, demo.game_history.size()])
+	demo._game_hint()
+	await _frames(12)
+	await _shot("82_partida_pista")
+	print("PARTIDA pista: «%s»" % demo.game_note)
+	demo._game_undo()
+	await _frames(12)
+	print("PARTIDA deshacer: jugadas=%d turno=%d interactivo=%s" % [demo.game_history.size(), dview.board.chess.turn, str(dview.interactive)])
+	demo._game_resign()
+	await _frames(12)
+	await _shot("83_partida_rendirse")
+	print("PARTIDA rendirse: estado=%s resultado=«%s»" % [demo.game_state, demo.game_result])
+	# Guerra de peones: la partida de la primera unidad, y una coronación que la gana.
+	demo._start_unit_game("piezas")
+	await _frames(12)
+	await _shot("84_partida_peones")
+	var race := "8/1P6/8/8/8/8/6p1/8 w - - 0 1"
+	dview.set_fen(race)
+	demo.game_history = [race]
+	dview.show_move("b7b8q")
+	demo._game_move("b7b8q")
+	await _frames(30)
+	await _shot("85_partida_peones_ganada")
+	print("PARTIDA peones: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	# Un mate en una dentro de una partida.
+	demo._start_game({"variant": "", "level": 2, "title": "Partida · Medio", "text": "", "kids": "", "unit": ""}, 0)
+	var mate := "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"
+	dview.set_fen(mate)
+	demo.game_history = [mate]
+	dview.show_move("a1a8")
+	demo._game_move("a1a8")
+	await _frames(30)
+	await _shot("86_partida_mate")
+	print("PARTIDA mate: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	demo._leave_game()
+	await _frames(6)
+	demo._close_progress()
+	print("PARTIDA salir: modo=%s" % demo.mode)
+
+
+func _wait_bot(demo: Control) -> void:
+	for i in 400:
+		await _frames(1)
+		if demo.game_state != "think":
+			break
+	await _frames(20)
 
 
 ## Dos dedos que giran alrededor de un punto, de un ángulo a otro (grados; positivo = a la derecha, como las agujas del reloj).
