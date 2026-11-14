@@ -1,0 +1,11 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+  missed_mate: Con 1. Ta2 tenías jaque mate: Ta8#. Antes de cada jugada, mira si tienes un jaque que el rival no pueda parar.
+  allowed_mate: Tras 1. Cf5, el rival podía darte jaque mate con Ta1#. Por ejemplo, Rf1 lo evitaba. Antes de mover, pregúntate qué amenaza el rival.
+  hang: Con 1. Dd4, tu dama quedó en d4, donde el rival la podía capturar sin perder lo mismo a cambio. Con De2+ no perdías nada. Antes de mover, mira qué piezas tuyas quedan atacadas.
+  missed_capture: En la jugada 1, Dxd5 capturaba el caballo de d5 y ganaba material: no estaba bien defendido. Jugaste Rf2. Antes de mover, mira qué piezas del rival puedes capturar.
+  king: En la jugada 2 moviste el rey (Re2) sin enrocar: ya no podrás enrocar. El enroque esconde al rey y saca la torre a la vez.
+  repeat: En la jugada 3 moviste tu caballo por tercera vez (Cg3) mientras 3 de tus caballos y alfiles seguían sin salir. En la apertura conviene sacar primero todas las piezas: cada jugada con la misma pieza es una que no usas para desarrollar otra.
+  hang: Con 2... Dh4, tu dama quedó en h4, donde el rival la podía capturar sin perder lo mismo a cambio. Con d6 no perdías nada. Antes de mover, mira qué piezas tuyas quedan atacadas.
+Análisis: 38 comprobaciones, 0 fallos
+TODO OK
