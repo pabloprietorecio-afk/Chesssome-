@@ -20,7 +20,8 @@
     "ui:icons": "node tools/ui/icons.mjs",
     "godot:demo": "tsx scripts/export-godot-demo.ts",
     "course": "tsx scripts/export-course.ts",
-    "voice": "tsx scripts/export-voice.ts"
+    "voice": "tsx scripts/export-voice.ts",
+    "ui:kids": "node tools/ui/kids.mjs"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

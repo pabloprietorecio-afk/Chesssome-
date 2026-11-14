@@ -13,12 +13,20 @@ extends RefCounted
 const ATLAS := "res://ui/iconos.bin"
 const INDEX := "res://ui/iconos.json"
 const EMBLEM := "res://ui/emblema.bin"
+## Nivel Kids: iconos a color y fondo de juguetes (Fluent Emoji de Microsoft, licencia MIT; tools/ui/kids.mjs).
+const KIDS_ATLAS := "res://ui/kids_iconos.bin"
+const KIDS_INDEX := "res://ui/kids_iconos.json"
+const KIDS_WALL := "res://ui/kids_fondo.bin"
 
 static var _atlas: Image
 static var _cell := 160
 static var _cells := {}
 static var _cache := {}
 static var _tried := false
+static var _kids_atlas: Image
+static var _kids_cell := 160
+static var _kids_cells := {}
+static var _kids_tried := false
 
 
 static func _ensure() -> void:
@@ -81,3 +89,39 @@ static func emblem() -> Texture2D:
 			tex = ImageTexture.create_from_image(img)
 		_cache["#emblema"] = tex
 	return _cache["#emblema"]
+
+
+static func _ensure_kids() -> void:
+	if _kids_tried:
+		return
+	_kids_tried = true
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(KIDS_INDEX)) if FileAccess.file_exists(KIDS_INDEX) else null
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	_kids_cell = int(data.get("cell", 160))
+	_kids_cells = data.get("icons", {})
+	_kids_atlas = _png(KIDS_ATLAS)
+
+
+## Icono a color del nivel Kids (null si ese icono no tiene versión Kids: entonces se usa el normal).
+static func kids_texture(icon_name: String) -> Texture2D:
+	_ensure_kids()
+	var key := "#kids:" + icon_name
+	if _cache.has(key):
+		return _cache[key]
+	var tex: Texture2D = null
+	if _kids_atlas != null and _kids_cells.has(icon_name):
+		var at: Array = _kids_cells[icon_name]
+		var region := _kids_atlas.get_region(Rect2i(int(at[0]) * _kids_cell, int(at[1]) * _kids_cell, _kids_cell, _kids_cell))
+		region.generate_mipmaps()
+		tex = ImageTexture.create_from_image(region)
+	_cache[key] = tex
+	return tex
+
+
+## Fondo de juguetes en tonos pastel, para repetir en mosaico.
+static func kids_wall() -> Texture2D:
+	if not _cache.has("#kids_wall"):
+		var img := _png(KIDS_WALL) if FileAccess.file_exists(KIDS_WALL) else null
+		_cache["#kids_wall"] = ImageTexture.create_from_image(img) if img != null else null
+	return _cache["#kids_wall"]

@@ -259,6 +259,10 @@ var overlay: Control
 ## Zona desplazable de la hoja abierta (opciones o ayuda).
 var sheet_scroll: ScrollContainer
 var welcome: Control
+## Fondo de juguetes del nivel Kids sobre el cielo, y la ventana con el resultado de un ejercicio de lección.
+var kids_wall: TextureRect
+var learn_popup: Control
+var _popup_row: Array = []
 ## Página a pantalla completa abierta: la pregunta de experiencia ("experience"), el resultado del test
 ## ("result") o el progreso ("progress"). Y su zona desplazable.
 var progress: Control
@@ -520,6 +524,8 @@ func _ready() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
+	kids_wall = _kids_wall()
+	add_child(kids_wall)
 	# El tablero 3D pinta su propio fondo con el color de esta pantalla (ver BoardView3D.set_board_theme).
 	view = BoardView3D.new()
 	view.move_played.connect(_on_move_played)
@@ -752,9 +758,27 @@ func _style_button(b: Button, fill: Color, fg: Color, radius: int, font_size: in
 
 
 ## Icono de la interfaz (ver UiIcons), con el color que se le pida.
+## Fondo de juguetes en mosaico (solo se ve en el nivel Kids).
+func _kids_wall() -> TextureRect:
+	var w := TextureRect.new()
+	w.texture = UiIcons.kids_wall()
+	w.stretch_mode = TextureRect.STRETCH_TILE
+	w.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	w.set_anchors_preset(Control.PRESET_FULL_RECT)
+	w.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	w.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	w.visible = kids
+	return w
+
+
 func _icon(icon_name: String, side: float, color: Color) -> TextureRect:
 	var t := TextureRect.new()
 	t.texture = UiIcons.texture(icon_name)
+	# Nivel Kids: el icono a color, si lo hay (y sin teñir).
+	var kid_tex := UiIcons.kids_texture(icon_name) if kids else null
+	if kid_tex != null:
+		t.texture = kid_tex
+		color = Color(1.0, 1.0, 1.0, color.a)
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.custom_minimum_size = Vector2(side, side)
@@ -1114,10 +1138,12 @@ func _place_tip() -> void:
 ## Sitio que pide la tarjeta según lo que enseña: poco mientras se resuelve, más con la explicación de un
 ## fallo o de la solución, y todo el que haya cuando se profundiza o se prueban otras jugadas.
 func _card_room() -> float:
+	# En las lecciones y en las partidas el tablero no se mueve: la tarjeta tiene siempre el mismo sitio (si el texto
+	# no cabe, se desplaza dentro) y el resultado de cada ejercicio sale en una ventana encima del tablero.
 	if mode == "learn":
-		return 820.0 if ex_state in ["intro", "end", "done", "fail"] else CARD_MIN + 160.0
+		return 620.0
 	if mode == "game":
-		return 640.0 if game_state == "over" or game_history.size() <= 2 else CARD_MIN + 120.0
+		return 560.0
 	var e := _shown_exp()
 	if whatif or (not e.is_empty() and not exp_partial and exp_level >= 2):
 		return INF
@@ -1226,8 +1252,11 @@ func _refresh(animate: bool = true) -> void:
 		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
 	else:
 		counter.text = ("Problema %d de %d" % [index + 1, total]) if total > 0 else "Sin problemas"
+	if kids_wall != null and is_instance_valid(kids_wall):
+		kids_wall.visible = kids
 	_build_card()
 	_build_actions()
+	_sync_learn_popup()
 	_layout(animate)
 
 
@@ -3217,7 +3246,96 @@ func _build_learn_actions() -> void:
 	for b: Button in row:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Al acabar un ejercicio (o la lección), los botones van en la ventana del resultado, encima del tablero.
+	if ex_state in ["done", "fail", "end"]:
+		_popup_row = row
+		return
+	_popup_row = []
+	for b: Button in row:
 		actions.add_child(b)
+
+
+## Ventana semitransparente con el resultado del ejercicio o de la lección y sus botones, encima del tablero.
+func _sync_learn_popup() -> void:
+	var want := mode == "learn" and ex_state in ["done", "fail", "end"] and not _popup_row.is_empty()
+	if learn_popup != null and is_instance_valid(learn_popup):
+		if want and str(learn_popup.get_meta("key", "")) == _actions_mode:
+			return
+		learn_popup.visible = false
+		learn_popup.queue_free()
+	learn_popup = null
+	if not want:
+		return
+	learn_popup = Control.new()
+	learn_popup.set_anchors_preset(Control.PRESET_FULL_RECT)
+	learn_popup.set_meta("key", _actions_mode)
+	learn_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(learn_popup)
+	var scrim := ColorRect.new()
+	scrim.color = Color(1.0, 1.0, 1.0, 0.18) if not dark else Color(0.0, 0.0, 0.0, 0.28)
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	learn_popup.add_child(scrim)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	var paper := _c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.86)
+	sb.set_corner_radius_all(60)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 30
+	sb.shadow_offset = Vector2(0.0, 12.0)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW if kids else CanvasItem.CLIP_CHILDREN_DISABLED
+	learn_popup.add_child(panel)
+	if kids:
+		var wall := _kids_wall()
+		wall.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		wall.modulate.a = 0.8
+		panel.add_child(wall)
+	var pad := _pad(44, 44, 40, 40)
+	panel.add_child(pad)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 18)
+	pad.add_child(column)
+	var good := ex_state != "fail"
+	var head := "¡Bien!" if ex_state == "done" else ("¡Cuidado!" if ex_state == "fail" else ("¡Lección terminada!" if kids else "Lección terminada"))
+	column.add_child(_centered(_para(head, F_TITLE + 10, _c("good") if good else _c("bad"), font_display)))
+	var stars := -1
+	if ex_state == "end":
+		stars = int(course_done.get(str(lesson.get("id", "")), 3))
+	elif ex_state == "done" and not ex_stars.is_empty():
+		stars = int(ex_stars[ex_stars.size() - 1])
+	if stars >= 0:
+		column.add_child(_centered(_para("★".repeat(stars) + "☆".repeat(3 - stars), F_TITLE + 14, _tint("butter")[1], font_display)))
+	var line := str(_lesson_text("takeaway")) if ex_state == "end" else ex_text
+	if line != "":
+		column.add_child(_centered(_para(line, F_BODY, _c("ink"), font_medium)))
+	column.add_child(_spacer(6.0))
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 16)
+	for b: Button in _popup_row:
+		buttons.add_child(b)
+	column.add_child(buttons)
+	# Centrada sobre el tablero, con un margen a los lados.
+	var place := func() -> void:
+		if not is_instance_valid(panel) or board_slot == null or not is_instance_valid(board_slot):
+			return
+		var w := minf(size.x - 80.0, 980.0)
+		panel.size = Vector2(w, 0.0)
+		panel.reset_size()
+		panel.size.x = w
+		var h := panel.get_combined_minimum_size().y
+		var rect := board_slot.get_global_rect()
+		panel.position = Vector2((size.x - w) * 0.5, clampf(rect.get_center().y - h * 0.5, 40.0, size.y - h - 40.0))
+		for child in panel.get_children():
+			if child is TextureRect:
+				(child as TextureRect).size = panel.size
+	panel.minimum_size_changed.connect(place)
+	place.call_deferred()
+	# Aparece con un pequeño salto.
+	panel.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
 
 
 func _is_last_lesson() -> bool:
@@ -4421,6 +4539,8 @@ func _page(kind: String) -> Dictionary:
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.mouse_filter = Control.MOUSE_FILTER_STOP
 	progress.add_child(back)
+	if kids:
+		progress.add_child(_kids_wall())
 	var inset := _insets()
 	var pad := _pad(48, int(maxf(inset.x, 60.0)) + 20, 48, int(inset.y) + 40)
 	pad.set_anchors_preset(Control.PRESET_FULL_RECT)

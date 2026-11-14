@@ -19,6 +19,16 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
 - **Salir del nivel Kids** pide una multiplicación (6–9 × 6–9) con tres respuestas: una puerta para adultos sencilla.
   Entrar no la pide.
 
+## Aspecto (14 nov, petición de Pablo)
+
+- Iconos a color en los botones (Fluent Emoji de Microsoft, estilo Flat, licencia MIT; `tools/ui/kids.mjs`):
+  bombilla, flechas, casa, engranaje, caballito de tiovivo para «Partida», etc. Si un icono no tiene versión Kids,
+  se usa el normal.
+- Fondo de peluches y juguetes en tonos pastel (osito, cometa, globo, pato, pelota, cohete, tren, dado…), en mosaico
+  sobre el cielo y en las páginas, y dentro de la ventana del resultado.
+- El tablero no se mueve en las lecciones ni en las partidas (para todos, no solo en Kids). Al acabar un ejercicio,
+  el resultado y los botones (Repetir / Siguiente) salen en una ventana semitransparente encima del tablero.
+
 ## Voz
 
 - Kokoro-82M (pesos Apache-2.0), voz española `ef_dora` por defecto (hay también `em_alex` y `em_santa`; muestras en
