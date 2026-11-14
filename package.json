@@ -19,7 +19,8 @@
     "pieces:fichas": "node tools/pieces/fichas.mjs",
     "ui:icons": "node tools/ui/icons.mjs",
     "godot:demo": "tsx scripts/export-godot-demo.ts",
-    "course": "tsx scripts/export-course.ts"
+    "course": "tsx scripts/export-course.ts",
+    "voice": "tsx scripts/export-voice.ts"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

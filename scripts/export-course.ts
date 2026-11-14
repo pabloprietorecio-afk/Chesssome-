@@ -14,7 +14,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Chess, validateFen, type Move } from 'chess.js';
-import { COURSE, toFen, type Accept, type Exercise } from '../src/course/course';
+import { readFileSync } from 'node:fs';
+import { COURSE, toFen, type Accept, type Exercise, type Lesson } from '../src/course/course';
+import { KIDS } from '../src/course/kids';
 import { VALUE } from '../src/core/chessx';
 import { sanEs, the } from '../src/core/lang';
 import type { PieceType } from '../src/core/types';
@@ -79,6 +81,8 @@ interface Judged {
   ok: boolean;
   /** Qué decir tras esa jugada. */
   t: string;
+  /** Lo mismo para el nivel Kids: sin notación ni casillas, para que haya pocas frases distintas (llevan voz). */
+  k: string;
 }
 
 const pieceOf = (t: string): PieceType => t as PieceType;
@@ -93,7 +97,60 @@ function escapeOf(after: Chess): string {
   return `pueden tapar el jaque con ${sanEs(replies[0].san)}`;
 }
 
+/** Nombre de la pieza para el nivel Kids, con artículo. */
+const KID_PIECE: Record<string, string> = { p: 'tu peón', n: 'tu caballo', b: 'tu alfil', r: 'tu torre', q: 'tu dama', k: 'tu rey' };
+const KID_THE: Record<string, string> = { p: 'el peón', n: 'el caballo', b: 'el alfil', r: 'la torre', q: 'la dama' };
+
+/** Por qué no es mate, para el nivel Kids: solo la clase de salida. */
+function kidsEscapeOf(after: Chess): string {
+  const replies = after.moves({ verbose: true });
+  if (replies.some((r) => r.piece === 'k' && !r.captured)) return 'Es jaque, pero el rey negro se puede escapar. ¡Prueba otra!';
+  if (replies.some((r) => r.captured)) return 'Es jaque, pero te pueden capturar esa pieza. ¡Prueba otra!';
+  return 'Es jaque, pero pueden tapar el jaque. ¡Prueba otra!';
+}
+
 function judge(chess: Chess, m: Move, accept: Accept, best: number): Judged {
+  const adult = judgeAdult(chess, m, accept, best);
+  return { ...adult, k: judgeKids(chess, m, accept, best) };
+}
+
+function judgeKids(chess: Chess, m: Move, accept: Accept, best: number): string {
+  const after = load(chess.fen());
+  after.move({ from: m.from, to: m.to, promotion: m.promotion });
+  switch (accept.kind) {
+    case 'check':
+      return after.inCheck() ? `¡Jaque! Con ${KID_PIECE[m.piece]} atacas al rey negro.` : 'Esa jugada no ataca al rey negro. ¡Prueba otra!';
+    case 'mate':
+      if (after.isCheckmate()) return '¡Jaque mate! El rey negro no se puede salvar.';
+      if (after.isStalemate()) return '¡Ahogado! El rey negro no está en jaque, pero no se puede mover. Eso es empate.';
+      if (after.inCheck()) return kidsEscapeOf(after);
+      return 'Esa jugada no da jaque. ¡Prueba otra!';
+    case 'castle': {
+      const flag = accept.side === 'k' ? 'k' : 'q';
+      if (m.flags.includes(flag)) return '¡Enroque! Tu rey ya está escondido.';
+      if (m.flags.includes('k') || m.flags.includes('q')) return 'Ese enroque es hacia el otro lado.';
+      return 'Para enrocar, mueve el rey dos casillas hacia la torre.';
+    }
+    case 'enPassant':
+      return m.flags.includes('e') ? '¡Al paso! Has capturado el peón negro.' : 'Mueve tu peón en diagonal, justo detrás del peón negro.';
+    case 'promote':
+      if (m.promotion === 'q') return '¡Coronado! Tu peón ahora es una dama.';
+      if (m.promotion) return 'Se puede, pero la dama es la más fuerte. ¡Elige dama!';
+      return 'Lleva el peón hasta el final del tablero.';
+    case 'mostValuable': {
+      if (!m.captured) return 'Esa jugada no captura nada. ¡Prueba otra!';
+      const v = VALUE[pieceOf(m.captured)];
+      const name = KID_THE[m.captured];
+      return v === best ? `¡Bien! ${name[0].toUpperCase()}${name.slice(1)} vale ${v}: es la que más vale.` : `${name[0].toUpperCase()}${name.slice(1)} vale ${v}. Hay otra que vale más.`;
+    }
+    case 'escape': {
+      const way = m.piece === 'k' ? 'king' : m.captured ? 'capture' : 'block';
+      return { king: '¡Bien! Has salvado a tu rey moviéndolo.', capture: '¡Bien! Has salvado a tu rey capturando la pieza que atacaba.', block: '¡Bien! Has salvado a tu rey tapando el jaque.' }[way];
+    }
+  }
+}
+
+function judgeAdult(chess: Chess, m: Move, accept: Accept, best: number): Omit<Judged, 'k'> {
   const after = load(chess.fen());
   after.move({ from: m.from, to: m.to, promotion: m.promotion });
   const san = sanEs(m.san);
@@ -133,13 +190,14 @@ function judge(chess: Chess, m: Move, accept: Accept, best: number): Judged {
   }
 }
 
-function exportExercise(e: Exercise, where: string): Record<string, unknown> {
-  const fen = toFen(e.at);
-  if (e.kind === 'info') return { kind: 'info', fen, text: e.text };
+function exportExercise(e: Exercise, where: string, kids?: string): Record<string, unknown> {
+  const fen = e.fen ?? toFen(e.at);
+  const k = kids !== undefined ? { kids } : {};
+  if (e.kind === 'info') return { kind: 'info', fen, text: e.text, ...k };
   if (e.kind === 'collect') {
     const stars = e.stars ?? [];
     const { par, solution } = solveCollect(fen, e.hero, stars, !!e.safe);
-    return { kind: 'collect', fen, hero: e.hero, stars, safe: !!e.safe, text: e.text, par, solution };
+    return { kind: 'collect', fen, hero: e.hero, stars, safe: !!e.safe, text: e.text, ...k, par, solution };
   }
   const valid = validateFen(fen);
   if (!valid.ok) throw new Error(`${where}: posición imposible (${valid.error})`);
@@ -154,32 +212,116 @@ function exportExercise(e: Exercise, where: string): Record<string, unknown> {
   if (e.accept.kind === 'mostValuable' && legal.filter((m) => m.captured && VALUE[pieceOf(m.captured)] === best).length !== 1) {
     throw new Error(`${where}: hay más de una captura de máximo valor`);
   }
-  return { kind: 'move', fen, text: e.text, accept: e.accept.kind, moves };
+  return { kind: 'move', fen, text: e.text, ...k, accept: e.accept.kind, moves, ...(e.source ? { source: e.source } : {}) };
 }
+
+// ---------------------------------------------------------------- mates de partidas reales (Lichess, CC0)
+
+const PACK = fileURLToPath(new URL('../src/data/puzzles.pack.json', import.meta.url));
+/** Cuántos mates en una jugada entran en el curso, y en cuántas lecciones. */
+const REAL_MATES = 12;
+const MATES_PER_LESSON = 6;
+
+/** La misma posición vista desde el otro bando: así siempre juegan las blancas (las lecciones hablan del rey negro). */
+export function mirrorFen(fen: string): string {
+  const [board, turn, castling, ep, half, full] = fen.split(' ');
+  const swap = (c: string) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase());
+  const rows = board.split('/').reverse().map((r) => [...r].map((c) => (/[a-z]/i.test(c) ? swap(c) : c)).join(''));
+  const cast = castling === '-' ? '-' : [...castling].map(swap).sort((x, y) => 'KQkq'.indexOf(x) - 'KQkq'.indexOf(y)).join('');
+  const epm = ep === '-' ? '-' : ep[0] + String(9 - Number(ep[1]));
+  return [rows.join('/'), turn === 'w' ? 'b' : 'w', cast, epm, half, full].join(' ');
+}
+
+interface PackPuzzle { i: string; f: string; m: string; r: number; p: number; n: number; t: string; g: string }
+
+/**
+ * Mates en una jugada de partidas reales: los más fáciles y populares del paquete, con piezas que dan mate
+ * variadas. La posición es la de después de la jugada del rival; si juegan negras, se da la vuelta.
+ */
+export function realMates(): Exercise[] {
+  const pack = JSON.parse(readFileSync(PACK, 'utf8')) as { puzzles: PackPuzzle[] };
+  const candidates = pack.puzzles
+    .filter((p) => p.t.split(' ').includes('mateIn1') && p.r < 1100 && p.p >= 85)
+    .sort((x, y) => x.r - y.r || x.i.localeCompare(y.i));
+  const chosen: Exercise[] = [];
+  const byPiece: Record<string, number> = {};
+  for (const p of candidates) {
+    const chess = new Chess(p.f);
+    const [first, mate] = p.m.split(' ');
+    chess.move({ from: first.slice(0, 2), to: first.slice(2, 4), promotion: first[4] });
+    let fen = chess.fen();
+    const piece = chess.get(mate.slice(0, 2) as never)?.type ?? '?';
+    // Variedad: como mucho tres mates con la misma pieza.
+    if ((byPiece[piece] ?? 0) >= 3) continue;
+    if (chess.turn() === 'b') fen = mirrorFen(fen);
+    // Una sola jugada da mate: así el ejercicio tiene una respuesta clara.
+    const probe = new Chess(fen);
+    const mates = probe.moves({ verbose: true }).filter((m) => {
+      const c = new Chess(fen);
+      c.move(m);
+      return c.isCheckmate();
+    });
+    if (mates.length !== 1) continue;
+    byPiece[piece] = (byPiece[piece] ?? 0) + 1;
+    chosen.push({ kind: 'move', at: { pieces: {} }, fen, accept: { kind: 'mate' }, text: 'Posición de una partida real. Da jaque mate en una jugada.', source: { id: p.i, game: p.g } });
+    if (chosen.length === REAL_MATES) break;
+  }
+  if (chosen.length < REAL_MATES) throw new Error(`Solo hay ${chosen.length} mates en una jugada que sirvan`);
+  return chosen;
+}
+
+function matesUnit(): { id: string; title: string; lessons: Lesson[] } {
+  const mates = realMates();
+  const lessons: Lesson[] = [];
+  for (let i = 0; i < mates.length; i += MATES_PER_LESSON) {
+    const n = lessons.length + 1;
+    lessons.push({
+      id: `mates-${n}`,
+      title: `Mates de partidas reales ${n}`,
+      icon: 'flag',
+      intro: ['Estas posiciones salen de partidas de verdad, jugadas en Lichess. En todas hay un jaque mate en una jugada.', 'Mira bien todo el tablero: hay más piezas que en las lecciones.'],
+      exercises: mates.slice(i, i + MATES_PER_LESSON),
+      takeaway: 'Antes de jugar, busca si tienes un jaque mate.',
+    });
+  }
+  return { id: 'practica', title: 'Practica el mate', lessons };
+}
+
+const KIDS_MATES: { intro: string[]; exercise: string; takeaway: string } = {
+  intro: ['Estas posiciones son de partidas de verdad. En todas puedes dar jaque mate con una sola jugada.', 'Mira bien todo el tablero.'],
+  exercise: 'Busca el jaque mate.',
+  takeaway: '¡Eres un cazador de reyes!',
+};
 
 export function buildCourse() {
   const ids = new Set<string>();
   let exercises = 0;
-  const units = COURSE.map((u) => ({
+  const units = [...COURSE, matesUnit()].map((u) => ({
     id: u.id,
     title: u.title,
     lessons: u.lessons.map((l) => {
       if (ids.has(l.id)) throw new Error(`Lección repetida: ${l.id}`);
       ids.add(l.id);
+      const real = l.id.startsWith('mates-');
+      const kids = real ? { intro: KIDS_MATES.intro, takeaway: KIDS_MATES.takeaway, exercises: l.exercises.map(() => KIDS_MATES.exercise) } : KIDS[l.id];
+      if (!kids) throw new Error(`Falta el texto Kids de la lección ${l.id}`);
+      if (kids.exercises.length !== l.exercises.length) throw new Error(`Lección ${l.id}: ${l.exercises.length} ejercicios y ${kids.exercises.length} textos Kids`);
       return {
         id: l.id,
         title: l.title,
         icon: l.icon,
         intro: l.intro,
         takeaway: l.takeaway,
+        kids: { title: ('title' in kids && kids.title) || l.title, intro: kids.intro, takeaway: kids.takeaway },
         exercises: l.exercises.map((e, i) => {
           exercises++;
-          return exportExercise(e, `${l.id} #${i + 1}`);
+          return exportExercise(e, `${l.id} #${i + 1}`, kids.exercises[i]);
         }),
       };
     }),
   }));
-  return { generatedBy: 'scripts/export-course.ts (contenido: src/course/course.ts)', lessons: ids.size, exercises, units };
+  for (const id of Object.keys(KIDS)) if (!ids.has(id)) throw new Error(`Texto Kids de una lección que no existe: ${id}`);
+  return { generatedBy: 'scripts/export-course.ts (contenido: src/course/course.ts y src/course/kids.ts; mates: Lichess, CC0)', lessons: ids.size, exercises, units };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

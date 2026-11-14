@@ -33,10 +33,17 @@ export interface Placement {
   ep?: string;
 }
 
+/** Origen de una posición sacada de una partida real (problema de Lichess, CC0). */
+export interface Source {
+  id: string;
+  game: string;
+}
+
+/** `fen`, si está, manda sobre `at` (posiciones de partidas reales, que no se escriben pieza a pieza). */
 export type Exercise =
-  | { kind: 'info'; at: Placement; text: string }
-  | { kind: 'collect'; at: Placement; hero: string; stars?: string[]; safe?: boolean; text: string }
-  | { kind: 'move'; at: Placement; accept: Accept; text: string };
+  | { kind: 'info'; at: Placement; fen?: string; text: string }
+  | { kind: 'collect'; at: Placement; fen?: string; hero: string; stars?: string[]; safe?: boolean; text: string }
+  | { kind: 'move'; at: Placement; fen?: string; accept: Accept; text: string; source?: Source };
 
 export interface Lesson {
   id: string;
