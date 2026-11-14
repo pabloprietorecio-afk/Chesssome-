@@ -152,6 +152,8 @@ export const CLIPS: ClipSource[] = [
     outro: 'Con esta partida, Gukesh ganó el Mundial por 7,5 a 6,5 y se convirtió, con 18 años, en el campeón del mundo más joven de la historia.',
     resignation: {
       by: 'Ding',
+      hook: '¿Por qué, si solo tiene un peón menos?',
+      outcome: 'El peón de g corona: las negras tienen dama y las blancas, solo el rey. Por eso Ding abandonó.',
       why: 'El final de peones está perdido. El rey negro rodea al blanco por d4 y d3; el peón de f se adelanta hasta f2 para desviar al rey blanco, el rey negro se come el peón de g3 y el peón de g corona. Así habría seguido con la mejor defensa de las blancas:',
       line: 'Kd3 f4 Ke2 f3+ Ke3 Kd5 Kf2 Kd4 Kf1 Ke3 Ke1 Kd3 Kf1 f2 Kxf2 Kd2 Kf1 Ke3 Kg2 Ke2 Kg1 Kf3 Kh2 Kf2 Kh1 Kxg3 Kg1 Kh3 Kf2 g3+ Kg1 g2 Kf2 Kh2 Kf3 g1=Q',
       source:
@@ -367,8 +369,10 @@ export const CLIPS: ClipSource[] = [
     outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
     resignation: {
       by: 'Carlsen',
+      hook: '¿Por qué, si tiene dos peones a punto de coronar?',
+      outcome: 'El peón de h corona: las blancas tienen dama, caballo y peón contra el rey solo. Por eso Carlsen abandonó.',
       why: 'Su mejor intento era 62…d2, pero no basta: el caballo frena el peón en d1 y el peón blanco de h corona. Así habría seguido con la mejor defensa de las negras:',
-      line: 'd2 Ne3 Kd3 h6 Kc3 h7 d1=Q Nxd1 Kd4 h8=Q',
+      line: 'd2 Nxe3 Kd3 h6 Kc3 h7 d1=Q Nxd1+ Kd4 h8=Q+',
       source: 'Stockfish 19 Lite WASM, profundidad 30 (14 nov 2026): primera línea del análisis de la posición final; el motor da mate en 13 para las blancas.',
     },
     notes:

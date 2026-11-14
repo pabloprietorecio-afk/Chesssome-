@@ -617,6 +617,8 @@ describe('abandonos', () => {
       expect(finalFen(packed(c.id))).toBe(gameEnd(c.moves));
       const frames = resignationFrames(gameEnd(c.moves), c.resignation!.line);
       expect(frames.length).toBe(c.resignation!.line.split(/\s+/).length);
+      // Notación exacta (capturas con «x», jaques con «+»): es la que se enseña.
+      expect(frames.map((f) => f.san).join(' ')).toBe(c.resignation!.line);
       expect(frames.at(-1)!.san).toMatch(/=Q/);
       expect(c.resignation!.why.length).toBeGreaterThan(40);
     }

@@ -133,6 +133,10 @@ export interface ClipSource {
 export interface ClipResignation {
   /** Quién abandonó, como se le nombra en el texto («Ding», «Carlsen»). */
   by: string;
+  /** Pregunta que despierta la curiosidad en el momento del abandono. */
+  hook: string;
+  /** Cómo acaba la línea (se dice al terminar de verla en el tablero). */
+  outcome: string;
   /** Por qué: texto propio, coherente con la línea. */
   why: string;
   /** Cómo habría seguido con la mejor defensa, en SAN inglesa desde la posición final de la partida. */

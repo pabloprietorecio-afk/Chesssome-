@@ -2404,3 +2404,96 @@ a {
   font-weight: 800;
   font-size: 1.02rem;
 }
+
+/* «¿Por qué abandonó?»: botón destacado en la botonera y en la ventana, reproductor y tira de jugadas. */
+.vc-dock-btn.vc-dock-accent {
+  flex-direction: row;
+  gap: 8px;
+  margin: 3px 4px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.vc-dock-btn.vc-dock-accent svg {
+  stroke: #fff;
+  fill: #fff;
+}
+.vc-dock-btn.vc-dock-accent:active,
+.vc-dock-btn.vc-dock-accent:hover {
+  background: color-mix(in srgb, var(--accent) 85%, #000);
+}
+/* En el reproductor, el botón central (pausa / seguir) va en naranja pero con el tamaño de los demás. */
+.vc-dock-row:has(> :nth-child(2)) .vc-dock-accent {
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px;
+  font-size: 0.7rem;
+}
+.vc-hook {
+  text-align: center;
+}
+.vc-hook-title {
+  margin: 4px 0 2px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.vc-hook-q {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+.vc-hook .vc-end-title {
+  justify-content: center;
+}
+.vc-hook-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.vc-hook-skip {
+  display: block;
+  margin: 10px auto 0;
+}
+.vc-hook .cm-row {
+  justify-content: center;
+}
+.vc-resign {
+  border-top: 0;
+  padding-top: 4px;
+}
+.vc-res-strip {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.vc-res-strip::-webkit-scrollbar {
+  display: none;
+}
+.vc-res-chip {
+  flex: none;
+  padding: 1px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--quiet);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.vc-res-chip.on {
+  background: var(--accent);
+  color: #fff;
+}
+.vc-hook p {
+  text-align: center;
+}

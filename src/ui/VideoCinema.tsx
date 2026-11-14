@@ -47,7 +47,6 @@ import {
   syncGapAt,
 } from '../core/videoCine';
 import { sanEs } from '../core/lang';
-import { lineText } from '../core/cinema';
 import { go, log, useAppState } from '../app/store';
 import { clearMarks, devFlag, loadMarks, saveMarks, setDevFlag } from '../app/clipMarks';
 import { Board2D } from './Board2D';
@@ -742,19 +741,90 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   // navegador haya impedido el arranque: entonces hay que poder pulsar ▶ y moverse.
   const adLock = st.videoOn && st.errorCode == null && (st.adSuspected || (!progressed && !blocked && player !== 'none'));
   const lock = <T,>(f: T | undefined): T | undefined => (adLock ? undefined : f);
-  // «¿Por qué abandonó?»: la línea de la mejor defensa se juega en el tablero, una jugada tras otra.
-  const [resFrame, setResFrame] = useState<(BoardState & { label: string }) | null>(null);
-  const resTimers = useRef<number[]>([]);
-  const stopResignation = () => {
-    resTimers.current.forEach((id) => window.clearTimeout(id));
-    resTimers.current = [];
-    setResFrame(null);
-  };
+  // «¿Por qué abandonó?»: la línea de la mejor defensa se juega en el tablero, como un reproductor (pausa, anterior,
+  // siguiente). `resIdx`: null = fuera; -1 = posición final de la partida; i = tras la jugada i de la línea.
+  const res = clip.resignation;
+  const resStart = useMemo(() => (res ? finalFen(clip) : null), [clip, res]);
+  const resMoves = useMemo(() => {
+    if (!res || !resStart) return [];
+    const turn = resStart.split(' ')[1] === 'b' ? 1 : 0;
+    const first = Number(resStart.split(' ')[5]);
+    return resignationFrames(resStart, res.line).map((f, i) => {
+      const black = (i + turn) % 2 === 1;
+      return { ...f, label: `${Math.floor((i + turn) / 2) + first}${black ? '…' : '.'}${sanEs(f.san)}`, black };
+    });
+  }, [res, resStart]);
+  const [resIdx, setResIdx] = useState<number | null>(null);
+  const [resPlaying, setResPlaying] = useState(false);
+  const [resDone, setResDone] = useState(false);
+  /** Al llegar al abandono, primero la pregunta «¿Por qué?» (antes que el resumen del clip). */
+  const [resHook, setResHook] = useState(false);
+  const resPrevIdx = useRef<number | null>(null);
   useEffect(() => {
-    if (st.phase !== 'ended' || lessonStep != null) stopResignation();
+    if (st.phase === 'ended' && lessonStep == null) {
+      if (res && resIdx == null) setResHook(true);
+      return;
+    }
+    setResIdx(null);
+    setResPlaying(false);
+    setResDone(false);
+    setResHook(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [st.phase, lessonStep]);
-  useEffect(() => () => resTimers.current.forEach((id) => window.clearTimeout(id)), []);
+  useEffect(() => {
+    if (!resPlaying || resIdx == null) return;
+    const last = resMoves.length - 1;
+    if (resIdx >= last) {
+      setResPlaying(false);
+      setResDone(true);
+      setCardHidden(false);
+      return;
+    }
+    const id = window.setTimeout(() => setResIdx(resIdx + 1), resIdx < 0 ? 600 : RES_STEP_MS);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resPlaying, resIdx]);
+  const resStartPlay = () => {
+    if (!res) return;
+    setResHook(false);
+    setResDone(false);
+    setCardHidden(true);
+    resPrevIdx.current = null;
+    setResIdx(-1);
+    setResPlaying(true);
+    ev('resignation_board', { moves: resMoves.length });
+  };
+  const resGo = (i: number) => {
+    setResPlaying(false);
+    setResDone(false);
+    setCardHidden(true);
+    setResIdx(Math.max(-1, Math.min(resMoves.length - 1, i)));
+  };
+  const resExit = () => {
+    setResPlaying(false);
+    setResDone(false);
+    setResIdx(null);
+    setCardHidden(false);
+  };
+  const resFrame: (BoardState & { label: string }) | null =
+    resIdx == null || !resStart || st.phase !== 'ended'
+      ? null
+      : resIdx < 0
+        ? { fen: resStart, last: null, anim: null, label: 'final de la partida' }
+        : (() => {
+            const f = resMoves[resIdx];
+            // Solo se anima al avanzar una jugada; al saltar o retroceder, la posición aparece directamente.
+            const forward = resPrevIdx.current != null && resIdx === resPrevIdx.current + 1;
+            return { fen: f.fen, last: { from: f.from, to: f.to }, anim: forward ? { from: f.from, to: f.to, key: 5000 + resIdx, captured: f.captured } : null, label: f.label };
+          })();
+  useEffect(() => {
+    resPrevIdx.current = resIdx;
+  }, [resIdx]);
+  const resStrip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = resStrip.current?.querySelector('.on') as HTMLElement | null;
+    el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [resIdx]);
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
   // Al avanzar un paso de la lección, la última jugada del paso se anima (las anteriores, en `lessonFrame`).
@@ -802,35 +872,55 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     </p>
   );
 
-  const playResignation = () => {
-    const res = clip.resignation;
-    const start = finalFen(clip);
-    if (!res || !start) return;
-    stopResignation();
-    const frames = resignationFrames(start, res.line);
-    setCardHidden(true);
-    setResFrame({ fen: start, last: null, anim: null, label: 'posición final de la partida' });
-    const named = frames.map((f, i) => {
-      // «62…d2» / «63.Ce3 Rd3»: cada jugada con su número, para el rótulo del tablero.
-      const num = Math.floor((i + (start.split(' ')[1] === 'b' ? 1 : 0)) / 2) + Number(start.split(' ')[5]);
-      const black = (i + (start.split(' ')[1] === 'b' ? 1 : 0)) % 2 === 1;
-      return `${num}${black ? '…' : '.'}${sanEs(f.san)}`;
-    });
-    frames.forEach((f, i) =>
-      resTimers.current.push(
-        window.setTimeout(
-          () => setResFrame({ fen: f.fen, last: { from: f.from, to: f.to }, anim: { from: f.from, to: f.to, key: ++animKey.current, captured: f.captured }, label: named[i] }),
-          500 + i * RES_STEP_MS,
-        ),
-      ),
-    );
-    ev('resignation_board', { moves: frames.length });
-  };
-
-  const resLineText = useMemo(() => {
-    const start = finalFen(clip);
-    return clip.resignation && start ? lineText(start, clip.resignation.line.split(/\s+/).filter(Boolean)) : '';
-  }, [clip]);
+  // En el momento del abandono: la pregunta, con un botón grande para verlo en el tablero.
+  const hookCard = res && (
+    <>
+      <p className="vc-end-title">
+        <span className="vc-end-tick" aria-hidden="true">✓</span>
+        Fin del clip
+      </p>
+      <p className="vc-hook-title">{res.by} abandona.</p>
+      <p className="vc-hook-q">{res.hook}</p>
+      <button
+        className="cm-primary vc-hook-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          resStartPlay();
+        }}
+      >
+        ▶ Míralo en el tablero
+      </button>
+      <button
+        className="cm-link vc-hook-skip"
+        onClick={(e) => {
+          e.stopPropagation();
+          setResHook(false);
+        }}
+      >
+        Ver el resumen del clip
+      </button>
+    </>
+  );
+  // Al acabar la línea: cómo termina y por qué; después, repetir, la lección o el resumen.
+  const doneCard = res && (
+    <>
+      <p className="vc-hook-title">{res.outcome}</p>
+      <p>{res.why.replace(/ Así habría seguido[^:]*:$/, '')}</p>
+      <div className="cm-row">
+        <button className="cm-why" onClick={(e) => { e.stopPropagation(); resStartPlay(); }}>
+          Ver otra vez
+        </button>
+        {clip.lesson && (
+          <button className="cm-primary" onClick={(e) => { e.stopPropagation(); setLessonStep(0); }}>
+            Ver la lección
+          </button>
+        )}
+      </div>
+      <button className="cm-link vc-hook-skip" onClick={(e) => { e.stopPropagation(); resExit(); }}>
+        Ver el resumen del clip
+      </button>
+    </>
+  );
   // Final del clip: en una ventana translúcida sobre el tablero (o en el panel, si no hay tablero).
   const endCard = (
     <>
@@ -839,22 +929,17 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       Fin del clip
     </p>
     <p>{clip.outro}</p>
-    {clip.resignation && (
+    {res && (
       <div className="vc-resign">
-        <p className="vc-resign-title">¿Por qué abandonó {clip.resignation.by}?</p>
-        <p>{clip.resignation.why}</p>
-        <div className="vc-line">
-          <p className="cm-line-text">{resLineText}</p>
-          <button
-            className="vc-line-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              playResignation();
-            }}
-          >
-            ▶ Ver
-          </button>
-        </div>
+        <button
+          className="cm-primary vc-hook-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            resStartPlay();
+          }}
+        >
+          ▶ ¿Por qué abandonó {res.by}?
+        </button>
       </div>
     )}
     {lastQ && (
@@ -1041,14 +1126,20 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
         {shown && st.phase !== 'idle' && (
           <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
-            {resFrame && st.phase === 'ended' && !lessonNow && (
-              <p className="cm-kicker vc-board-label vc-board-label-ask">
-                <span className="vc-board-label-text">
-                  Cómo habría seguido · <span className="vc-san" data-res-label>{resFrame.label}</span>
-                </span>
-              </p>
+            {resFrame && !lessonNow && (
+              // Las jugadas de la línea en una tira, con la actual resaltada; tocar una salta a esa posición.
+              <div className="vc-board-label vc-res-strip" ref={resStrip} aria-label="Cómo habría seguido">
+                <button className={`vc-res-chip${resIdx === -1 ? ' on' : ''}`} onClick={() => resGo(-1)}>
+                  Final
+                </button>
+                {resMoves.map((m, i) => (
+                  <button key={i} className={`vc-res-chip${resIdx === i ? ' on' : ''}`} data-res-label={resIdx === i ? '' : undefined} onClick={() => resGo(i)}>
+                    {m.black && i > 0 ? sanEs(m.san) : m.label}
+                  </button>
+                ))}
+              </div>
             )}
-            {synced && !lessonNow && !(resFrame && st.phase === 'ended') && (
+            {synced && !lessonNow && !resFrame && (
               <p className="cm-kicker vc-board-label vc-board-label-ask">
                 <span className="vc-board-label-text">
                   Tablero del vídeo · <span className="vc-san">{synced.label}</span>
@@ -1117,7 +1208,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                 )}
                 {st.phase === 'ended' && !lessonNow && !cardHidden && (
                   <div className="vc-gap vc-card-over vc-end-over" onClick={() => setCardHidden(true)} role="dialog" aria-label="Fin del clip">
-                    <div className="vc-gap-card vc-glass vc-panel">{endCard}</div>
+                    <div className={`vc-gap-card vc-glass vc-panel${resHook || resDone ? ' vc-hook' : ''}`}>{resHook ? hookCard : resDone ? doneCard : endCard}</div>
                   </div>
                 )}
                 {gate && st.phase === 'asking' && (
@@ -1269,6 +1360,34 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         <nav className="vc-dock vc-dock-2" aria-label="Opciones del clip" data-locked={adLock ? 'ad' : undefined}>
           <SeekButton dir={-1} onSeek={seekable && !adLock ? seekBy : undefined} />
           <div className="vc-dock-rows">
+          {st.phase === 'ended' && res && !lessonNow ? (
+            // Al acabar una partida abandonada, la fila de arriba es el reproductor de «¿Por qué abandonó?».
+            resIdx == null ? (
+              <div className="vc-dock-row">
+                <DockButton icon="play" label={`¿Por qué abandonó ${res.by}?`} onClick={resStartPlay} accent />
+              </div>
+            ) : (
+              <div className="vc-dock-row">
+                <DockButton icon="prev" label="Anterior" onClick={resIdx > -1 ? () => resGo(resIdx - 1) : undefined} />
+                <DockButton
+                  icon={resPlaying ? 'pause' : 'play'}
+                  label={resPlaying ? 'Pausa' : resIdx >= resMoves.length - 1 ? 'Otra vez' : 'Seguir'}
+                  onClick={() => {
+                    if (resPlaying) setResPlaying(false);
+                    else if (resIdx >= resMoves.length - 1) resStartPlay();
+                    else {
+                      setResDone(false);
+                      setCardHidden(true);
+                      setResPlaying(true);
+                    }
+                  }}
+                  accent
+                />
+                <DockButton icon="next" label="Siguiente" onClick={resIdx < resMoves.length - 1 ? () => resGo(resIdx + 1) : undefined} />
+                <DockButton icon="stop" label="Salir" onClick={resExit} />
+              </div>
+            )
+          ) : (
           <div className="vc-dock-row">
             {answer && canRetry && !gate ? (
               <DockButton icon="retry" label="Repetir" onClick={lock(retry)} />
@@ -1279,6 +1398,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             <DockButton icon="play" label="Continuar" onClick={lock(dock.play)} />
             <DockButton icon={dock.nextIsEnd ? 'stop' : 'skip'} label={dock.nextIsEnd ? 'Terminar' : 'Ir a pregunta'} onClick={lock(dock.next)} />
           </div>
+          )}
           <div className="vc-dock-row">
             <DockButton icon="back" label="Cartelera" onClick={onClose} />
             <DockButton
@@ -1333,6 +1453,9 @@ const DOCK_ICONS: Record<string, string> = {
   text: 'M4 4h12v9H9l-4 3v-3H4z',
   restart: 'M15 6a6 6 0 1 0 1 6M16 3v4h-4',
   edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
+  prev: 'M5 4v12M16 5l-8 5 8 5z',
+  next: 'M15 4v12M4 5l8 5-8 5z',
+  pause: 'M6 4h3v12H6zM11 4h3v12h-3z',
 };
 
 /**
@@ -1391,9 +1514,9 @@ function SeekButton({ dir, onSeek }: { dir: 1 | -1; onSeek?: (delta: number) => 
 }
 
 /** Botón de la botonera inferior del cine: icono encima y texto corto debajo. */
-function DockButton({ icon, label, onClick }: { icon: keyof typeof DOCK_ICONS; label: string; onClick?: () => void }): JSX.Element {
+function DockButton({ icon, label, onClick, accent }: { icon: keyof typeof DOCK_ICONS; label: string; onClick?: () => void; accent?: boolean }): JSX.Element {
   return (
-    <button className="vc-dock-btn" onClick={onClick} disabled={!onClick}>
+    <button className={`vc-dock-btn${accent ? ' vc-dock-accent' : ''}`} onClick={onClick} disabled={!onClick}>
       <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
         <path d={DOCK_ICONS[icon]} />
       </svg>

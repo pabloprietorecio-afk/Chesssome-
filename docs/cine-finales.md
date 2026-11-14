@@ -271,7 +271,12 @@ El clip termina 2,5 s después de la última jugada que sigue el tablero (`trimE
 
 ## Partidas abandonadas
 
-Si la partida acabó con un abandono, el clip lleva `resignation`: quién abandonó, por qué (texto propio) y la línea con la mejor defensa desde la posición final, en SAN inglesa. Al final del clip, en la ventana translúcida, sale «¿Por qué abandonó…?» con el texto, la línea y «▶ Ver», que la juega en el tablero (650 ms por media jugada) con el rótulo «Cómo habría seguido · …».
+Si la partida acabó con un abandono, el clip lleva `resignation`: quién abandonó (`by`), una pregunta para el momento (`hook`), por qué (`why`), cómo acaba la línea (`outcome`) y la línea con la mejor defensa desde la posición final, en SAN inglesa exacta (un test lo comprueba).
+
+- **En el momento del abandono**, en vez del resumen del clip, sale una ventana: «✓ Fin del clip · Carlsen abandona. ¿Por qué, si tiene dos peones a punto de coronar?», con un botón grande «▶ Míralo en el tablero» y el enlace «Ver el resumen del clip».
+- **La fila de arriba de la botonera** (que al acabar estaba apagada) es entonces un botón naranja «¿Por qué abandonó Carlsen?». Mientras se ve la línea, se convierte en un reproductor: Anterior, Pausa/Seguir, Siguiente y Salir.
+- **Encima del tablero**, en lugar del rótulo, una tira con las jugadas de la línea; la actual va resaltada y tocar una salta a esa posición. Va a 650 ms por media jugada.
+- **Al acabar**, una ventana dice cómo termina («El peón de h corona… Por eso Carlsen abandonó.») y por qué, con «Ver otra vez», «Ver la lección» y «Ver el resumen del clip». El resumen conserva el botón «▶ ¿Por qué abandonó…?».
 
 Las líneas se calcularon con Stockfish 19 Lite WASM a profundidad 30 por jugada (14 nov 2026) y acaban cuando el bando que gana corona. Un test comprueba que son legales desde el final real de la partida y que acaban en coronación.
 - Ding (36 medias jugadas): las blancas, siempre la mejor del motor. Las negras eligen 59…f4, 60…f3+, 61…Rd5 y 62…Rd4, todas dadas por ganadoras, y después la mejor del motor; desde 65…Rd2 el motor da mate forzado. Se eligió así porque la línea pura del motor daba rodeos con el rey (Rd6, Rc4) que despistan. Hay jugadas de espera (triangulación) que son propias del final.
