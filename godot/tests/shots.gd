@@ -719,6 +719,9 @@ func _kids_shots(demo: Control) -> void:
 	demo._open_home()
 	await _frames(10)
 	await _shot("69_inicio")
+	for l in demo.progress.find_children("*", "Label", true, false):
+		if (l as Label).text.begins_with("Nivel ") or (l as Label).text.begins_with("Te faltan"):
+			print("INICIO línea «%s» ancho=%.0f alto=%.0f" % [(l as Label).text, (l as Label).size.x, (l as Label).size.y])
 	print("INICIO página=%s" % demo.progress_kind)
 	demo._open_welcome()
 	await _frames(10)
