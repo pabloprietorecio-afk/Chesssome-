@@ -432,6 +432,8 @@ export interface ClipAnswer {
   text: string;
   /** Línea del motor tras la jugada del jugador. */
   line?: string;
+  /** La jugada del jugador y esa línea, en SAN desde la posición de la pregunta, para verlas en el tablero. */
+  lineSans?: string[];
 }
 
 const lineEndText = (v: MoveVerdict): string =>
@@ -446,6 +448,7 @@ export function judgeAnswer(q: ClipQuestion, uci: string): ClipAnswer {
   const after = new Chess(q.fen);
   after.move(v.san);
   const line = v.line.length ? lineText(after.fen(), v.line) : undefined;
+  const lineSans = v.line.length ? [v.san, ...v.line] : undefined;
   // «Pierde» solo si el motor da la posición por perdida; si no, en una posición ganadora, es que se escapa la victoria.
   const losing = 'mate' in v.score ? v.score.mate < 0 : v.score.cp <= DRAW_SPOILS_CP;
   const lost = q.target === 'win' && !losing ? 'deja escapar la victoria' : 'pierde';
@@ -453,19 +456,19 @@ export function judgeAnswer(q: ClipQuestion, uci: string): ClipAnswer {
     if (q.playedCls === 'keeps') return { outcome: 'answer', text: q.why };
     const best = q.verdicts.find((x) => x.cls === 'keeps');
     const better = best ? ` Lo correcto era ${sanEs(best.san)}.` : '';
-    return { outcome: 'played-error', text: `Es lo que se jugó en la partida, pero ${mine} ${lost}.${lineEndText(v)}${better}`, line };
+    return { outcome: 'played-error', text: `Es lo que se jugó en la partida, pero ${mine} ${lost}.${lineEndText(v)}${better}`, line, lineSans };
   }
   if (v.cls === 'keeps' && q.playedCls !== 'keeps') {
     // La partida tuvo aquí un error: encontrar una jugada que mantiene el resultado es la respuesta.
     const goal = q.target === 'win' ? 'gana' : 'mantiene las tablas';
-    return { outcome: 'answer', text: `${mine} ${goal}. ${q.why}`, line };
+    return { outcome: 'answer', text: `${mine} ${goal}. ${q.why}`, line, lineSans };
   }
   if (v.cls === 'keeps') {
     const goal = q.target === 'win' ? 'también gana' : 'también mantiene las tablas';
-    return { outcome: 'also-good', text: `${mine} ${goal}. En la partida se jugó ${playedEs}.`, line };
+    return { outcome: 'also-good', text: `${mine} ${goal}. En la partida se jugó ${playedEs}.`, line, lineSans };
   }
-  if (v.cls === 'spoils') return { outcome: 'spoils', text: `${mine} ${lost}.${lineEndText(v)}`, line };
-  return { outcome: 'unclear', text: `El motor no da un veredicto claro sobre ${mine}. En la partida se jugó ${playedEs}.`, line };
+  if (v.cls === 'spoils') return { outcome: 'spoils', text: `${mine} ${lost}.${lineEndText(v)}`, line, lineSans };
+  return { outcome: 'unclear', text: `El motor no da un veredicto claro sobre ${mine}. En la partida se jugó ${playedEs}.`, line, lineSans };
 }
 
 // ───────────────────────── Director ─────────────────────────

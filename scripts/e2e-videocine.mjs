@@ -143,6 +143,17 @@ assert(/No es esa/.test(await panel()), 'Tb1+ debe darse por mala: ' + (await pa
 await page.evaluate(() => document.querySelector('.vc-answer')?.scrollIntoView({ block: 'start' }));
 await sleep(200);
 await shot('04-respuesta-mala');
+// «▶ Ver»: la jugada del jugador y la línea del motor se juegan en el tablero, una tras otra.
+assert(/Qué pasaría tras Tb1\+/.test(await panel()), 'la línea se presenta como «Qué pasaría tras Tb1+»: ' + (await panel()));
+const fenNow = () => page.$eval('.vc-board-box', (e) => e.dataset.fen);
+const fenQ = await fenNow();
+const lineLen = await page.evaluate(() => document.querySelector('.vc-line .cm-line-text').textContent.split(':')[1].trim().split(/\s+/).filter((t) => !/^\d+\.$/.test(t)).length);
+await page.click('.vc-line-btn');
+await sleep(400);
+assert(!(await page.$('.vc-card-over .vc-answer')), 'mientras se ve la línea, la ventana se quita');
+await sleep(350 + (lineLen + 2) * 900);
+assert((await fenNow()) !== fenQ, 'al acabar, el tablero queda al final de la línea');
+await shot('04b-linea-en-tablero');
 // «Repetir»: vuelve a la posición de la pregunta y deja probar otra jugada.
 await clickText('Repetir');
 await sleep(300);

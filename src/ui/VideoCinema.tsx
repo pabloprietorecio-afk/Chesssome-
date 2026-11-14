@@ -535,6 +535,51 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     steps.forEach((fn, i) => timers.current.push(window.setTimeout(fn, 350 + i * STEP_MS)));
   };
 
+  /** «Ver en el tablero»: la jugada del jugador y la línea del motor, una tras otra, desde la posición de la pregunta. */
+  const playLine = () => {
+    if (!q || !answer?.lineSans || busy) return;
+    const c = new Chess(q.fen);
+    const steps: (() => void)[] = [() => setBoard({ fen: q.fen, last: null, anim: null })];
+    for (const san of answer.lineSans) {
+      let m;
+      try {
+        m = c.move(san);
+      } catch {
+        break;
+      }
+      const fen = c.fen();
+      const mv = m;
+      steps.push(() => setBoard({ fen, last: { from: mv.from, to: mv.to }, anim: { from: mv.from, to: mv.to, key: ++animKey.current, captured: !!mv.captured } }));
+    }
+    // Al acabar, la ventana del veredicto se queda quitada para que se vea la posición final; se vuelve a abrir con «Explicación».
+    steps.push(() => {
+      setBusy(false);
+      setCardHidden(true);
+    });
+    clearTimers();
+    setBusy(true);
+    ev('line_board', { q: q.ply, moves: answer.lineSans.length });
+    steps.forEach((fn, i) => timers.current.push(window.setTimeout(fn, 350 + i * STEP_MS)));
+  };
+  const lineBlock = answer?.line ? (
+    <div className="vc-line">
+      <p className="cm-line-text">
+        {answer.outcome === 'answer' || answer.outcome === 'also-good' ? 'Cómo sigue' : 'Qué pasaría'} tras {sanEs(answer.lineSans?.[0] ?? '')}: {answer.line}
+      </p>
+      {answer.lineSans && (
+        <button
+          className="vc-line-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            playLine();
+          }}
+        >
+          ▶ Ver
+        </button>
+      )}
+    </div>
+  ) : null;
+
   /** «Seguir viendo sin responder»: primero un aviso con la jugada de la partida; el vídeo sigue al pulsar OK. */
   const [gate, setGate] = useState(false);
   /** La ventana de la pregunta (o del veredicto) sobre el tablero se quita al tocarla, para jugar o mirar. */
@@ -980,7 +1025,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               <OutcomeMark outcome={answer.outcome} /> {OUTCOME_LABEL[answer.outcome]}
             </p>
                         <p>{answer.text}</p>
-                        {answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
+                        {lineBlock}
                         {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
                         <p className="cm-quiet cm-small">Toca para ver el tablero</p>
                       </div>
@@ -1065,7 +1110,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
       {!fit && st.phase === 'asking' && q && answer && !gate && (
         <div className="vc-tools">
-          {!fit && answer.line && <p className="cm-line-text">Línea del motor: {answer.line}</p>}
+          {!fit && lineBlock}
           {!fit && answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
           {qi + 1 < totalQuestions ? (
             <button className="cm-primary" onClick={nextQuestion} disabled={busy}>

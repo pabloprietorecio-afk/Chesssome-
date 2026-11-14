@@ -2370,3 +2370,24 @@ a {
   dominant-baseline: hanging;
   transform: translateY(-14px);
 }
+/* Línea del motor en el veredicto, con un botón para verla jugada en el tablero. */
+.vc-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.vc-line .cm-line-text {
+  flex: 1;
+  margin: 0;
+}
+.vc-line-btn {
+  flex: none;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
