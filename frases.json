@@ -1,0 +1,19 @@
+{
+ "frases": {
+  "muy_bien": "¡Muy bien!",
+  "genial": "¡Genial!",
+  "lo_has_hecho_genial": "¡Lo has hecho genial!",
+  "fantastico": "¡Fantástico!",
+  "bravo": "¡Bravo!",
+  "estupendo": "¡Estupendo!",
+  "sigue_asi": "¡Sigue así!",
+  "que_bien_lo_haces": "¡Qué bien lo haces!",
+  "casi": "¡Casi! Inténtalo otra vez.",
+  "prueba_otra_vez": "¡Uy! Prueba otra vez.",
+  "no_pasa_nada": "¡No pasa nada! Vuelve a intentarlo.",
+  "has_ganado": "¡Has ganado! ¡Enhorabuena!"
+ },
+ "exageracion": 0.75,
+ "modelo": "ResembleAI/chatterbox (multilingüe)",
+ "referencia": "Hola, soy tu entrenador de ajedrez. Hoy vamos a aprender a mover el caballo. Salta haciendo una ele, por encima de las demás piezas."
+}
