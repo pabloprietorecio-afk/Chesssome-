@@ -125,6 +125,35 @@ export interface ClipSource {
   sync?: ClipSync;
   /** Lección sobre la jugada clave, para después del clip. */
   lesson?: ClipLesson;
+  /** Si la partida acabó con un abandono: por qué, y cómo habría seguido (para verlo en el tablero al final). */
+  resignation?: ClipResignation;
+}
+
+/** Abandono al final de la partida. */
+export interface ClipResignation {
+  /** Quién abandonó, como se le nombra en el texto («Ding», «Carlsen»). */
+  by: string;
+  /** Por qué: texto propio, coherente con la línea. */
+  why: string;
+  /** Cómo habría seguido con la mejor defensa, en SAN inglesa desde la posición final de la partida. */
+  line: string;
+  /** Con qué se calculó la línea. */
+  source: string;
+}
+
+/** Posición final de la partida de un clip empaquetado (de ahí parte la línea del abandono). */
+export const finalFen = (clip: Pick<Clip, 'timeline' | 'tail' | 'stops'>): string | null => clip.timeline.moves.at(-1)?.fenAfter ?? null;
+
+/** Posiciones de la línea del abandono desde `startFen`. Lanza si alguna jugada es ilegal. */
+export function resignationFrames(startFen: string, line: string): { fen: string; from: string; to: string; captured: boolean; san: string }[] {
+  const g = new Chess(startFen);
+  return line
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((san) => {
+      const m = g.move(san);
+      return { fen: g.fen(), from: m.from, to: m.to, captured: !!m.captured, san: m.san };
+    });
 }
 
 /** Segundo del vídeo en que el tablero 2D debe mostrar hecha la media jugada `ply`. */

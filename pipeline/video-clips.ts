@@ -150,6 +150,13 @@ export const CLIPS: ClipSource[] = [
       },
     ],
     outro: 'Con esta partida, Gukesh ganó el Mundial por 7,5 a 6,5 y se convirtió, con 18 años, en el campeón del mundo más joven de la historia.',
+    resignation: {
+      by: 'Ding',
+      why: 'El final de peones está perdido. El rey negro rodea al blanco por d4 y d3; el peón de f se adelanta hasta f2 para desviar al rey blanco, el rey negro se come el peón de g3 y el peón de g corona. Así habría seguido con la mejor defensa de las blancas:',
+      line: 'Kd3 f4 Ke2 f3+ Ke3 Kd5 Kf2 Kd4 Kf1 Ke3 Ke1 Kd3 Kf1 f2 Kxf2 Kd2 Kf1 Ke3 Kg2 Ke2 Kg1 Kf3 Kh2 Kf2 Kh1 Kxg3 Kg1 Kh3 Kf2 g3+ Kg1 g2 Kf2 Kh2 Kf3 g1=Q',
+      source:
+        'Stockfish 19 Lite WASM, profundidad 30 por jugada (14 nov 2026). Las blancas, siempre la mejor jugada del motor; las negras, 59…f4, 60…f3+, 61…Rd5 y 62…Rd4 (todas dadas por ganadoras) y después la mejor del motor. Desde 65…Rd2 el motor da mate forzado.',
+    },
     clocks: {
       timeControl: '40/7200:1800+30',
       firstPly: 108,
@@ -358,6 +365,12 @@ export const CLIPS: ClipSource[] = [
       },
     ],
     outro: 'Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.',
+    resignation: {
+      by: 'Carlsen',
+      why: 'Su mejor intento era 62…d2, pero no basta: el caballo frena el peón en d1 y el peón blanco de h corona. Así habría seguido con la mejor defensa de las negras:',
+      line: 'd2 Ne3 Kd3 h6 Kc3 h7 d1=Q Nxd1 Kd4 h8=Q',
+      source: 'Stockfish 19 Lite WASM, profundidad 30 (14 nov 2026): primera línea del análisis de la posición final; el motor da mate en 13 para las blancas.',
+    },
     notes:
       'Vídeo de ChessBase India grabado en la sala; el título dice que gana Gukesh. Marcas medidas sobre una grabación de pantalla de Pablo, sin comprobar aún en el móvil (60.Cb2 365,9; 60…e3 371,2; pausa 371,4; 61.Cc4+ 372,1; 61…Re2 375,6; 62.Rf4 376,4; golpe ~377,5; fin 378,8). La pausa tiene ~0,3 s de margen antes de que Gukesh mueva la mano. La pregunta de 57.Ca4 se retiró: el vídeo no enseña esa jugada. Sin relojes: la retransmisión de Lichess no se puede descargar (robots.txt).',
   },

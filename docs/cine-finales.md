@@ -268,3 +268,11 @@ El clip termina 2,5 s después de la última jugada que sigue el tablero (`trimE
 - La cartelera es una lista tipo iOS: una fila por partida (miniatura con la posición, título, jugadores, número de preguntas) que se toca entera para empezar. «Solo la pregunta, sin vídeo» va debajo, aparte. El estado de las pausas solo se indica cuando no están comprobadas. La presentación del clip (`intro`) se lee en el aviso que hay sobre el tablero antes de arrancar el vídeo.
 - La botonera queda apagada (salvo «Cartelera», para salir) desde que se pide el vídeo hasta que el clip avanza de verdad: el reproductor dice «reproduciendo», la duración es la del clip y el tiempo se mueve. Así cubre el anuncio previo aunque YouTube no dé su duración (en el móvil no siempre la da). Si el navegador impide arrancar el vídeo, se desbloquea para poder pulsar ▶. Un anuncio a mitad de vídeo se detecta porque la duración deja de cuadrar.
 - Al final del clip, el rótulo «Fin del clip» va en rojo y negrita, con un tick.
+
+## Partidas abandonadas
+
+Si la partida acabó con un abandono, el clip lleva `resignation`: quién abandonó, por qué (texto propio) y la línea con la mejor defensa desde la posición final, en SAN inglesa. Al final del clip, en la ventana translúcida, sale «¿Por qué abandonó…?» con el texto, la línea y «▶ Ver», que la juega en el tablero (650 ms por media jugada) con el rótulo «Cómo habría seguido · …».
+
+Las líneas se calcularon con Stockfish 19 Lite WASM a profundidad 30 por jugada (14 nov 2026) y acaban cuando el bando que gana corona. Un test comprueba que son legales desde el final real de la partida y que acaban en coronación.
+- Ding (36 medias jugadas): las blancas, siempre la mejor del motor. Las negras eligen 59…f4, 60…f3+, 61…Rd5 y 62…Rd4, todas dadas por ganadoras, y después la mejor del motor; desde 65…Rd2 el motor da mate forzado. Se eligió así porque la línea pura del motor daba rodeos con el rey (Rd6, Rc4) que despistan. Hay jugadas de espera (triangulación) que son propias del final.
+- Carlsen: la primera línea del motor (mate en 13), hasta 67.h8=D.

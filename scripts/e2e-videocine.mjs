@@ -600,6 +600,20 @@ assert(bi.ply === '123' && /tras 62\.Rf4/.test(bi.label), 'al final, 62.Rf4: ' +
 // Al acabar, la lección: ocho pasos en el tablero, con flechas y la jugada animada al avanzar.
 await fake(() => { window.__fakeYT.last().time = 379.2; window.__fakeYT.tapPlay(); });
 await waitAttr('phase', 'ended', 8000);
+// Partida abandonada: «¿Por qué abandonó Carlsen?» y «▶ Ver» juega en el tablero cómo habría seguido.
+await sleep(700);
+assert(/¿Por qué abandonó Carlsen\?/.test(await page.$eval('.vc-end-over', (e) => e.textContent)), 'al final, «¿Por qué abandonó Carlsen?»');
+await page.$eval('.vc-end-over .vc-line-btn', (b) => b.scrollIntoView({ block: 'center' }));
+await shot('17-fin-abandono');
+await sleep(200);
+await page.click('.vc-end-over .vc-line-btn');
+await sleep(300);
+assert(!(await page.$('.vc-end-over')), 'mientras se ve la línea, la ventana del final se quita');
+assert(/Cómo habría seguido/.test(await page.$eval('.vc-board', (e) => e.textContent)), 'el rótulo del tablero cambia');
+await sleep(500 + 10 * 650 + 400);
+const resEnd = await page.$eval('.vc-board-box', (e) => e.dataset.fen.split(' ')[0]);
+assert(/Q/.test(resEnd.split('/')[0]) && /67\.h8=D/.test(await page.$eval('[data-res-label]', (e) => e.textContent)), 'al acabar, el peón blanco ha coronado en h8: ' + resEnd);
+await shot('17a-abandono-en-tablero');
 await clickText('Lección');
 await page.waitForSelector('.vc-lesson');
 assert(/Por qué 61\.Cc4\+ gana/.test(await page.$eval('.vc-lesson', (e) => e.textContent)), 'título de la lección');

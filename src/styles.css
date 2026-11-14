@@ -2391,3 +2391,16 @@ a {
   font-size: 0.85rem;
   cursor: pointer;
 }
+/* «¿Por qué abandonó?» al final del clip. */
+.vc-resign {
+  margin: 4px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.vc-resign p {
+  margin: 0 0 6px;
+}
+.vc-resign-title {
+  font-weight: 800;
+  font-size: 1.02rem;
+}

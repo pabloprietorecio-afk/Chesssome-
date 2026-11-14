@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { Chess } from 'chess.js';
 import pack from '../src/data/videocine.pack.json';
 import { CLIPS } from '../pipeline/video-clips';
 import {
+  resignationFrames,
+  finalFen,
   EPS,
   canAutoPause,
   defaultStartPly,
@@ -596,5 +599,31 @@ describe('el clip acaba poco después de la última jugada', () => {
   it('si el final marcado ya llega antes, se respeta', () => {
     const bang = PACK.clips.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
     expect(trimEnd(bang).end).toBe(bang.end); // 62.Rf4 en 376,4; el golpe sigue dentro (fin 378,8)
+  });
+});
+
+describe('abandonos', () => {
+  const packed = (id: string) => (pack as unknown as VideoCinePack).clips.find((c) => c.id === id)!;
+  const gameEnd = (moves: string) => {
+    const g = new Chess();
+    for (const t of moves.split(/\s+/)) if (t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t)) g.move(t);
+    return g.fen();
+  };
+  it('la línea de cada abandono es legal desde la posición final y acaba coronando el bando que gana', () => {
+    const withRes = CLIPS.filter((c) => c.resignation);
+    expect(withRes.map((c) => c.id).sort()).toEqual(['ding-gukesh-2024-g14', 'gukesh-carlsen-2025-norway-r6']);
+    for (const c of withRes) {
+      // El tablero de la app parte del final de la partida empaquetada: tiene que ser el final real.
+      expect(finalFen(packed(c.id))).toBe(gameEnd(c.moves));
+      const frames = resignationFrames(gameEnd(c.moves), c.resignation!.line);
+      expect(frames.length).toBe(c.resignation!.line.split(/\s+/).length);
+      expect(frames.at(-1)!.san).toMatch(/=Q/);
+      expect(c.resignation!.why.length).toBeGreaterThan(40);
+    }
+    // Ding (blancas) abandona: corona el peón negro de g. Carlsen (negras) abandona: corona el peón blanco de h.
+    const d = CLIPS.find((c) => c.id === 'ding-gukesh-2024-g14')!;
+    expect(resignationFrames(gameEnd(d.moves), d.resignation!.line).at(-1)!.fen.split(' ')[0]).toMatch(/q/);
+    const g = CLIPS.find((c) => c.id === 'gukesh-carlsen-2025-norway-r6')!;
+    expect(resignationFrames(gameEnd(g.moves), g.resignation!.line).at(-1)!.fen.split(' ')[0]).toMatch(/Q/);
   });
 });

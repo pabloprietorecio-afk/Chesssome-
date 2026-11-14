@@ -20,6 +20,8 @@ import {
   syncCap,
   syncProblems,
   canAutoPause,
+  finalFen,
+  resignationFrames,
   DURATION_TOLERANCE,
   direct,
   initialDirector,
@@ -45,6 +47,7 @@ import {
   syncGapAt,
 } from '../core/videoCine';
 import { sanEs } from '../core/lang';
+import { lineText } from '../core/cinema';
 import { go, log, useAppState } from '../app/store';
 import { clearMarks, devFlag, loadMarks, saveMarks, setDevFlag } from '../app/clipMarks';
 import { Board2D } from './Board2D';
@@ -59,6 +62,8 @@ const BUILD = (import.meta.env.VITE_BUILD as string | undefined) || 'local';
 
 const PACK = pack as unknown as VideoCinePack;
 const STEP_MS = 850;
+/** La línea del abandono es larga (hasta ~36 medias jugadas): va algo más deprisa. */
+const RES_STEP_MS = 650;
 const YT_TERMS = 'https://www.youtube.com/t/terms';
 const GOOGLE_PRIVACY = 'https://policies.google.com/privacy';
 
@@ -584,7 +589,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const [gate, setGate] = useState(false);
   /** La ventana de la pregunta (o del veredicto) sobre el tablero se quita al tocarla, para jugar o mirar. */
   const [cardHidden, setCardHidden] = useState(false);
-  useEffect(() => setCardHidden(false), [qi, answer, st.phase]);
+  useEffect(() => setCardHidden(false), [qi, answer, st.phase, lessonStep]);
   // En el móvil, el mismo toque que suelta la pieza llega después como «click» a la ventana que acaba de aparecer
   // debajo del dedo: se ignoran los toques de los primeros instantes para que el veredicto no se cierre solo.
   const cardShownAt = useRef(0);
@@ -737,6 +742,19 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   // navegador haya impedido el arranque: entonces hay que poder pulsar ▶ y moverse.
   const adLock = st.videoOn && st.errorCode == null && (st.adSuspected || (!progressed && !blocked && player !== 'none'));
   const lock = <T,>(f: T | undefined): T | undefined => (adLock ? undefined : f);
+  // «¿Por qué abandonó?»: la línea de la mejor defensa se juega en el tablero, una jugada tras otra.
+  const [resFrame, setResFrame] = useState<(BoardState & { label: string }) | null>(null);
+  const resTimers = useRef<number[]>([]);
+  const stopResignation = () => {
+    resTimers.current.forEach((id) => window.clearTimeout(id));
+    resTimers.current = [];
+    setResFrame(null);
+  };
+  useEffect(() => {
+    if (st.phase !== 'ended' || lessonStep != null) stopResignation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st.phase, lessonStep]);
+  useEffect(() => () => resTimers.current.forEach((id) => window.clearTimeout(id)), []);
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
   // Al avanzar un paso de la lección, la última jugada del paso se anima (las anteriores, en `lessonFrame`).
@@ -744,7 +762,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     lessonNow && lessonNow.pos.last && lessonPrev.current != null && lessonPrev.current === lessonStep! - 1 && lessonNow.step.moves !== clip.lesson!.steps[lessonStep! - 1].moves
       ? { ...lessonNow.pos.last, key: 1000 + lessonStep! }
       : null;
-  const shown = lessonNow
+  const shown = resFrame && st.phase === 'ended' && !lessonNow
+    ? resFrame
+    : lessonNow
     ? lessonFrame ?? { fen: lessonNow.pos.fen, last: lessonNow.pos.last, anim: lessonAnim }
     : synced
       ? { fen: synced.fen, last: synced.last, anim: syncedAnim }
@@ -782,6 +802,35 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     </p>
   );
 
+  const playResignation = () => {
+    const res = clip.resignation;
+    const start = finalFen(clip);
+    if (!res || !start) return;
+    stopResignation();
+    const frames = resignationFrames(start, res.line);
+    setCardHidden(true);
+    setResFrame({ fen: start, last: null, anim: null, label: 'posición final de la partida' });
+    const named = frames.map((f, i) => {
+      // «62…d2» / «63.Ce3 Rd3»: cada jugada con su número, para el rótulo del tablero.
+      const num = Math.floor((i + (start.split(' ')[1] === 'b' ? 1 : 0)) / 2) + Number(start.split(' ')[5]);
+      const black = (i + (start.split(' ')[1] === 'b' ? 1 : 0)) % 2 === 1;
+      return `${num}${black ? '…' : '.'}${sanEs(f.san)}`;
+    });
+    frames.forEach((f, i) =>
+      resTimers.current.push(
+        window.setTimeout(
+          () => setResFrame({ fen: f.fen, last: { from: f.from, to: f.to }, anim: { from: f.from, to: f.to, key: ++animKey.current, captured: f.captured }, label: named[i] }),
+          500 + i * RES_STEP_MS,
+        ),
+      ),
+    );
+    ev('resignation_board', { moves: frames.length });
+  };
+
+  const resLineText = useMemo(() => {
+    const start = finalFen(clip);
+    return clip.resignation && start ? lineText(start, clip.resignation.line.split(/\s+/).filter(Boolean)) : '';
+  }, [clip]);
   // Final del clip: en una ventana translúcida sobre el tablero (o en el panel, si no hay tablero).
   const endCard = (
     <>
@@ -790,6 +839,24 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       Fin del clip
     </p>
     <p>{clip.outro}</p>
+    {clip.resignation && (
+      <div className="vc-resign">
+        <p className="vc-resign-title">¿Por qué abandonó {clip.resignation.by}?</p>
+        <p>{clip.resignation.why}</p>
+        <div className="vc-line">
+          <p className="cm-line-text">{resLineText}</p>
+          <button
+            className="vc-line-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              playResignation();
+            }}
+          >
+            ▶ Ver
+          </button>
+        </div>
+      </div>
+    )}
     {lastQ && (
       <p className="cm-quiet cm-small">
         Respuestas comprobadas con {PACK.engine.name} (profundidad {PACK.engine.depth}): en cada pregunta se analizaron todas las jugadas legales.
@@ -974,7 +1041,14 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
         {shown && st.phase !== 'idle' && (
           <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
-            {synced && !lessonNow && (
+            {resFrame && st.phase === 'ended' && !lessonNow && (
+              <p className="cm-kicker vc-board-label vc-board-label-ask">
+                <span className="vc-board-label-text">
+                  Cómo habría seguido · <span className="vc-san" data-res-label>{resFrame.label}</span>
+                </span>
+              </p>
+            )}
+            {synced && !lessonNow && !(resFrame && st.phase === 'ended') && (
               <p className="cm-kicker vc-board-label vc-board-label-ask">
                 <span className="vc-board-label-text">
                   Tablero del vídeo · <span className="vc-san">{synced.label}</span>
