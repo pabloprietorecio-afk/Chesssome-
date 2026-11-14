@@ -861,6 +861,16 @@ func _game_shots(demo: Control) -> void:
 	await _shot("89_partida_tiempo")
 	demo.game_tc_pick = 0
 	await _review_shots(demo)
+	# Enhorabuenas: subir puntos y subir de nivel.
+	demo._celebrate(980.0, 1003.0)
+	await _frames(14)
+	await _shot("93_enhorabuena")
+	demo._celebrate(1040.0, 1062.0)
+	await _frames(24)
+	await _shot("94_nivel_nuevo")
+	print("ENHORABUENA: capa=%s" % str(demo._celebration != null and is_instance_valid(demo._celebration)))
+	demo._close_celebration()
+	await _frames(12)
 	demo._leave_game()
 	await _frames(6)
 	demo._close_progress()

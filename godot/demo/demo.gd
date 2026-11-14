@@ -208,6 +208,9 @@ var ex_good := false
 var ex_stars: Array = []
 ## Piezas negras que quedan en un ejercicio de recoger (para sonar al capturar una).
 var _ex_blacks := 0
+## Problemas resueltos seguidos en el entrenamiento (para los ánimos).
+var _streak := 0
+var _celebration: Control
 ## Con false no se leen ni se guardan los ajustes ni se enseña la bienvenida (lo usan las pruebas).
 var use_settings := true
 var welcome_seen := false
@@ -385,6 +388,47 @@ class PastelBackdrop extends Control:
 
 ## Pista animada sobre el tablero: dos dedos que primero se separan (el tablero crece) y luego giran (el
 ## tablero gira con ellos), junto a un texto. También sirve para avisos breves (por ejemplo, al fijar el giro).
+## Confeti: papelitos de colores que saltan desde un punto y caen girando. Se borra solo al acabar.
+class Confetti extends Control:
+	var bits: Array = []
+	var life := 0.0
+	var duration := 2.6
+
+	func burst(origin: Vector2, count: int, colors: Array, power: float) -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		for i in count:
+			var angle := rng.randf_range(-PI * 0.95, -PI * 0.05)
+			var speed := rng.randf_range(0.45, 1.0) * power
+			bits.append({
+				"p": origin, "v": Vector2(cos(angle), sin(angle)) * speed,
+				"c": colors[rng.randi() % colors.size()], "r": rng.randf() * TAU, "w": rng.randf_range(-9.0, 9.0),
+				"s": Vector2(rng.randf_range(14.0, 26.0), rng.randf_range(8.0, 14.0)),
+			})
+
+	func _process(delta: float) -> void:
+		life += delta
+		for b: Dictionary in bits:
+			b["v"] = (b["v"] as Vector2) * pow(0.35, delta) + Vector2(0.0, 1500.0 * delta)
+			b["p"] = (b["p"] as Vector2) + (b["v"] as Vector2) * delta
+			b["r"] = float(b["r"]) + float(b["w"]) * delta
+		queue_redraw()
+		if life > duration:
+			queue_free()
+
+	func _draw() -> void:
+		var fade := clampf((duration - life) / 0.6, 0.0, 1.0)
+		for b: Dictionary in bits:
+			var col: Color = b["c"]
+			col.a = fade
+			var sz: Vector2 = b["s"]
+			# Papelito que gira: se estrecha según el giro, como si diera vueltas.
+			var squash := absf(cos(float(b["r"]) * 1.7))
+			draw_set_transform(b["p"], float(b["r"]), Vector2(1.0, maxf(squash, 0.15)))
+			draw_rect(Rect2(-sz * 0.5, sz), col)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 class GestureHint extends Control:
 	var paper := Color.WHITE
 	var ink := Color.BLACK
@@ -2940,6 +2984,11 @@ func _record(correct: bool) -> void:
 	player = Assessment.record_try(player, _try["item"], outcome, mode)
 	_rating_shown = [before, float(player["rating"]["r"])]
 	_save_player()
+	if mode == "train":
+		_streak = _streak + 1 if correct else 0
+		var now := float(player["rating"]["r"])
+		if now > before + 0.5:
+			_celebrate.call_deferred(before, now)
 
 
 ## Pedir ayuda decide el intento: cuenta como no resuelto por uno mismo.
@@ -4197,6 +4246,167 @@ func _build_game_actions() -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		actions.add_child(b)
 
+
+
+
+# ---------------------------------------------------------------- enhorabuenas
+
+const CHEERS := ["¡Sigue así!", "¡Vas mejorando!", "¡Muy bien pensado!", "¡Así se juega!", "¡Otro más!", "¡Qué buena vista!"]
+const STREAK_CHEERS := ["¡Estás en racha!", "¡Imparable!", "¡Qué racha!"]
+const LEVEL_CHEERS := ["Cada problema te hace más fuerte. ¡A por el siguiente nivel!", "Tu esfuerzo se nota. ¡Sigue jugando!", "Ya ves más que antes. ¡Vamos a por más!"]
+
+
+## Sube la puntuación: un aviso con los puntos ganados y un poco de confeti; si además sube el nivel, una
+## enhorabuena a pantalla completa con un botón para seguir.
+func _celebrate(before: float, now: float) -> void:
+	var lv0 := Assessment.level_of(before)
+	var lv1 := Assessment.level_of(now)
+	var gained := int(round(now - before))
+	if lv1 > lv0:
+		_level_up(lv1, before, now)
+		return
+	if _celebration != null and is_instance_valid(_celebration):
+		_celebration.queue_free()
+	var toast := Control.new()
+	toast.set_anchors_preset(Control.PRESET_FULL_RECT)
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(toast)
+	_celebration = toast
+	var pill := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	var tint := _tint("mint")
+	sb.bg_color = tint[0]
+	sb.set_corner_radius_all(60)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 24
+	sb.shadow_offset = Vector2(0.0, 10.0)
+	sb.content_margin_left = 44
+	sb.content_margin_right = 44
+	sb.content_margin_top = 22
+	sb.content_margin_bottom = 22
+	pill.add_theme_stylebox_override("panel", sb)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(row)
+	var star := TextureRect.new()
+	star.texture = UiIcons.kids_texture("spark")
+	star.custom_minimum_size = Vector2(76.0, 76.0)
+	star.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	star.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	star.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(star)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 0)
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cheer := str(STREAK_CHEERS[_rng.randi() % STREAK_CHEERS.size()]) if _streak >= 3 else str(CHEERS[_rng.randi() % CHEERS.size()])
+	words.add_child(_para(cheer, F_HEAD + 4, _c("ink"), font_display))
+	var sub := "+%d puntos · ahora %d" % [gained, int(round(now))]
+	if _streak >= 3:
+		sub += " · %d seguidos" % _streak
+	words.add_child(_para(sub, F_SUB, tint[1], font_semibold))
+	row.add_child(words)
+	toast.add_child(pill)
+	var place := func() -> void:
+		if not is_instance_valid(pill):
+			return
+		pill.reset_size()
+		var w := pill.get_combined_minimum_size().x
+		var top := board_slot.get_global_rect().position.y + 20.0 if board_slot != null else 300.0
+		pill.position = Vector2((size.x - w) * 0.5, top)
+	place.call_deferred()
+	var bits := Confetti.new()
+	bits.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bits.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.add_child(bits)
+	var origin := Vector2(size.x * 0.5, (board_slot.get_global_rect().position.y if board_slot != null else 300.0) + 80.0)
+	bits.burst(origin, 46, _confetti_colors(), 1500.0)
+	pill.pivot_offset = Vector2(240.0, 60.0)
+	pill.scale = Vector2(0.6, 0.6)
+	pill.modulate.a = 0.0
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(pill, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(pill, "modulate:a", 1.0, 0.2)
+	tw.chain().tween_interval(2.2)
+	tw.chain().tween_property(pill, "modulate:a", 0.0, 0.4)
+	tw.chain().tween_callback(toast.queue_free)
+
+
+## Enhorabuena por subir de nivel: pantalla con trofeo, confeti, el nivel nuevo y ánimo para seguir.
+func _level_up(level_now: int, before: float, now: float) -> void:
+	if _celebration != null and is_instance_valid(_celebration):
+		_celebration.queue_free()
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(layer)
+	_celebration = layer
+	var scrim := ColorRect.new()
+	scrim.color = Color(_c("bg").r, _c("bg").g, _c("bg").b, 0.82)
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(scrim)
+	var column := VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 18)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(column)
+	var trophy := TextureRect.new()
+	trophy.texture = UiIcons.kids_texture("trophy")
+	trophy.custom_minimum_size = Vector2(300.0, 300.0)
+	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	trophy.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trophy.pivot_offset = Vector2(150.0, 150.0)
+	column.add_child(trophy)
+	column.add_child(_centered(_para("¡Enhorabuena!", F_LARGE, _c("ink"), font_display)))
+	column.add_child(_centered(_para("Has subido al nivel %d" % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
+	column.add_child(_centered(_para("%d → %d puntos" % [int(round(before)), int(round(now))], F_SUB, _c("quiet"), font_medium)))
+	column.add_child(_spacer(10.0))
+	var pad := _pad(80, 0, 80, 0)
+	pad.add_child(_centered(_para(str(LEVEL_CHEERS[_rng.randi() % LEVEL_CHEERS.size()]), F_HEAD, _c("ink"), font_medium)))
+	column.add_child(pad)
+	column.add_child(_spacer(26.0))
+	var go_pad := _pad(90, 0, 90, 0)
+	var go := _button("next", "¡Seguir jugando!", _close_celebration, _c("accent"), _c("accent_ink"), {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")})
+	go.mouse_filter = Control.MOUSE_FILTER_STOP
+	go_pad.add_child(go)
+	column.add_child(go_pad)
+	var bits := Confetti.new()
+	bits.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bits.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bits.duration = 3.6
+	layer.add_child(bits)
+	bits.burst(Vector2(size.x * 0.25, size.y * 0.42), 70, _confetti_colors(), 2100.0)
+	bits.burst(Vector2(size.x * 0.75, size.y * 0.42), 70, _confetti_colors(), 2100.0)
+	_sfx("leccion")
+	layer.modulate.a = 0.0
+	trophy.scale = Vector2(0.3, 0.3)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(layer, "modulate:a", 1.0, 0.25)
+	tw.tween_property(trophy, "scale", Vector2.ONE, 0.55).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+func _close_celebration() -> void:
+	if _celebration != null and is_instance_valid(_celebration):
+		var layer := _celebration
+		_celebration = null
+		var tw := create_tween()
+		tw.tween_property(layer, "modulate:a", 0.0, 0.2)
+		tw.tween_callback(layer.queue_free)
+
+
+func _confetti_colors() -> Array:
+	var out: Array = []
+	for t: String in ["peach", "mint", "sky", "butter", "rose", "lilac"]:
+		out.append(_tint(t)[1])
+	out.append(_c("accent"))
+	return out
 
 
 # ---------------------------------------------------------------- análisis educativo de la partida
