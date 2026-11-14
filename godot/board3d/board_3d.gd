@@ -1541,7 +1541,8 @@ func play_move(m: int, dropped: bool = false) -> void:
 	var dist := Vector2(b.x - a.x, b.z - a.z).length()
 	var dir := Vector3(b.x - a.x, 0.0, b.z - a.z)
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
-	var is_knight := Chess.type_of(mover.get_meta("piece")) == Chess.KNIGHT
+	var kind := Chess.type_of(mover.get_meta("piece"))
+	var is_knight := kind == Chess.KNIGHT
 
 	if mode == Anim.MINIMAL:
 		var tm := _tw()
@@ -1557,6 +1558,9 @@ func play_move(m: int, dropped: bool = false) -> void:
 		dur = clampf(0.26 + 0.035 * dist, 0.28, 0.46) if full else 0.16
 		if is_knight and full:
 			dur = 0.42
+		elif full:
+			# Cada pieza tiene su paso: el peón desfila, la torre es pesada, el rey no tiene prisa.
+			dur *= float({Chess.PAWN: 1.15, Chess.ROOK: 1.1, Chess.QUEEN: 1.1, Chess.KING: 1.35}.get(kind, 1.0))
 	# Sonido: las piezas que se deslizan se oyen arrastrarse hasta que llegan; todas se oyen al posarse.
 	if not dropped and not is_knight:
 		_sfx("slide", 0.0, dur)
@@ -1568,21 +1572,30 @@ func play_move(m: int, dropped: bool = false) -> void:
 		# El caballo salta dibujando su «L»: primero el tramo largo y luego el corto.
 		var corner := Vector3(b.x, 0.0, a.z) if absf(b.x - a.x) > absf(b.z - a.z) else Vector3(a.x, 0.0, b.z)
 		tw.tween_method(_pose_jump.bind(mover, a, corner if full else a.lerp(b, 0.5), b, 0.85 if full else 0.4), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	elif full:
+		_walk(tw, mover, kind, a, b, dir, dist, dur)
 	else:
-		tw.tween_method(_pose_slide.bind(mover, a, b, dir, 0.16 if full else 0.05, 0.15 if full else 0.0), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_method(_pose_slide.bind(mover, a, b, dir, 0.05, 0.0), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	if promo > 0:
 		tw.tween_method(_pose_size.bind(mover, b, 1.0, 0.05), 0.0, 1.0, 0.1 if full else 0.05)
 		tw.tween_callback(_apply_promotion.bind(mover))
 		tw.tween_method(_pose_size.bind(mover, b, 0.05, 1.0), 0.0, 1.0, 0.24 if full else 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	else:
-		tw.tween_method(_pose_land.bind(mover, b, 0.08 if full else 0.04), 0.0, 1.0, 0.1 if full else 0.06)
+		var thud := 0.04
+		if full:
+			thud = 0.16 if kind == Chess.ROOK else (0.12 if kind == Chess.KING or (is_knight and victim != null) else 0.08)
+		tw.tween_method(_pose_land.bind(mover, b, thud), 0.0, 1.0, 0.1 if full else 0.06)
 
 	if victim != null:
 		var tv := _tw()
 		var vpos := sq_pos(victim_sq)
 		if full:
-			tv.tween_interval(maxf(dur * 0.72, 0.01))
-			tv.tween_method(_pose_knock.bind(victim, vpos, dir), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			# La pieza comida se asusta cuando ve venir el ataque y cae según quién la ataca.
+			var hit := maxf(dur * (0.9 if is_knight else 0.72), 0.01)
+			var fear := minf(hit * 0.5, 0.14)
+			tv.tween_interval(hit - fear)
+			tv.tween_method(_pose_fear.bind(victim, vpos, dir), 0.0, 1.0, fear)
+			_strike(tv, victim, kind, vpos, dir)
 		else:
 			tv.tween_interval(maxf(dur * 0.4, 0.01))
 			tv.tween_method(_pose_size.bind(victim, vpos, 1.0, 0.02), 0.0, 1.0, maxf(dur * 0.6, 0.06))
@@ -1646,6 +1659,96 @@ func _mark_fallen_king(attacker_sq: int) -> Vector3:
 func _hide(node: Node3D) -> void:
 	if is_instance_valid(node):
 		node.visible = false
+
+
+## El paso de cada pieza (animaciones completas): cada una se mueve con su carácter.
+func _walk(tw: Tween, mover: Node3D, kind: int, a: Vector3, b: Vector3, dir: Vector3, dist: float, dur: float) -> void:
+	match kind:
+		Chess.PAWN:
+			# El peón desfila: pasitos cortos, balanceándose de un pie a otro.
+			tw.tween_method(_pose_march.bind(mover, a, b, dir, maxi(2, roundi(dist * 2.0)), 0.07, 0.13), 0.0, 1.0, dur).set_trans(Tween.TRANS_LINEAR)
+		Chess.BISHOP:
+			# El alfil se desliza inclinado hacia delante, con un vaivén de esquiador.
+			tw.tween_method(_pose_glide.bind(mover, a, b, dir, 0.05 * minf(dist, 3.0) / 3.0 + 0.02), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		Chess.ROOK:
+			# La torre rueda pesada, a ras de tablero y temblando; frena en seco.
+			tw.tween_method(_pose_rumble.bind(mover, a, b, dir, maxf(dist, 1.0)), 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		Chess.QUEEN:
+			# La dama avanza girando sobre sí misma, elegante.
+			tw.tween_method(_pose_twirl.bind(mover, a, b), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		Chess.KING:
+			# El rey camina despacio, con dos pasos solemnes.
+			tw.tween_method(_pose_march.bind(mover, a, b, dir, 2, 0.05, 0.09), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_:
+			tw.tween_method(_pose_slide.bind(mover, a, b, dir, 0.16, 0.15), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## Cómo cae la pieza comida, según quién la ataca.
+func _strike(tv: Tween, victim: Node3D, attacker: int, vpos: Vector3, dir: Vector3) -> void:
+	var side := Vector3.UP.cross(dir)
+	match attacker:
+		Chess.KNIGHT:
+			# El caballo cae encima: la aplasta.
+			tv.tween_method(_pose_crush.bind(victim, vpos), 0.0, 1.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		Chess.ROOK:
+			# La torre embiste: sale despedida lejos, dando vueltas.
+			tv.tween_method(_pose_fling.bind(victim, vpos, dir, 1.5, 0.45, 3.0), 0.0, 1.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		Chess.BISHOP:
+			# El alfil la corta de lado: cae hacia un costado.
+			tv.tween_method(_pose_fling.bind(victim, vpos, (dir + side * 1.2).normalized(), 0.6, 0.2, 1.6), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		Chess.QUEEN:
+			# La dama la hace girar como una peonza hasta desaparecer.
+			tv.tween_method(_pose_spin_out.bind(victim, vpos), 0.0, 1.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		Chess.KING:
+			# Ante el rey, se inclina y se retira.
+			tv.tween_method(_pose_bow.bind(victim, vpos, dir), 0.0, 1.0, 0.36).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_:
+			# El peón da un empujón.
+			tv.tween_method(_pose_knock.bind(victim, vpos, dir), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _pose_march(t: float, node: Node3D, a: Vector3, b: Vector3, dir: Vector3, steps: int, hop: float, sway: float) -> void:
+	var beat := sin(PI * float(steps) * t)
+	var foot := 1.0 if int(floor(float(steps) * minf(t, 0.999))) % 2 == 0 else -1.0
+	_pose(node, a.lerp(b, t) + Vector3(0.0, hop * absf(beat), 0.0), dir, sway * absf(beat) * foot)
+
+
+func _pose_glide(t: float, node: Node3D, a: Vector3, b: Vector3, dir: Vector3, weave: float) -> void:
+	var side := Vector3.UP.cross(dir)
+	var env := sin(PI * t)
+	_pose(node, a.lerp(b, t) + side * (weave * sin(TAU * 1.5 * t) * env) + Vector3(0.0, 0.05 * env, 0.0), side, 0.24 * env)
+
+
+func _pose_rumble(t: float, node: Node3D, a: Vector3, b: Vector3, dir: Vector3, dist: float) -> void:
+	var shake := 0.014 * sin(t * dist * 26.0) * sin(PI * t)
+	_pose(node, a.lerp(b, t) + Vector3(0.0, absf(shake), 0.0), Vector3.UP.cross(dir), -0.06 * sin(PI * t) + shake)
+
+
+func _pose_twirl(t: float, node: Node3D, a: Vector3, b: Vector3) -> void:
+	_pose(node, a.lerp(b, t) + Vector3(0.0, 0.12 * sin(PI * t), 0.0), Vector3.UP, TAU * t, 1.0 + 0.04 * sin(PI * t))
+
+
+func _pose_fear(t: float, node: Node3D, pos: Vector3, dir: Vector3) -> void:
+	# Se echa hacia atrás y tiembla.
+	_pose(node, pos + Vector3(0.0, 0.02 * absf(sin(t * TAU * 2.0)), 0.0), Vector3.UP.cross(dir), 0.16 * t, 1.0 - 0.06 * t)
+
+
+func _pose_crush(t: float, node: Node3D, pos: Vector3) -> void:
+	_pose(node, pos, Vector3.UP, 0.0, lerpf(1.0, 0.06, t), 1.0 - 0.3 * t * t)
+
+
+func _pose_fling(t: float, node: Node3D, pos: Vector3, dir: Vector3, far: float, high: float, turns: float) -> void:
+	_pose(node, pos + dir * (far * t) + Vector3(0.0, high * sin(PI * t), 0.0), Vector3.UP.cross(dir), turns * TAU * 0.5 * t, 1.0, 1.0 - t * t)
+
+
+func _pose_spin_out(t: float, node: Node3D, pos: Vector3) -> void:
+	_pose(node, pos + Vector3(0.0, 0.25 * t, 0.0), Vector3.UP, TAU * 2.0 * t, 1.0 + 0.3 * t, 1.0 - t)
+
+
+func _pose_bow(t: float, node: Node3D, pos: Vector3, dir: Vector3) -> void:
+	var bow := sin(PI * minf(t * 2.0, 1.0))
+	var leave := clampf(t * 2.0 - 1.0, 0.0, 1.0)
+	_pose(node, pos + dir * (0.5 * leave), Vector3.UP.cross(dir), -0.5 * bow, 1.0, 1.0 - leave)
 
 
 func _pose_line(t: float, node: Node3D, a: Vector3, b: Vector3) -> void:

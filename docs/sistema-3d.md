@@ -280,3 +280,20 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Las piezas negras llevan el contorno amarillo (`BLACK_OUTLINE`), para separarlas de la pieza de delante o de
 - Contorno de las piezas puesto por defecto en toda la app y con cualquier acabado (clave `app/contorno_por_defecto`: quien tenía ajustes de antes pasa una vez a tenerlo). Cambiar de acabado ya no lo quita ni lo pone.
   detrás en la vista 3D.
+
+## Animaciones con carácter (14 nov 2026, petición de Pablo)
+
+Con las animaciones «Completas», cada pieza se mueve a su manera (`_walk` en `board_3d.gd`) y la pieza comida cae
+según quién la ataca (`_strike`), después de asustarse un instante (`_pose_fear`):
+
+| Pieza | Al moverse | Al comer |
+|---|---|---|
+| Peón | Desfila a pasitos, balanceándose | Da un empujón |
+| Caballo | Salta dibujando su «L» | Cae encima y aplasta |
+| Alfil | Se desliza inclinado, con vaivén | Corta de lado: la otra cae a un costado |
+| Torre | Rueda pesada, temblando, y frena en seco | Embiste: la otra sale despedida dando vueltas |
+| Dama | Avanza girando sobre sí misma | Hace girar a la otra como una peonza |
+| Rey | Dos pasos solemnes, sin prisa | La otra se inclina y se retira |
+
+Todo sigue siendo breve (el movimiento más largo, el del rey, dura unos 0,6 s) y se puede acelerar o quitar en
+Opciones → Animaciones. En «Rápidas», «Mínimas» y «Sin» no cambia nada.
