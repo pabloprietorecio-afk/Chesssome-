@@ -149,13 +149,15 @@ assert(!(await hasButton('Repetir')), 'sin respuesta no hay «Repetir»');
 await move('b2f2');
 assert(/¡Esa es!/.test(await panel()), 'tras repetir, Txf2 debe darse por buena: ' + (await panel()));
 assert(!(await hasButton('Repetir')), 'con la buena no se ofrece «Repetir»');
+// Sin vídeo que se pare solo, «Siguiente pregunta» pasa a la siguiente pausa en el tablero, con las jugadas intermedias.
 await clickText('Siguiente pregunta');
-await waitAttr('question', 1);
+await waitAttr('stop', '1', 12000);
 await sleep(300);
+assert(/pregunta 2 de 3/.test(await page.$eval('.vc-ask', (e) => e.textContent).catch(() => '') + (await page.$eval('.vc-board-label', (e) => e.textContent).catch(() => ''))), 'pregunta 2 de 3');
 await move('e6d5');
 assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
 await clickText('Siguiente pregunta');
-await waitAttr('question', 2, 12000);
+await waitAttr('stop', '2', 12000);
 await sleep(300);
 await shot('05-pregunta-3');
 await move('d5e5');
@@ -210,6 +212,8 @@ await sleep(200);
 await shot('08b-relojes');
 await setTime(2); await markNow('start');
 await setTime(8.4); await markNow('0');
+await setTime(30); await markNow('1');
+await setTime(60); await markNow('2');
 await setTime(95); await markNow('end');
 // Estas marcas de prueba no son las del vídeo: se quita el tablero estimado.
 await page.evaluate(() => [...document.querySelectorAll('.vc-mark[data-sync-ply="109"] button')].find((b) => b.textContent.trim() === 'Quitar').click());
@@ -266,8 +270,15 @@ assert((await fake(() => window.__fakeYT.last().state)) === 2, 'al volver a la p
 await scrollTo('.vc-board');
 await move('b2f2');
 assert(/¡Esa es!/.test(await panel()), 'Txf2 debe ser la buena: ' + (await panel()));
+// Con el vídeo: «Siguiente pregunta» enseña la jugada en el vídeo y se para solo antes de la siguiente.
 await clickText('Siguiente pregunta');
-await waitAttr('question', 1);
+await waitAttr('phase', 'reveal');
+await fake(() => { window.__fakeYT.rate = 5; });
+await waitAttr('phase', 'asking', 15000);
+await fake(() => { window.__fakeYT.rate = 1; });
+const p2 = await fake(() => window.__fakeYT.last().time);
+assert((await attr('stop')) === '1' && Math.abs(p2 - 30) < 1, 'el vídeo avanza hasta la segunda pausa: ' + p2);
+await sleep(300);
 await clickText('Seguir viendo sin responder');
 await sleep(200);
 // Primero, encima del tablero, la jugada de la partida; el vídeo no sigue hasta pulsar OK.
@@ -279,6 +290,15 @@ await waitAttr('phase', 'reveal');
 await sleep(900);
 const afterReveal = await fake(() => ({ state: window.__fakeYT.last().state, calls: window.__fakeYT.calls.slice(-3) }));
 assert(afterReveal.state === 1, 'tras revelar, el vídeo debe reproducirse: ' + JSON.stringify(afterReveal));
+// Se vuelve a parar antes de la tercera pregunta; sin responder, el vídeo sigue hasta el final.
+await fake(() => { window.__fakeYT.rate = 5; });
+await waitAttr('phase', 'asking', 20000);
+await fake(() => { window.__fakeYT.rate = 1; });
+assert((await attr('stop')) === '2', 'tercera pausa');
+await sleep(300);
+await clickText('Seguir viendo sin responder');
+await clickText('OK');
+await waitAttr('phase', 'reveal');
 await fake(() => { window.__fakeYT.rate = 25; });
 await waitAttr('phase', 'ended', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });
@@ -304,13 +324,14 @@ await page.evaluate(() => {
 });
 await clickText('Volver a la cartelera');
 await page.waitForSelector('.vc-card');
-assert(/Se para solo antes de la jugada$/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"] .vc-chip', (e) => e.textContent)), 'el clip debe figurar con pausa automática verificada');
+assert(/Se para solo · marcas sin comprobar$/.test(await page.$eval('.vc-card[data-clip="ding-gukesh-2024-g14"] .vc-chip', (e) => e.textContent)), 'el clip figura con pausa automática, pendiente de comprobar las pausas nuevas');
 assert(/versión anterior del clip/.test(await cardText()), 'debe avisar de que las marcas antiguas del dispositivo ya no se usan: ' + (await cardText()));
 await page.evaluate(() => window.scrollTo(0, 0));
 await shot('01b-cartelera-con-pausa');
 await openClip('Comenzar');
 await waitAttr('phase', 'watching');
-assert(!(await hasButton('Editor de marcas')), 'un clip verificado y con tablero no ofrece el editor');
+// Viendo el clip, el pie no se llena con el editor (solo con el interruptor de desarrollo).
+assert(!(await hasButton('Editor de marcas')), 'viendo el clip, sin el editor en el pie');
 
 // ── F. El ancla de Pablo (55…Txf2: reloj en 2:21) reproduce las marcas del paquete; el tablero sigue al vídeo.
 // El editor de un clip verificado solo se abre con el interruptor de desarrollo. ──
@@ -421,7 +442,19 @@ assert(/tras 56\.Rxf2/.test((await boardInfo()).label), 'etiqueta: ' + (await bo
 const fitReveal = await assertFits('al revelar');
 assert([fitAsking, fitReveal].every((f) => JSON.stringify(f.board) === JSON.stringify(fitWatching.board)), 'el tablero no se mueve ni cambia de tamaño entre ver, la pausa y revelar: ' + JSON.stringify([fitWatching.board, fitAsking.board, fitReveal.board]));
 await shot('15-tablero-sigue-al-video');
-await fake(() => { window.__fakeYT.rate = 25; });
+// Segunda y tercera pausa (antes de 56…Ad5 y de 58…Re5): sin responder, el vídeo sigue hasta el final.
+for (const [stop, at] of [['1', 144.5], ['2', 214]]) {
+  await fake(() => { window.__fakeYT.rate = 5; });
+  await waitAttr('phase', 'asking', 25000);
+  await fake(() => { window.__fakeYT.rate = 1; });
+  const t = await fake(() => window.__fakeYT.last().time);
+  assert((await attr('stop')) === stop && Math.abs(t - at) < 0.6, `pausa ${stop} en ${t}, no junto a ${at}`);
+  await sleep(300);
+  await clickText('Seguir viendo sin responder');
+  await clickText('OK');
+  await waitAttr('phase', 'reveal');
+}
+await fake(() => { window.__fakeYT.rate = 5; });
 await waitAttr('phase', 'ended', 20000);
 await fake(() => { window.__fakeYT.rate = 1; });
 bi = await boardInfo();

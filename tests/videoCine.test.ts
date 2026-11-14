@@ -37,6 +37,7 @@ import {
 
 const PACK = pack as unknown as VideoCinePack;
 const ding = PACK.clips.find((c) => c.id === 'ding-gukesh-2024-g14')!;
+const dingQs = ding.stops.flatMap((st) => st.questions);
 
 describe('paquete de clips de vídeo', () => {
   it('está al día con las fuentes (si falla: npx tsx pipeline/build-video-cine.ts)', () => {
@@ -89,29 +90,30 @@ describe('paquete de clips de vídeo', () => {
   });
 
   it('Ding–Gukesh: marcas estimadas con los relojes y comprobadas en el vídeo', () => {
-    expect(ding.marks).toBe('verified');
-    expect(marksOf(ding)).toEqual({ start: 3.5, stops: [138], end: 233.07, duration: 437, sync: ding.sync });
+    // Una pausa por pregunta: la primera la comprobó Pablo; las otras dos salen de los relojes, sin comprobar.
+    expect(ding.marks).toBe('pending');
+    expect(marksOf(ding)).toEqual({ start: 3.5, stops: [138, 144.5, 214], end: 233.07, duration: 437, sync: ding.sync });
     expect(marksProblems(marksOf(ding))).toEqual([]);
     expect(syncProblems(ding, ding.sync!, marksOf(ding))).toEqual([]);
     expect(canAutoPause(ding)).toBe(true);
   });
 
   it('Ding–Gukesh: en las tres preguntas solo gana la jugada de la partida', () => {
-    const qs = ding.stops[0].questions;
+    const qs = dingQs;
     expect(qs.map((q) => q.played.san)).toEqual(['Rxf2', 'Bd5', 'Ke5']);
     for (const q of qs) {
       expect(q.target).toBe('win');
       expect(q.playedCls).toBe('keeps');
       expect(q.verdicts.filter((v) => v.cls === 'keeps').map((v) => v.uci)).toEqual([q.playedUci]);
     }
-    expect(qs[1].bridge.map((m) => m.san)).toEqual(['Kxf2']);
-    expect(qs[2].bridge.map((m) => m.san)).toEqual(['Bxd5', 'Kxd5', 'Ke3']);
+    // Una pausa por pregunta: el vídeo enseña las jugadas intermedias, así que no hay puente en el tablero.
+    expect(qs.map((q) => q.bridge.length)).toEqual([0, 0, 0]);
     expect(qs[0].lead?.san).toBe('Rf2');
   });
 });
 
 describe('respuestas', () => {
-  const [q1, , q3] = ding.stops[0].questions;
+  const [q1, , q3] = dingQs;
   it('la jugada de la partida devuelve la explicación propia', () => {
     const r = judgeAnswer(q1, q1.playedUci);
     expect(r.outcome).toBe('answer');
@@ -151,11 +153,11 @@ describe('utilidades', () => {
     expect(marksProblems({ start: 0, stops: [500], end: null, duration: 430 })).toEqual(['Hay marcas más allá del final del vídeo.']);
   });
   it('un clip sin marcas no puede pausar solo; con marcas locales, sí', () => {
-    const unmarked = withMarks(ding, { start: null, stops: [null], end: null, duration: null });
+    const unmarked = withMarks(ding, { start: null, stops: [null, null, null], end: null, duration: null });
     expect(canAutoPause(unmarked)).toBe(false);
-    const marked = withMarks(ding, { start: 0, stops: [8.4], end: 120, duration: 431 });
+    const marked = withMarks(ding, { start: 0, stops: [8.4, 20, 40], end: 120, duration: 431 });
     expect(canAutoPause(marked)).toBe(true);
-    expect(marksOf(marked)).toEqual({ start: 0, stops: [8.4], end: 120, duration: 431, sync: ding.sync });
+    expect(marksOf(marked)).toEqual({ start: 0, stops: [8.4, 20, 40], end: 120, duration: 431, sync: ding.sync });
   });
 });
 
@@ -167,8 +169,8 @@ const mini = (over: Partial<MiniClip> = {}): MiniClip => ({
   end: 60,
   video: { ...ding.video, duration: 100 },
   stops: [
-    { at: 20, questions: ding.stops[0].questions },
-    { at: 40, questions: ding.stops[0].questions },
+    { at: 20, questions: dingQs },
+    { at: 40, questions: dingQs },
   ],
   ...over,
 });
@@ -282,7 +284,7 @@ describe('director', () => {
   });
 
   it('sin marcas, el modo película se convierte en directo y la revelación empieza donde pueda', () => {
-    const noMarks = mini({ start: null, end: null, stops: [{ at: null, questions: ding.stops[0].questions }] });
+    const noMarks = mini({ start: null, end: null, stops: [{ at: null, questions: dingQs }] });
     const r = drive(noMarks, [{ type: 'start', mode: 'film' }]);
     expect(r.state.phase).toBe('asking');
     expect(r.state.mode).toBe('direct');
@@ -298,7 +300,7 @@ describe('director', () => {
   });
 
   it('ver el vídeo sin marcas: se carga entero y la pregunta queda a un toque', () => {
-    const noMarks = mini({ start: null, end: null, stops: [{ at: null, questions: ding.stops[0].questions }] });
+    const noMarks = mini({ start: null, end: null, stops: [{ at: null, questions: dingQs }] });
     const r = drive(noMarks, [{ type: 'start', mode: 'free' }, tick(30, 0), tick(90, 5000)]);
     expect(r.commands).toEqual([[{ type: 'cue', at: 0 }], [], []]);
     expect(r.state).toMatchObject({ phase: 'reveal', mode: 'free', stop: 0, videoOn: true, missed: 'skipped' });
@@ -321,7 +323,7 @@ describe('director', () => {
 
   it('simulación: con lecturas cada 100 ms la pausa cae entre 0,12 s antes y 0,1 s después de la marca', () => {
     for (const at of [3.07, 12.34, 20, 41.99]) {
-      const clip = mini({ start: 0, end: null, stops: [{ at, questions: ding.stops[0].questions }] });
+      const clip = mini({ start: 0, end: null, stops: [{ at, questions: dingQs }] });
       // Reproductor simulado: avanza solo mientras reproduce.
       let time = 0;
       let playing = false;
@@ -353,14 +355,14 @@ describe('director', () => {
 });
 
 describe('tablero sincronizado', () => {
-  const q1 = ding.stops[0].questions[0].ply;
+  const q1 = dingQs[0].ply;
   // Marcas de ejemplo (el clip del paquete está por marcar).
   const marks = { start: 200, end: 240, stops: [215.5], duration: 437 };
   const pause = marks.stops[0];
 
   it('por defecto empieza en la posición de la primera pregunta', () => {
     expect(defaultStartPly(ding)).toBe(q1 - 1);
-    expect(moveAt(ding, q1)!.san).toBe(ding.stops[0].questions[0].played.san);
+    expect(moveAt(ding, q1)!.san).toBe(dingQs[0].played.san);
     expect(fenAfter(ding, 0)).toMatch(/^rnbqkbnr\/pppppppp/);
     expect(fenAfter(ding, ding.timeline.fromPly - 1)).toBeNull();
   });
@@ -393,7 +395,9 @@ describe('tablero sincronizado', () => {
 
   it('mientras se ve el vídeo, el tablero no pasa de la posición de la próxima pregunta', () => {
     expect(syncCap(ding, { phase: 'watching', stop: 0, mode: 'film' })).toBe(q1 - 1);
-    expect(syncCap(ding, { phase: 'reveal', stop: 0, mode: 'film' })).toBe(Infinity);
+    // Tras la primera pausa, el vídeo sigue hasta la siguiente: el tablero no pasa de su posición.
+    expect(syncCap(ding, { phase: 'reveal', stop: 0, mode: 'film' })).toBe(dingQs[1].ply - 1);
+    expect(syncCap(ding, { phase: 'reveal', stop: 2, mode: 'film' })).toBe(Infinity);
     expect(syncCap(ding, { phase: 'watching', stop: 0, mode: 'free' })).toBe(Infinity);
     const two = { stops: [{ questions: [{ ply: 20 }] }, { questions: [{ ply: 40 }] }] };
     expect(syncCap(two, { phase: 'reveal', stop: 0, mode: 'film' })).toBe(39);
@@ -426,7 +430,7 @@ describe('pregunta en la que la partida tuvo un error (Gukesh–Carlsen, 52…Ce
     const ref = referenceMove(q);
     expect(ref.fromGame).toBe(false);
     expect(q.verdicts.find((v) => v.uci === ref.uci)?.cls).toBe('keeps');
-    const ding0 = ding.stops[0].questions[0];
+    const ding0 = dingQs[0];
     expect(referenceMove(ding0)).toEqual({ uci: ding0.playedUci, san: ding0.played.san, fromGame: true });
   });
 

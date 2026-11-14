@@ -36,10 +36,11 @@ export const CLIPS: ClipSource[] = [
     },
     // Marcas estimadas (13 nov 2026) con un ancla de Pablo, 55…Txf2: Gukesh pulsa el reloj en 2:21 (141 s), y los
     // relojes de la retransmisión (ver `clocks`). Fin: el apretón de manos que marcó Pablo (233,07 s).
-    // Comprobadas por Pablo en su móvil (13 nov 2026): pausa antes de 55…Txf2 y tablero sincronizado con el vídeo.
+    // Comprobadas por Pablo en su móvil (13 nov 2026): pausa antes de 55…Txf2 y tablero sincronizado con el vídeo. Las
+    // pausas de las preguntas 2 y 3 (14 nov 2026) están sin comprobar: por eso el clip vuelve a «pending».
     start: 3.5,
     end: 233.07,
-    marks: 'verified',
+    marks: 'pending',
     // Tablero sincronizado: cada jugada 0,5 s antes de que se pulse su reloj (suggestSync).
     sync: {
       startPly: 108,
@@ -109,6 +110,9 @@ export const CLIPS: ClipSource[] = [
         },
       ],
     },
+    // Una pausa antes de cada pregunta (14 nov 2026): respondes, el vídeo enseña la jugada y se para antes de la siguiente.
+    // 138 la comprobó Pablo; 144,5 (entre 56.Rxf2, reloj en 143,0, y 56…Ad5, reloj en 146,0) y 214 (3 s antes del reloj de
+    // 58…Re5, en 217,0) los calcula suggestPause con los relojes, como 138, y están sin comprobar.
     stops: [
       {
         at: 138,
@@ -119,12 +123,22 @@ export const CLIPS: ClipSource[] = [
             hint: 'Imagina el tablero sin las torres. Y después, sin los alfiles.',
             why: 'Txf2: cambiar las torres es el primer paso. El alfil blanco está arrinconado en a8, así que después se podrá forzar también el cambio de alfiles y entrar en un final de peones ganado.',
           },
+        ],
+      },
+      {
+        at: 144.5,
+        questions: [
           {
             ply: 112,
             question: 'Las blancas han recapturado con el rey. ¿Y ahora?',
             hint: 'Mira el alfil de a8: solo tiene una diagonal.',
             why: 'Ad5: el alfil negro se planta en la única diagonal del alfil de a8. No hay casilla donde esconderse, así que las blancas tienen que cambiar. Queda un final de reyes y peones con un peón más para las negras.',
           },
+        ],
+      },
+      {
+        at: 214,
+        questions: [
           {
             ply: 116,
             question: 'Final de reyes y peones. Juegan las negras: ¿qué jugarías?',

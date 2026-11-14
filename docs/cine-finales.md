@@ -249,3 +249,8 @@ Cuatro películas sin vídeo (oposición, Saavedra 1895, Lucena, Philidor) con f
 
 - Pantalla «estática»: los textos no empujan el tablero. Los avisos van en ventanas translúcidas encima del tablero y el tablero se mantiene grande.
 - Nunca se dibuja nada delante del reproductor de YouTube (normas de la API de YouTube). La pregunta y el veredicto van en una ventana translúcida sobre el tablero, que se quita al tocarla («Ver la pregunta» / «Ver la explicación» la recupera). El vídeo no se mueve ni se recoge, y el tablero tiene el mismo tamaño viendo, en la pausa y al revelar (hueco fijo para las opciones).
+
+## Una pausa por pregunta (14 nov 2026)
+
+- Ding–Gukesh tiene ahora tres pausas (138; 144,5; 214): respondes, «Siguiente pregunta» enseña la jugada en el vídeo y se para antes de la siguiente. 138 la comprobó Pablo; 144,5 y 214 salen de los relojes con `suggestPause` y están sin comprobar, así que el clip vuelve a `pending`.
+- Sin vídeo que se pare solo («Ir directo»), «Siguiente pregunta» hace en el tablero las jugadas intermedias y pasa a la pregunta de la siguiente pausa (evento `next` del director).

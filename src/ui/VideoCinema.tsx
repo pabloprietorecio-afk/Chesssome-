@@ -350,6 +350,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   const q: ClipQuestion | undefined = stop?.questions[qi];
   const lastQ = stop?.questions[stop.questions.length - 1];
   const totalQuestions = stop?.questions.length ?? 0;
+  // Numeración de todo el clip (una pausa puede tener una o varias preguntas).
+  const qNumber = clip.stops.slice(0, st.stop).reduce((n, x) => n + x.questions.length, 0) + qi + 1;
+  const qTotal = clip.stops.reduce((n, x) => n + x.questions.length, 0);
+  /** Queda otra pausa más adelante en el vídeo. */
+  const moreStops = st.stop + 1 < clip.stops.length;
   const ev = (event: string, data: Record<string, unknown> = {}) => log({ type: 'cine', data: { clip: clip.id, event, ...data } });
 
   const showPlayed = (qq: ClipQuestion, animate: boolean) =>
@@ -411,6 +416,26 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       setBoard({ fen: c.fen(), last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: !!m.captured } });
     }
     ev('show_answer', { stop: st.stop, question: qi });
+  };
+
+  /** Siguiente pregunta en otra pausa sin vídeo que se pare solo: el tablero hace las jugadas intermedias y salta. */
+  const nextStopOnBoard = () => {
+    if (!q) return;
+    const nq = clip.stops[st.stop + 1]?.questions[0];
+    if (!nq) return;
+    setBusy(true);
+    const steps: (() => void)[] = [];
+    if (board?.fen !== q.played.fenAfter) {
+      steps.push(() => setBoard({ fen: q.fen, last: null, anim: null }));
+      steps.push(() => showPlayed(q, true));
+    }
+    for (let p = q.ply + 1; p < nq.ply; p++) {
+      const m = moveAt(clip, p);
+      if (m) steps.push(() => setBoard({ fen: m.fenAfter, last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: m.captured } }));
+    }
+    steps.push(() => send({ type: 'next' }));
+    clearTimers();
+    steps.forEach((fn, i) => timers.current.push(window.setTimeout(fn, 350 + i * STEP_MS)));
   };
 
   const nextQuestion = () => {
@@ -689,7 +714,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         {st.phase === 'asking' && q && !answer && !gate && !fit && (
           <div className="cm-hint vc-panel vc-ask" ref={askBox}>
             <p className="cm-kicker">
-              {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
+              {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qNumber} de {qTotal}
             </p>
             {busy ? <p className="cm-quiet">Así siguió la partida…</p> : <p className="vc-question">{q.question}</p>}
           </div>
@@ -741,7 +766,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             {!synced && fit && st.phase === 'asking' && q && (
               <p className="cm-kicker vc-board-label vc-board-label-ask">
                 <span className="vc-board-label-text">
-                  {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
+                  {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qNumber} de {qTotal}
                 </span>
                 {!gate && cardHidden && (
                   <button className="vc-reopen" onClick={() => setCardHidden(false)}>
@@ -865,8 +890,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               Terminar
             </button>
           ) : (
-            <button className="cm-primary" onClick={reveal}>
-              Ver cómo ocurrió en el vídeo
+            <button className="cm-primary" onClick={moreStops && !(st.videoOn && canAutoPause(clip)) ? nextStopOnBoard : reveal} disabled={busy}>
+              {moreStops ? 'Siguiente pregunta' : 'Ver cómo ocurrió en el vídeo'}
             </button>
           )}
           {!fit && qi + 1 < totalQuestions && <SkipLink errored={st.errorCode != null} videoOn={st.videoOn} onReveal={skip} onFinish={() => send({ type: 'finish' })} />}
@@ -961,7 +986,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             Terminar
           </button>
         )}
-        {canEditMarks(packed) && (
+        {canEditMarks(packed) && (!fit || devFlag(LOCAL_MARKS_FLAG)) && (
           <button className="cm-link" onClick={onEdit}>
             Editor de marcas
           </button>
