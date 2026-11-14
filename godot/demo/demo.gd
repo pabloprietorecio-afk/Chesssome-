@@ -92,8 +92,8 @@ const SET_NAMES := ["Figuras", "Fichas", "Simple"]
 var piece_set := "clasico"
 ## Mundos de piezas del nivel Kids (Board3D.FLAT_ATLAS): se ven en las partidas; las lecciones siguen con las piezas
 ## normales, para que el niño aprenda las de verdad. "" = sin mundo.
-const WORLDS := ["", "reino", "safari", "espacio", "piratas", "dino"]
-const WORLD_NAMES := ["Normales", "Reino", "Safari", "Espacio", "Piratas", "Dinos"]
+const WORLDS := ["", "aventura", "reino", "safari", "espacio", "piratas", "dino"]
+const WORLD_NAMES := ["Normales", "Aventura 3D", "Reino", "Safari", "Espacio", "Piratas", "Dinos"]
 var kids_world := ""
 var sound_on := true
 ## Pista animada sobre el tablero: recuerda que se puede ampliar y girar. Viene activada y se apaga sola
@@ -2408,14 +2408,14 @@ func _world_tiles() -> VBoxContainer:
 	rows.add_theme_constant_override("separation", 12)
 	var row: HBoxContainer = null
 	for i in WORLDS.size():
-		if i % 3 == 0:
+		if i % 4 == 0:
 			row = HBoxContainer.new()
 			row.add_theme_constant_override("separation", 12)
 			rows.add_child(row)
 		var colors := _choice_colors(WORLDS[i] == kids_world)
-		var b := _button("piece_king" if i == 0 else "", str(WORLD_NAMES[i]), _set_world.bind(i), colors[0], colors[1], {"vertical": true, "font_size": F_SUB, "height": 200.0, "icon": 96.0, "radius": 44, "border": colors[2], "font": font_semibold if WORLDS[i] == kids_world else font_medium})
+		var b := _button("piece_king" if i == 0 else ("piece_knight" if WORLDS[i] == "aventura" else ""), str(WORLD_NAMES[i]), _set_world.bind(i), colors[0], colors[1], {"vertical": true, "font_size": F_SUB, "height": 200.0, "icon": 96.0, "radius": 44, "border": colors[2], "font": font_semibold if WORLDS[i] == kids_world else font_medium})
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if i > 0:
+		if i > 0 and Board3D.FLAT_ATLAS.has(WORLDS[i]):
 			var pic := TextureRect.new()
 			pic.texture = _world_picture(WORLDS[i])
 			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -2469,7 +2469,7 @@ func _apply_simple_view() -> void:
 		top_view = true
 		view.center_view()
 		_flat_view = false
-	elif view.board.is_standee():
+	elif view.board.is_standee() or view.board.is_rigged():
 		# Mundos Kids: el tablero se inclina para que los personajes se pongan de pie. Se puede seguir cambiando
 		# la vista con su botón; la preferencia del jugador no se toca.
 		view.set_view_locked(_saved_lock)

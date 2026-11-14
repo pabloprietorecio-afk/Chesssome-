@@ -205,6 +205,16 @@ func _simple_shots() -> void:
 		await _frames(3)
 		await _shot("19_mundo_" + world)
 	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
+	# Aventura: personajes articulados, con el tablero inclinado y en mitad de una captura.
+	view.set_piece_set("aventura")
+	await _frames(6)
+	await _shot("19_mundo_aventura")
+	board.anim_mode = Board3D.Anim.FULL
+	board.play_move(board.chess.find_uci("e2e4"))
+	await _frames(12)
+	await _shot("19_mundo_aventura_andando")
+	board.finish_animations()
+	board.anim_mode = Board3D.Anim.NONE
 	view.set_piece_set("clasico")
 	view.set_board_style("madera")
 

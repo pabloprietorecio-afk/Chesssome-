@@ -30,7 +30,22 @@ const OUTLINE_WIDTH := 0.026
 ## Color del contorno de las piezas negras (amarillo, para que se vea sobre piezas y casillas oscuras).
 const BLACK_OUTLINE := Color("f5c542")
 ## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
-const PIECE_SETS := ["clasico", "fichas", "simple", "reino", "safari", "espacio", "piratas", "dino"]
+const PIECE_SETS := ["clasico", "fichas", "simple", "reino", "safari", "espacio", "piratas", "dino", "aventura"]
+## Juego «Aventura»: personajes 3D con esqueleto y animaciones (KayKit Adventurers, CC0; ver tools/pieces/aventura.py)
+## de pie sobre la ficha de su pieza. Por tipo de pieza: personaje, tamaño, accesorios que lleva y sus animaciones.
+const RIG_DIR := "res://sets/aventura/"
+const RIG := {
+	1: {"who": "rogue_hooded", "size": 0.52, "show": ["Knife"], "walk": "Walking_A", "pace": 1.5, "attack": "1H_Melee_Attack_Stab"},
+	2: {"who": "knight", "size": 0.64, "show": ["1H_Sword", "Round_Shield", "Knight_Helmet"], "walk": "Jump_Full_Long", "pace": 1.0, "attack": "1H_Melee_Attack_Chop"},
+	3: {"who": "mage", "size": 0.64, "show": ["2H_Staff", "Mage_Hat", "Mage_Cape"], "walk": "Walking_A", "pace": 1.3, "attack": "Spellcast_Shoot", "ranged": true},
+	4: {"who": "barbarian", "size": 0.68, "show": ["1H_Axe", "Barbarian_Round_Shield", "Barbarian_Hat"], "walk": "Walking_C", "pace": 1.2, "attack": "1H_Melee_Attack_Slice_Horizontal"},
+	5: {"who": "rogue", "size": 0.70, "show": ["Knife", "Knife_Offhand", "Rogue_Cape"], "walk": "Running_A", "pace": 1.1, "attack": "Dualwield_Melee_Attack_Slice"},
+	6: {"who": "knight", "size": 0.80, "show": ["2H_Sword", "Knight_Helmet", "Knight_Cape"], "walk": "Walking_C", "pace": 1.0, "attack": "2H_Melee_Attack_Chop"},
+}
+const RIG_LOOPS := ["Idle", "Walking_A", "Walking_C", "Running_A"]
+const RIG_BODY := ["ArmLeft", "ArmRight", "Body", "Head", "LegLeft", "LegRight"]
+## Las negras: los mismos personajes, oscurecidos.
+const RIG_DARK := Color(0.36, 0.38, 0.56)
 ## Juegos planos (un dibujo por pieza): «Simple» y los mundos del nivel Kids (tools/pieces/mundos_arte.py).
 const FLAT_ATLAS := {
 	"simple": "res://sets/simple/iconos.bin",
@@ -150,6 +165,8 @@ var _token_mats: Array[ShaderMaterial] = []
 var _token_mesh: Mesh
 var _simple_tex: Texture2D
 var _flat_cache := {}
+var _rig_scenes := {}
+var _rig_dark := {}
 ## Ejes de la cámara (los calcula apply_camera): los recortables miran siempre hacia ella.
 var _cam_right := Vector3.RIGHT
 var _cam_up := Vector3.FORWARD
@@ -532,8 +549,14 @@ func set_outline(on: bool) -> void:
 			_dress(node)
 
 
+## Fichas, o personajes articulados (que van de pie sobre su ficha).
 func is_tokens() -> bool:
-	return piece_set == "fichas"
+	return piece_set == "fichas" or piece_set == "aventura"
+
+
+## Personajes 3D con esqueleto y animaciones.
+func is_rigged() -> bool:
+	return piece_set == "aventura"
 
 
 ## Juego plano (un dibujo por pieza): «Simple» o uno de los mundos Kids.
@@ -619,6 +642,7 @@ func _dress(node: Node3D) -> void:
 	hull.visible = outline and not is_flat()
 	disc.visible = outline and not is_flat()
 	body.visible = not is_flat()
+	_dress_figure(node, piece)
 	var flat := node.get_node_or_null("Plano") as Sprite3D
 	if is_flat():
 		if flat == null:
@@ -884,6 +908,147 @@ func _size_simple(pitch: float) -> void:
 			_rest(_pieces[s], s)
 
 
+## Personaje articulado de una pieza (juego «Aventura»): lo crea, lo cambia si la pieza ha coronado o lo quita.
+func _dress_figure(node: Node3D, piece: int) -> void:
+	var fig := node.get_node_or_null("Figura") as Node3D
+	if not is_rigged():
+		if fig != null:
+			node.remove_child(fig)
+			fig.queue_free()
+		return
+	if fig != null and int(fig.get_meta("piece", -1)) == piece:
+		return
+	if fig != null:
+		node.remove_child(fig)
+		fig.queue_free()
+	var kind := Chess.type_of(piece)
+	var side := Chess.color_of(piece)
+	var cfg: Dictionary = RIG[kind]
+	var template := _rig_scene(str(cfg["who"]))
+	if template == null:
+		return
+	fig = template.duplicate() as Node3D
+	fig.name = "Figura"
+	fig.set_meta("piece", piece)
+	var size: float = cfg["size"]
+	fig.scale = Vector3.ONE * size / PIECE_GIRTH
+	fig.position = Vector3(0.0, float(TOKEN["height"]) * (PAWN_TOKEN_SCALE if kind == Chess.PAWN else 1.0), 0.0)
+	var show: Array = cfg["show"]
+	for mi: MeshInstance3D in fig.find_children("*", "MeshInstance3D", true, false):
+		var part := false
+		for tag: String in RIG_BODY:
+			if str(mi.name).contains(tag):
+				part = true
+		mi.visible = part or show.has(str(mi.name))
+		if side == 1 and mi.visible and mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var base := mi.mesh.surface_get_material(i) as BaseMaterial3D
+				if base == null:
+					continue
+				if not _rig_dark.has(base):
+					var dark := base.duplicate() as BaseMaterial3D
+					dark.albedo_color = RIG_DARK
+					_rig_dark[base] = dark
+				mi.set_surface_override_material(i, _rig_dark[base])
+	node.add_child(fig)
+	_face(node, _forward_yaw(side))
+	var ap := _fig_player(node)
+	if ap != null:
+		ap.play("Idle")
+		ap.seek(randf() * 1.2, true)
+
+
+func _exit_tree() -> void:
+	for scene: Variant in _rig_scenes.values():
+		if scene != null and is_instance_valid(scene):
+			(scene as Node).free()
+	_rig_scenes.clear()
+
+
+## Carga (una vez) el .glb de un personaje y prepara sus animaciones en bucle.
+func _rig_scene(who: String) -> Node3D:
+	if not _rig_scenes.has(who):
+		var bytes := FileAccess.get_file_as_bytes(RIG_DIR + who + ".bin")
+		var doc := GLTFDocument.new()
+		var state := GLTFState.new()
+		var scene: Node3D = null
+		if not bytes.is_empty() and doc.append_from_buffer(bytes, "", state) == OK:
+			scene = doc.generate_scene(state) as Node3D
+		if scene == null:
+			push_error("No se puede cargar el personaje: " + who)
+		else:
+			var ap := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
+			if ap != null:
+				for anim_name: String in RIG_LOOPS:
+					if ap.has_animation(anim_name):
+						ap.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
+				ap.playback_default_blend_time = 0.12
+		_rig_scenes[who] = scene
+	return _rig_scenes[who]
+
+
+func _fig_player(node: Node3D) -> AnimationPlayer:
+	if not is_instance_valid(node):
+		return null
+	var fig := node.get_node_or_null("Figura")
+	return fig.find_child("AnimationPlayer", true, false) as AnimationPlayer if fig != null else null
+
+
+func _fig_play(node: Node3D, anim_name: String, speed: float = 1.0) -> void:
+	var ap := _fig_player(node)
+	if ap != null and ap.has_animation(anim_name):
+		ap.play(anim_name, -1.0, speed)
+
+
+## Deja en cola la vuelta al reposo cuando acabe lo que esté haciendo.
+func _fig_then_idle(node: Node3D) -> void:
+	var ap := _fig_player(node)
+	if ap != null:
+		ap.queue("Idle")
+
+
+func _fig_len(node: Node3D, anim_name: String) -> float:
+	var ap := _fig_player(node)
+	return ap.get_animation(anim_name).length if ap != null and ap.has_animation(anim_name) else 0.5
+
+
+## Gira el personaje hacia un rumbo del tablero (su ficha no gira).
+func _face(node: Node3D, yaw_world: float) -> void:
+	if not is_instance_valid(node):
+		return
+	var fig := node.get_node_or_null("Figura") as Node3D
+	if fig != null:
+		fig.rotation.y = yaw_world - float(node.get_meta("yaw", 0.0))
+
+
+func _face_dir(node: Node3D, dir: Vector3) -> void:
+	_face(node, atan2(dir.x, dir.z))
+
+
+## Rumbo «hacia el rival» de cada bando: las blancas avanzan hacia −z.
+func _forward_yaw(side: int) -> float:
+	return PI if side == 0 else 0.0
+
+
+## Bola de magia del alfil (un mago): vuela hasta la pieza que come.
+func _spell(from_pos: Vector3, to_pos: Vector3, seconds: float) -> void:
+	var orb := MeshInstance3D.new()
+	var ball := SphereMesh.new()
+	ball.radius = 0.11
+	ball.height = 0.22
+	orb.mesh = ball
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.55, 0.85, 1.0)
+	orb.material_override = mat
+	orb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	orb.position = from_pos + Vector3(0.0, 0.75, 0.0)
+	add_child(orb)
+	var tw := create_tween()
+	tw.tween_property(orb, "position", to_pos + Vector3(0.0, 0.55, 0.0), seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(orb.queue_free)
+
+
 ## Selección: el contorno de la pieza se vuelve del color de acento.
 func _set_glow(node: Node3D, amount: float) -> void:
 	for part: String in ["Malla", "Contorno", "Peana"]:
@@ -899,7 +1064,12 @@ func _rest(node: Node3D, s: int) -> void:
 	var lift := 0.1 if s == selected else 0.0
 	_pose(node, sq_pos(s) + Vector3(0.0, lift, 0.0), Vector3.UP, 0.0)
 	var topple: float = node.get_meta("topple", 0.0)
-	if topple != 0.0:
+	if topple != 0.0 and is_rigged():
+		# El rey articulado no vuelca la ficha: se queda tumbado él.
+		var ap := _fig_player(node)
+		if ap != null and ap.current_animation != "Death_B":
+			ap.play("Death_B_Pose")
+	elif topple != 0.0:
 		var lift_up: float = node.get_meta("topple_lift", 0.0)
 		_pose(node, sq_pos(s) + Vector3(0.0, lift_up, 0.0), node.get_meta("topple_axis", Vector3.RIGHT), topple)
 
@@ -1093,7 +1263,7 @@ func apply_camera() -> void:
 	var pa := PackedFloat32Array()
 	var pb := PackedFloat32Array()
 	var pc := PackedFloat32Array()
-	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() or is_flat() else FIT_HEIGHT
+	var fit_height := FIT_HEIGHT_TOKENS if (is_tokens() and not is_rigged()) or is_flat() else FIT_HEIGHT
 	_size_simple(pitch)
 	for ix: int in [-1, 1]:
 		for iz: int in [-1, 1]:
@@ -1715,6 +1885,9 @@ func play_move(m: int, dropped: bool = false) -> void:
 		return
 
 	var full := mode == Anim.FULL
+	if is_rigged():
+		_play_rigged(mover, victim, kind, a, b, dir, dist, full, dropped, promo, sq_pos(victim_sq), rook, rook_from, rook_to, check, mate, to)
+		return
 	var dur := 0.0
 	if not dropped:
 		dur = clampf(0.26 + 0.035 * dist, 0.28, 0.46) if full else 0.16
@@ -1838,6 +2011,128 @@ func _mark_fallen_king(attacker_sq: int) -> Vector3:
 func _hide(node: Node3D) -> void:
 	if is_instance_valid(node):
 		node.visible = false
+
+
+## Jugada con personajes articulados: andan hasta su casilla mirando hacia donde van; al comer, atacan con su arma
+## (el mago lanza un hechizo desde lejos) y la otra pieza recibe el golpe y cae; con jaque el rey se cubre y con
+## mate cae al suelo.
+func _play_rigged(mover: Node3D, victim: Node3D, kind: int, a: Vector3, b: Vector3, dir: Vector3, dist: float, full: bool, dropped: bool, promo: int, vpos: Vector3, rook: Node3D, rook_from: int, rook_to: int, check: bool, mate: bool, to: int) -> void:
+	var cfg: Dictionary = RIG[kind]
+	var side := Chess.color_of(mover.get_meta("piece"))
+	var walk := str(cfg["walk"])
+	var pace: float = cfg["pace"]
+	var quick := 1.0 if full else 2.2
+	var jumper := kind == Chess.KNIGHT
+	var tw := _tw()
+	var t := 0.0
+	var landing := "capture" if victim != null else "place"
+	if dropped:
+		tw.tween_method(_pose_line.bind(mover, a, b), 0.0, 1.0, 0.06)
+		t = 0.06
+		if victim != null:
+			_hide(victim)
+	else:
+		var stop := b
+		var ranged := bool(cfg.get("ranged", false))
+		if victim != null:
+			# Los de cuerpo a cuerpo se paran a un paso de la pieza; el mago ataca desde donde está.
+			var gap := (b - a).normalized() * minf(0.8, dist * 0.6)
+			stop = a if ranged else b - gap
+		var first := Vector2(stop.x - a.x, stop.z - a.z).length()
+		tw.tween_callback(_face_dir.bind(mover, dir))
+		if first > 0.05:
+			var d1 := _rig_walk(tw, mover, a, stop, first, walk, pace, jumper, quick)
+			t += d1
+		if victim != null:
+			var attack := str(cfg["attack"])
+			var swing := _fig_len(mover, attack) / (1.25 * quick)
+			var hit := swing * (0.62 if ranged else 0.45)
+			tw.tween_callback(_fig_play.bind(mover, attack, 1.25 * quick))
+			if ranged:
+				tw.tween_interval(hit * 0.75)
+				tw.tween_callback(_spell.bind(a, vpos, hit * 0.4))
+				tw.tween_interval(swing - hit * 0.75)
+			else:
+				tw.tween_interval(swing)
+			# La pieza comida mira a quien la ataca, recibe el golpe, cae y desaparece.
+			var tv := _tw()
+			var fall := _fig_len(victim, "Death_A") / (1.3 * quick)
+			tv.tween_interval(maxf(t - 0.25, 0.0))
+			tv.tween_callback(_face_dir.bind(victim, -dir))
+			tv.tween_interval(t + hit - maxf(t - 0.25, 0.0))
+			tv.tween_callback(_fig_play.bind(victim, "Death_A", 1.3 * quick))
+			tv.tween_callback(_burst.bind(vpos))
+			tv.tween_interval(fall)
+			tv.tween_method(_pose_size.bind(victim, vpos, 1.0, 0.02), 0.0, 1.0, 0.18)
+			tv.tween_callback(_hide.bind(victim))
+			_sfx("capture", t + hit)
+			t += swing
+			var rest := Vector2(b.x - stop.x, b.z - stop.z).length()
+			t += _rig_walk(tw, mover, stop, b, rest, walk if not jumper else "Walking_A", pace, false, quick)
+		_sfx("place", t)
+	if promo > 0:
+		tw.tween_method(_pose_size.bind(mover, b, 1.0, 0.05), 0.0, 1.0, 0.1)
+		tw.tween_callback(_apply_promotion.bind(mover))
+		tw.tween_method(_pose_size.bind(mover, b, 0.05, 1.0), 0.0, 1.0, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t += 0.34
+	# Al llegar: vuelve a mirar al rival y, si ha comido, lo celebra.
+	tw.tween_callback(_face.bind(mover, _forward_yaw(side)))
+	if victim != null and full and not dropped:
+		tw.tween_callback(_fig_play.bind(mover, "Cheer", 1.4))
+		tw.tween_callback(_fig_then_idle.bind(mover))
+	else:
+		tw.tween_callback(_fig_play.bind(mover, "Idle"))
+	if dropped and victim == null:
+		_sfx(landing)
+
+	if rook != null:
+		var tr := _tw()
+		var ra := sq_pos(rook_from)
+		var rb := sq_pos(rook_to)
+		tr.tween_interval(t * 0.5)
+		tr.tween_callback(_face_dir.bind(rook, (rb - ra).normalized()))
+		_rig_walk(tr, rook, ra, rb, (rb - ra).length(), "Walking_C", 1.6, false, quick)
+		tr.tween_callback(_face.bind(rook, _forward_yaw(side)))
+		tr.tween_callback(_fig_play.bind(rook, "Idle"))
+
+	if check:
+		var king_sq := chess.king_sq(chess.turn)
+		var king: Node3D = _pieces.get(king_sq)
+		if mate:
+			_mark_fallen_king(to)
+			_sfx("fall", t + 0.45)
+		else:
+			_sfx("check", t + 0.05)
+		if king != null:
+			var tk := _tw()
+			tk.tween_interval(t + 0.05)
+			tk.tween_callback(_face_dir.bind(king, b - sq_pos(king_sq)))
+			if mate:
+				tk.tween_callback(_fig_play.bind(king, "Death_B", 1.0))
+				tk.tween_interval(_fig_len(king, "Death_B"))
+			else:
+				tk.tween_callback(_fig_play.bind(king, "Block", 1.0))
+				tk.tween_interval(_fig_len(king, "Block"))
+				tk.tween_callback(_face.bind(king, _forward_yaw(1 - side)))
+				tk.tween_callback(_fig_play.bind(king, "Idle"))
+
+
+## Un tramo andando (o saltando, el caballo). Devuelve lo que dura.
+func _rig_walk(tw: Tween, node: Node3D, from_pos: Vector3, to_pos: Vector3, length: float, walk: String, pace: float, jump: bool, quick: float) -> float:
+	if length < 0.02:
+		return 0.0
+	var seconds := 0.0
+	if jump:
+		seconds = _fig_len(node, walk) / (1.5 * quick)
+		tw.tween_callback(_fig_play.bind(node, walk, 1.5 * quick))
+		tw.tween_method(_pose_jump.bind(node, from_pos, from_pos.lerp(to_pos, 0.5), to_pos, 0.55), 0.0, 1.0, seconds * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_interval(seconds * 0.2)
+	else:
+		# Unas 2,6 casillas por segundo, con un mínimo para que se vean los pasos.
+		seconds = clampf(length / (2.6 * pace), 0.3, 1.5) / quick
+		tw.tween_callback(_fig_play.bind(node, walk, pace * quick))
+		tw.tween_method(_pose_line.bind(node, from_pos, to_pos), 0.0, 1.0, seconds)
+	return seconds
 
 
 ## El paso de cada pieza (animaciones completas): cada una se mueve con su carácter.

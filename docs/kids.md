@@ -82,3 +82,16 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
 - Son dibujos planos animados como marionetas de papel: no mueven brazos ni piernas. Para eso harían falta modelos
   3D con esqueleto (`.glb` con animaciones).
 - Vídeo de muestra: `tests/anim_demo.tscn` con `ANIM_SET=piratas` (ver la cabecera del guion).
+
+## «Aventura 3D»: personajes articulados (15 nov 2026)
+
+- Mundo Kids con personajes 3D con esqueleto y animaciones: KayKit Adventurers (CC0, ver `godot/sets/aventura/LEEME.md`).
+  Se cargan en tiempo de ejecución con `GLTFDocument` (`_rig_scene` en `board_3d.gd`); 6,5 MB en total.
+- Cada personaje va de pie sobre la ficha de su pieza (se ve qué pieza es y de qué bando). Las negras son los mismos
+  personajes oscurecidos. Peón: pícaro encapuchado; caballo: caballero con escudo; alfil: mago; torre: bárbaro;
+  dama: pícara con dos cuchillos; rey: caballero con capa y espadón (`RIG`).
+- Jugada (`_play_rigged`): andan mirando hacia donde van (el caballo salta); al comer se paran a un paso y atacan
+  con su arma (el mago lanza un hechizo desde su casilla); la otra pieza cae y desaparece; el que come lo celebra.
+  Con jaque, el rey se cubre; con mate, cae al suelo.
+- Pendiente de ver en un móvil: rendimiento con 32 personajes y la luz de las blancas (en la grabación sin tarjeta
+  gráfica salen muy claras).

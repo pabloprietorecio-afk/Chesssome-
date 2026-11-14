@@ -38,7 +38,7 @@ func _ready() -> void:
 			continue
 		view.board.play_move(m)
 		# Las jugadas de relleno de las negras, deprisa; las blancas, con pausa para verlas.
-		await _frames(8 if text.begins_with("e8") or text.begins_with("d8") else 44)
+		await _frames(8 if text.begins_with("e8") or text.begins_with("d8") else int(OS.get_environment("ANIM_WAIT")) if OS.get_environment("ANIM_WAIT") != "" else 44)
 	await _frames(15)
 	print("ANIM DONE")
 	get_tree().quit()
