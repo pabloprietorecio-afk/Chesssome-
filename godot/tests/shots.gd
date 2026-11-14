@@ -822,6 +822,22 @@ func _game_shots(demo: Control) -> void:
 	await _frames(30)
 	await _shot("86_partida_mate")
 	print("PARTIDA mate: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	# Con reloj: el ritmo «Otro» con sus botones, una partida 10+0 y el tiempo que se acaba.
+	demo.game_tc_pick = 7
+	demo._open_game_setup()
+	await _frames(10)
+	await _shot("87_partida_ritmo")
+	demo.game_tc_pick = 3
+	demo._start_game({"variant": "", "level": 1, "title": "Partida · Fácil", "text": "", "kids": "", "unit": "", "clock": []}, -1)
+	await _frames(20)
+	await _shot("88_partida_reloj")
+	print("RELOJ: con reloj=%s blancas=%.0f negras=%.0f acciones=%d" % [str(demo.game_clocked), demo.game_clock[0], demo.game_clock[1], demo.actions.get_child_count()])
+	if demo.view.board.chess.turn == demo.game_color:
+		demo.game_clock[demo.game_color] = 300.0
+		await _frames(30)
+	print("RELOJ sin tiempo: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
+	await _shot("89_partida_tiempo")
+	demo.game_tc_pick = 0
 	demo._leave_game()
 	await _frames(6)
 	demo._close_progress()

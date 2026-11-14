@@ -28,6 +28,11 @@ cada grupo de lecciones, acorde a lo aprendido.
   - Jaque y jaque mate → primera partida entera, contra «Muy fácil».
   - Jugadas especiales → partida contra «Fácil».
   - Practica el mate → partida contra «Medio»; después, el test de nivel (fuera del nivel Kids).
+- **Ritmo** (petición de Pablo, 14 nov): sin reloj (por defecto), 3+2, 5+0, 10+0, 15+10, 30+0, 90+30 y «Otro»
+  (minutos e incremento a elegir). «10+0» son 10 minutos por jugador; «15+10», 15 minutos y 10 segundos más por
+  jugada. Con reloj no hay deshacer ni pistas, como en una partida oficial; quien se queda sin tiempo pierde, salvo
+  que el rival no tenga material para dar mate (tablas; regla simplificada: solo rey, o rey y una pieza menor). El
+  rival reparte su tiempo (1/30 de lo que le queda más casi todo el incremento). En el nivel Kids no hay reloj.
 - Durante la partida: Salir, Deshacer (vuelve a la última vez que te tocaba), Pista (lo que jugaría «Medio», con
   una flecha) y Rendirse. Fin: jaque mate, ahogado, 50 jugadas, triple repetición y material insuficiente.
 - En el nivel Kids: sin notación, con voz al empezar, al recibir jaque y al acabar.

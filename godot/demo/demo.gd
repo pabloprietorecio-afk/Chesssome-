@@ -152,6 +152,15 @@ var game_won := 0
 var game_result := ""
 var game_note := ""
 var _game_thread: Thread
+## Reloj: ritmo elegido (índice de TIME_CONTROLS), el personalizado, y en la partida el tiempo que le queda a
+## cada bando (ms; 0 blancas, 1 negras) y el incremento por jugada.
+var game_tc_pick := 0
+var custom_minutes := 10
+var custom_increment := 0
+var game_clocked := false
+var game_clock := [0.0, 0.0]
+var game_inc_ms := 0.0
+var _clock_labels: Array = []
 ## Respuesta correcta de la puerta para adultos abierta (−1 si no hay ninguna).
 var _gate_answer := -1
 var _gate_then: Callable
@@ -3275,6 +3284,11 @@ func _home_test() -> void:
 
 # ---------------------------------------------------------------- partidas contra el rival
 
+
+## Ritmos de juego: nombre, minutos y segundos de incremento por jugada (como en las partidas oficiales y en las
+## webs de ajedrez: «10+0» son 10 minutos por jugador; «15+10», 15 minutos y 10 segundos más por jugada).
+const TIME_CONTROLS := [["Sin reloj", 0, 0], ["3+2", 3, 2], ["5+0", 5, 0], ["10+0", 10, 0], ["15+10", 15, 10], ["30+0", 30, 0], ["90+30", 90, 30], ["Otro", -1, -1]]
+
 const GAME_LEVEL_TEXT := [
 	"Se equivoca a menudo. Para tus primeras partidas.",
 	"Ve las capturas sencillas, pero se despista.",
@@ -3317,13 +3331,28 @@ func _open_game_setup() -> void:
 	body.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
 	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color))
+	if not kids:
+		body.add_child(_spacer(30.0))
+		body.add_child(_text("RITMO", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(12.0))
+		body.add_child(_segments(TIME_CONTROLS.slice(0, 4).map(func(t: Array) -> String: return str(t[0])), game_tc_pick, _set_time_control))
+		body.add_child(_spacer(10.0))
+		body.add_child(_segments(TIME_CONTROLS.slice(4).map(func(t: Array) -> String: return str(t[0])), game_tc_pick - 4, _set_time_control_from.bind(4)))
+		if int(TIME_CONTROLS[game_tc_pick][1]) < 0:
+			body.add_child(_spacer(14.0))
+			body.add_child(_stepper("Minutos por jugador", custom_minutes, _step_minutes))
+			body.add_child(_stepper("Segundos más por jugada", custom_increment, _step_increment))
+		var tc := _time_control()
+		var about := "Sin prisa: piensa lo que necesites. Puedes deshacer y pedir pistas." if tc[0] == 0 else "%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes." % [tc[0], " y %d segundos más por jugada" % tc[1] if tc[1] > 0 else ""]
+		body.add_child(_spacer(10.0))
+		body.add_child(_para(about, F_FOOT + 2, _c("quiet"), font_regular))
 	body.add_child(_spacer(30.0))
 	body.add_child(_text("RIVAL", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
 	var tints := ["mint", "sky", "butter", "peach", "rose"]
 	var icons := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen"]
 	for i in Bot.LEVELS.size():
-		var cfg := {"variant": "", "level": i, "title": "Partida · %s" % str(Bot.LEVELS[i]["name"]), "text": "", "kids": "", "unit": ""}
+		var cfg := {"variant": "", "level": i, "title": "Partida · %s" % str(Bot.LEVELS[i]["name"]), "text": "", "kids": "", "unit": "", "clock": []}
 		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
 		body.add_child(_spacer(14.0))
 	body.add_child(_spacer(10.0, true))
@@ -3332,6 +3361,70 @@ func _open_game_setup() -> void:
 
 func _set_game_color(i: int) -> void:
 	game_pick_color = i
+	_reopen_game_setup()
+
+
+func _set_time_control(i: int) -> void:
+	game_tc_pick = clampi(i, 0, TIME_CONTROLS.size() - 1)
+	_reopen_game_setup()
+
+
+func _set_time_control_from(i: int, offset: int) -> void:
+	_set_time_control(i + offset)
+
+
+func _step_minutes(d: int) -> void:
+	var steps := [1, 2, 3, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120]
+	var at := steps.find(custom_minutes)
+	custom_minutes = int(steps[clampi((at if at >= 0 else 4) + d, 0, steps.size() - 1)])
+	_reopen_game_setup()
+
+
+func _step_increment(d: int) -> void:
+	var steps := [0, 1, 2, 3, 5, 10, 15, 20, 30, 60]
+	var at := steps.find(custom_increment)
+	custom_increment = int(steps[clampi((at if at >= 0 else 0) + d, 0, steps.size() - 1)])
+	_reopen_game_setup()
+
+
+## Minutos e incremento (segundos) del ritmo elegido; [0, 0] sin reloj (y siempre en el nivel Kids).
+func _time_control() -> Array:
+	if kids:
+		return [0, 0]
+	var t: Array = TIME_CONTROLS[game_tc_pick]
+	if int(t[1]) < 0:
+		return [custom_minutes, custom_increment]
+	return [int(t[1]), int(t[2])]
+
+
+## Vuelve a dibujar la página de elegir partida sin perder por dónde iba.
+func _reopen_game_setup() -> void:
+	var scroll := progress_scroll.scroll_vertical if progress_scroll != null and is_instance_valid(progress_scroll) else 0
+	_open_game_setup()
+	if progress_scroll != null:
+		progress_scroll.set_deferred("scroll_vertical", scroll)
+
+
+## Fila con un número y sus botones de menos y más.
+func _stepper(label: String, value: int, on_step: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var name_label := _para(label, F_SUB, _c("ink"), font_medium)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(name_label)
+	var minus := _button("", "−", on_step.bind(-1), _c("field"), _c("ink"), {"font_size": F_TITLE, "height": 96.0, "font": font_display})
+	minus.custom_minimum_size.x = 110.0
+	row.add_child(minus)
+	var shown := _para(str(value), F_TITLE, _c("ink"), font_display)
+	shown.custom_minimum_size.x = 110.0
+	shown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(shown)
+	var plus := _button("", "+", on_step.bind(1), _c("field"), _c("ink"), {"font_size": F_TITLE, "height": 96.0, "font": font_display})
+	plus.custom_minimum_size.x = 110.0
+	row.add_child(plus)
+	return row
 
 
 func _close_game_setup() -> void:
@@ -3362,7 +3455,15 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	game = cfg
 	if color < 0:
 		color = game_pick_color if game_pick_color < 2 else _rng.randi_range(0, 1)
+		# Partida elegida en la página: con el ritmo elegido allí.
+		cfg = cfg.duplicate()
+		cfg["clock"] = _time_control()
 	game_color = color
+	var clock: Array = cfg.get("clock", [])
+	game = cfg
+	game_clocked = clock.size() == 2 and int(clock[0]) > 0
+	game_clock = [float(clock[0]) * 60000.0, float(clock[0]) * 60000.0] if game_clocked else [0.0, 0.0]
+	game_inc_ms = float(clock[1]) * 1000.0 if game_clocked else 0.0
 	game_bot = Bot.new(int(cfg.get("level", 0)), str(cfg.get("variant", "")))
 	var fen := str(cfg.get("fen", ""))
 	if fen == "":
@@ -3395,6 +3496,8 @@ func _game_move(uci: String) -> void:
 	var before := Chess.from_fen(str(game_history[game_history.size() - 1]))
 	var m := before.find_uci(uci)
 	game_history.append(view.board.chess.fen())
+	if game_clocked:
+		game_clock[game_color] += game_inc_ms
 	view.board.set_arrows([])
 	game_note = ""
 	if _game_check_end(before, m):
@@ -3409,9 +3512,76 @@ func _game_bot_turn() -> void:
 	var pos := view.board.chess.copy()
 	var my_run := run_id
 	_stop_game_thread()
+	# Con reloj, el rival reparte su tiempo: una treintava parte de lo que le queda, más casi todo el incremento.
+	if game_clocked:
+		game_bot.time_cap = maxf(0.2, game_clock[1 - game_color] / 1000.0 / 30.0 + game_inc_ms / 1000.0 * 0.8)
 	_game_thread = Thread.new()
 	var started := Time.get_ticks_msec()
 	_game_thread.start(_game_think.bind(game_bot, pos, my_run, started))
+
+
+
+## El reloj de la partida corre para el bando que mueve.
+func _process(delta: float) -> void:
+	if mode != "game" or not game_clocked or not (game_state in ["play", "think"]):
+		return
+	var side := view.board.chess.turn
+	game_clock[side] = maxf(0.0, float(game_clock[side]) - delta * 1000.0)
+	if float(game_clock[side]) <= 0.0:
+		_game_flag(side)
+		return
+	_show_clocks()
+
+
+func _show_clocks() -> void:
+	if _clock_labels.size() != 2:
+		return
+	var side := view.board.chess.turn
+	for i in 2:
+		var l: Label = _clock_labels[i]
+		if not is_instance_valid(l):
+			continue
+		var color := game_color if i == 0 else 1 - game_color
+		var ms := float(game_clock[color])
+		var text := ""
+		if ms < 10000.0:
+			text = "%.1f" % (ms / 1000.0)
+		else:
+			var secs := int(ceil(ms / 1000.0))
+			text = "%d:%02d" % [secs / 60, secs % 60]
+		l.text = "%s  %s" % [str(l.get_meta("who")), text]
+		var running := side == color and game_state != "over"
+		l.modulate.a = 1.0 if running else 0.45
+		l.add_theme_color_override("font_color", _c("bad") if ms < 10000.0 else _c("ink"))
+
+
+## Se le acaba el tiempo a `side`. Pierde, salvo que el rival no tenga con qué dar mate (entonces, tablas).
+func _game_flag(side: int) -> void:
+	_stop_game_thread()
+	run_id += 1
+	game_clock[side] = 0.0
+	game_state = "over"
+	view.interactive = false
+	var mater := false
+	var minors := 0
+	for p in view.board.chess.b:
+		if p != 0 and Chess.color_of(p) != side:
+			var t := Chess.type_of(p)
+			if t == Chess.PAWN or t == Chess.ROOK or t == Chess.QUEEN:
+				mater = true
+			elif t == Chess.KNIGHT or t == Chess.BISHOP:
+				minors += 1
+	mater = mater or minors >= 2
+	if not mater:
+		game_won = 0
+		game_result = "Se acabó el tiempo, pero no queda material para dar mate: tablas."
+	elif side == game_color:
+		game_won = -1
+		game_result = "Se te ha acabado el tiempo."
+	else:
+		game_won = 1
+		game_result = "Al rival se le ha acabado el tiempo: ¡has ganado!"
+	_refresh()
 
 
 ## En otro hilo: el rival piensa sin congelar la pantalla.
@@ -3436,6 +3606,8 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	var san := SanEs.san(pos, m)
 	view.show_move(Chess.uci(m))
 	game_history.append(view.board.chess.fen())
+	if game_clocked:
+		game_clock[1 - game_color] += game_inc_ms
 	game_note = "Ha movido el rival. ¡Te toca!" if kids else "El rival ha jugado %s." % san
 	if _game_check_end(pos, m):
 		return
@@ -3657,8 +3829,24 @@ func _build_game_card() -> void:
 	chips.add_theme_constant_override("h_separation", 12)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chips.add_child(_chip(str(game.get("title", "Partida")), _c("field"), _c("ink")))
+	if game_clocked:
+		var clock: Array = game.get("clock", [0, 0])
+		chips.add_child(_chip("%d+%d" % [int(clock[0]), int(clock[1])], _c("field"), _c("quiet")))
 	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet")))
 	card_body.add_child(chips)
+	_clock_labels = []
+	if game_clocked:
+		var clocks := HBoxContainer.new()
+		clocks.add_theme_constant_override("separation", 14)
+		clocks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for who: String in ["Tú", "Rival"]:
+			var l := _para("", F_HEAD, _c("ink"), font_display)
+			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			l.set_meta("who", who)
+			clocks.add_child(l)
+			_clock_labels.append(l)
+		card_body.add_child(clocks)
+		_show_clocks()
 	if game_state == "over":
 		card_body.add_child(_para(game_result, F_BODY, _c("ink"), font_medium))
 		return
@@ -3669,7 +3857,7 @@ func _build_game_card() -> void:
 
 
 func _build_game_actions() -> void:
-	var key := "game:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", ""))]
+	var key := "game:%s:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked)]
 	if key == _actions_mode:
 		for b in [left_button, hint_button]:
 			if b != null and is_instance_valid(b):
@@ -3702,9 +3890,15 @@ func _build_game_actions() -> void:
 		right_button = _tool_button("flag", "Rendirse", _game_resign, "rose")
 		var out := _tool_button("close", "Salir", _leave_game, "lilac")
 		row = [out, left_button, hint_button, right_button]
+		if game_clocked:
+			# Con reloj, como en una partida oficial: ni deshacer ni pistas.
+			left_button = null
+			hint_button = null
+			row = [out, right_button]
 		for b in [left_button, hint_button]:
-			b.disabled = game_state != "play"
-			b.modulate.a = 1.0 if game_state == "play" else 0.42
+			if b != null:
+				b.disabled = game_state != "play"
+				b.modulate.a = 1.0 if game_state == "play" else 0.42
 	for b: Button in row:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL

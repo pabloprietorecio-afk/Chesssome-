@@ -26,6 +26,8 @@ const LEVELS := [
 
 var level := 0
 var variant := ""
+## Tope de tiempo para pensar (segundos; 0 = el del nivel): lo pone el reloj de la partida.
+var time_cap := 0.0
 ## Sin ruido ni jugadas al azar: para las pistas, que deben ser la mejor jugada que encuentra, no un error humano.
 var exact := false
 var rng := RandomNumberGenerator.new()
@@ -53,7 +55,10 @@ func choose(pos: Chess) -> int:
 	var cfg: Dictionary = LEVELS[level]
 	nodes = 0
 	_stopped = false
-	_deadline = Time.get_ticks_msec() + int(float(cfg["think"]) * 1000.0)
+	var think := float(cfg["think"])
+	if time_cap > 0.0:
+		think = minf(think, time_cap)
+	_deadline = Time.get_ticks_msec() + int(think * 1000.0)
 	_noise = {}
 	var noise := 0 if exact else int(cfg["noise"])
 	for m in moves:
