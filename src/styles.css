@@ -2504,3 +2504,38 @@ a {
 .vc-hook .cm-row button {
   padding: 8px 14px;
 }
+/* «Toca para jugar / ver el tablero»: en naranja y en negrita, para que se lea sobre el cristal en claro y en oscuro. */
+.vc-tap {
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+/* Veredicto: «¡Correcto!» en verde y «Error» en rojo, en negrita y más grandes, para que se lean sobre el cristal. */
+.vc-answer.vc-o-answer .cm-kicker,
+.vc-answer.vc-o-also-good .cm-kicker,
+.vc-answer.vc-o-spoils .cm-kicker,
+.vc-answer.vc-o-played-error .cm-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  opacity: 1;
+}
+.vc-answer.vc-o-answer .cm-kicker,
+.vc-answer.vc-o-also-good .cm-kicker {
+  color: #22a55a;
+}
+.vc-answer.vc-o-spoils .cm-kicker,
+.vc-answer.vc-o-played-error .cm-kicker {
+  color: #e5484d;
+}
+.vc-answer.vc-o-answer .vc-verdict-mark,
+.vc-answer.vc-o-also-good .vc-verdict-mark,
+.vc-answer.vc-o-spoils .vc-verdict-mark,
+.vc-answer.vc-o-played-error .vc-verdict-mark {
+  color: inherit;
+  font-size: 1.15em;
+}

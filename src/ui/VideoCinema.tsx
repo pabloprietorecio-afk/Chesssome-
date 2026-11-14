@@ -302,12 +302,12 @@ interface BoardState {
 }
 
 const OUTCOME_LABEL: Record<ClipAnswer['outcome'], string> = {
-  answer: '¡Esa es!',
-  'also-good': 'También vale',
-  spoils: 'No es esa',
+  answer: '¡Correcto!',
+  'also-good': '¡También vale!',
+  spoils: 'Error',
   unclear: 'Sin veredicto claro',
   unknown: 'Sin análisis',
-  'played-error': 'Fue un error en la partida',
+  'played-error': 'Error, como en la partida',
   shown: 'La respuesta',
 };
 
@@ -1184,7 +1184,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                       <div className="vc-gap-card vc-glass vc-ask">
                         {busy ? <p className="cm-quiet">Así siguió la partida…</p> : <p className="vc-question">{q.question}</p>}
                         {hint && q.hint && <p className="vc-hint">{q.hint}</p>}
-                        {!busy && <p className="cm-quiet cm-small">Toca para jugar en el tablero</p>}
+                        {!busy && <p className="vc-tap">Toca para jugar en el tablero</p>}
                       </div>
                     ) : (
                       <div className={`vc-gap-card vc-glass vc-answer vc-o-${answer.outcome}`}>
@@ -1194,7 +1194,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                         <p>{answer.text}</p>
                         {lineBlock}
                         {answer.outcome !== 'answer' && answer.outcome !== 'shown' && q.playedCls === 'keeps' && <p className="cm-quiet">En la partida: {q.why}</p>}
-                        <p className="cm-quiet cm-small">Toca para ver el tablero</p>
+                        <p className="vc-tap">Toca para ver el tablero</p>
                       </div>
                     )}
                   </div>
@@ -1204,7 +1204,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                     <div className="vc-gap-card vc-glass vc-panel">
                       <p className="cm-kicker">{st.missed === 'resumed' ? 'Has seguido viendo el vídeo' : 'Has pasado de largo la pregunta'}</p>
                       <p>Responder es opcional. Si quieres pensarla, pulsa «Ir a pregunta».</p>
-                      <p className="cm-quiet cm-small">Toca para ver el tablero</p>
+                      <p className="vc-tap">Toca para ver el tablero</p>
                     </div>
                   </div>
                 )}

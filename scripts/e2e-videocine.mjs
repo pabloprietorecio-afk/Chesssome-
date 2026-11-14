@@ -139,7 +139,7 @@ await sleep(900);
 await shot('03-pregunta-1');
 await scrollTo('.vc-board');
 await move('b2b1');
-assert(/No es esa/.test(await panel()), 'Tb1+ debe darse por mala: ' + (await panel()));
+assert(/Error/.test(await panel()), 'Tb1+ debe darse por mala: ' + (await panel()));
 await page.evaluate(() => document.querySelector('.vc-answer')?.scrollIntoView({ block: 'start' }));
 await sleep(200);
 await shot('04-respuesta-mala');
@@ -160,7 +160,7 @@ await sleep(300);
 assert(await page.$('.vc-ask .vc-question'), 'tras «Repetir» debe volver la pregunta');
 assert(!(await hasButton('Repetir')), 'sin respuesta no hay «Repetir»');
 await move('b2f2');
-assert(/¡Esa es!/.test(await panel()), 'tras repetir, Txf2 debe darse por buena: ' + (await panel()));
+assert(/¡Correcto!/.test(await panel()), 'tras repetir, Txf2 debe darse por buena: ' + (await panel()));
 assert(!(await hasButton('Repetir')), 'con la buena no se ofrece «Repetir»');
 // Sin vídeo que se pare solo, «Siguiente pregunta» pasa a la siguiente pausa en el tablero, con las jugadas intermedias.
 await clickText('Ir a pregunta');
@@ -168,13 +168,13 @@ await waitAttr('stop', '1', 12000);
 await sleep(300);
 assert(/pregunta 2 de 3/i.test(await page.$eval('.vc-ask', (e) => e.textContent).catch(() => '') + (await page.$eval('.vc-board-label', (e) => e.textContent).catch(() => ''))), 'pregunta 2 de 3');
 await move('e6d5');
-assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
+assert(/¡Correcto!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
 await clickText('Ir a pregunta');
 await waitAttr('stop', '2', 12000);
 await sleep(300);
 await shot('05-pregunta-3');
 await move('d5e5');
-assert(/¡Esa es!/.test(await panel()), 'Re5 debe ser la buena: ' + (await panel()));
+assert(/¡Correcto!/.test(await panel()), 'Re5 debe ser la buena: ' + (await panel()));
 await clickText('Continuar');
 await waitAttr('phase', 'reveal');
 await waitAttr('player', 'ready');
@@ -292,7 +292,7 @@ await sleep(300);
 assert((await fake(() => window.__fakeYT.last().state)) === 2, 'al volver a la pregunta el vídeo debe pararse');
 await scrollTo('.vc-board');
 await move('b2f2');
-assert(/¡Esa es!/.test(await panel()), 'Txf2 debe ser la buena: ' + (await panel()));
+assert(/¡Correcto!/.test(await panel()), 'Txf2 debe ser la buena: ' + (await panel()));
 // Con el vídeo: «Continuar» (botonera) enseña la jugada en el vídeo y se para solo antes de la siguiente pregunta.
 await clickText('Continuar');
 await waitAttr('phase', 'reveal');
@@ -304,7 +304,7 @@ assert((await attr('stop')) === '1' && Math.abs(p2 - 30) < 1, 'el vídeo avanza 
 await sleep(300);
 // «Siguiente pregunta»: va ya a la siguiente pausa, sin ver el vídeo hasta allí.
 await move('e6d5');
-assert(/¡Esa es!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
+assert(/¡Correcto!/.test(await panel()), 'Ad5 debe ser la buena: ' + (await panel()));
 await clickText('Ir a pregunta');
 await waitAttr('stop', '2', 8000);
 await sleep(300);
@@ -546,7 +546,7 @@ await openGC('Ir directo');
 await waitAttr('phase', 'asking');
 await sleep(400);
 await move('f4e2', 'w'); // 52…Ce2+??, lo que jugó Carlsen (el tablero no gira)
-assert(/Fue un error en la partida/.test(await panel()), 'Ce2+ debe presentarse como error de la partida: ' + (await panel()));
+assert(/Error, como en la partida/.test(await panel()), 'Ce2+ debe presentarse como error de la partida: ' + (await panel()));
 await clickText('Repetir');
 await sleep(300);
 await clickText('Respuesta');
@@ -554,7 +554,7 @@ await sleep(300);
 // Primero se ve la pieza moverse, sin ventana encima; luego llega la explicación.
 assert((await page.$('.vc-card-over')) === null, 'mientras se mueve la pieza, sin ventana encima');
 await sleep(1100);
-assert(/La respuesta/.test(await panel()) && !/¡Esa es!/.test(await panel()), '«Ver la respuesta» no es «¡Esa es!»: ' + (await panel()));
+assert(/La respuesta/.test(await panel()) && !/¡Correcto!/.test(await panel()), '«Ver la respuesta» no es «¡Correcto!»: ' + (await panel()));
 await shot('16-error-historico');
 // Al ver el vídeo: el tablero vuelve a la posición de la pregunta y se avisa de que en la partida se jugó el error.
 await clickText('Continuar');
@@ -591,7 +591,7 @@ const bangPause = await fake(() => window.__fakeYT.last().time);
 assert(bangPause >= 371.2 && bangPause < 372.0, 'pausa tras 60…e3 y antes de 61.Cc4+: ' + bangPause);
 await sleep(400);
 await move('b2c4', 'w'); // 61.Cc4+
-assert(/¡Esa es!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
+assert(/¡Correcto!/.test(await panel()), '61.Cc4+ debe ser la buena: ' + (await panel()));
 await shot('17-golpe-en-la-mesa-pregunta');
 // Tras responder la última pregunta: «Terminar», «Lección» y «Otra vez» encendidos.
 const enabled = await page.$$eval('.vc-dock-btn', (bs) => bs.filter((b) => !b.disabled).map((b) => b.textContent.trim()));
