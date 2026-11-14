@@ -3561,11 +3561,12 @@ func _game_undo() -> void:
 	_refresh()
 
 
-## Pista: lo que jugaría el rival «Medio» en tu lugar, con una flecha.
+## Pista: la mejor jugada que encuentra el rival «Medio» (sin sus errores a propósito), con una flecha.
 func _game_hint() -> void:
 	if game_state != "play":
 		return
 	var helper := Bot.new(2, str(game.get("variant", "")))
+	helper.exact = true
 	var m := helper.choose(view.board.chess.copy())
 	if m < 0:
 		return

@@ -26,6 +26,8 @@ const LEVELS := [
 
 var level := 0
 var variant := ""
+## Sin ruido ni jugadas al azar: para las pistas, que deben ser la mejor jugada que encuentra, no un error humano.
+var exact := false
 var rng := RandomNumberGenerator.new()
 var nodes := 0
 var _deadline := 0
@@ -53,8 +55,9 @@ func choose(pos: Chess) -> int:
 	_stopped = false
 	_deadline = Time.get_ticks_msec() + int(float(cfg["think"]) * 1000.0)
 	_noise = {}
+	var noise := 0 if exact else int(cfg["noise"])
 	for m in moves:
-		_noise[m] = rng.randi_range(-int(cfg["noise"]), int(cfg["noise"]))
+		_noise[m] = rng.randi_range(-noise, noise)
 	# Un mate en una (o coronar, en la guerra de peones) no se escapa nunca, tampoco al nivel más fácil: si no,
 	# el rival parece tonto adrede.
 	for m in moves:
@@ -64,7 +67,7 @@ func choose(pos: Chess) -> int:
 				return m
 		elif c.is_checkmate():
 			return m
-	if rng.randf() < float(cfg["random"]):
+	if not exact and rng.randf() < float(cfg["random"]):
 		return moves[rng.randi() % moves.size()]
 	var best := moves[0]
 	var ordered := _order(pos, moves)
@@ -74,7 +77,7 @@ func choose(pos: Chess) -> int:
 		for m in ordered:
 			# Ventana rebajada en el ruido: así las jugadas que el ruido puede subir por encima de la mejor tienen su
 			# valor exacto, no una cota (con una cota, el ruido elegiría casi al azar).
-			var floor_score := alpha - 2 * int(cfg["noise"]) - 1 if found >= 0 else -INF_SCORE
+			var floor_score := alpha - 2 * noise - 1 if found >= 0 else -INF_SCORE
 			var score := -_search(pos.after(m), depth - 1, -INF_SCORE, -floor_score, 1) + int(_noise[m])
 			if _stopped:
 				break
