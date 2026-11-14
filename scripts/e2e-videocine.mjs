@@ -264,7 +264,7 @@ await sleep(700);
 assert((await fake(() => window.__fakeYT.last().state)) === 1, 'si el jugador pulsa ▶, el vídeo debe seguir');
 assert(/Has seguido viendo el vídeo/.test(await panel()), 'aviso de que siguió viendo: ' + (await panel()));
 await shot('11-siguio-viendo');
-await clickText('Volver a la pregunta');
+await clickText('Ir a pregunta');
 await waitAttr('phase', 'asking');
 await sleep(300);
 assert((await fake(() => window.__fakeYT.last().state)) === 2, 'al volver a la pregunta el vídeo debe pararse');

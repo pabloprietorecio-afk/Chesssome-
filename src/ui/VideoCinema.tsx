@@ -656,7 +656,9 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           : reveal
         : undefined,
     next:
-      st.phase === 'watching' && synced
+      st.phase === 'reveal' && st.missed !== 'none' && st.mode !== 'free'
+        ? () => send({ type: 'back', now: performance.now() })
+        : st.phase === 'watching' && synced
         ? () => send({ type: 'ask', now: performance.now() })
         : st.phase === 'reveal' && st.missed === 'none' && moreStops && clip.stops[st.stop + 1]?.at != null
           ? () => send({ type: 'ask', now: performance.now() })
@@ -667,7 +669,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
               : (st.phase === 'reveal' && quietReveal && !moreStops) || (asking && lastInStop && !moreStops && (!!answer || st.errorCode != null))
                 ? () => send({ type: 'finish' })
                 : undefined,
-    nextIsEnd: (st.phase === 'reveal' && !moreStops) || (st.phase === 'asking' && !moreStops && lastInStop),
+    nextIsEnd: (st.phase === 'reveal' && !moreStops && st.missed === 'none') || (st.phase === 'asking' && !moreStops && lastInStop),
   };
   const inLesson = st.phase === 'ended' && lessonStep != null && !!clip.lesson;
   const lessonNow = inLesson ? { pos: lessonPos[lessonStep!], step: clip.lesson!.steps[lessonStep!] } : null;
@@ -961,6 +963,15 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                     )}
                   </div>
                 )}
+                {fit && st.phase === 'reveal' && st.missed !== 'none' && st.mode !== 'free' && !cardHidden && (
+                  <div className="vc-gap vc-card-over" onClick={() => setCardHidden(true)} role="dialog" aria-label="Pregunta pendiente">
+                    <div className="vc-gap-card vc-glass vc-panel">
+                      <p className="cm-kicker">{st.missed === 'resumed' ? 'Has seguido viendo el vídeo' : 'Has pasado de largo la pregunta'}</p>
+                      <p>Responder es opcional. Si quieres pensarla, pulsa «Ir a pregunta».</p>
+                      <p className="cm-quiet cm-small">Toca para ver el tablero</p>
+                    </div>
+                  </div>
+                )}
                 {st.phase === 'ended' && !lessonNow && !cardHidden && (
                   <div className="vc-gap vc-card-over vc-end-over" onClick={() => setCardHidden(true)} role="dialog" aria-label="Fin del clip">
                     <div className="vc-gap-card vc-glass vc-panel">{endCard}</div>
@@ -1047,7 +1058,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         </div>
       )}
 
-      {st.phase === 'reveal' && !quietReveal && (
+      {st.phase === 'reveal' && !quietReveal && !(fit && st.missed !== 'none' && st.mode !== 'free') && (
         <div className="cm-hint vc-panel" aria-live="polite">
           {st.mode === 'free' && st.missed !== 'none' ? (
             <>
@@ -1124,7 +1135,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
             <DockButton
               icon="text"
               label={st.phase === 'ended' ? 'Ver el final' : answer ? 'Explicación' : 'Pregunta'}
-              onClick={cardHidden && ((st.phase === 'asking' && q && !gate && !busy) || st.phase === 'ended') ? () => setCardHidden(false) : undefined}
+              onClick={cardHidden && ((st.phase === 'asking' && q && !gate && !busy) || st.phase === 'ended' || (st.phase === 'reveal' && st.missed !== 'none')) ? () => setCardHidden(false) : undefined}
             />
             <DockButton
               icon="lesson"
