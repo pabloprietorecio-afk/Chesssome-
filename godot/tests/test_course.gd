@@ -4,10 +4,13 @@ extends SceneTree
 ##            blancas tras cada jugada y moviendo solo la pieza de la lección: cada jugada es legal, ninguna acaba
 ##            en una casilla atacada si el ejercicio lo prohíbe, y al final no quedan estrellas ni piezas negras
 ##   move     las jugadas que juzga el curso son exactamente las legales de Godot, y al menos una vale
+##   Kids     cada lección y cada ejercicio tienen su texto sencillo, y cada frase que se lee en voz alta está en
+##            data/voz.json (el índice de los audios)
 ## Uso: godot --headless --path godot -s tests/test_course.gd
 
 var fallos := 0
 var hechos := 0
+var voz := {}
 
 
 func _init() -> void:
@@ -18,14 +21,27 @@ func _init() -> void:
 		return
 	var lecciones := 0
 	var ejercicios := 0
+	var indice: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/voz.json"))
+	voz = indice if typeof(indice) == TYPE_DICTIONARY else {}
+	_comprueba(not voz.is_empty(), "data/voz.json")
+	for linea: Variant in (data.get("kidsLines", {}) as Dictionary).values():
+		_con_voz(str(linea), "frase Kids")
 	for unit: Dictionary in data["units"]:
 		for lesson: Dictionary in unit["lessons"]:
 			lecciones += 1
+			var kids: Dictionary = lesson.get("kids", {})
+			_comprueba(str(kids.get("title", "")) != "" and (kids.get("intro", []) as Array).size() > 0 and str(kids.get("takeaway", "")) != "", "%s: textos Kids" % lesson["id"])
+			_con_voz(str(kids.get("title", "")), lesson["id"])
+			_con_voz(str(kids.get("takeaway", "")), lesson["id"])
+			for t: Variant in kids.get("intro", []):
+				_con_voz(str(t), lesson["id"])
 			var i := 0
 			for ex: Dictionary in lesson["exercises"]:
 				i += 1
 				ejercicios += 1
 				var donde := "%s #%d" % [lesson["id"], i]
+				_comprueba(str(ex.get("kids", "")) != "", "%s: sin texto Kids" % donde)
+				_con_voz(str(ex.get("kids", "")), donde)
 				match str(ex["kind"]):
 					"collect":
 						_collect(ex, donde)
@@ -80,9 +96,15 @@ func _move(ex: Dictionary, donde: String) -> void:
 		_comprueba(legales.has(uci), "%s: %s no es legal en Godot" % [donde, uci])
 		var j: Dictionary = juzgadas[uci]
 		_comprueba(str(j.get("t", "")) != "", "%s: %s sin texto" % [donde, uci])
+		_comprueba(str(j.get("k", "")) != "", "%s: %s sin texto Kids" % [donde, uci])
+		_con_voz(str(j.get("k", "")), donde)
 		if bool(j.get("ok", false)):
 			valen += 1
 	_comprueba(valen > 0, "%s: ninguna jugada vale" % donde)
+
+
+func _con_voz(texto: String, donde: String) -> void:
+	_comprueba(voz.has(texto), "%s: «%s» no está en data/voz.json" % [donde, texto])
 
 
 func _comprueba(cierto: bool, mensaje: String) -> void:

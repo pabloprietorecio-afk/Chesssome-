@@ -129,6 +129,19 @@ const PLAYER_PATH := "user://chessome_jugador.json"
 ## Curso «Aprende a jugar» (data/curso.json, que genera scripts/export-course.ts con cada ejercicio comprobado).
 const COURSE_PATH := "user://chessome_curso.json"
 var course: Array = []
+## Frases fijas del nivel Kids (curso.json → kidsLines).
+var kids_lines := {}
+## Nivel Kids (desde 8 años): textos muy sencillos con voz, solo el curso; salir pide la puerta para adultos.
+var kids := false
+var voice_on := true
+## Voz del nivel Kids: texto exacto → id del audio (data/voz.json; los OGG en res://voz/, de Kokoro).
+var voice_index := {}
+var voice_player: AudioStreamPlayer
+var _voice_queue: Array = []
+var _voice_last: Array = []
+## Respuesta correcta de la puerta para adultos abierta (−1 si no hay ninguna).
+var _gate_answer := -1
+var _gate_then: Callable
 ## Lecciones terminadas: id → estrellas (1–3).
 var course_done := {}
 var lesson := {}
@@ -456,6 +469,9 @@ func _ready() -> void:
 	_load_puzzles()
 	_load_course()
 	_load_version()
+	voice_player = AudioStreamPlayer.new()
+	add_child(voice_player)
+	voice_player.finished.connect(_voice_next)
 	if use_settings:
 		_load_settings()
 		_load_course_progress()
@@ -482,7 +498,14 @@ func _ready() -> void:
 		_start(0)
 		return
 	_load_player()
-	if _has_player():
+	if kids and welcome_seen:
+		# Nivel Kids: siempre el curso.
+		_idle()
+		if course_done.is_empty():
+			_start_from_zero()
+		else:
+			_open_course()
+	elif _has_player():
 		# Vuelve por donde iba: a medio test o entrenando.
 		if bool(player.get("done", false)):
 			mode = "train"
@@ -563,6 +586,8 @@ func _load_settings() -> void:
 	dark = bool(cfg.get_value("pantalla", "oscuro", dark))
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
+	kids = bool(cfg.get_value("app", "kids", false))
+	voice_on = bool(cfg.get_value("sonido", "voz", true))
 	gesture_hint = bool(cfg.get_value("vista", "pista_de_gestos", gesture_hint))
 	_saved_lock = bool(cfg.get_value("vista", "giro_fijado", false))
 	_saved_anim = clampi(int(cfg.get_value("tablero", "animaciones", _saved_anim)), 0, 3)
@@ -579,6 +604,8 @@ func _save_settings() -> void:
 	cfg.set_value("pantalla", "oscuro", dark)
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
+	cfg.set_value("app", "kids", kids)
+	cfg.set_value("sonido", "voz", voice_on)
 	cfg.set_value("vista", "pista_de_gestos", gesture_hint)
 	cfg.set_value("vista", "giro_fijado", view.view_locked if view != null else _saved_lock)
 	cfg.save(SETTINGS_PATH)
@@ -1964,7 +1991,11 @@ func _build_sheet() -> void:
 	var box := _sheet("Opciones")
 	if box == null:
 		return
-	if _has_player():
+	if not course.is_empty():
+		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
+		if kids:
+			box.add_child(_switch_row("sound", "sky", "Voz", "Lee en voz alta las lecciones y lo que pasa en cada jugada.", voice_on, _set_voice))
+	if _has_player() and not kids:
 		var mine_tint := _tint("lilac")
 		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	if not course.is_empty():
@@ -2260,6 +2291,12 @@ func _open_welcome() -> void:
 	var go := _button("next", "Empezar", _close_welcome, _c("accent"), _c("accent_ink"), {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")})
 	go.mouse_filter = Control.MOUSE_FILTER_STOP
 	column.add_child(go)
+	if not kids and not course.is_empty():
+		column.add_child(_spacer(18.0))
+		var tint := _tint("butter")
+		var kid := _button("party", "Modo Kids · desde 8 años", _start_kids, tint[0], _c("ink"), {"font_size": F_SUB, "height": 112.0, "icon": 56.0, "icon_color": tint[1]})
+		kid.mouse_filter = Control.MOUSE_FILTER_STOP
+		column.add_child(kid)
 	_place_tip()
 
 
@@ -2781,6 +2818,9 @@ func _give_up() -> void:
 func _load_course() -> void:
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/curso.json"))
 	course = data.get("units", []) if typeof(data) == TYPE_DICTIONARY else []
+	kids_lines = data.get("kidsLines", {}) if typeof(data) == TYPE_DICTIONARY else {}
+	var index: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/voz.json")) if FileAccess.file_exists("res://data/voz.json") else null
+	voice_index = index if typeof(index) == TYPE_DICTIONARY else {}
 
 
 func _load_course_progress() -> void:
@@ -2830,7 +2870,8 @@ func _open_course() -> void:
 	for l: Dictionary in lessons:
 		if course_done.has(str(l["id"])):
 			done += 1
-	body.add_child(_centered(_para("%d de %d lecciones · desde cero hasta el jaque mate" % [done, lessons.size()], F_SUB, _c("quiet"), font_medium)))
+	var sub := "%d de %d lecciones" % [done, lessons.size()] if kids else "%d de %d lecciones · desde cero hasta el jaque mate" % [done, lessons.size()]
+	body.add_child(_centered(_para(sub, F_SUB, _c("quiet"), font_medium)))
 	var tints := ["peach", "mint", "lilac", "sky", "butter", "rose"]
 	var n := 0
 	for unit: Dictionary in course:
@@ -2839,17 +2880,19 @@ func _open_course() -> void:
 		body.add_child(_spacer(12.0))
 		for l: Dictionary in unit["lessons"]:
 			var id := str(l["id"])
-			var line := str(l["takeaway"])
+			var line := _lesson_line(l)
 			if course_done.has(id):
 				line = "Hecha · " + "★".repeat(int(course_done[id])) + "☆".repeat(3 - int(course_done[id]))
-			body.add_child(_option_button(str(l["icon"]), str(tints[n % tints.size()]), str(l["title"]), line, _start_lesson.bind(id)))
+			body.add_child(_option_button(str(l["icon"]), str(tints[n % tints.size()]), _lesson_title(l), line, _start_lesson.bind(id)))
 			body.add_child(_spacer(14.0))
 			n += 1
 	body.add_child(_spacer(10.0, true))
-	if _has_player():
+	if _has_player() or (kids and mode == "learn"):
 		footer.add_child(_button("", "Cerrar", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
-	else:
+	elif not kids:
 		footer.add_child(_button("cap", "Ya sé mover las piezas: test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	if kids:
+		footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
 
 func _start_lesson(id: String) -> void:
@@ -2884,6 +2927,10 @@ func _show_lesson_step() -> void:
 	if lesson_ex < 0:
 		ex = {}
 		ex_state = "intro"
+		var said: Array = [_lesson_title(lesson)] + (_lesson_text("intro") as Array)
+		if course_done.is_empty() and kids:
+			said.push_front(_kid_line("welcomeKids"))
+		_say(said)
 		view.set_fen(str(exercises[0]["fen"]) if not exercises.is_empty() else Board3D.START_FEN)
 		if not exercises.is_empty() and str(exercises[0]["kind"]) == "collect":
 			view.board.set_goals(_squares(exercises[0].get("stars", [])))
@@ -2897,9 +2944,14 @@ func _show_lesson_step() -> void:
 		var id := str(lesson["id"])
 		course_done[id] = maxi(stars, int(course_done.get(id, 0)))
 		_save_course_progress()
+		var said := [_kid_line("lessonDone"), str(_lesson_text("takeaway"))]
+		if _is_last_lesson():
+			said.append(_kid_line("courseDone"))
+		_say(said)
 	else:
 		ex = exercises[lesson_ex]
 		view.set_fen(str(ex["fen"]))
+		_say([_ex_text(ex)])
 		match str(ex["kind"]):
 			"info":
 				ex_state = "info"
@@ -2946,7 +2998,8 @@ func _learn_move(uci: String) -> void:
 		if bool(ex.get("safe", false)) and board.chess.attacked(to, 1):
 			ex_state = "fail"
 			ex_good = false
-			ex_text = "Esa casilla la ataca una pieza negra: te capturarían. Mira antes qué casillas atacan."
+			ex_text = _kid_line("attacked") if kids else "Esa casilla la ataca una pieza negra: te capturarían. Mira antes qué casillas atacan."
+			_say([ex_text])
 			view.interactive = false
 			_refresh()
 			return
@@ -2960,10 +3013,14 @@ func _learn_move(uci: String) -> void:
 			ex_good = true
 			view.interactive = false
 			ex_text = ("¡Perfecto! En %d jugadas, el mínimo posible." % ex_moves) if ex_moves <= par else ("¡Hecho! En %d jugadas. Se puede en %d: prueba a repetirlo." % [ex_moves, par])
+			if kids:
+				ex_text = _kid_line("perfect") if ex_moves <= par else _kid_line("fewer")
+			_say([ex_text])
 		_refresh()
 		return
 	var verdict: Dictionary = (ex.get("moves", {}) as Dictionary).get(uci, {})
-	ex_text = str(verdict.get("t", ""))
+	ex_text = str(verdict.get("k" if kids else "t", verdict.get("t", "")))
+	_say([ex_text])
 	view.interactive = false
 	if bool(verdict.get("ok", false)):
 		ex_stars.append(clampi(3 - ex_fails, 1, 3))
@@ -2983,7 +3040,7 @@ func _learn_move(uci: String) -> void:
 
 func _build_learn_card() -> void:
 	var exercises: Array = lesson.get("exercises", [])
-	var head := str(lesson.get("title", ""))
+	var head := _lesson_title(lesson)
 	var tone := _c("ink")
 	if ex_state == "done":
 		head = "¡Bien!"
@@ -2995,9 +3052,18 @@ func _build_learn_card() -> void:
 		head = "Lección terminada"
 		tone = _c("good")
 	title = _para(head, F_TITLE, tone, font_display)
-	card_body.add_child(title)
+	if kids and voice_on and _has_voice(_voice_last):
+		# El título con el botón de volver a oír.
+		var top := HBoxContainer.new()
+		top.add_theme_constant_override("separation", 16)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(title)
+		top.add_child(_round_button("sound", _say_again, 96.0, _c("field"), _c("ink"), false))
+		card_body.add_child(top)
+	else:
+		card_body.add_child(title)
 	if ex_state == "intro":
-		for t: Variant in lesson.get("intro", []):
+		for t: Variant in _lesson_text("intro"):
 			card_body.add_child(_para(str(t), F_BODY, _c("ink"), font_regular))
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
@@ -3009,12 +3075,12 @@ func _build_learn_card() -> void:
 		var id := str(lesson["id"])
 		var stars := int(course_done.get(id, 3))
 		card_body.add_child(_para("★".repeat(stars) + "☆".repeat(3 - stars), F_TITLE, _tint("butter")[1], font_display))
-		card_body.add_child(_para(str(lesson.get("takeaway", "")), F_BODY, _c("ink"), font_regular))
+		card_body.add_child(_para(str(_lesson_text("takeaway")), F_BODY, _c("ink"), font_regular))
 		return
 	var step := _chip("Ejercicio %d de %d" % [lesson_ex + 1, exercises.size()], _c("field"), _c("quiet"))
 	step.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	card_body.add_child(step)
-	card_body.add_child(_para(str(ex.get("text", "")), F_BODY, _c("ink"), font_regular if ex_state != "play" else font_medium))
+	card_body.add_child(_para(_ex_text(ex), F_BODY, _c("ink"), font_regular if ex_state != "play" else font_medium))
 	if str(ex.get("kind", "")) == "collect" and ex_state == "play":
 		var stars_total: int = (ex.get("stars", []) as Array).size()
 		var line := "Jugadas: %d" % ex_moves
@@ -3026,13 +3092,8 @@ func _build_learn_card() -> void:
 
 
 func _build_learn_actions() -> void:
-	var exercises: Array = lesson.get("exercises", [])
-	var last_lesson := true
-	var lessons := _course_lessons()
-	for i in lessons.size():
-		if str(lessons[i]["id"]) == str(lesson.get("id", "")):
-			last_lesson = i == lessons.size() - 1
-	var key := "learn:%s:%d:%s" % [ex_state, lesson_ex, str(last_lesson)]
+	var last_lesson := _is_last_lesson()
+	var key := "learn:%s:%d:%s:%s" % [ex_state, lesson_ex, str(last_lesson), str(kids)]
 	if key == _actions_mode:
 		return
 	_actions_mode = key
@@ -3053,13 +3114,21 @@ func _build_learn_actions() -> void:
 		"info":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"play":
-			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide)]
+			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet)]
+			if str(ex.get("kind", "")) == "move":
+				var tint := _tint("butter")
+				var help := wide.duplicate()
+				help["icon_color"] = tint[1]
+				row.append(_button("bulb", "Pista", _learn_hint, tint[0], _c("ink"), help))
+			row.append(_button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide))
 		"fail":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"done":
 			row = [_button("retry", "Repetir", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"end":
-			if last_lesson:
+			if last_lesson and kids:
+				row = [_button("retry", "Repetir", _start_lesson.bind(str(lesson.get("id", ""))), _c("accent_soft"), _c("accent_text"), wide), _button("next", "Curso", _open_course, _c("accent"), _c("accent_ink"), go)]
+			elif last_lesson:
 				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Test de nivel", _after_course, _c("accent"), _c("accent_ink"), go)]
 			else:
 				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Siguiente lección", _next_lesson, _c("accent"), _c("accent_ink"), go)]
@@ -3069,6 +3138,29 @@ func _build_learn_actions() -> void:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		actions.add_child(b)
+
+
+func _is_last_lesson() -> bool:
+	var lessons := _course_lessons()
+	return not lessons.is_empty() and str(lessons[lessons.size() - 1]["id"]) == str(lesson.get("id", ""))
+
+
+## Pista en una jugada de lección: se señala la pieza que hay que mover (la de la primera jugada que vale).
+func _learn_hint() -> void:
+	if ex.is_empty() or ex_state != "play" or str(ex.get("kind", "")) != "move":
+		return
+	var moves: Dictionary = ex.get("moves", {})
+	for uci: Variant in moves.keys():
+		if bool((moves[uci] as Dictionary).get("ok", false)):
+			view.set_fen(str(ex["fen"]))
+			view.interactive = true
+			view.board.select(Chess.sq_index(str(uci).substr(0, 2)))
+			ex_fails = maxi(ex_fails, 1)
+			ex_text = _kid_line("hint") if kids else "Pista: esta es la pieza que hay que mover."
+			ex_good = true
+			_say([ex_text])
+			_refresh()
+			return
 
 
 func _next_lesson_step() -> void:
@@ -3091,6 +3183,180 @@ func _after_course() -> void:
 		_start_training()
 	else:
 		_start_test("rules")
+
+
+
+# ---------------------------------------------------------------- nivel Kids: textos sencillos y voz
+
+## Texto de la lección para quien juega: el del nivel Kids si lo hay.
+func _lesson_text(field: String) -> Variant:
+	if kids:
+		var k: Dictionary = lesson.get("kids", {})
+		if k.has(field):
+			return k[field]
+	return lesson.get(field, "")
+
+
+func _lesson_title(l: Dictionary) -> String:
+	return str((l.get("kids", {}) as Dictionary).get("title", l["title"])) if kids else str(l["title"])
+
+
+func _lesson_line(l: Dictionary) -> String:
+	return str((l.get("kids", {}) as Dictionary).get("takeaway", l["takeaway"])) if kids else str(l["takeaway"])
+
+
+func _ex_text(e: Dictionary) -> String:
+	return str(e.get("kids", e.get("text", ""))) if kids else str(e.get("text", ""))
+
+
+func _kid_line(key: String) -> String:
+	return str(kids_lines.get(key, ""))
+
+
+## Dice las frases en voz alta, una detrás de otra (solo en el nivel Kids y con la voz puesta). Corta lo que
+## estuviera sonando. Una frase sin audio se salta: la voz no es imprescindible para seguir.
+func _say(lines: Array) -> void:
+	_voice_last = lines.duplicate()
+	if not kids or not voice_on or voice_player == null:
+		return
+	_voice_queue = []
+	for t: Variant in lines:
+		var id := str(voice_index.get(str(t), ""))
+		var path := "res://voz/%s.ogg" % id
+		if id != "" and ResourceLoader.exists(path):
+			_voice_queue.append(path)
+	voice_player.stop()
+	_voice_next()
+
+
+func _voice_next() -> void:
+	if _voice_queue.is_empty() or voice_player == null:
+		return
+	var stream := load(str(_voice_queue.pop_front())) as AudioStream
+	if stream == null:
+		_voice_next()
+		return
+	voice_player.stream = stream
+	voice_player.play()
+
+
+func _say_again() -> void:
+	_say(_voice_last)
+
+
+func _stop_voice() -> void:
+	_voice_queue = []
+	if voice_player != null:
+		voice_player.stop()
+
+
+## Hay audio para alguna de estas frases (para enseñar el botón de repetir).
+func _has_voice(lines: Array) -> bool:
+	for t: Variant in lines:
+		var id := str(voice_index.get(str(t), ""))
+		if id != "" and ResourceLoader.exists("res://voz/%s.ogg" % id):
+			return true
+	return false
+
+
+## «Modo Kids» desde la bienvenida: directo al curso, sin pregunta de experiencia ni test.
+func _start_kids() -> void:
+	kids = true
+	welcome_seen = true
+	_save_settings()
+	if welcome != null and is_instance_valid(welcome):
+		welcome.visible = false
+		welcome.queue_free()
+	welcome = null
+	_place_tip()
+	if course_done.is_empty():
+		_start_from_zero()
+	else:
+		_open_course()
+
+
+func _set_kids(on: bool) -> void:
+	if on == kids:
+		return
+	if on:
+		kids = true
+		_save_settings()
+		_close_options()
+		_open_course()
+		return
+	# Salir del nivel Kids es cosa de mayores.
+	_close_options()
+	_open_gate(_leave_kids)
+
+
+func _leave_kids() -> void:
+	kids = false
+	_stop_voice()
+	_save_settings()
+	if mode == "learn" and not lesson.is_empty():
+		_show_lesson_step()
+	elif _has_player():
+		_start_training()
+	else:
+		_open_experience()
+
+
+func _set_voice(on: bool) -> void:
+	voice_on = on
+	if not on:
+		_stop_voice()
+	_save_settings()
+	_sync_sheet()
+
+
+## Puerta para adultos: una multiplicación que un niño de 8 años no suele saber, con tres respuestas.
+func _open_gate(then: Callable) -> void:
+	var a := _rng.randi_range(6, 9)
+	var b := _rng.randi_range(6, 9)
+	_gate_answer = a * b
+	_gate_then = then
+	var page := _page("gate")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(8.0, true))
+	var tile := _icon_tile("pin_on", "lilac", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(24.0))
+	body.add_child(_centered(_para("Para mayores", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_spacer(4.0))
+	body.add_child(_centered(_para("Para salir del modo Kids, responde: ¿cuánto es %d × %d?" % [a, b], F_HEAD, _c("quiet"), font_medium)))
+	body.add_child(_spacer(40.0))
+	var answers := [_gate_answer, _gate_answer + _rng.randi_range(1, 4), _gate_answer - _rng.randi_range(1, 4)]
+	answers.shuffle()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	for v: Variant in answers:
+		var b2 := _button("", str(v), _on_gate.bind(int(v)), _c("surface"), _c("ink"), {"font_size": F_TITLE, "height": 148.0, "font": font_display, "glow": _c("shadow")})
+		b2.mouse_filter = Control.MOUSE_FILTER_STOP
+		b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b2)
+	body.add_child(row)
+	body.add_child(_spacer(8.0, true))
+	footer.add_child(_button("", "Seguir en modo Kids", _close_gate, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+	_say([_kid_line("gate")])
+
+
+func _on_gate(v: int) -> void:
+	var ok := v == _gate_answer and _gate_answer >= 0
+	_gate_answer = -1
+	_close_progress()
+	if ok and _gate_then.is_valid():
+		_gate_then.call()
+	elif mode != "learn":
+		_open_course()
+
+
+func _close_gate() -> void:
+	_gate_answer = -1
+	_close_progress()
+	if mode != "learn":
+		_open_course()
 
 
 # ---------------------------------------------------------------- páginas: experiencia, resultado y progreso
@@ -3160,6 +3426,8 @@ func _close_progress() -> void:
 func _leave_progress() -> void:
 	if progress_kind == "result":
 		_start_training()
+	elif progress_kind == "gate":
+		_close_gate()
 	elif progress_kind == "progress" or (progress_kind in ["experience", "course"] and (_has_player() or mode == "learn")):
 		_close_progress()
 

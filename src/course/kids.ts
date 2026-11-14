@@ -147,14 +147,12 @@ export const KIDS: Record<string, KidsLesson> = {
 export const KIDS_LINES = {
   perfect: '¡Perfecto!',
   good: '¡Muy bien!',
+  fewer: '¡Muy bien! Se puede con menos jugadas. ¿Lo intentas otra vez?',
   tryAgain: 'Casi. ¡Prueba otra vez!',
   attacked: '¡Uy! En esa casilla te capturarían. Prueba otra vez.',
   lessonDone: '¡Lección terminada!',
   courseDone: '¡Has terminado el curso! Ya sabes jugar al ajedrez.',
-  matesIntro: 'Ahora, a dar jaque mate. Busca la jugada que gana.',
-  mateYes: '¡Jaque mate! ¡Has ganado!',
-  mateNo: 'Esa jugada no es jaque mate. ¡Prueba otra vez!',
-  mateHint: 'Pista: busca una jugada que dé jaque.',
-  mateHint2: 'Mira esta pieza. Con ella se da el jaque mate.',
+  hint: 'Pista: mira esta pieza.',
+  gate: 'Esto es para mayores. Pide ayuda a un adulto.',
   welcomeKids: '¡Hola! Soy tu entrenador de ajedrez. ¿Empezamos?',
 } as const;

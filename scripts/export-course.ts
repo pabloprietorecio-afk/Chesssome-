@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { Chess, validateFen, type Move } from 'chess.js';
 import { readFileSync } from 'node:fs';
 import { COURSE, toFen, type Accept, type Exercise, type Lesson } from '../src/course/course';
-import { KIDS } from '../src/course/kids';
+import { KIDS, KIDS_LINES } from '../src/course/kids';
 import { VALUE } from '../src/core/chessx';
 import { sanEs, the } from '../src/core/lang';
 import type { PieceType } from '../src/core/types';
@@ -321,7 +321,7 @@ export function buildCourse() {
     }),
   }));
   for (const id of Object.keys(KIDS)) if (!ids.has(id)) throw new Error(`Texto Kids de una lección que no existe: ${id}`);
-  return { generatedBy: 'scripts/export-course.ts (contenido: src/course/course.ts y src/course/kids.ts; mates: Lichess, CC0)', lessons: ids.size, exercises, units };
+  return { generatedBy: 'scripts/export-course.ts (contenido: src/course/course.ts y src/course/kids.ts; mates: Lichess, CC0)', lessons: ids.size, exercises, kidsLines: KIDS_LINES, units };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

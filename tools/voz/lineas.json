@@ -8,6 +8,10 @@
   "text": "¡Muy bien!"
  },
  {
+  "id": "b74342ab40dc",
+  "text": "¡Muy bien! Se puede con menos jugadas. ¿Lo intentas otra vez?"
+ },
+ {
   "id": "33e6d53de665",
   "text": "Casi. ¡Prueba otra vez!"
  },
@@ -24,24 +28,12 @@
   "text": "¡Has terminado el curso! Ya sabes jugar al ajedrez."
  },
  {
-  "id": "24d544d97f44",
-  "text": "Ahora, a dar jaque mate. Busca la jugada que gana."
+  "id": "3a079b91a236",
+  "text": "Pista: mira esta pieza."
  },
  {
-  "id": "ae2ffda2cf01",
-  "text": "¡Jaque mate! ¡Has ganado!"
- },
- {
-  "id": "f28654596c8f",
-  "text": "Esa jugada no es jaque mate. ¡Prueba otra vez!"
- },
- {
-  "id": "2c44bb053761",
-  "text": "Pista: busca una jugada que dé jaque."
- },
- {
-  "id": "01005b25e383",
-  "text": "Mira esta pieza. Con ella se da el jaque mate."
+  "id": "af2382032cef",
+  "text": "Esto es para mayores. Pide ayuda a un adulto."
  },
  {
   "id": "a454621f1f93",
