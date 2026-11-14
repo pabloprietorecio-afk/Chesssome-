@@ -178,10 +178,31 @@ func _run() -> void:
 	board.deselect()
 
 	await _token_shots()
+	await _simple_shots()
 	await _demo_shots()
 
 
 ## Fichas planas con el icono de la pieza en relieve, en los cuatro acabados; de cerca, en picado, con negras y en el mate.
+## Juego «Simple»: dibujos planos que miran a la cámara, en dos acabados, inclinado, cenital y con selección.
+func _simple_shots() -> void:
+	var board := view.board
+	board.anim_mode = Board3D.Anim.NONE
+	view.set_fen(MID_FEN)
+	view.set_piece_set("simple")
+	for finish: String in ["ilustrado", "madera"]:
+		view.set_board_style(finish)
+		await _frames(4)
+		await _shot("18_simple_" + finish)
+	board.select(_sq("e8"))
+	board.set_view(90.0, 0.0)
+	await _frames(3)
+	await _shot("18_simple_cenital")
+	board.deselect()
+	board.set_view(Board3D.DEFAULT_PITCH, 0.0)
+	view.set_piece_set("clasico")
+	view.set_board_style("madera")
+
+
 func _token_shots() -> void:
 	var board := view.board
 	board.anim_mode = Board3D.Anim.NONE

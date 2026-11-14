@@ -87,8 +87,8 @@ const STYLE_NAMES := ["Madera", "Mármol", "Metal", "Ilustrado"]
 var board_style := "madera"
 var board_outline := false
 ## Juego de piezas: figuras o fichas planas con el icono en relieve (Board3D.PIECE_SETS).
-const SETS := ["clasico", "fichas"]
-const SET_NAMES := ["Figuras", "Fichas"]
+const SETS := ["clasico", "fichas", "simple"]
+const SET_NAMES := ["Figuras", "Fichas", "Simple"]
 var piece_set := "clasico"
 var sound_on := true
 ## Pista animada sobre el tablero: recuerda que se puede ampliar y girar. Viene activada y se apaga sola
@@ -638,6 +638,9 @@ func _ready() -> void:
 	view.set_sound_enabled(sound_on)
 	view.set_view_locked(_saved_lock)
 	view.board.anim_mode = _saved_anim as Board3D.Anim
+	if top_view and use_settings:
+		view.board.set_view(90.0, 0.0)
+	_apply_simple_view()
 
 	_rng.randomize()
 	_build_chrome()
@@ -708,16 +711,23 @@ func _load_version() -> void:
 # ---------------------------------------------------------------- ajustes guardados
 
 func _load_settings() -> void:
+	# Por defecto (decisión de Pablo, 14 nov): fichas y tablero visto desde arriba, en toda la app.
+	piece_set = "fichas"
+	top_view = true
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) != OK:
 		return
+	# Quien ya tenía ajustes guardados de antes pasa una vez a lo nuevo por defecto; después manda lo que elija.
+	var fresh_defaults := not cfg.has_section_key("app", "vista_por_defecto_2")
 	var style := str(cfg.get_value("tablero", "acabado", board_style))
 	if STYLES.has(style):
 		board_style = style
 	board_outline = bool(cfg.get_value("tablero", "contorno", board_style == "ilustrado"))
 	var pieces := str(cfg.get_value("tablero", "piezas", piece_set))
-	if SETS.has(pieces):
+	if SETS.has(pieces) and not fresh_defaults:
 		piece_set = pieces
+	if not fresh_defaults:
+		top_view = bool(cfg.get_value("vista", "en_picado", true))
 	dark = bool(cfg.get_value("pantalla", "oscuro", dark))
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
@@ -738,6 +748,8 @@ func _save_settings() -> void:
 	cfg.set_value("tablero", "acabado", board_style)
 	cfg.set_value("tablero", "contorno", board_outline)
 	cfg.set_value("tablero", "piezas", piece_set)
+	cfg.set_value("vista", "en_picado", top_view)
+	cfg.set_value("app", "vista_por_defecto_2", true)
 	cfg.set_value("tablero", "animaciones", int(view.board.anim_mode) if view != null else _saved_anim)
 	cfg.set_value("pantalla", "oscuro", dark)
 	cfg.set_value("sonido", "activo", sound_on)
@@ -748,7 +760,7 @@ func _save_settings() -> void:
 	cfg.set_value("sonido", "voz", voice_on)
 	cfg.set_value("sonido", "musica", music_on)
 	cfg.set_value("vista", "pista_de_gestos", gesture_hint)
-	cfg.set_value("vista", "giro_fijado", view.view_locked if view != null else _saved_lock)
+	cfg.set_value("vista", "giro_fijado", _saved_lock)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -2241,7 +2253,7 @@ func _build_sheet() -> void:
 		if press_clock:
 			box.add_child(_switch_row("bulb", "butter", "Aviso si no lo pulsas", "A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo." % int(PRESS_REMINDER), press_reminder, _set_press_reminder))
 	box.add_child(_caption("Piezas"))
-	box.add_child(_picture_tiles([["piece_knight", "Figuras"], ["token_pawn", "Fichas"]], SETS.find(piece_set), _set_pieces_index))
+	box.add_child(_picture_tiles([["piece_knight", "Figuras"], ["token_pawn", "Fichas"], ["piece_rook", "Simple"]], SETS.find(piece_set), _set_pieces_index))
 	box.add_child(_caption("Material"))
 	box.add_child(_swatch_tiles(STYLES.find(board_style)))
 	box.add_child(_switch_row("outline", "lilac", "Contorno de las piezas", "Una línea de tinta alrededor de cada pieza.", board_outline, _set_outline))
@@ -2249,10 +2261,13 @@ func _build_sheet() -> void:
 	box.add_child(_caption("Animaciones"))
 	box.add_child(_segments(["Completas", "Rápidas", "Mínimas", "Sin"], int(view.board.anim_mode), _set_anim))
 	box.add_child(_caption("Vista"))
-	box.add_child(_segments(["Inclinada", "En picado"], 1 if top_view else 0, _set_top_view))
-	box.add_child(_switch_row("pin", "peach", "Fijar el giro", "El tablero no gira con los dedos ni con el móvil. Ampliar sigue funcionando.", view.view_locked, _set_lock))
-	box.add_child(_switch_row("zoom", "sky", "Pista de gestos", "Recuerda, sobre el tablero, que se puede ampliar y girar con dos dedos.", gesture_hint, _set_gesture_hint))
-	box.add_child(_switch_row("phone", "butter", "Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
+	if piece_set == "simple":
+		box.add_child(_para("Con las piezas «Simple», el tablero se ve siempre desde arriba: solo se puede ampliar con dos dedos.", F_SUB, _c("quiet"), font_regular))
+	else:
+		box.add_child(_segments(["Inclinada", "En picado"], 1 if top_view else 0, _set_top_view))
+		box.add_child(_switch_row("pin", "peach", "Fijar el giro", "El tablero no gira con los dedos ni con el móvil. Ampliar sigue funcionando.", view.view_locked, _set_lock))
+		box.add_child(_switch_row("zoom", "sky", "Pista de gestos", "Recuerda, sobre el tablero, que se puede ampliar y girar con dos dedos.", gesture_hint, _set_gesture_hint))
+		box.add_child(_switch_row("phone", "butter", "Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
 	box.add_child(_caption("Tema"))
 	box.add_child(_segments(["Claro", "Oscuro"], 1 if dark else 0, _set_theme_index, ["sun", "moon"]))
 	var tint := _tint("lilac")
@@ -2350,8 +2365,21 @@ func _switch_row(icon_name: String, tint_name: String, label: String, hint: Stri
 func _set_pieces_index(i: int) -> void:
 	piece_set = SETS[clampi(i, 0, SETS.size() - 1)]
 	view.set_piece_set(piece_set)
+	_apply_simple_view()
 	_save_settings()
 	_sync_sheet()
+
+
+## «Simple» es el tablero plano visto desde arriba: solo se amplía, no se gira ni se inclina. Al salir de él, el
+## giro vuelve a como lo tenía el jugador.
+func _apply_simple_view() -> void:
+	if piece_set == "simple":
+		view.set_tilt_enabled(false)
+		view.set_view_locked(true)
+		top_view = true
+		view.center_view()
+	else:
+		view.set_view_locked(_saved_lock)
 
 
 func _set_style_index(i: int) -> void:
@@ -2403,7 +2431,10 @@ func _set_anim(mode: int) -> void:
 
 
 func _set_top_view(i: int) -> void:
+	if piece_set == "simple":
+		return
 	top_view = i == 1
+	_save_settings()
 	if top_view:
 		view.center_view()
 	else:
@@ -2416,10 +2447,14 @@ func _on_toggle_view() -> void:
 	if view.is_zoomed():
 		view.reset_zoom()
 		return
+	if piece_set == "simple":
+		return
 	_set_top_view(0 if top_view else 1)
 
 
 func _set_tilt(on: bool) -> void:
+	if piece_set == "simple":
+		return
 	view.set_tilt_enabled(on)
 	if on and view.view_locked:
 		_set_lock(false)
@@ -2428,6 +2463,9 @@ func _set_tilt(on: bool) -> void:
 
 
 func _set_lock(on: bool) -> void:
+	if piece_set == "simple":
+		return
+	_saved_lock = on
 	view.set_view_locked(on)
 	_save_settings()
 	# La chincheta de la barra cambia de aspecto: se pone una nueva en su sitio.

@@ -267,3 +267,15 @@ Godot no se ejecuta en local en este proyecto: todo pasa por la CI (`.github/wor
 - Niveles de calidad y pausa del dibujo en reposo.
 - Partículas, sonido y bandeja de capturas.
 - Hoja de animación por colección (datos) y más colecciones.
+
+## Piezas «Simple» y vista por defecto (14 nov 2026, peticiones de Pablo)
+
+- Tercer juego de piezas, «Simple», para jugadores clásicos: el dibujo plano de cada pieza (nuestras siluetas,
+  `tools/pieces/simple.mjs` → `godot/sets/simple/iconos.bin`), lo más grande posible dentro de su casilla, sin
+  relieve. Blancas en marfil con contorno azul tinta; negras en azul tinta con contorno marfil. Con «Simple» el
+  tablero se ve siempre desde arriba y solo se puede ampliar (no girar ni inclinar).
+- Por defecto, en toda la app: fichas y tablero visto desde arriba. Quien ya tenía ajustes guardados pasa una vez a
+  esto (clave `app/vista_por_defecto_2`); después manda lo que elija. La vista elegida (inclinada o en picado) se
+  guarda ahora entre sesiones.
+- Las piezas negras llevan el contorno amarillo (`BLACK_OUTLINE`), para separarlas de la pieza de delante o de
+  detrás en la vista 3D.

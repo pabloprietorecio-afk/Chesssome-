@@ -30,7 +30,12 @@ const OUTLINE_WIDTH := 0.026
 ## Color del contorno de las piezas negras (amarillo, para que se vea sobre piezas y casillas oscuras).
 const BLACK_OUTLINE := Color("f5c542")
 ## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
-const PIECE_SETS := ["clasico", "fichas"]
+const PIECE_SETS := ["clasico", "fichas", "simple"]
+## Juego «Simple»: el dibujo plano de cada pieza (tools/pieces/simple.mjs), mirando siempre a la cámara y lo más
+## grande que cabe en su casilla, sin relieve ni contorno 3D.
+const SIMPLE_ATLAS := "res://sets/simple/iconos.bin"
+## Lado del dibujo en casillas, a vista de pájaro (con el tablero inclinado se encoge para caber en la casilla).
+const SIMPLE_SIZE := 0.96
 ## Medidas de la ficha (tools/pieces/fichas.mjs), en casillas.
 const TOKEN := {"radius": 0.4, "height": 0.165, "field_radius": 0.343, "face_height": 0.152, "icon_radius": 0.31, "sd_range": 0.05}
 ## Con fichas no hay piezas altas que tapen ni que se salgan por arriba: el tablero puede llenar más la vista.
@@ -127,6 +132,8 @@ var _mats: Array[ShaderMaterial] = []
 var _tex_mats: Array[ShaderMaterial] = []
 var _token_mats: Array[ShaderMaterial] = []
 var _token_mesh: Mesh
+var _simple_tex: Texture2D
+var _simple_pixel := 0.96 / 256.0
 var _icons_tex: Texture2D
 var _sfx_tweens: Array[Tween] = []
 var _squares_tex: ShaderMaterial
@@ -501,6 +508,10 @@ func is_tokens() -> bool:
 	return piece_set == "fichas"
 
 
+func is_simple() -> bool:
+	return piece_set == "simple"
+
+
 ## Cambia el juego de piezas ("clasico" o "fichas") sin tocar la posición.
 func set_piece_set(set_name: String) -> void:
 	var wanted := set_name if PIECE_SETS.has(set_name) else "clasico"
@@ -535,6 +546,8 @@ func _piece_mesh(piece_type: int) -> Mesh:
 
 ## Altura de una pieza, para elegirla al tocar.
 func _piece_height(piece_type: int) -> float:
+	if is_simple():
+		return 0.3
 	if is_tokens():
 		return float(TOKEN["height"])
 	return float(PIECE_HEIGHT[piece_type]) * PIECE_SCALE
@@ -557,8 +570,31 @@ func _dress(node: Node3D) -> void:
 	# Icono de la ficha: su casilla en el atlas (tres columnas, dos filas, en el orden de PIECE_FILES).
 	var cell := piece_type - 1
 	body.set_instance_shader_parameter("icon_cell", Vector2(float(cell % 3), floorf(float(cell) / 3.0)))
-	hull.visible = outline
-	disc.visible = outline
+	hull.visible = outline and not is_simple()
+	disc.visible = outline and not is_simple()
+	body.visible = not is_simple()
+	var flat := node.get_node_or_null("Plano") as Sprite3D
+	if is_simple():
+		if flat == null:
+			flat = Sprite3D.new()
+			flat.name = "Plano"
+			flat.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			flat.no_depth_test = true
+			flat.shaded = false
+			flat.double_sided = true
+			flat.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+			flat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			flat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			flat.texture = _simple_texture()
+			flat.region_enabled = true
+			node.add_child(flat)
+		var px := float(flat.texture.get_height()) * 0.5 if flat.texture != null else 256.0
+		flat.region_rect = Rect2((piece_type - 1) * px, side * px, px, px)
+		flat.pixel_size = _simple_pixel
+		flat.position = Vector3(0.0, 0.02, 0.0)
+		flat.visible = true
+	elif flat != null:
+		flat.visible = false
 
 
 func _apply_style() -> void:
@@ -764,10 +800,43 @@ func _fit_disc(node: Node3D, mesh: Mesh) -> void:
 	(node.get_node("Peana") as MeshInstance3D).scale = Vector3(r, 1.0, r)
 
 
+## Atlas del juego «Simple» (se carga al usarlo por primera vez).
+func _simple_texture() -> Texture2D:
+	if _simple_tex == null:
+		var bytes := FileAccess.get_file_as_bytes(SIMPLE_ATLAS)
+		var img := Image.new()
+		if bytes.is_empty() or img.load_png_from_buffer(bytes) != OK:
+			push_error("No se pueden cargar las piezas simples: " + SIMPLE_ATLAS)
+			img = Image.create(12, 2, false, Image.FORMAT_RGBA8)
+		img.generate_mipmaps()
+		_simple_tex = ImageTexture.create_from_image(img)
+	return _simple_tex
+
+
+## Con el tablero inclinado, el dibujo (que mira a la cámara) se encoge lo justo para caber en el fondo aparente de
+## su casilla.
+func _size_simple(pitch: float) -> void:
+	var tex := _simple_texture() if is_simple() else _simple_tex
+	if tex == null:
+		return
+	var px := float(tex.get_height()) * 0.5
+	_simple_pixel = SIMPLE_SIZE * clampf(sin(pitch), 0.55, 1.0) / px
+	if not is_simple():
+		return
+	for s: int in _pieces:
+		var flat := (_pieces[s] as Node3D).get_node_or_null("Plano") as Sprite3D
+		if flat != null:
+			flat.pixel_size = _simple_pixel
+
+
 ## Selección: el contorno de la pieza se vuelve del color de acento.
 func _set_glow(node: Node3D, amount: float) -> void:
 	for part: String in ["Malla", "Contorno", "Peana"]:
 		(node.get_node(part) as MeshInstance3D).set_instance_shader_parameter("glow", amount)
+	# Simple: la pieza elegida se tiñe un poco del color de acento.
+	var flat := node.get_node_or_null("Plano") as Sprite3D
+	if flat != null:
+		flat.modulate = Color.WHITE.lerp(Color(1.0, 0.75, 0.5), amount)
 
 
 ## Deja la pieza en reposo en su casilla.
@@ -928,7 +997,8 @@ func apply_camera() -> void:
 	var pa := PackedFloat32Array()
 	var pb := PackedFloat32Array()
 	var pc := PackedFloat32Array()
-	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() else FIT_HEIGHT
+	var fit_height := FIT_HEIGHT_TOKENS if is_tokens() or is_simple() else FIT_HEIGHT
+	_size_simple(pitch)
 	for ix: int in [-1, 1]:
 		for iz: int in [-1, 1]:
 			var fx := float(ix)
