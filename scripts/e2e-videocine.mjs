@@ -528,8 +528,12 @@ assert((await page.$('.vc-card-over')) === null, 'mientras se mueve la pieza, si
 await sleep(1100);
 assert(/La respuesta/.test(await panel()) && !/¡Esa es!/.test(await panel()), '«Ver la respuesta» no es «¡Esa es!»: ' + (await panel()));
 await shot('16-error-historico');
-// Al ver el vídeo, empieza en la pausa y se ve 52…Ce2+ en el tablero.
+// Al ver el vídeo: el tablero vuelve a la posición de la pregunta y se avisa de que en la partida se jugó el error.
 await clickText('Continuar');
+await sleep(200);
+assert(/Ce2\+, que fue un error/.test(await page.$eval('.vc-gate', (e) => e.textContent)), 'aviso del error de la partida');
+assert((await page.$eval('.vc-board-box', (e) => e.dataset.fen)).startsWith('5r2/3N4'), 'el tablero vuelve a la posición de la pregunta (torre en f8)');
+await clickText('OK');
 await waitAttr('phase', 'reveal');
 await waitAttr('player', 'ready');
 await fake(() => { window.__fakeYT.duration = 759; });

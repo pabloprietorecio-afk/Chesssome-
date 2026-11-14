@@ -546,6 +546,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     if (!stop || !lastQ) return;
     clearTimers();
     setBusy(false);
+    // El tablero vuelve a la posición de la pregunta: lo que venga después lo enseña el vídeo.
+    if (q) setBoard({ fen: q.fen, last: q.lead ? { from: q.lead.from, to: q.lead.to } : null, anim: null });
     setGate(true);
   };
   useEffect(() => {
@@ -651,7 +653,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
     // Continuar: seguir el vídeo (sin responder, primero se enseña la jugada de la partida).
     play:
       asking && st.errorCode == null
-        ? !answer || !lastInStop
+        ? !answer || !lastInStop || q!.playedCls !== 'keeps'
           ? skip
           : reveal
         : undefined,
@@ -980,7 +982,13 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                 {gate && st.phase === 'asking' && (
                   <div className="vc-gap vc-gate">
                     <div className="vc-gap-card vc-glass">
-                      <p>En la partida se jugó {q ? sanEs(q.played.san) : lastSan}.</p>
+                      {q && q.playedCls !== 'keeps' ? (
+                        <p>
+                          En la partida se jugó {sanEs(q.played.san)}, que fue un error. Ahora lo verás en el vídeo.
+                        </p>
+                      ) : (
+                        <p>En la partida se jugó {q ? sanEs(q.played.san) : lastSan}.</p>
+                      )}
                       <button className="cm-primary" onClick={reveal}>
                         OK
                       </button>
