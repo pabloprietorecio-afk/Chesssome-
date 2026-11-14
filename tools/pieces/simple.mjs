@@ -122,13 +122,13 @@ function pieceGlyph(index, size, fit, dy = 0) {
 // ---------- El atlas ----------
 
 /** Distancia con signo (en px de la celda de salida) al contorno de la pieza, con la pieza ajustada a `fit`. */
-function pieceField(index, size, fit) {
+function pieceField(index, size, fit, dy = 0) {
   const box = pieceBox(index);
   const scale = (box.y1 - box.y0) / (size * fit);
   const mx = (box.x0 + box.x1) / 2, my = (box.y0 + box.y1) / 2;
   const out = new Float32Array(size * size);
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const sx = mx + (x + 0.5 - size / 2) * scale, sy = my + (y + 0.5 - size / 2) * scale;
+    const sx = mx + (x + 0.5 - size / 2) * scale, sy = my + (y + 0.5 - size / 2 - dy) * scale;
     out[x + size * y] = pieceSd(index, sx, sy) / scale;
   }
   return out;
@@ -143,7 +143,8 @@ const W = CELL * 6, H = CELL * 2;
 const atlas = new Uint8Array(W * H * 4);
 PIECES.forEach((_, index) => {
   // La pieza ocupa casi todo el alto: el contorno queda dentro de la celda.
-  const field = pieceField(index, CELL, 0.86);
+  // Los peones, algo más pequeños que las demás piezas (petición de Pablo), apoyados en la misma base.
+  const field = pieceField(index, CELL, PIECES[index] === 'pawn' ? 0.7 : 0.86, PIECES[index] === 'pawn' ? CELL * 0.08 : 0);
   SIDES.forEach((side, row) => {
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) {
       const d = field[x + CELL * y];

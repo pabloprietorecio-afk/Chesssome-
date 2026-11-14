@@ -36,6 +36,8 @@ const PIECE_SETS := ["clasico", "fichas", "simple"]
 const SIMPLE_ATLAS := "res://sets/simple/iconos.bin"
 ## Lado del dibujo en casillas, a vista de pájaro (con el tablero inclinado se encoge para caber en la casilla).
 const SIMPLE_SIZE := 0.96
+## Tamaño del peón respecto a las demás fichas.
+const PAWN_TOKEN_SCALE := 0.84
 ## Medidas de la ficha (tools/pieces/fichas.mjs), en casillas.
 const TOKEN := {"radius": 0.4, "height": 0.165, "field_radius": 0.343, "face_height": 0.152, "icon_radius": 0.31, "sd_range": 0.05}
 ## Con fichas no hay piezas altas que tapen ni que se salgan por arriba: el tablero puede llenar más la vista.
@@ -570,6 +572,13 @@ func _dress(node: Node3D) -> void:
 	# Icono de la ficha: su casilla en el atlas (tres columnas, dos filas, en el orden de PIECE_FILES).
 	var cell := piece_type - 1
 	body.set_instance_shader_parameter("icon_cell", Vector2(float(cell % 3), floorf(float(cell) / 3.0)))
+	# Fichas: el peón, algo más pequeño que las demás (petición de Pablo).
+	var small := Vector3.ONE * (PAWN_TOKEN_SCALE if is_tokens() and piece_type == Chess.PAWN else 1.0)
+	body.scale = small
+	hull.scale = small
+	if mesh != null:
+		var r := mesh.get_aabb().size.x * 0.5 * small.x + OUTLINE_WIDTH
+		disc.scale = Vector3(r, 1.0, r)
 	hull.visible = outline and not is_simple()
 	disc.visible = outline and not is_simple()
 	body.visible = not is_simple()
