@@ -455,7 +455,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   };
 
   /** Siguiente pregunta en otra pausa sin vídeo que se pare solo: el tablero hace las jugadas intermedias y salta. */
-  const nextStopOnBoard = () => {
+  const nextStopOnBoard = (then: 'next' | 'jump' = 'next') => {
     if (!q) return;
     const nq = clip.stops[st.stop + 1]?.questions[0];
     if (!nq) return;
@@ -469,7 +469,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       const m = moveAt(clip, p);
       if (m) steps.push(() => setBoard({ fen: m.fenAfter, last: { from: m.from, to: m.to }, anim: { from: m.from, to: m.to, key: ++animKey.current, captured: m.captured } }));
     }
-    steps.push(() => send({ type: 'next' }));
+    // Con vídeo, al acabar las jugadas el vídeo salta a la pausa; sin él, se pasa a la pregunta en el tablero.
+    steps.push(() => {
+      setBusy(false);
+      send(then === 'jump' ? { type: 'jump', now: performance.now() } : { type: 'next' });
+    });
     clearTimers();
     steps.forEach((fn, i) => timers.current.push(window.setTimeout(fn, 350 + i * STEP_MS)));
   };
@@ -597,7 +601,8 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   // Acciones de la botonera (undefined = botón apagado).
   const asking = st.phase === 'asking' && !!q && !gate && !busy;
   const lastInStop = qi + 1 >= totalQuestions;
-  const goNextStop = st.videoOn && canAutoPause(clip) ? () => send({ type: 'jump', now: performance.now() }) : nextStopOnBoard;
+  // «Siguiente»: las jugadas hasta la siguiente pregunta se ven en el tablero, una tras otra, antes de llegar a ella.
+  const goNextStop = () => nextStopOnBoard(st.videoOn && canAutoPause(clip) ? 'jump' : 'next');
   const dock: { hint?: () => void; answer?: () => void; play?: () => void; next?: () => void; nextIsEnd: boolean } = {
     hint: asking && !answer && q!.hint && !hint ? () => { setHint(true); setCardHidden(false); } : undefined,
     answer: asking && !answer ? showAnswer : undefined,
@@ -665,6 +670,35 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         Ver en YouTube
       </a>
     </p>
+  );
+
+  // Final del clip: en una ventana translúcida sobre el tablero (o en el panel, si no hay tablero).
+  const endCard = (
+    <>
+    <p className="cm-kicker">Fin del clip</p>
+    <p>{clip.outro}</p>
+    {lastQ && (
+      <p className="cm-quiet cm-small">
+        Respuestas comprobadas con {PACK.engine.name} (profundidad {PACK.engine.depth}): en cada pregunta se analizaron todas las jugadas legales.
+        {stop.questions.every((x) => x.proof === 'mate') ? ' Mate forzado encontrado.' : ' Sin prueba de mate ni tablas de finales.'}
+      </p>
+    )}
+    <p className="cm-quiet cm-small">{clip.gameSource}</p>
+    </>
+  );
+  const endButtons = (
+    <>
+    <div className="cm-row">
+      {clip.lesson && (
+        <button className="cm-primary" onClick={(e) => { e.stopPropagation(); setLessonStep(0); }}>
+          Ver la lección
+        </button>
+      )}
+      <button className="cm-why" onClick={(e) => { e.stopPropagation(); setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); }}>
+        Otra vez
+      </button>
+    </div>
+    </>
   );
 
   return (
@@ -827,7 +861,18 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
 
         {shown && st.phase !== 'idle' && (
           <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
-            {synced && !lessonNow && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
+            {synced && !lessonNow && (
+              <p className="cm-kicker vc-board-label vc-board-label-ask">
+                <span className="vc-board-label-text">
+                  Tablero del vídeo · <span className="vc-san">{synced.label}</span>
+                </span>
+                {st.phase === 'ended' && cardHidden && (
+                  <button className="vc-reopen" onClick={() => setCardHidden(false)}>
+                    Ver el final
+                  </button>
+                )}
+              </p>
+            )}
             {!synced && fit && st.phase === 'asking' && q && (
               <p className="cm-kicker vc-board-label vc-board-label-ask">
                 <span className="vc-board-label-text">
@@ -872,6 +917,11 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                         <p className="cm-quiet cm-small">Toca para ver el tablero</p>
                       </div>
                     )}
+                  </div>
+                )}
+                {st.phase === 'ended' && !lessonNow && !cardHidden && (
+                  <div className="vc-gap vc-card-over vc-end-over" onClick={() => setCardHidden(true)} role="dialog" aria-label="Fin del clip">
+                    <div className="vc-gap-card vc-glass vc-panel">{endCard}</div>
                   </div>
                 )}
                 {gate && st.phase === 'asking' && (
@@ -945,7 +995,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           ) : (
             <button
               className="cm-primary"
-              onClick={!moreStops ? reveal : st.videoOn && canAutoPause(clip) ? () => send({ type: 'jump', now: performance.now() }) : nextStopOnBoard}
+              onClick={!moreStops ? reveal : goNextStop}
               disabled={busy}
             >
               {moreStops ? 'Siguiente pregunta' : 'Ver cómo ocurrió en el vídeo'}
@@ -1003,27 +1053,10 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
         </div>
       )}
 
-      {st.phase === 'ended' && !lessonNow && (
+      {st.phase === 'ended' && !lessonNow && !shown && (
         <div className="cm-hint vc-panel">
-          <p className="cm-kicker">Fin del clip</p>
-          <p>{clip.outro}</p>
-          {lastQ && (
-            <p className="cm-quiet cm-small">
-              Respuestas comprobadas con {PACK.engine.name} (profundidad {PACK.engine.depth}): en cada pregunta se analizaron todas las jugadas legales.
-              {stop.questions.every((x) => x.proof === 'mate') ? ' Mate forzado encontrado.' : ' Sin prueba de mate ni tablas de finales.'}
-            </p>
-          )}
-          <p className="cm-quiet cm-small">{clip.gameSource}</p>
-          <div className="cm-row">
-            {clip.lesson && (
-              <button className="cm-primary" onClick={() => setLessonStep(0)}>
-                Ver la lección
-              </button>
-            )}
-            <button className="cm-why" onClick={() => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); }}>
-              Otra vez
-            </button>
-          </div>
+          {endCard}
+          {endButtons}
         </div>
       )}
 
@@ -1046,6 +1079,12 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
       ) : (
         <nav className="vc-dock" aria-label="Opciones del clip">
           <DockButton icon="back" label="Cartelera" onClick={onClose} />
+          {st.phase === 'ended' && shown && !lessonNow && (
+            <>
+              {clip.lesson && <DockButton icon="lesson" label="Ver la lección" onClick={() => setLessonStep(0)} />}
+              <DockButton icon="retry" label="Otra vez" onClick={() => { setLessonStep(null); start(auto && st.errorCode == null ? 'film' : 'direct'); }} />
+            </>
+          )}
           {canEditMarks(packed) && <DockButton icon="edit" label="Editor de marcas" onClick={onEdit} />}
         </nav>
       )}
@@ -1063,6 +1102,7 @@ const DOCK_ICONS: Record<string, string> = {
   hint: 'M7 15h6M8 18h4M10 2a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9z',
   answer: 'M3 10s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5zM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
   retry: 'M4 10a6 6 0 1 0 2-4.5M4 3v3h3',
+  lesson: 'M3 5c2-1 5-1 7 1 2-2 5-2 7-1v11c-2-1-5-1-7 1-2-2-5-2-7-1zM10 6v11',
   edit: 'M4 16l1-4 8-8 3 3-8 8zM12 5l3 3',
 };
 

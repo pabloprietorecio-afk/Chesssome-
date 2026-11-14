@@ -2091,3 +2091,16 @@ a {
   letter-spacing: -0.01em;
   padding: 0 1px;
 }
+
+/* Final del clip sobre el tablero: el texto principal y, debajo, las fuentes en pequeño. */
+.vc-end-over {
+  align-items: center;
+  padding-top: 12px;
+}
+.vc-end-over .vc-gap-card {
+  gap: 6px;
+}
+.vc-end-over .cm-small {
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
