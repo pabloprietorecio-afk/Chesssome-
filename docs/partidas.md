@@ -45,3 +45,21 @@ cada grupo de lecciones, acorde a lo aprendido.
 - Análisis educativo después de la partida (apartado 11 del documento de diseño).
 - Medir la fuerza de cada nivel (partidas entre niveles y contra jugadores con Elo conocido).
 - Pista sin congelar la pantalla (ahora piensa hasta 1,5 s en el hilo principal).
+
+## Análisis después de la partida (`godot/core/review.gd`)
+
+Petición de Pablo (14 nov): detectar los momentos donde el jugador podía aprender algo y conectarlos con lecciones
+y problemas.
+
+- **Solo se dicen cosas comprobables** con las reglas y con la cuenta del cambio de piezas en una casilla (SEE). No
+  se convierten números del rival en frases. Clases de momento: mate del rival permitido (había otra jugada que lo
+  evitaba), mate en una que se escapó, pieza a tiro (otra jugada no perdía nada), captura gratis que no se hizo
+  (salvo si la jugada daba jaque), y en la apertura: el rey movido sin enrocar y la misma pieza por tercera vez con
+  dos o más piezas menores sin sacar. Como mucho seis momentos, los más importantes.
+- La vista es corta (una jugada y media): no ve combinaciones largas, planes ni estructura. La página lo dice.
+- En la app: tras la partida, «Análisis» → lista de momentos con «Ver» (posición en el tablero, flecha roja con tu
+  jugada y verde con la otra), «Lección» (la del curso que lo enseña) y «Problemas» (hasta 5 problemas de ese tema,
+  cerca de tu nivel). Nivel Kids: frases fijas con voz.
+- Se guarda un resumen de cada partida analizada en `user://chessome_partidas.json` (fecha, nivel, resultado,
+  clases de momento): base para que el entrenador elija lecciones más adelante.
+- Prueba: `godot/tests/test_review.gd` (en la CI).

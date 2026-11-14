@@ -147,6 +147,16 @@ var game_color := 0
 var game_pick_color := 0
 var game_bot: Bot
 var game_history: Array = []
+## Jugadas de la partida (UCI), una menos que game_history.
+var game_moves: Array = []
+## Análisis educativo (core/review.gd): momentos, si ya está hecho, el que se está viendo en el tablero, y el
+## hilo que lo calcula. Problemas pendientes de una práctica pedida desde el análisis.
+var review: Array = []
+var review_done := false
+var review_at := -1
+var _review_thread: Thread
+var practice_queue: Array = []
+const GAMES_PATH := "user://chessome_partidas.json"
 var game_state := ""
 var game_won := 0
 var game_result := ""
@@ -2733,6 +2743,8 @@ func _on_right() -> void:
 		_on_continue()
 	elif mode == "train":
 		_next_training()
+	elif not practice_queue.is_empty():
+		_start(int(practice_queue.pop_front()))
 	else:
 		_start(index + 1)
 
@@ -2799,6 +2811,10 @@ func _finish_test() -> void:
 
 ## Siguiente problema del entrenamiento: según el nivel y los puntos flojos; agotados los nuevos, un repaso.
 func _next_training() -> void:
+	# Práctica pedida desde el análisis de una partida: esos problemas primero.
+	if not practice_queue.is_empty():
+		_start(int(practice_queue.pop_front()))
+		return
 	if pool.is_empty() or not _has_player():
 		_start(index + 1)
 		return
@@ -3506,6 +3522,10 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	view.set_fen(fen)
 	view.set_orientation(color)
 	game_history = [view.board.chess.fen()]
+	game_moves = []
+	review = []
+	review_done = false
+	review_at = -1
 	game_clock_side = view.board.chess.turn
 	game_state = "play"
 	game_won = 0
@@ -3529,6 +3549,7 @@ func _game_move(uci: String) -> void:
 	var before := Chess.from_fen(str(game_history[game_history.size() - 1]))
 	var m := before.find_uci(uci)
 	game_history.append(view.board.chess.fen())
+	game_moves.append(uci)
 	view.board.set_arrows([])
 	game_note = ""
 	if _game_check_end(before, m):
@@ -3665,6 +3686,7 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	var san := SanEs.san(pos, m)
 	view.show_move(Chess.uci(m))
 	game_history.append(view.board.chess.fen())
+	game_moves.append(Chess.uci(m))
 	if game_clocked:
 		game_clock[1 - game_color] += game_inc_ms
 	game_note = "Ha movido el rival. ¡Te toca!" if kids else "El rival ha jugado %s." % san
@@ -3684,6 +3706,10 @@ func _stop_game_thread() -> void:
 		if _game_thread.is_started():
 			_game_thread.wait_to_finish()
 		_game_thread = null
+	if _review_thread != null:
+		if _review_thread.is_started():
+			_review_thread.wait_to_finish()
+		_review_thread = null
 
 
 ## ¿Se ha acabado la partida tras la jugada m (hecha desde before)? Si es así, la cierra y devuelve true.
@@ -3782,6 +3808,7 @@ func _game_undo() -> void:
 	if keep < 0:
 		return
 	game_history = game_history.slice(0, keep + 1)
+	game_moves = game_moves.slice(0, keep)
 	view.set_fen(str(game_history[keep]))
 	view.board.set_arrows([])
 	game_state = "play"
@@ -3865,6 +3892,9 @@ func _game_next_lesson() -> void:
 
 
 func _build_game_card() -> void:
+	if game_state == "review":
+		_build_review_card()
+		return
 	var head := ""
 	var tone := _c("ink")
 	match game_state:
@@ -3919,6 +3949,9 @@ func _build_game_card() -> void:
 
 
 func _build_game_actions() -> void:
+	if game_state == "review":
+		_build_review_actions()
+		return
 	var key := "game:%s:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked)]
 	if game_state == "press":
 		key += ":" + str(_press_warned)
@@ -3945,9 +3978,14 @@ func _build_game_actions() -> void:
 			next = _button("next", "Seguir", _game_next_lesson, _c("accent"), _c("accent_ink"), go)
 		else:
 			next = _button("next", "Salir", _leave_game, _c("accent"), _c("accent_ink"), go)
-		row = [_button("retry", "Otra partida", _game_again, _c("accent_soft"), _c("accent_text"), wide), next]
+		var tool := wide.duplicate()
+		tool["font_size"] = F_SUB
+		row = [_button("retry", "Otra", _game_again, _c("accent_soft"), _c("accent_text"), tool)]
+		if str(game.get("variant", "")) == "" and game_moves.size() >= 2:
+			row.append(_button("why", "Análisis", _open_review, _c("field"), _c("ink"), tool))
+		row.append(next)
 		left_button = row[0]
-		right_button = row[1]
+		right_button = next
 	else:
 		left_button = _tool_button("back", "Deshacer", _game_undo, "sky")
 		hint_button = _tool_button("bulb", "Pista", _game_hint, "butter")
@@ -3972,6 +4010,216 @@ func _build_game_actions() -> void:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		actions.add_child(b)
+
+
+
+# ---------------------------------------------------------------- análisis educativo de la partida
+
+## Abre el análisis: se calcula en otro hilo la primera vez (puede tardar unos segundos en el móvil).
+func _open_review() -> void:
+	if review_done:
+		_show_review_page()
+		return
+	var page := _page("review")
+	var body: VBoxContainer = page["body"]
+	body.add_child(_spacer(8.0, true))
+	body.add_child(_centered(_para("Analizando la partida…", F_TITLE, _c("ink"), font_display)))
+	body.add_child(_spacer(8.0, true))
+	_stop_game_thread()
+	_review_thread = Thread.new()
+	var my_run := run_id
+	_review_thread.start(_review_work.bind(game_history.duplicate(), game_moves.duplicate(), game_color, my_run))
+
+
+func _review_work(fens: Array, moves: Array, color: int, my_run: int) -> void:
+	var found := GameReview.analyze(fens, moves, color)
+	_review_ready.call_deferred(found, my_run)
+
+
+func _review_ready(found: Array, my_run: int) -> void:
+	if _review_thread != null:
+		_review_thread.wait_to_finish()
+		_review_thread = null
+	if my_run != run_id or mode != "game":
+		return
+	review = found
+	review_done = true
+	_save_game_summary()
+	if progress_kind == "review":
+		_show_review_page()
+
+
+## Lista de los momentos, cada uno con «Ver» y, si lo hay, con qué practicar.
+func _show_review_page() -> void:
+	var page := _page("review")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var tile := _icon_tile("why", "lilac", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Análisis de la partida", F_TITLE + 8, _c("ink"), font_display)))
+	body.add_child(_centered(_para(game_result, F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_spacer(26.0))
+	if review.is_empty():
+		var none := _kid_line("reviewNone") if kids else "No has dejado piezas a tiro, no se te ha escapado ningún mate en una y no has permitido ninguno. En la apertura, tampoco has repetido piezas ni has movido el rey sin enrocar."
+		body.add_child(_para(none, F_BODY, _c("ink"), font_regular))
+		_say([_kid_line("reviewNone")])
+	else:
+		var intro := _kid_line("reviewIntro") if kids else "%d %s para aprender. Toca «Ver» para ir a esa posición." % [review.size(), "momento" if review.size() == 1 else "momentos"]
+		body.add_child(_para(intro, F_BODY, _c("ink"), font_regular))
+		_say([_kid_line("reviewIntro")])
+		body.add_child(_spacer(20.0))
+		var tints := {"allowed_mate": "rose", "missed_mate": "peach", "hang": "butter", "missed_capture": "mint", "king": "sky", "repeat": "lilac"}
+		for i in review.size():
+			var mo: Dictionary = review[i]
+			var kind := str(mo["kind"])
+			var panel_rows := _panel()
+			var rows: VBoxContainer = panel_rows[1]
+			var move_no := int(mo["ply"]) / 2 + 1
+			rows.add_child(_icon_row("target" if kind in ["hang", "missed_capture"] else ("flag" if kind.ends_with("mate") else "piece_king"), str(tints.get(kind, "sky")), GameReview.title_of(kind), "Jugada %d" % move_no, 96.0))
+			rows.add_child(_para(_kid_line(GameReview.kids_key(kind)) if kids else str(mo["text"]), F_BODY, _c("ink"), font_regular))
+			var buttons := HBoxContainer.new()
+			buttons.add_theme_constant_override("separation", 14)
+			var see := _button("eye", "Ver", _review_show.bind(i), _c("accent"), _c("accent_ink"), {"font_size": F_SUB, "height": 104.0, "icon": 48.0})
+			see.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			see.mouse_filter = Control.MOUSE_FILTER_STOP
+			buttons.add_child(see)
+			if str(mo["lesson"]) != "":
+				var learn := _button("book", "Lección", _review_lesson.bind(str(mo["lesson"])), _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 48.0})
+				learn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				learn.mouse_filter = Control.MOUSE_FILTER_STOP
+				buttons.add_child(learn)
+			if not kids and not (mo["themes"] as Array).is_empty() and not _practice_for(mo["themes"]).is_empty():
+				var drill := _button("target", "Problemas", _review_practice.bind(mo["themes"]), _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 48.0})
+				drill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				drill.mouse_filter = Control.MOUSE_FILTER_STOP
+				buttons.add_child(drill)
+			rows.add_child(buttons)
+			body.add_child(panel_rows[0])
+			body.add_child(_spacer(20.0))
+	body.add_child(_spacer(10.0, true))
+	if not kids:
+		footer.add_child(_para("Solo se señala lo que se puede comprobar con seguridad: piezas que quedan a tiro, capturas gratis y mates en una jugada. Otras ideas de la partida (planes, estructura) no se analizan todavía.", F_FOOT + 2, _c("quiet"), font_regular))
+		footer.add_child(_spacer(10.0))
+	footer.add_child(_button("", "Volver a la partida", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+
+
+## Lleva el tablero a la posición del momento i, con la jugada hecha (roja) y la otra (verde).
+func _review_show(i: int) -> void:
+	if i < 0 or i >= review.size():
+		return
+	_close_progress()
+	review_at = i
+	game_state = "review"
+	var mo: Dictionary = review[i]
+	view.interactive = false
+	view.set_fen(str(mo["fen"]))
+	var arrows: Array = []
+	var played := Chess.from_fen(str(mo["fen"])).find_uci(str(mo["played"]))
+	if played >= 0:
+		arrows.append({"from": Chess.move_from(played), "to": Chess.move_to(played), "tone": "bad"})
+	if str(mo["better"]) != "":
+		var better := Chess.from_fen(str(mo["fen"])).find_uci(str(mo["better"]))
+		if better >= 0:
+			arrows.append({"from": Chess.move_from(better), "to": Chess.move_to(better), "tone": "good"})
+	view.board.set_arrows(arrows)
+	if int(mo.get("square", -1)) >= 0:
+		view.board.select(int(mo["square"]))
+	_say([_kid_line(GameReview.kids_key(str(mo["kind"])))])
+	_refresh()
+
+
+func _build_review_card() -> void:
+	var mo: Dictionary = review[review_at] if review_at >= 0 and review_at < review.size() else {}
+	title = _para(GameReview.title_of(str(mo.get("kind", ""))), F_TITLE, _c("ink"), font_display)
+	card_body.add_child(title)
+	var chips := HFlowContainer.new()
+	chips.add_theme_constant_override("h_separation", 12)
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chips.add_child(_chip("Jugada %d" % (int(mo.get("ply", 0)) / 2 + 1), _c("field"), _c("ink")))
+	chips.add_child(_chip("%d de %d" % [review_at + 1, review.size()], _c("field"), _c("quiet")))
+	card_body.add_child(chips)
+	card_body.add_child(_para(_kid_line(GameReview.kids_key(str(mo.get("kind", "")))) if kids else str(mo.get("text", "")), F_BODY, _c("ink"), font_regular))
+	if not kids:
+		card_body.add_child(_para("Flecha roja: tu jugada. Verde: otra mejor." if str(mo.get("better", "")) != "" else "Flecha roja: tu jugada.", F_FOOT + 2, _c("quiet"), font_regular))
+
+
+func _build_review_actions() -> void:
+	var key := "review:%d" % review_at
+	if key == _actions_mode:
+		return
+	_actions_mode = key
+	for old in actions.get_children():
+		(old as CanvasItem).visible = false
+		old.queue_free()
+	hint_button = null
+	step_button = null
+	left_button = _tool_button("back", "Anterior", _review_show.bind(review_at - 1), "sky")
+	var list := _tool_button("why", "Análisis", _review_back, "lilac")
+	right_button = _tool_button("next", "Siguiente", _review_show.bind(review_at + 1), "mint")
+	left_button.disabled = review_at <= 0
+	left_button.modulate.a = 1.0 if review_at > 0 else 0.42
+	right_button.disabled = review_at >= review.size() - 1
+	right_button.modulate.a = 1.0 if review_at < review.size() - 1 else 0.42
+	for b: Button in [left_button, list, right_button]:
+		actions.add_child(b)
+
+
+## Del tablero a la lista de momentos; la partida se queda como acabó.
+func _review_back() -> void:
+	view.board.set_arrows([])
+	view.set_fen(str(game_history[game_history.size() - 1]))
+	game_state = "over"
+	review_at = -1
+	_refresh()
+	_show_review_page()
+
+
+func _review_lesson(id: String) -> void:
+	_stop_game_thread()
+	game_state = ""
+	view.set_orientation(0)
+	view.board.set_arrows([])
+	_start_lesson(id)
+
+
+## Problemas de esos temas, los más cercanos al nivel del jugador (hasta 5): índices en `puzzles`.
+func _practice_for(themes: Array) -> Array:
+	var target := float(player["rating"]["r"]) - 150.0 if _has_player() else 800.0
+	var found: Array = []
+	for i in puzzles.size():
+		if themes.has(str(puzzles[i].get("theme", ""))):
+			found.append([absf(float(puzzles[i].get("rating", 0)) - target), i])
+	found.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	return found.slice(0, 5).map(func(x: Array) -> int: return int(x[1]))
+
+
+func _review_practice(themes: Array) -> void:
+	_stop_game_thread()
+	game_state = ""
+	view.set_orientation(0)
+	view.board.set_arrows([])
+	practice_queue = _practice_for(themes)
+	_close_progress()
+	if _has_player():
+		_start_training()
+	elif not practice_queue.is_empty():
+		mode = "free"
+		_start(int(practice_queue.pop_front()))
+
+
+## Guarda un resumen de cada partida analizada (para el progreso y para elegir lecciones más adelante).
+func _save_game_summary() -> void:
+	if not use_settings:
+		return
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(GAMES_PATH)) if FileAccess.file_exists(GAMES_PATH) else null
+	var games: Array = data.get("games", []) if typeof(data) == TYPE_DICTIONARY else []
+	games.append({"date": Time.get_datetime_string_from_system(), "level": int(game.get("level", 0)), "won": game_won, "moves": game_moves.size(), "kinds": review.map(func(x: Dictionary) -> String: return str(x["kind"]))})
+	var file := FileAccess.open(GAMES_PATH, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify({"version": 1, "games": games.slice(-200)}))
+		file.close()
 
 
 # ---------------------------------------------------------------- nivel Kids: textos sencillos y voz
@@ -4216,6 +4464,8 @@ func _leave_progress() -> void:
 		_close_gate()
 	elif progress_kind == "game_setup":
 		_close_game_setup()
+	elif progress_kind == "review":
+		_close_progress()
 	elif progress_kind == "progress" or (progress_kind == "course" and mode == "learn" and not lesson.is_empty()):
 		_close_progress()
 	elif progress_kind in ["course", "experience"] and use_settings:

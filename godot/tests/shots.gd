@@ -852,10 +852,48 @@ func _game_shots(demo: Control) -> void:
 	print("RELOJ sin tiempo: estado=%s ganada=%d resultado=«%s»" % [demo.game_state, demo.game_won, demo.game_result])
 	await _shot("89_partida_tiempo")
 	demo.game_tc_pick = 0
+	await _review_shots(demo)
 	demo._leave_game()
 	await _frames(6)
 	demo._close_progress()
 	print("PARTIDA salir: modo=%s" % demo.mode)
+
+
+## Análisis de una partida corta con errores claros: la dama a tiro y un rey sin enrocar.
+func _review_shots(demo: Control) -> void:
+	demo._start_game({"variant": "", "level": 2, "title": "Partida · Medio", "text": "", "kids": "", "unit": "", "clock": []}, 0)
+	await _frames(6)
+	var moves := ["e2e4", "e7e5", "d1h5", "b8c6", "h5f7", "e8f7", "e1e2"]
+	var pos := Chess.from_fen(Board3D.START_FEN)
+	var fens := [pos.fen()]
+	for u: String in moves:
+		pos.apply(pos.find_uci(u))
+		fens.append(pos.fen())
+	demo.view.set_fen(pos.fen())
+	demo.game_history = fens
+	demo.game_moves = moves
+	demo.game_state = "over"
+	demo.game_won = 0
+	demo.game_result = "Partida de prueba."
+	demo._refresh()
+	await _frames(10)
+	await _shot("90_partida_fin_analisis")
+	demo._open_review()
+	var t0 := Time.get_ticks_msec()
+	while not demo.review_done and Time.get_ticks_msec() - t0 < 20000:
+		await _frames(1)
+	await _frames(12)
+	await _shot("91_analisis")
+	print("ANALISIS: %d momentos en %d ms: %s" % [demo.review.size(), Time.get_ticks_msec() - t0, str(demo.review.map(func(x: Dictionary) -> String: return "%s@%d" % [x["kind"], x["ply"]]))])
+	for mo: Dictionary in demo.review:
+		print("  · %s" % mo["text"])
+	if not demo.review.is_empty():
+		demo._review_show(0)
+		await _frames(14)
+		await _shot("92_analisis_tablero")
+		demo._review_back()
+		await _frames(6)
+	demo._close_progress()
 
 
 func _wait_bot(demo: Control) -> void:

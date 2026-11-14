@@ -88,6 +88,38 @@
   "text": "Pista: prueba con esta pieza."
  },
  {
+  "id": "c0d9f85bde6e",
+  "text": "¡Vamos a repasar la partida! Te enseño los momentos importantes."
+ },
+ {
+  "id": "a46e4dd9fea1",
+  "text": "¡Muy bien! No has dejado piezas sin defensa ni se te ha escapado ningún mate."
+ },
+ {
+  "id": "9917d55f3c03",
+  "text": "Aquí dejaste una pieza sin defensa. ¡Mira antes si te la pueden capturar!"
+ },
+ {
+  "id": "ac70ca15aeff",
+  "text": "Aquí podías capturar una pieza gratis. ¡Mira siempre qué piezas puedes capturar!"
+ },
+ {
+  "id": "92a45096925f",
+  "text": "¡Aquí tenías un jaque mate! Busca siempre si puedes dar mate."
+ },
+ {
+  "id": "20c2152f7bd2",
+  "text": "Después de esta jugada, el rival podía darte jaque mate. ¡Cuidado con tu rey!"
+ },
+ {
+  "id": "b3b29ce31a33",
+  "text": "Moviste el rey y ya no puedes enrocar. Es mejor enrocar para protegerlo."
+ },
+ {
+  "id": "e21cf8e919fa",
+  "text": "Moviste la misma pieza muchas veces. Es mejor sacar primero todas las piezas."
+ },
+ {
   "id": "28c81c2299ed",
   "text": "El tablero"
  },

@@ -167,4 +167,12 @@ export const KIDS_LINES = {
   pawnsWin: '¡Has ganado!',
   pawnsLose: 'Ha ganado el rival. ¡Otra vez!',
   gameHint: 'Pista: prueba con esta pieza.',
+  reviewIntro: '¡Vamos a repasar la partida! Te enseño los momentos importantes.',
+  reviewNone: '¡Muy bien! No has dejado piezas sin defensa ni se te ha escapado ningún mate.',
+  reviewHang: 'Aquí dejaste una pieza sin defensa. ¡Mira antes si te la pueden capturar!',
+  reviewMissedCapture: 'Aquí podías capturar una pieza gratis. ¡Mira siempre qué piezas puedes capturar!',
+  reviewMissedMate: '¡Aquí tenías un jaque mate! Busca siempre si puedes dar mate.',
+  reviewAllowedMate: 'Después de esta jugada, el rival podía darte jaque mate. ¡Cuidado con tu rey!',
+  reviewKing: 'Moviste el rey y ya no puedes enrocar. Es mejor enrocar para protegerlo.',
+  reviewRepeat: 'Moviste la misma pieza muchas veces. Es mejor sacar primero todas las piezas.',
 } as const;
