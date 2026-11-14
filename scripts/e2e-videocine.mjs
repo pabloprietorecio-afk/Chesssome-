@@ -80,10 +80,13 @@ const panel = () => page.$$eval('.vc-panel, .vc-watch-note, .vc-card-over', (els
 const fake = (fn, ...args) => page.evaluate(fn, ...args);
 async function move(uci, orientation = 'b') {
   // La pregunta va en una ventana sobre el tablero: se toca para quitarla y jugar.
-  if (await page.$('.vc-card-over')) { await page.click('.vc-card-over'); await sleep(150); }
+  if (await page.$('.vc-card-over')) { await sleep(650); await page.click('.vc-card-over'); await sleep(150); }
   const box = await page.evaluate(() => { const r = document.querySelector('.vc-board svg').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; });
   const sq = async (s) => { const f = s.charCodeAt(0) - 97, r = Number(s[1]) - 1, z = box.w / 8; const c = orientation === 'w' ? f : 7 - f, w = orientation === 'w' ? 7 - r : r; await page.mouse.click(box.x + c * z + z / 2, box.y + w * z + z / 2); };
-  await sq(uci.slice(0, 2)); await sleep(150); await sq(uci.slice(2, 4)); await sleep(350);
+  await sq(uci.slice(0, 2)); await sleep(150); await sq(uci.slice(2, 4));
+  // Como en el móvil: el toque que suelta la pieza llega también a la ventana del veredicto, que no debe cerrarse.
+  await sleep(60); await page.$eval('.vc-card-over', (e) => e.click()).catch(() => {});
+  await sleep(350);
 }
 // Tras desplazar se espera a que termine el desplazamiento suave de la propia app antes de medir el tablero.
 // En la cartelera, cada clip tiene «Comenzar» y «Ir directo a la pregunta».

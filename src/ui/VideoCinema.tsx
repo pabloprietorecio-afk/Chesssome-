@@ -429,6 +429,16 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
   /** La ventana de la pregunta (o del veredicto) sobre el tablero se quita al tocarla, para jugar o mirar. */
   const [cardHidden, setCardHidden] = useState(false);
   useEffect(() => setCardHidden(false), [qi, answer, st.phase]);
+  // En el móvil, el mismo toque que suelta la pieza llega después como «click» a la ventana que acaba de aparecer
+  // debajo del dedo: se ignoran los toques de los primeros instantes para que el veredicto no se cierre solo.
+  const cardShownAt = useRef(0);
+  useEffect(() => {
+    if (!cardHidden) cardShownAt.current = performance.now();
+  }, [cardHidden, qi, answer, st.phase]);
+  const hideCard = () => {
+    if (performance.now() - cardShownAt.current < 600) return;
+    setCardHidden(true);
+  };
   const skip = () => {
     if (!stop || !lastQ) return;
     clearTimers();
@@ -703,8 +713,10 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
           <div className="vc-board" data-board={synced ? 'video' : 'question'} data-ply={synced?.ply ?? ''} data-gap={gap ? 'on' : 'off'}>
             {synced && !lessonNow && <p className="cm-kicker vc-board-label">Tablero del vídeo · <span className="vc-san">{synced.label}</span></p>}
             {!synced && fit && st.phase === 'asking' && q && (
-              <p className="cm-kicker vc-board-label">
-                {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
+              <p className="cm-kicker vc-board-label vc-board-label-ask">
+                <span className="vc-board-label-text">
+                  {st.videoOn ? 'Vídeo en pausa' : 'Antes del vídeo'} · pregunta {qi + 1} de {totalQuestions}
+                </span>
                 {!gate && cardHidden && (
                   <button className="vc-reopen" onClick={() => setCardHidden(false)}>
                     {answer ? 'Ver la explicación' : 'Ver la pregunta'}
@@ -726,7 +738,7 @@ function ClipView({ packed, autostart, onClose, onEdit }: { packed: Clip; autost
                   onMove={onMove}
                 />
                 {fit && st.phase === 'asking' && q && !gate && !cardHidden && (
-                  <div className="vc-gap vc-card-over" onClick={() => setCardHidden(true)} role="dialog" aria-label="Pregunta">
+                  <div className="vc-gap vc-card-over" onClick={hideCard} role="dialog" aria-label="Pregunta">
                     {!answer ? (
                       <div className="vc-gap-card vc-glass vc-ask">
                         {busy ? <p className="cm-quiet">Así siguió la partida…</p> : <p className="vc-question">{q.question}</p>}

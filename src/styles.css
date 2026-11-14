@@ -1962,3 +1962,18 @@ a {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* La línea de la pausa: el texto se puede recortar, el enlace «Ver la pregunta / explicación» nunca. */
+.vc-board-label-ask {
+  display: flex;
+  align-items: baseline;
+}
+.vc-board-label-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vc-board-label-ask .vc-reopen {
+  flex: none;
+}
