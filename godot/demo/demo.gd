@@ -267,6 +267,7 @@ var right_button: Button
 var hint_button: Button
 var step_button: Button
 var pin_button: Button
+var home_button: Button
 var gesture_tip: GestureHint
 var _actions_mode := ""
 var _tip_note := false
@@ -1001,6 +1002,9 @@ func _build_chrome() -> void:
 	bar.add_theme_constant_override("separation", 18)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar_pad.add_child(bar)
+	# Inicio, siempre a mano (en todas las pantallas con tablero).
+	home_button = _round_button("first", _go_home)
+	bar.add_child(home_button)
 	var lilac := _tint("lilac")
 	level_pill = _button("cap", "Nivel", _open_progress.bind("progress"), lilac[0], lilac[1], {"font_size": F_SUB, "height": 100.0, "icon": 54.0, "pad_x": 30.0})
 	level_pill.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -3487,6 +3491,19 @@ func _open_home() -> void:
 	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
 
+## Botón de inicio de la barra: deja lo que se esté haciendo (una partida en curso se abandona) y abre el inicio.
+func _go_home() -> void:
+	if mode == "game" and game_state != "over" and game_state != "":
+		_stop_game_thread()
+		run_id += 1
+		game_state = ""
+		view.interactive = false
+		view.board.set_arrows([])
+	view.set_orientation(0)
+	_stop_voice()
+	_open_home()
+
+
 func _home_train() -> void:
 	_start_training()
 
@@ -4272,6 +4289,8 @@ func _show_review_page() -> void:
 		footer.add_child(_para("Solo se señala lo que se puede comprobar con seguridad: piezas que quedan a tiro, capturas gratis y mates en una jugada. Otras ideas de la partida (planes, estructura) no se analizan todavía.", F_FOOT + 2, _c("quiet"), font_regular))
 		footer.add_child(_spacer(10.0))
 	footer.add_child(_button("", "Volver a la partida", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+	if use_settings:
+		footer.add_child(_button("first", "Inicio", _go_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## Lleva el tablero a la posición del momento i, con la jugada hecha (roja) y la otra (verde).
@@ -4743,6 +4762,8 @@ func _open_experience() -> void:
 		footer.add_child(_button("", "Cancelar", _open_home if use_settings else _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
 	else:
 		footer.add_child(_button("", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+		if use_settings and welcome_seen:
+			footer.add_child(_button("first", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## Opción grande: tesela con dibujo, titular, una línea de texto y una flecha.
@@ -5011,6 +5032,8 @@ func _open_progress(kind: String = "progress") -> void:
 		footer.add_child(keep)
 		footer.add_child(_spacer(8.0))
 		footer.add_child(_button("retry", "Repetir el test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+	if use_settings:
+		footer.add_child(_button("first", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## La frase, con su primera letra en mayúscula.
