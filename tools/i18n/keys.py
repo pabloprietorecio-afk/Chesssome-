@@ -52,3 +52,32 @@ if __name__ == '__main__':
     out = os.path.join(os.path.dirname(__file__), 'claves_ui.json')
     json.dump(keys, open(out, 'w', encoding='utf8'), ensure_ascii=False, indent=0)
     print(len(keys), 'textos ->', out)
+
+
+def course_keys():
+    """Textos del curso (godot/data/curso.json): lecciones, ejercicios, partidas y frases del nivel Kids."""
+    c = json.load(open(os.path.join(ROOT, 'data', 'curso.json'), encoding='utf8'))
+    skip = {'id', 'icon', 'fen', 'variant', 'generatedBy', 'moves', 'key', 'family', 'solution', 'san', 'uci', 'goal',
+            'piece', 'targets', 'type', 'kind', 'arrows', 'squares', 'from', 'to'}
+    out = []
+    def walk(x, k=''):
+        if isinstance(x, str):
+            if k not in skip and re.search(r'[A-Za-zÁÉÍÓÚáéíóúñ¿¡]{2,}', x) and (' ' in x or x[:1].isupper()):
+                out.append(x)
+        elif isinstance(x, dict):
+            for kk, v in x.items():
+                if kk not in skip:
+                    walk(v, kk)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, k)
+    walk(c)
+    ui = set(collect())
+    return [s for s in dict.fromkeys(out) if s not in ui]
+
+
+if __name__ == '__main__':
+    ck = course_keys()
+    json.dump(ck, open(os.path.join(os.path.dirname(__file__), 'claves_curso.json'), 'w', encoding='utf8'),
+              ensure_ascii=False, indent=0)
+    print(len(ck), 'textos del curso')
