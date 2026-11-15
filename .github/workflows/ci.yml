@@ -41,8 +41,9 @@ jobs:
           retention-days: 14
 
   godot:
-    name: Godot (reglas, capturas del 3D y APK de depuración)
+    name: Godot (reglas y APK de depuración)
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     permissions:
       contents: write
     steps:
@@ -78,11 +79,6 @@ jobs:
           unzip -q -j $TPZ templates/android_debug.apk templates/android_release.apk templates/version.txt -d templates/
           rm $TPZ
           ls -la ~/godot-dl ~/godot-dl/templates
-
-      - name: Renderizador por software (Vulkan) y pantalla virtual
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 libgl1-mesa-dri > /dev/null
 
       - name: Instalar plantillas, firma de depuración y ajustes del editor
         run: |
@@ -127,34 +123,6 @@ jobs:
             grep -q "TODO OK" $T.log
           done
 
-      - name: Capturas del tablero 3D
-        run: |
-          mkdir -p build/shots
-          export SHOTS_DIR=$GITHUB_WORKSPACE/build/shots
-          timeout 3600 xvfb-run -a -s "-screen 0 1080x2400x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 1080x2400 res://tests/shots.tscn > shots.log 2>&1 || true
-          grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|^   at:" shots.log | head -80 || true
-          ls -la build/shots
-
-      - name: Publicar capturas en la rama ci-shots
-        if: always()
-        run: |
-          mkdir -p build/shots
-          cp shots.log import.log test_chess.log test_explain.log test_assessment.log test_course.log test_bot.log test_review.log build/shots/ 2>/dev/null || true
-          # main publica en ci-shots; las demás ramas, en ci-shots-<rama>, para que dos trabajos en paralelo no se pisen.
-          SHOTS_BRANCH=ci-shots
-          if [ "$GITHUB_REF_NAME" != "main" ]; then SHOTS_BRANCH="ci-shots-${GITHUB_REF_NAME//\//-}"; fi
-          cd build/shots
-          git init -q
-          git checkout -q -b "$SHOTS_BRANCH"
-          git add -A
-          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Capturas de ${GITHUB_SHA::7}"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$SHOTS_BRANCH"
-
-      - name: Las capturas terminaron y sin errores de guiones ni shaders
-        run: |
-          grep -q "SHOTS DONE" shots.log || { echo "Las capturas no terminaron"; tail -40 shots.log; exit 1; }
-          if grep -E "SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error|Failed to load script" shots.log import.log; then exit 1; fi
-
       - name: APK de depuración (arm64)
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/android_firma/debug.keystore
@@ -194,3 +162,99 @@ jobs:
           body: "APK de depuración de la demo 3D (versión ${{ github.run_number }}, commit ${{ github.sha }})."
           files: build/android/Chessome-debug.apk
           overwrite_files: true
+
+  # Las capturas del 3D tardan mucho (render por CPU), así que van en paralelo y no retrasan el APK.
+  # Solo se hacen si el cambio toca algo que afecta al 3D, o si se lanzan a mano (Run workflow).
+  capturas:
+    name: Capturas del tablero 3D
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ¿Hay cambios que afecten al 3D?
+        id: decide
+        run: |
+          set -u
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "run=true" >> $GITHUB_OUTPUT; echo "Lanzado a mano: se hacen capturas"; exit 0; fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then BASE="${{ github.event.pull_request.base.sha }}"; else BASE="${{ github.event.before }}"; fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "run=true" >> $GITHUB_OUTPUT; echo "Sin referencia anterior: se hacen capturas"; exit 0
+          fi
+          CAMBIOS=$(git diff --name-only "$BASE" "$GITHUB_SHA" || true)
+          echo "$CAMBIOS"
+          if echo "$CAMBIOS" | grep -E -q '^(godot/(board3d|core|ui|demo|sets|textures|fonts)/|godot/tests/shots\.(gd|tscn)$|godot/project\.godot$|\.github/workflows/ci\.yml$)'; then
+            echo "run=true" >> $GITHUB_OUTPUT; echo ">> Cambios en el 3D: se hacen capturas"
+          else
+            echo "run=false" >> $GITHUB_OUTPUT; echo ">> Sin cambios que afecten al 3D: se omiten las capturas"
+          fi
+
+      - name: Caché de Godot y plantillas de Android
+        if: steps.decide.outputs.run == 'true'
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-dl
+          key: godot-${{ env.GODOT_VERSION }}-android-v1
+
+      - name: Descargar Godot y plantillas (comprobando las sumas SHA-512 oficiales)
+        if: steps.decide.outputs.run == 'true' && steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/godot-dl/templates && cd ~/godot-dl
+          BASE=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          ED=Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          TPZ=Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          W="wget -nv --tries=6 --waitretry=15 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+          $W $BASE/SHA512-SUMS.txt
+          $W $BASE/$ED
+          $W $BASE/$TPZ
+          grep -E "  ($ED|$TPZ)$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q $ED && rm $ED
+          unzip -q -j $TPZ templates/android_debug.apk templates/android_release.apk templates/version.txt -d templates/
+          rm $TPZ
+
+      - name: Renderizador por software (Vulkan) y pantalla virtual
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 libgl1-mesa-dri > /dev/null
+
+      - name: Importar el proyecto
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tee import.log | tail -15 || true
+
+      - name: Capturas del tablero 3D
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          mkdir -p build/shots
+          export SHOTS_DIR=$GITHUB_WORKSPACE/build/shots
+          timeout 3600 xvfb-run -a -s "-screen 0 1080x2400x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 1080x2400 res://tests/shots.tscn > shots.log 2>&1 || true
+          grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|^   at:" shots.log | head -80 || true
+          ls -la build/shots
+
+      - name: Publicar capturas en la rama ci-shots
+        if: always() && steps.decide.outputs.run == 'true'
+        run: |
+          mkdir -p build/shots
+          cp shots.log import.log build/shots/ 2>/dev/null || true
+          # main publica en ci-shots; las demás ramas, en ci-shots-<rama>, para que dos trabajos en paralelo no se pisen.
+          SHOTS_BRANCH=ci-shots
+          if [ "$GITHUB_REF_NAME" != "main" ]; then SHOTS_BRANCH="ci-shots-${GITHUB_REF_NAME//\//-}"; fi
+          cd build/shots
+          git init -q
+          git checkout -q -b "$SHOTS_BRANCH"
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Capturas de ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$SHOTS_BRANCH"
+
+      - name: Las capturas terminaron y sin errores de guiones ni shaders
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          grep -q "SHOTS DONE" shots.log || { echo "Las capturas no terminaron"; tail -40 shots.log; exit 1; }
+          if grep -E "SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error|Failed to load script" shots.log import.log; then exit 1; fi
