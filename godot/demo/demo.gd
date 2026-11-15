@@ -1559,10 +1559,16 @@ func _insets() -> Vector2:
 
 ## Construye todo menos el tablero. Se rehace entero al cambiar de tema: es barato y no deja estilos a medias.
 func _build_chrome() -> void:
+	# Al rehacerla (p. ej., al cambiar de tema) va al mismo sitio: debajo de las páginas, ventanas y avisos que
+	# estuvieran abiertos. Si no, la tarjeta y los botones del problema quedaban por encima del inicio.
+	var chrome_at := -1
+	var tip_at := -1
 	if chrome != null:
+		chrome_at = chrome.get_index()
 		chrome.visible = false
 		chrome.queue_free()
 	if gesture_tip != null and is_instance_valid(gesture_tip):
+		tip_at = gesture_tip.get_index()
 		gesture_tip.queue_free()
 	var th := Theme.new()
 	if font_regular != null:
@@ -1583,6 +1589,8 @@ func _build_chrome() -> void:
 	chrome.add_theme_constant_override("separation", 0)
 	chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chrome)
+	if chrome_at >= 0:
+		move_child(chrome, chrome_at)
 
 	# Barra superior: contador y botones redondos (chincheta del giro, vista y opciones).
 	# En pantalla completa la zona de la barra de estado sigue teniendo la cámara y los avisos del sistema:
@@ -1708,9 +1716,18 @@ func _build_chrome() -> void:
 	gesture_tip.visible = false
 	gesture_tip.fit()
 	add_child(gesture_tip)
+	if tip_at >= 0:
+		move_child(gesture_tip, tip_at)
 
 	_refresh(false)
 	_place_board.call_deferred()
+	# La página abierta, con los colores nuevos (sin cerrar la hoja de opciones desde la que se cambió el tema).
+	var keep_sheet := sheet_kind
+	var keep_open := options_open
+	if progress_kind == "home" and progress != null and is_instance_valid(progress):
+		_open_home()
+		sheet_kind = keep_sheet
+		options_open = keep_open
 	if sheet_kind == "options":
 		_build_sheet()
 	elif sheet_kind == "ai":
