@@ -621,6 +621,8 @@ static func short_tag(before: Chess, m: int) -> String:
 		return "come %s" % (_art(Chess.type_of(taken)) + " " + str(NOUN[Chess.type_of(taken)]))
 	if check:
 		return "jaque"
+	if best >= 0:
+		return "ataca %s" % (_art(Chess.type_of(after.b[best])) + " " + str(NOUN[Chess.type_of(after.b[best])]))
 	return ""
 
 

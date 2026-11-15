@@ -212,6 +212,11 @@ var review: Array = []
 var review_done := false
 var review_at := -1
 var _review_thread: Thread
+## Detalle de la partida jugada a jugada (core/game_detail.gd): las entradas, la que se ve y el cálculo en marcha.
+var detail: Array = []
+var detail_done := false
+var detail_at := -1
+var _detail_progress: Label
 var practice_queue: Array = []
 const GAMES_PATH := "user://chessome_partidas.json"
 var game_state := ""
@@ -1732,7 +1737,7 @@ func _fit_card() -> void:
 	# Si no cabe (una explicación larga en los problemas), la tarjeta sube por encima del tablero como una ventana
 	# semitransparente, hasta dejar a la vista la parte de arriba del tablero; lo que siga sin caber, se desplaza.
 	var lift := 0.0
-	if need > room and mode != "learn" and (mode != "game" or game_state == "review"):
+	if need > room and mode != "learn" and (mode != "game" or game_state == "review" or game_state == "detail"):
 		lift = minf(need - room, board_slot.custom_minimum_size.y * 0.7 + top_gap.custom_minimum_size.y)
 	if absf(lift - _card_float) > 0.5:
 		_card_float = lift
@@ -5441,6 +5446,9 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	review = []
 	review_done = false
 	review_at = -1
+	detail = []
+	detail_done = false
+	detail_at = -1
 	game_clock_side = view.board.chess.turn
 	game_state = "play"
 	game_won = 0
@@ -5842,6 +5850,9 @@ func _build_game_card() -> void:
 	if game_state == "review":
 		_build_review_card()
 		return
+	if game_state == "detail":
+		_build_detail_card()
+		return
 	var head := ""
 	var tone := _c("ink")
 	match game_state:
@@ -5906,6 +5917,9 @@ func _build_game_card() -> void:
 func _build_game_actions() -> void:
 	if game_state == "review":
 		_build_review_actions()
+		return
+	if game_state == "detail":
+		_build_detail_actions()
 		return
 	var is_online := bool(game.get("online", false))
 	var key := "game:%s:%s:%s:%s:%d:%d" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked), str(is_online), mini(game_back, 1), _online_pending.size()]
@@ -6422,6 +6436,17 @@ func _show_review_page() -> void:
 			rows.add_child(buttons)
 			body.add_child(panel_rows[0])
 			body.add_child(_spacer(20.0))
+	if not kids and game_moves.size() >= 2:
+		body.add_child(_spacer(10.0))
+		if detail_done and not detail.is_empty():
+			var c := GameDetail.counts(detail)
+			var parts: Array = []
+			for v: String in ["best", "good", "only", "inaccuracy", "mistake", "blunder"]:
+				if int(c.get(v, 0)) > 0:
+					parts.append("%s: %d" % [str(GameDetail.LABELS[v]), int(c[v])])
+			body.add_child(_para("Tus jugadas · " + " · ".join(parts), F_SUB, _c("quiet"), font_medium))
+			body.add_child(_spacer(10.0))
+		body.add_child(_option_button("line", "lilac", "Ver el detalle", "Jugada a jugada: qué hiciste bien, qué no y cuál era la mejor.", _open_detail, true))
 	body.add_child(_spacer(10.0, true))
 	if not kids:
 		footer.add_child(_para("Solo se señala lo que se puede comprobar con seguridad: piezas que quedan a tiro, capturas gratis y mates en una jugada. Otras ideas de la partida (planes, estructura) no se analizan todavía.", F_FOOT + 2, _c("quiet"), font_regular))
@@ -6532,6 +6557,134 @@ func _review_back() -> void:
 	view.set_fen(str(game_history[game_history.size() - 1]))
 	game_state = "over"
 	review_at = -1
+	_refresh()
+	_show_review_page()
+
+
+## «Ver el detalle»: calcula (una vez, en otro hilo) la valoración de cada jugada propia y la enseña en el tablero.
+func _open_detail() -> void:
+	if detail_done:
+		if not detail.is_empty():
+			_detail_show(0)
+		return
+	var page := _page("review")
+	var body: VBoxContainer = page["body"]
+	body.add_child(_spacer(8.0, true))
+	body.add_child(_centered(_para("Analizando jugada a jugada…", F_TITLE, _c("ink"), font_display)))
+	_detail_progress = _centered(_para("", F_BODY, _c("quiet"), font_medium))
+	body.add_child(_detail_progress)
+	body.add_child(_spacer(8.0, true))
+	_stop_game_thread()
+	_review_thread = Thread.new()
+	var my_run := run_id
+	_review_thread.start(_detail_work.bind(game_history.duplicate(), game_moves.duplicate(), game_color, my_run))
+
+
+func _detail_work(fens: Array, moves: Array, color: int, my_run: int) -> void:
+	var found := GameDetail.analyze(fens, moves, color, 0.6, func(done: int, total: int) -> void: _detail_tick.call_deferred(done, total))
+	_detail_ready.call_deferred(found, my_run)
+
+
+func _detail_tick(done: int, total: int) -> void:
+	if _detail_progress != null and is_instance_valid(_detail_progress):
+		_detail_progress.text = "Jugada %d de %d" % [done, total]
+
+
+func _detail_ready(found: Array, my_run: int) -> void:
+	if _review_thread != null:
+		_review_thread.wait_to_finish()
+		_review_thread = null
+	if my_run != run_id or mode != "game":
+		return
+	detail = found
+	detail_done = true
+	if detail.is_empty():
+		_show_review_page()
+	else:
+		_detail_show(0)
+
+
+const DETAIL_TONES := {"only": "info", "best": "good", "good": "good", "inaccuracy": "mid", "mistake": "bad", "blunder": "bad"}
+
+
+func _detail_show(i: int) -> void:
+	if i < 0 or i >= detail.size():
+		return
+	_close_progress()
+	run_id += 1
+	detail_at = i
+	game_state = "detail"
+	var e: Dictionary = detail[i]
+	view.interactive = false
+	view.set_fen(str(e["fen"]))
+	view.set_orientation(game_color)
+	view.board.set_arrows(e.get("arrows", []))
+	view.board.set_badge(-1, "")
+	_move_badge(str(e["uci"]), str(e.get("badge", "")))
+	_refresh()
+
+
+func _build_detail_card() -> void:
+	var e: Dictionary = detail[detail_at] if detail_at >= 0 and detail_at < detail.size() else {}
+	var tone := str(DETAIL_TONES.get(str(e.get("verdict", "")), "info"))
+	var color := _c("good") if tone == "good" else (_c("bad") if tone == "bad" else (_c("accent_text") if tone == "mid" else (Color("a593ff") if dark else Color("5b3fd0"))))
+	title = _para("%s · %s" % [str(e.get("san", "")), str(e.get("label", ""))], F_TITLE2, color, font_display)
+	card_body.add_child(title)
+	var chips := HFlowContainer.new()
+	chips.add_theme_constant_override("h_separation", 12)
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chips.add_child(_chip("Jugada %d" % int(e.get("n", 0)), _c("field"), _c("ink")))
+	chips.add_child(_chip("%d de %d" % [detail_at + 1, detail.size()], _c("field"), _c("quiet")))
+	card_body.add_child(chips)
+	for t: Variant in e.get("paras", []):
+		card_body.add_child(_para(str(t), F_BODY, _c("ink"), font_regular))
+	var bad := str(e.get("verdict", "")) in ["inaccuracy", "mistake", "blunder"]
+	if bad:
+		card_body.add_child(_para("Flecha roja: tu jugada. Violeta: la respuesta del rival. Verde: la mejor.", F_FOOT + 2, _c("quiet"), font_regular))
+
+
+## Siguiente jugada con imprecisión o error (−1 si no hay más).
+func _next_detail_fault() -> int:
+	for i in range(detail_at + 1, detail.size()):
+		if str((detail[i] as Dictionary).get("verdict", "")) in ["inaccuracy", "mistake", "blunder"]:
+			return i
+	return -1
+
+
+func _build_detail_actions() -> void:
+	var key := "detail:%d" % detail_at
+	if key == _actions_mode:
+		return
+	_actions_mode = key
+	for old in actions.get_children():
+		(old as CanvasItem).visible = false
+		old.queue_free()
+	hint_button = null
+	step_button = null
+	left_button = _tool_button("back", "Anterior", _detail_show.bind(detail_at - 1), "sky")
+	var summary := _tool_button("why", "Resumen", _detail_back, "lilac")
+	right_button = _tool_button("next", "Siguiente", _detail_show.bind(detail_at + 1), "mint")
+	var fault := _next_detail_fault()
+	var jump := _tool_button("wrong", "Sig. fallo", _detail_show.bind(fault), "rose")
+	left_button.disabled = detail_at <= 0
+	left_button.modulate.a = 1.0 if detail_at > 0 else 0.42
+	right_button.disabled = detail_at >= detail.size() - 1
+	right_button.modulate.a = 1.0 if detail_at < detail.size() - 1 else 0.42
+	jump.disabled = fault < 0
+	jump.modulate.a = 1.0 if fault >= 0 else 0.42
+	for b: Button in [left_button, summary, jump, right_button]:
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		actions.add_child(b)
+
+
+## Del detalle al resumen; la partida se queda como acabó.
+func _detail_back() -> void:
+	view.board.set_arrows([])
+	view.board.set_badge(-1, "")
+	view.set_fen(str(game_history[game_history.size() - 1]))
+	game_state = "over"
+	detail_at = -1
 	_refresh()
 	_show_review_page()
 

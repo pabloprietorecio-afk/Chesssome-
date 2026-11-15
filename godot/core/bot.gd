@@ -109,6 +109,44 @@ func choose(pos: Chess) -> int:
 	return best
 
 
+## Para el detalle de una partida: la mejor jugada (sin ruido) y el valor de la jugada hecha, a la misma
+## profundidad. Valores en centipeones para el bando que mueve (±MATE cerca del mate). Con `played` = −1 solo se
+## busca la mejor. Profundidad creciente hasta `max_depth` o hasta agotar `seconds`.
+func analyse(pos: Chess, played: int, max_depth: int, seconds: float) -> Dictionary:
+	exact = true
+	var moves := pos.legal_moves()
+	if moves.is_empty():
+		return {}
+	nodes = 0
+	_stopped = false
+	_killers = {}
+	_history = {}
+	_deadline = Time.get_ticks_msec() + int(seconds * 1000.0)
+	var out := {"best": moves[0], "best_score": 0, "played_score": 0, "depth": 0}
+	var ordered := _order(pos, moves, -1)
+	for depth in range(1, max_depth + 1):
+		var alpha := -INF_SCORE
+		var found := -1
+		for m in ordered:
+			var score := -_search(pos.after(m), depth - 1, -INF_SCORE, -alpha, 1)
+			if _stopped:
+				break
+			if score > alpha or found < 0:
+				alpha = score
+				found = m
+		if _stopped:
+			break
+		var ps := alpha
+		if played >= 0 and played != found:
+			ps = -_search(pos.after(played), depth - 1, -INF_SCORE, INF_SCORE, 1)
+			if _stopped:
+				break
+		out = {"best": found, "best_score": alpha, "played_score": ps, "depth": depth}
+		ordered.erase(found)
+		ordered.insert(0, found)
+	return out
+
+
 ## Jugadas legales en la variante.
 func legal(pos: Chess) -> PackedInt32Array:
 	if variant != "peones":

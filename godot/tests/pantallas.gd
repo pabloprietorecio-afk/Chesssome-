@@ -82,6 +82,7 @@ func _ready() -> void:
 	print("ONLINE atrás=%d pendientes=%d" % [demo.game_back, demo._online_pending.size()])
 	demo._leave_game()
 	await _frames(4)
+	await _detalle(demo)
 	await _por_que(demo)
 	print("PANTALLAS DONE")
 	get_tree().quit()
@@ -133,6 +134,46 @@ func _por_que(demo: Control) -> void:
 	demo._why_go(k)
 	await _frames(4)
 	await _shot("p13_jugada_a_jugada")
+
+
+## «Ver el detalle» de una partida: el mate del pastor jugado con negras (3… Cf6?? permite Dxf7#).
+func _detalle(demo: Control) -> void:
+	demo._online_started(1)
+	await _frames(4)
+	var moves := ["e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"]
+	var pos := Chess.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	var fens: Array = [pos.fen()]
+	for u: String in moves:
+		pos.apply(pos.find_uci(u))
+		fens.append(pos.fen())
+	demo.game_history = fens
+	demo.game_moves = moves
+	demo.game_state = "over"
+	demo.game_result = "Jaque mate: ha ganado el rival."
+	demo.game_won = -1
+	demo.view.set_fen(pos.fen())
+	demo.review = []
+	demo.review_done = true
+	demo._show_review_page()
+	await _frames(6)
+	await _shot("p16_analisis_resumen")
+	demo._open_detail()
+	var guard := 0
+	while not demo.detail_done and guard < 600:
+		guard += 1
+		await get_tree().process_frame
+	await _frames(4)
+	for e: Dictionary in demo.detail:
+		print("DETALLE %s · %s · %s" % [e["san"], e["label"], " / ".join(e["paras"])])
+	demo._detail_show(2)
+	await _frames(6)
+	await _shot("p17_detalle_error")
+	demo._detail_back()
+	await _frames(4)
+	await _shot("p18_analisis_con_recuento")
+	demo._close_progress()
+	demo._leave_game()
+	await _frames(4)
 
 
 func _find_clock(n: Node) -> FlipClock:
