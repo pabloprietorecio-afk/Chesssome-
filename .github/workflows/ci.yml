@@ -465,6 +465,16 @@ jobs:
         run: |
           ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tee import.log | tail -15 || true
 
+      # Las dependencias de Gradle se guardan entre ejecuciones: Maven Central limita las descargas (429).
+      - name: Caché de Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-avisos-${{ hashFiles('godot/android/build/build.gradle', 'godot/android/build/config.gradle') }}
+          restore-keys: gradle-avisos-
+
       - name: APK con avisos (arm64)
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/android_firma/debug.keystore
@@ -473,7 +483,13 @@ jobs:
         run: |
           mkdir -p build/android build/avisos-log
           A=$GITHUB_WORKSPACE/build/android/Chessome-avisos-debug.apk
-          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-debug "Android Debug" $A > build/avisos-log/export.log 2>&1 || true
+          # Hasta 3 intentos, con espera, por si Maven Central corta las descargas (429).
+          for i in 1 2 3; do
+            ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-debug "Android Debug" $A > build/avisos-log/export.log 2>&1 || true
+            [ -f $A ] && break
+            echo "Intento $i sin APK"; grep -m3 -E "status code|What went wrong" build/avisos-log/export.log || true
+            sleep $((i * 60))
+          done
           tail -60 build/avisos-log/export.log
           ls -lh $A || true
 
