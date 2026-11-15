@@ -106,3 +106,12 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
   frases sencillas y voz («Casi. ¡Prueba otra vez!», «¡Muy bien!»), sin variantes, sin análisis y sin enlaces a
   Lichess ni a la IA. Las categorías llevan nombres sencillos (`FAMILY_KIDS`).
 - Pendiente en Kids: «Mi nivel y mi plan» adaptado y explicaciones propias de cada problema para niños.
+
+## Explicaciones para niños en los problemas (15 nov 2026)
+
+- Al fallar, una frase fija según la clase de error que calculó el análisis (`KID_ERRORS`: mate, pieza movida sin
+  defensa, otra pieza sin defensa, pérdida de material, hay otra mejor, ocasión perdida, camino más lento), con dos
+  flechas: roja, su jugada; morada, la respuesta del rival que la castiga (primera jugada del rival en la variante).
+- Al resolver, la idea del problema según su categoría (`KID_SOLVED`); si acaba en mate, la de mate. «Coronación»
+  solo si la solución corona. Si se pidió la solución, «Mira: esta era la jugada buena».
+- Las frases están en `src/course/kids.ts` (`KIDS_LINES`, claves `train…` y `solved…`), sin notación y con voz.

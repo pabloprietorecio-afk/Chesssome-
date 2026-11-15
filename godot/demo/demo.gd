@@ -1849,11 +1849,10 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 	var count := first.size()
 	if kids:
 		# Nivel Kids: una frase sencilla y a seguir. Sin variantes, sin análisis y sin enlaces a fuera de la app.
+		card_body.add_child(_para(_kid_explain(e, partial), F_BODY, _c("ink"), font_regular))
 		if partial and not bool(e.get("correct", false)):
-			card_body.add_child(_para(_kid_line("tryAgain"), F_BODY, _c("ink"), font_regular))
+			card_body.add_child(_para("Flecha roja: tu jugada. Flecha morada: lo que haría el rival.", F_FOOT, _c("quiet"), font_regular))
 			card_body.add_child(_card_button("Probar otra vez", _retry_position, _c("accent_soft"), _c("accent_text"), F_SUB, "retry"))
-		else:
-			card_body.add_child(_para(_kid_line("good") if bool(e.get("correct", false)) else "Mira cuál era la jugada buena.", F_BODY, _c("ink"), font_regular))
 		return
 	if partial and not bool(e.get("correct", false)) and count > 1:
 		# La última frase dice cuál era la mejor jugada.
@@ -2220,6 +2219,51 @@ func _add_move_why() -> void:
 		context = "En los problemas de Lichess, las respuestas del rival son las que el motor de análisis dio como su mejor defensa: con otra jugada, perdería más o antes."
 	card_body.add_child(_para(context, F_SUB, _c("quiet"), font_regular))
 	card_body.add_child(_card_button("Ocultar", _toggle_move_why, _c("field"), _c("quiet"), F_FOOT, "close"))
+
+
+## Explicación para niños de una jugada de un problema: una frase fija (con voz) según la clase de error que
+## calculó el análisis, o según la idea del problema si se ha resuelto. Sin notación: lo demás lo enseñan las flechas.
+const KID_ERRORS := {"mate": "trainMate", "hangMoved": "trainHangMoved", "hangOther": "trainHangOther", "material": "trainMaterial", "worse": "trainWorse", "missed": "trainMissed", "slower": "trainSlower"}
+const KID_SOLVED := {"mate": "solvedMate", "doble": "solvedDoble", "linea": "solvedLinea", "defensor": "solvedDefensor", "peon": "solvedPeon", "caza": "solvedCaza", "otros": "solvedOtros"}
+
+
+func _kid_explain(e: Dictionary, partial: bool) -> String:
+	var line := ""
+	if partial and not bool(e.get("correct", false)):
+		line = _kid_line(str(KID_ERRORS.get(str(e.get("error", "")), "trainWorse")))
+		return line if line != "" else _kid_line("tryAgain")
+	if bool(e.get("asked", false)) or not bool(e.get("correct", false)):
+		line = _kid_line("trainShown")
+		return line if line != "" else "Mira cuál era la jugada buena."
+	# Resuelto: si acaba en mate, eso es lo que se cuenta; si no, la idea de su categoría.
+	var fam := "mate" if view.board.chess.is_checkmate() else str(puzzle.get("family", "otros"))
+	if fam == "mate" and not view.board.chess.is_checkmate():
+		fam = "otros"
+	if fam == "peon" and not _solution_promotes():
+		fam = "otros"
+	line = _kid_line(str(KID_SOLVED.get(fam, "solvedOtros")))
+	return line if line != "" else _kid_line("good")
+
+
+func _solution_promotes() -> bool:
+	for uci: Variant in puzzle.get("moves", []):
+		if str(uci).length() > 4:
+			return true
+	return false
+
+
+## Para niños: tras una jugada fallada, además de su jugada (en rojo), la respuesta del rival que la castiga.
+func _kid_wrong_arrows(e: Dictionary) -> Array:
+	var arrows := _arrows_for(e, 1, true)
+	var levels: Array = e.get("levels", [])
+	if levels.size() >= 3:
+		for line: Dictionary in (levels[2] as Dictionary).get("lines", []):
+			var ucis: Array = line.get("ucis", [])
+			if str(line.get("tone", "")) == "bad" and ucis.size() >= 2:
+				var reply := str(ucis[1])
+				arrows.append({"from": Chess.sq_index(reply.substr(0, 2)), "to": Chess.sq_index(reply.substr(2, 2)), "tone": "info"})
+				break
+	return arrows
 
 
 ## Chapa con la valoración de la jugada en su casilla de destino, con los signos de anotación de siempre:
@@ -3260,12 +3304,12 @@ func _on_move_played(uci: String) -> void:
 			return
 		exp_partial = true
 		_set_phase(Phase.WRONG)
-		_say([_kid_line("tryAgain")])
+		_say([_kid_explain(expl, true)])
 		await _wait(0.9)
 		if my_run != run_id:
 			return
 		_restore_position()
-		view.board.set_arrows(_arrows_for(expl, 1, true))
+		view.board.set_arrows(_kid_wrong_arrows(expl) if kids else _arrows_for(expl, 1, true))
 		view.interactive = true
 		return
 	step += 1
@@ -3280,7 +3324,7 @@ func _on_move_played(uci: String) -> void:
 		_record(true)
 		_sfx("leccion")
 		_set_phase(Phase.SOLVED)
-		_say([BRAVO, _kid_line("good")])
+		_say([BRAVO, _kid_explain(expl, false)])
 		return
 	_sfx("acierto")
 	last_wrong = {}
