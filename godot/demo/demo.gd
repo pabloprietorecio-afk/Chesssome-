@@ -5104,7 +5104,7 @@ func _open_home() -> void:
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
 		# El nivel que sale de los problemas mide la táctica, no la fuerza en partidas (eso es el nivel de juego).
-		words.add_child(_line((Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
+		words.add_child(_line((Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, Assessment.LEVEL_FLOORS.size() - 1, Loc.t(str(_rank(lv)[1]))], F_TITLE2, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = Loc.f("Te faltan %d puntos para el nivel %d", [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1])
@@ -5263,7 +5263,7 @@ func _open_train_hub() -> void:
 		seen[str(t["id"])] = str(t.get("family", "otros"))
 		if bool(t["correct"]):
 			solved[str(t["id"])] = true
-	var where := (Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, top, str(rank[1])]
+	var where := (Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, top, Loc.t(str(rank[1]))]
 	body.add_child(_centered(_para(where, F_HEAD, _c("ink"), font_display)))
 	var left_text := "¡Nivel máximo!"
 	if lv < top:

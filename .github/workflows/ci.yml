@@ -202,6 +202,19 @@ jobs:
           files: build/android/Chessome-debug.apk
           overwrite_files: true
 
+      # Rama de idiomas: su propio enlace fijo, para probarla sin tocar el APK de main.
+      - name: APK de la rama de idiomas («apk-idiomas»)
+        if: github.ref == 'refs/heads/idiomas'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-idiomas
+          name: "A Chess Way · APK de la rama idiomas"
+          prerelease: true
+          make_latest: false
+          body: "APK de depuración de la rama idiomas (versión ${{ github.run_number }}, commit ${{ github.sha }})."
+          files: build/android/Chessome-debug.apk
+          overwrite_files: true
+
   # Capturas rápidas de las pantallas 2D (inicio, Entrenar, partida online): unos minutos, en cada cambio de Godot.
   pantallas:
     name: Pantallas 2D (capturas rápidas)

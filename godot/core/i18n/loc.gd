@@ -17,7 +17,7 @@ const NAMES: Dictionary = {"es": "Español", "en": "English", "fr": "Français",
 const CODES: Dictionary = {"es": "ES", "en": "EN", "fr": "FR", "it": "IT", "ja": "日本", "pt": "PT", "id": "ID",
 		"hi": "हि", "de": "DE", "ru": "RU"}
 ## Subconjunto de Noto Sans JP (OFL) con los caracteres japoneses de la app (tools/i18n/fonts.py).
-const JAPANESE_FONT: String = "res://fonts/NotoSansJP-Subset.otf"
+const JAPANESE_FONT: String = "res://fonts/NotoSansJP-Subset.ttf"
 ## Noto Sans Devanagari (OFL), para el hindi.
 const DEVANAGARI_FONT: String = "res://fonts/NotoSansDevanagari-Medium.ttf"
 
