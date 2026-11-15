@@ -526,7 +526,7 @@ jobs:
           retention-days: 14
 
       - name: APK en la versión preliminar «ultimo-apk-avisos»
-        if: github.ref_name == 'metaprogresion'
+        if: github.ref_name == 'main' || github.ref_name == 'metaprogresion'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ultimo-apk-avisos
