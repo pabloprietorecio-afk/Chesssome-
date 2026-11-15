@@ -536,18 +536,24 @@ class LevelPath extends Control:
 
 	func _draw() -> void:
 		var u := _unit()
-		var far := Color("c9d6ee") if not night else Color("26315a")
-		var mid := Color("d9ead3") if not night else Color("1f3a35")
-		var near := Color("c7dfbd") if not night else Color("1b332e")
-		var cliff := Color("b9c3cf") if not night else Color("2a3350")
-		var cloud := Color(1, 1, 1, 0.75) if not night else Color(0.75, 0.8, 1.0, 0.12)
-		# Paisaje: montañas al fondo, dos repisas con hierba (una por fila) y nubes abajo.
-		_hills(1.05 * u, 0.75 * u, Color(far.r, far.g, far.b, 0.9), 0.4, size.y)
-		_hills(1.95 * u, 0.32 * u, cliff, 1.7, size.y)
-		_hills(1.75 * u, 0.22 * u, mid, 2.3, 2.15 * u)
-		_hills(3.7 * u, 0.35 * u, cliff, 0.9, size.y)
-		_hills(3.4 * u, 0.3 * u, near, 3.1, 3.75 * u)
-		for c: Array in [[0.12, 3.75, 0.55], [0.5, 3.85, 0.7], [0.9, 3.72, 0.6]]:
+		var sky := Color("eaf2ff") if not night else Color("141b3a")
+		var far := Color("c6d3f0") if not night else Color("26315a")
+		var far2 := Color("d8e2f6") if not night else Color("1e2850")
+		var rock := Color("d9d2c5") if not night else Color("2c3350")
+		var rock_dark := Color("c4bba9") if not night else Color("252b45")
+		var grass := Color("cfe6c0") if not night else Color("1f3a35")
+		var grass2 := Color("bcdcaa") if not night else Color("1b332e")
+		var cloud := Color(1, 1, 1, 0.8) if not night else Color(0.75, 0.8, 1.0, 0.12)
+		# Paisaje: cielo, montañas al fondo, una repisa de roca con hierba por fila y nubes abajo.
+		draw_rect(Rect2(Vector2.ZERO, size), sky)
+		_hills(0.9 * u, 0.6 * u, far2, 2.6, size.y)
+		_hills(1.15 * u, 0.7 * u, far, 0.4, size.y)
+		_hills(2.35 * u, 0.2 * u, rock_dark, 1.7, size.y)
+		_hills(2.2 * u, 0.25 * u, rock, 1.1, size.y)
+		_hills(1.9 * u, 0.5 * u, grass, 2.3, 2.2 * u)
+		_hills(3.95 * u, 0.25 * u, rock_dark, 0.9, size.y)
+		_hills(3.3 * u, 0.42 * u, grass2, 3.1, 3.85 * u)
+		for c: Array in [[0.1, 3.82, 0.6], [0.48, 3.92, 0.8], [0.92, 3.8, 0.62], [0.95, 0.45, 0.4], [0.3, 0.35, 0.32]]:
 			_ellipse(Vector2(size.x * float(c[0]), u * float(c[1])), u * float(c[2]), 0.35, cloud)
 		# El sendero: sombra, tramo ya recorrido en oro y tramo que falta en blanco.
 		var road: Array = _road()
@@ -4312,25 +4318,25 @@ func _open_home() -> void:
 	if not kids and _has_player():
 		var lvl := Assessment.level_of(float(player["rating"]["r"]))
 		if bool(player.get("done", false)):
-			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel (nivel %d), con explicaciones." % lvl, _home_train])
+			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel, explicados.", _home_train])
 		else:
 			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
 	if kids and not pool.is_empty():
 		items.append(["target", "peach", "Entrenar", "Problemas para pensar, a tu nivel.", _home_train])
 	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
 	if kids and not course.is_empty():
-		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
-	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, en cinco niveles.", _open_game_setup])
+		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza.", _open_course])
+	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 5 niveles.", _open_game_setup])
 	if not kids:
 		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
 	if not kids and not _has_player():
 		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
 	if not kids and _has_player():
-		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué aciertas, en qué fallas y qué toca.", _open_progress.bind("progress")])
+		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué fallas y qué toca.", _open_progress.bind("progress")])
 	if not kids and not course.is_empty():
-		items.append(["party", "sky", "Modo Kids", "Desde 8 años: frases sencillas y voz.", _set_kids.bind(true)])
+		items.append(["party", "sky", "Modo Kids", "Desde 8 años, con voz.", _set_kids.bind(true)])
 	if not kids and not course.is_empty():
-		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
+		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza.", _open_course])
 	for def: Array in items:
 		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4], true))
 		body.add_child(_spacer(20.0))
@@ -4423,7 +4429,16 @@ func _open_train_hub() -> void:
 	path.custom_minimum_size = Vector2(0.0, 560.0)
 	path.mouse_filter = Control.MOUSE_FILTER_PASS
 	path.level_pressed.connect(_on_level_pressed.bind(lv))
-	body.add_child(path)
+	# Un marco redondeado recorta el paisaje, como una ilustración.
+	var frame := PanelContainer.new()
+	var frame_sb := StyleBoxFlat.new()
+	frame_sb.bg_color = _c("field")
+	frame_sb.set_corner_radius_all(44)
+	frame.add_theme_stylebox_override("panel", frame_sb)
+	frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	frame.mouse_filter = Control.MOUSE_FILTER_PASS
+	frame.add_child(path)
+	body.add_child(frame)
 	_path_hint = _centered(_para("Toca un nivel superado para repasar sus problemas." if lv > 0 else "Los niveles se desbloquean a medida que avanzas.", F_FOOT, _c("quiet"), font_regular))
 	body.add_child(_path_hint)
 	body.add_child(_spacer(10.0))
@@ -4673,23 +4688,25 @@ func _open_online() -> void:
 	var page := _page("online")
 	var body: VBoxContainer = page["body"]
 	var footer: VBoxContainer = page["footer"]
-	var tile := _icon_tile("piece_queen", "sky", 156.0, 98.0)
+	body.add_child(_spacer(10.0, true))
+	var tile := _icon_tile("piece_queen", "sky", 200.0, 124.0)
 	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	body.add_child(tile)
-	body.add_child(_spacer(20.0))
-	body.add_child(_centered(_para("Partida online", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_spacer(24.0))
+	body.add_child(_centered(_para("Partida online", F_LARGE, _c("ink"), font_display)))
 	var about := "Te emparejamos con el siguiente jugador que entre. Si no hay nadie esperando, abres una partida y esperas a tu rival."
 	if online_busy:
 		about = "Buscando rival… En cuanto entre otro jugador, empieza la partida. Puedes dejar esta pantalla abierta."
-	body.add_child(_centered(_para(about, F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_spacer(10.0))
+	body.add_child(_centered(_para(about, F_BODY + 2, _c("quiet"), font_medium)))
 	if online_status != "":
 		body.add_child(_spacer(20.0))
 		body.add_child(_centered(_para(online_status, F_BODY, _c("bad"), font_medium)))
 	body.add_child(_spacer(30.0))
 	if not online_busy:
-		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Sin cuenta: tu jugador es anónimo y se recuerda en este móvil.", _online_search))
+		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Sin cuenta: tu jugador es anónimo.", _online_search, true))
 	body.add_child(_spacer(10.0, true))
-	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
+	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
 
 
 func _online_search() -> void:
