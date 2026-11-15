@@ -1,0 +1,110 @@
+Explícame por qué	Explain why	Explique-moi pourquoi	Spiegami perché	理由を説明して	Explique por quê	Jelaskan alasannya	मुझे समझाओ क्यों	Erklär mir, warum	Объясни почему
+Ver la variante	See the line	Voir la variante	Vedi la variante	変化を見る	Ver a variante	Lihat variasinya	वेरिएशन देखें	Variante ansehen	Показать вариант
+Ver el análisis	See the analysis	Voir l'analyse	Vedi l'analisi	解析を見る	Ver a análise	Lihat analisisnya	विश्लेषण देखें	Analyse ansehen	Показать анализ
+Motor	Engine	Moteur	Motore	エンジン	Motor	Mesin	इंजन	Engine	Движок
+Reglas	Rules	Règles	Regole	ルール	Regras	Aturan	नियम	Regeln	Правила
+Madera	Wood	Bois	Legno	木	Madeira	Kayu	लकड़ी	Holz	Дерево
+Mármol	Marble	Marbre	Marmo	大理石	Mármore	Marmer	संगमरमर	Marmor	Мрамор
+Metal	Metal	Métal	Metallo	金属	Metal	Logam	धातु	Metall	Металл
+Ilustrado	Illustrated	Illustré	Illustrato	イラスト	Ilustrado	Ilustrasi	चित्रित	Illustriert	Рисунок
+Figuras	Figures	Figurines	Figure	フィギュア	Figuras	Figur	आकृतियाँ	Figuren	Фигуры
+Fichas	Tokens	Jetons	Pedine	コマ	Fichas	Keping	टोकन	Spielsteine	Фишки
+Simple	Simple	Simple	Semplice	シンプル	Simples	Sederhana	सरल	Einfach	Простые
+Normales	Standard	Normales	Normali	標準	Normais	Standar	सामान्य	Normal	Обычные
+Aventura 3D	3D Adventure	Aventure 3D	Avventura 3D	3Dアドベンチャー	Aventura 3D	Petualangan 3D	3D एडवेंचर	3D-Abenteuer	3D-приключение
+Reino	Kingdom	Royaume	Regno	王国	Reino	Kerajaan	राज्य	Königreich	Королевство
+Safari	Safari	Safari	Safari	サファリ	Safári	Safari	सफ़ारी	Safari	Сафари
+Espacio	Space	Espace	Spazio	宇宙	Espaço	Luar angkasa	अंतरिक्ष	Weltraum	Космос
+Piratas	Pirates	Pirates	Pirati	海賊	Piratas	Bajak laut	समुद्री डाकू	Piraten	Пираты
+Dinos	Dinos	Dinos	Dinosauri	恐竜	Dinos	Dino	डायनासोर	Dinos	Динозавры
+Inicio	Home	Accueil	Inizio	ホーム	Início	Beranda	होम	Start	Главная
+Meta	Goal	Arrivée	Traguardo	ゴール	Meta	Finis	मंज़िल	Ziel	Финиш
+Nivel actual	Current level	Niveau actuel	Livello attuale	現在のレベル	Nível atual	Level sekarang	मौजूदा स्तर	Aktuelles Level	Текущий уровень
+Nivel %d · n.º %d	Level %d · No. %d	Niveau %d · n° %d	Livello %d · n. %d	レベル%d · No.%d	Nível %d · nº %d	Level %d · No. %d	स्तर %d · क्र. %d	Level %d · Nr. %d	Уровень %d · № %d
+versión de desarrollo	development version	version de développement	versione di sviluppo	開発版	versão de desenvolvimento	versi pengembangan	डेवलपमेंट संस्करण	Entwicklungsversion	версия для разработки
+versión %s	version %s	version %s	versione %s	バージョン %s	versão %s	versi %s	संस्करण %s	Version %s	версия %s
+Nivel	Level	Niveau	Livello	レベル	Nível	Level	स्तर	Level	Уровень
+Amplía y gira con dos dedos	Zoom and turn with two fingers	Zoome et tourne avec deux doigts	Ingrandisci e ruota con due dita	2本指で拡大・回転	Amplie e gire com dois dedos	Perbesar dan putar dengan dua jari	दो उंगलियों से ज़ूम करें और घुमाएँ	Mit zwei Fingern zoomen und drehen	Масштаб и поворот двумя пальцами
+Con «Simple» el tablero no gira	With «Simple» the board doesn't turn	Avec « Simple », l'échiquier ne tourne pas	Con «Semplice» la scacchiera non ruota	「シンプル」では盤は回転しません	Com «Simples» o tabuleiro não gira	Dengan «Sederhana» papan tidak berputar	«सरल» में बोर्ड नहीं घूमता	Bei „Einfach“ dreht sich das Brett nicht	С «Простыми» доска не вращается
+Giro fijado	Rotation locked	Rotation bloquée	Rotazione bloccata	回転を固定	Rotação travada	Putaran dikunci	घुमाव बंद	Drehung gesperrt	Поворот закреплён
+Giro libre	Free rotation	Rotation libre	Rotazione libera	回転フリー	Rotação livre	Putaran bebas	घुमाव खुला	Freie Drehung	Свободный поворот
+Aprende desde cero	Learn from scratch	Apprendre depuis zéro	Impara da zero	ゼロから学ぶ	Aprenda do zero	Belajar dari nol	शुरू से सीखें	Von null an lernen	Учиться с нуля
+Partida	Game	Partie	Partita	対局	Partida	Permainan	बाज़ी	Partie	Партия
+Nivel %d · %s	Level %d · %s	Niveau %d · %s	Livello %d · %s	レベル%d · %s	Nível %d · %s	Level %d · %s	स्तर %d · %s	Level %d · %s	Уровень %d · %s
+Test de nivel · problema %d	Level test · puzzle %d	Test de niveau · problème %d	Test di livello · problema %d	レベルテスト · 問題%d	Teste de nível · problema %d	Tes level · soal %d	स्तर परीक्षा · पहेली %d	Einstufungstest · Aufgabe %d	Тест уровня · задача %d
+Problema %d de %d	Puzzle %d of %d	Problème %d sur %d	Problema %d di %d	問題 %d / %d	Problema %d de %d	Soal %d dari %d	पहेली %d / %d	Aufgabe %d von %d	Задача %d из %d
+Sin problemas	No puzzles	Aucun problème	Nessun problema	問題がありません	Sem problemas	Tidak ada soal	कोई पहेली नहीं	Keine Aufgaben	Нет задач
+Saltar test	Skip test	Passer le test	Salta il test	テストをスキップ	Pular teste	Lewati tes	परीक्षा छोड़ें	Test überspringen	Пропустить тест
+No lo sé	I don't know	Je ne sais pas	Non lo so	わからない	Não sei	Saya tidak tahu	मुझे नहीं पता	Weiß ich nicht	Не знаю
+Ver mi nivel	See my level	Voir mon niveau	Vedi il mio livello	自分のレベルを見る	Ver meu nível	Lihat level saya	मेरा स्तर देखें	Mein Level ansehen	Мой уровень
+Siguiente	Next	Suivant	Avanti	次へ	Próximo	Berikutnya	अगला	Weiter	Дальше
+Retroceder	Back	Reculer	Indietro	戻る	Voltar	Mundur	पीछे	Zurück	Назад
+Avanzar	Forward	Avancer	Avanti	進む	Avançar	Maju	आगे	Vor	Вперёд
+Volver a jugar	Play again	Rejouer	Gioca ancora	もう一度	Jogar de novo	Main lagi	फिर से खेलें	Nochmal spielen	Сыграть снова
+Pista	Hint	Indice	Suggerimento	ヒント	Dica	Petunjuk	संकेत	Tipp	Подсказка
+Un paso	One step	Un coup	Un passo	1手だけ	Um passo	Satu langkah	एक कदम	Ein Schritt	Один ход
+Solución	Solution	Solution	Soluzione	解答	Solução	Solusi	हल	Lösung	Решение
+Saltar	Skip	Passer	Salta	スキップ	Pular	Lewati	छोड़ें	Überspringen	Пропустить
+Repetir	Retry	Recommencer	Ripeti	やり直す	Repetir	Ulangi	दोहराएँ	Wiederholen	Повторить
+Seguir	Continue	Continuer	Continua	続ける	Continuar	Lanjut	जारी रखें	Weiter	Продолжить
+Qué pasaría	What if	Et si…	E se…	もしも	E se…	Bagaimana jika	क्या होगा	Was wäre, wenn	Что если
+Juegas con %s	You play %s	Tu joues les %s	Giochi con il %s	あなたは%s	Você joga com as %s	Kamu bermain %s	आप %s से खेल रहे हैं	Du spielst %s	Твой цвет: %s
+Mira la posición con calma. Al pulsar «Comenzar», el rival hace su jugada.	Take a calm look at the position. When you tap «Start», your opponent makes their move.	Regarde la position avec calme. Quand tu touches « Commencer », l'adversaire joue son coup.	Guarda la posizione con calma. Quando premi «Inizia», l'avversario fa la sua mossa.	落ち着いて局面を見ましょう。「開始」を押すと相手が指します。	Olhe a posição com calma. Ao tocar em «Começar», o rival faz o lance dele.	Lihat posisinya dengan tenang. Saat kamu menekan «Mulai», lawan akan melangkah.	स्थिति को आराम से देखें। «शुरू करें» दबाने पर विरोधी अपनी चाल चलेगा।	Sieh dir die Stellung in Ruhe an. Wenn du auf „Starten“ tippst, zieht dein Gegner.	Спокойно посмотри на позицию. Когда нажмёшь «Начать», соперник сделает свой ход.
+Mira al rival	Watch your opponent	Regarde l'adversaire	Guarda l'avversario	相手を見て	Olhe o rival	Perhatikan lawan	विरोधी को देखें	Achte auf den Gegner	Смотри на соперника
+Fíjate en su jugada: después te toca a ti.	Look at their move: then it's your turn.	Observe son coup : ensuite, c'est à toi.	Osserva la sua mossa: poi tocca a te.	相手の手を見て。そのあとあなたの番です。	Observe o lance: depois é sua vez.	Lihat langkahnya: setelah itu giliranmu.	उसकी चाल देखें: फिर आपकी बारी है।	Schau dir seinen Zug an: Danach bist du dran.	Посмотри на его ход: потом твоя очередь.
+Juegan %s	%s to move	Les %s jouent	Muove il %s	%sの手番	Jogam as %s	Giliran %s	चाल: %s	%s am Zug	Ход: %s
+Encuentra la mejor jugada.	Find the best move.	Trouve le meilleur coup.	Trova la mossa migliore.	最善手を見つけよう。	Encontre o melhor lance.	Temukan langkah terbaik.	सबसे अच्छी चाल खोजें।	Finde den besten Zug.	Найди лучший ход.
+Sigue: todavía hay más.	Keep going: there's more.	Continue : ce n'est pas fini.	Continua: c'è ancora altro.	続けて。まだ続きがあります。	Continue: ainda tem mais.	Lanjutkan: masih ada lagi.	जारी रखें: अभी और है।	Weiter: Es gibt noch mehr.	Продолжай: это ещё не всё.
+Encuentra la mejor jugada. Solo hay un intento.	Find the best move. You only get one try.	Trouve le meilleur coup. Un seul essai.	Trova la mossa migliore. Hai un solo tentativo.	最善手を見つけよう。チャンスは1回だけ。	Encontre o melhor lance. Só há uma tentativa.	Temukan langkah terbaik. Hanya ada satu kesempatan.	सबसे अच्छी चाल खोजें। सिर्फ़ एक मौका है।	Finde den besten Zug. Du hast nur einen Versuch.	Найди лучший ход. Попытка только одна.
+No es la mejor	Not the best	Pas le meilleur	Non è la migliore	最善ではない	Não é o melhor	Bukan yang terbaik	सबसे अच्छी नहीं	Nicht der beste	Не лучший
+Vuelve a intentarlo.	Try again.	Réessaie.	Riprova.	もう一度。	Tente de novo.	Coba lagi.	फिर से कोशिश करें।	Versuch es nochmal.	Попробуй ещё раз.
+¡Bien!	Good!	Bien !	Bene!	いいね！	Boa!	Bagus!	बढ़िया!	Gut!	Хорошо!
+Mira cómo responde el rival…	See how your opponent replies…	Regarde comment répond l'adversaire…	Guarda come risponde l'avversario…	相手の応手を見て…	Veja como o rival responde…	Lihat bagaimana lawan menjawab…	देखें विरोधी कैसे जवाब देता है…	Sieh, wie der Gegner antwortet …	Смотри, как ответит соперник…
+¡Resuelto!	Solved!	Résolu !	Risolto!	正解！	Resolvido!	Terpecahkan!	हल हो गया!	Gelöst!	Решено!
+Puedes repetirlo o pasar al siguiente.	You can repeat it or move on to the next one.	Tu peux le refaire ou passer au suivant.	Puoi ripeterlo o passare al successivo.	もう一度解くか、次へ進めます。	Você pode repetir ou passar ao próximo.	Kamu bisa mengulang atau lanjut ke berikutnya.	आप इसे दोहरा सकते हैं या अगली पर जा सकते हैं।	Du kannst sie wiederholen oder zur nächsten gehen.	Можно повторить или перейти к следующей.
+La solución	The solution	La solution	La soluzione	解答	A solução	Solusinya	हल	Die Lösung	Решение
+Mira cómo sigue…	See how it continues…	Regarde la suite…	Guarda come continua…	続きを見て…	Veja como continua…	Lihat kelanjutannya…	देखें आगे क्या होता है…	Sieh, wie es weitergeht …	Смотри продолжение…
+Este paso	This step	Ce coup	Questo passo	この一手	Este passo	Langkah ini	यह कदम	Dieser Schritt	Этот ход
+Pulsa «Seguir» y continúa tú.	Tap «Continue» and carry on yourself.	Touche « Continuer » et continue toi-même.	Premi «Continua» e prosegui tu.	「続ける」を押して、続きはあなたが。	Toque em «Continuar» e siga você.	Tekan «Lanjut» dan teruskan sendiri.	«जारी रखें» दबाएँ और आगे खुद खेलें।	Tippe auf „Weiter“ und mach selbst weiter.	Нажми «Продолжить» и играй дальше сам.
+¿Y si juego…?	What if I play…?	Et si je joue… ?	E se gioco…?	もしこう指したら…？	E se eu jogar…?	Bagaimana jika aku main…?	अगर मैं यह चलूँ…?	Was, wenn ich … spiele?	А если я сыграю…?
+Es la mejor jugada	It's the best move	C'est le meilleur coup	È la mossa migliore	最善手です	É o melhor lance	Ini langkah terbaik	यह सबसे अच्छी चाल है	Das ist der beste Zug	Это лучший ход
+Comenzar	Start	Commencer	Inizia	開始	Começar	Mulai	शुरू करें	Starten	Начать
+Lo repasaremos con calma en el entrenamiento.	We'll go over it calmly in training.	On le reverra tranquillement à l'entraînement.	Lo ripasseremo con calma nell'allenamento.	トレーニングでじっくり復習しましょう。	Vamos rever com calma no treino.	Kita akan mengulasnya dengan tenang saat latihan.	अभ्यास में इसे आराम से दोहराएँगे।	Wir gehen das im Training in Ruhe durch.	Спокойно разберём это на тренировке.
+Pulsa «Seguir» y continúa tú con el resto.	Tap «Continue» and play the rest yourself.	Touche « Continuer » et joue la suite toi-même.	Premi «Continua» e gioca tu il resto.	「続ける」を押して、残りはあなたが指しましょう。	Toque em «Continuar» e jogue o resto você.	Tekan «Lanjut» dan mainkan sisanya sendiri.	«जारी रखें» दबाएँ और बाकी खुद खेलें।	Tippe auf „Weiter“ und spiel den Rest selbst.	Нажми «Продолжить» и доиграй сам.
+Test de nivel	Level test	Test de niveau	Test di livello	レベルテスト	Teste de nível	Tes level	स्तर परीक्षा	Einstufungstest	Тест уровня
+Repaso de un fallo	Reviewing a mistake	Révision d'une erreur	Ripasso di un errore	ミスの復習	Revisão de um erro	Mengulas kesalahan	गलती की समीक्षा	Fehler wiederholen	Разбор ошибки
+¡Subes al nivel %d!	You reach level %d!	Tu passes au niveau %d !	Sali al livello %d!	レベル%dにアップ！	Você subiu para o nível %d!	Kamu naik ke level %d!	आप स्तर %d पर पहुँचे!	Du erreichst Level %d!	Ты на уровне %d!
+¡Táctica: nivel %d!	Tactics: level %d!	Tactique : niveau %d !	Tattica: livello %d!	タクティクス：レベル%d！	Tática: nível %d!	Taktik: level %d!	रणनीति: स्तर %d!	Taktik: Level %d!	Тактика: уровень %d!
+Puntuación %d → %d	Score %d → %d	Score %d → %d	Punteggio %d → %d	スコア %d → %d	Pontuação %d → %d	Skor %d → %d	अंक %d → %d	Wertung %d → %d	Рейтинг %d → %d
+Nivel %d · %d	Level %d · %d	Niveau %d · %d	Livello %d · %d	レベル%d · %d	Nível %d · %d	Level %d · %d	स्तर %d · %d	Level %d · %d	Уровень %d · %d
+Problema real de Lichess	Real Lichess puzzle	Vrai problème de Lichess	Problema reale di Lichess	Lichessの実戦問題	Problema real do Lichess	Soal asli dari Lichess	Lichess की असली पहेली	Echte Lichess-Aufgabe	Настоящая задача с Lichess
+Busca esto: %s.	Look for this: %s.	Cherche ceci : %s.	Cerca questo: %s.	探すもの：%s。	Procure isto: %s.	Cari ini: %s.	यह खोजें: %s।	Suche danach: %s.	Ищи вот что: %s.
+Mueve %s.	Move %s.	À jouer : %s.	Muovi %s.	動かす駒：%s。	Mova %s.	Gerakkan %s.	चलाएँ: %s।	Zu ziehen: %s.	Ходит: %s.
+Ventaja	Advantage	Avantage	Vantaggio	優勢	Vantagem	Keunggulan	बढ़त	Vorteil	Преимущество
+otra pieza	another piece	une autre pièce	un altro pezzo	別の駒	outra peça	bidak lain	कोई और मोहरा	eine andere Figur	другая фигура
+el peón	the pawn	le pion	il pedone	ポーン	o peão	pion	प्यादा	der Bauer	пешка
+el caballo	the knight	le cavalier	il cavallo	ナイト	o cavalo	kuda	घोड़ा	der Springer	конь
+el alfil	the bishop	le fou	l'alfiere	ビショップ	o bispo	gajah	ऊँट	der Läufer	слон
+la torre	the rook	la tour	la torre	ルーク	a torre	benteng	हाथी	der Turm	ладья
+la dama	the queen	la dame	la donna	クイーン	a dama	menteri	वज़ीर	die Dame	ферзь
+el rey	the king	le roi	il re	キング	o rei	raja	राजा	der König	король
+%s de %s	%s on %s	%s en %s	%s in %s	%s（%s）	%s em %s	%s di %s	%s (%s)	%s auf %s	%s на %s
+Flecha roja: tu jugada. Flecha morada: lo que haría el rival.	Red arrow: your move. Purple arrow: what your opponent would do.	Flèche rouge : ton coup. Flèche violette : ce que ferait l'adversaire.	Freccia rossa: la tua mossa. Freccia viola: cosa farebbe l'avversario.	赤い矢印：あなたの手。紫の矢印：相手の応手。	Seta vermelha: seu lance. Seta roxa: o que o rival faria.	Panah merah: langkahmu. Panah ungu: apa yang akan dilakukan lawan.	लाल तीर: आपकी चाल। बैंगनी तीर: विरोधी क्या करेगा।	Roter Pfeil: dein Zug. Lila Pfeil: was der Gegner tun würde.	Красная стрелка: твой ход. Фиолетовая: что сделал бы соперник.
+Probar otra vez	Try again	Réessayer	Riprova	もう一度	Tentar de novo	Coba lagi	फिर से कोशिश करें	Nochmal versuchen	Попробовать ещё
+Jugada a jugada	Move by move	Coup par coup	Mossa per mossa	一手ずつ	Lance a lance	Langkah demi langkah	चाल-दर-चाल	Zug für Zug	Ход за ходом
+Cerrar el paso a paso	Close step by step	Fermer le pas à pas	Chiudi il passo passo	一手ずつ表示を閉じる	Fechar o passo a passo	Tutup langkah demi langkah	चरण-दर-चरण बंद करें	Schritt für Schritt schließen	Закрыть пошаговый разбор
+Paso a paso	Step by step	Pas à pas	Passo passo	一手ずつ	Passo a passo	Langkah demi langkah	चरण-दर-चरण	Schritt für Schritt	Пошагово
+Ocultar resumen	Hide summary	Masquer le résumé	Nascondi riepilogo	まとめを隠す	Ocultar resumo	Sembunyikan ringkasan	सारांश छिपाएँ	Zusammenfassung ausblenden	Скрыть итог
+Resumen	Summary	Résumé	Riepilogo	まとめ	Resumo	Ringkasan	सारांश	Zusammenfassung	Итог
+¿Por qué?	Why?	Pourquoi ?	Perché?	なぜ？	Por quê?	Kenapa?	क्यों?	Warum?	Почему?
+Más a fondo	Go deeper	Aller plus loin	Più a fondo	さらに詳しく	Mais a fundo	Lebih dalam	और गहराई से	Genauer	Подробнее
+Ya no hay más	That's all	C'est tout	Non c'è altro	これで全部です	Não há mais	Sudah semua	बस इतना ही	Mehr gibt es nicht	Больше ничего нет
+Jugada a jugada, con flechas	Move by move, with arrows	Coup par coup, avec des flèches	Mossa per mossa, con le frecce	矢印つきで一手ずつ	Lance a lance, com setas	Langkah demi langkah, dengan panah	तीरों के साथ, चाल-दर-चाल	Zug für Zug, mit Pfeilen	Ход за ходом, со стрелками
+Prueba otra jugada. Si te atascas, pide una pista o que resuelva solo este paso.	Try another move. If you get stuck, ask for a hint or for just this step to be solved.	Essaie un autre coup. Si tu bloques, demande un indice ou la solution de ce seul coup.	Prova un'altra mossa. Se ti blocchi, chiedi un suggerimento o di risolvere solo questo passo.	別の手を試そう。詰まったら、ヒントかこの一手だけの解答を見られます。	Tente outro lance. Se travar, peça uma dica ou que resolva só este passo.	Coba langkah lain. Kalau buntu, minta petunjuk atau minta langkah ini saja yang diselesaikan.	दूसरी चाल आज़माएँ। अटक जाएँ तो संकेत माँगें या सिर्फ़ यह कदम हल करवाएँ।	Versuch einen anderen Zug. Wenn du feststeckst, hol dir einen Tipp oder lass nur diesen Schritt lösen.	Попробуй другой ход. Если застрял, попроси подсказку или решение только этого хода.
+Reiniciar la posición	Reset the position	Réinitialiser la position	Ripristina la posizione	局面をリセット	Reiniciar a posição	Atur ulang posisi	स्थिति फिर से शुरू करें	Stellung zurücksetzen	Вернуть позицию
+no tiene un motivo táctico con nombre	has no named tactical motif	n'a pas de motif tactique nommé	non ha un tema tattico con un nome	名前のある戦術テーマはありません	não tem um motivo tático com nome	tidak punya motif taktik yang bernama	इसका कोई नामित रणनीतिक पैटर्न नहीं है	hat kein benanntes taktisches Motiv	не имеет тактического мотива с названием
+Datos de la posición	Position data	Données de la position	Dati della posizione	局面のデータ	Dados da posição	Data posisi	स्थिति का डेटा	Daten zur Stellung	Данные позиции
+Ocultar los datos	Hide the data	Masquer les données	Nascondi i dati	データを隠す	Ocultar os dados	Sembunyikan data	डेटा छिपाएँ	Daten ausblenden	Скрыть данные
+ataque doble	double attack	attaque double	attacco doppio	両取り	ataque duplo	serangan ganda	दोहरा हमला	Doppelangriff	двойной удар
+Ataque doble: una sola pieza ataca dos cosas a la vez y el rival solo puede salvar una. Si una de ellas es el rey (un jaque), ni siquiera puede elegir: tiene que salir del jaque y pierde la otra.	Double attack: a single piece attacks two things at once and the opponent can only save one. If one of them is the king (a check), they can't even choose: they must get out of check and lose the other.	Attaque double : une seule pièce attaque deux cibles à la fois et l'adversaire ne peut en sauver qu'une. Si l'une d'elles est le roi (un échec), il n'a même pas le choix : il doit parer l'échec et perd l'autre.	Attacco doppio: un solo pezzo attacca due bersagli insieme e l'avversario può salvarne solo uno. Se uno dei due è il re (uno scacco), non può nemmeno scegliere: deve uscire dallo scacco e perde l'altro.	両取り：1つの駒が同時に2つを攻め、相手は片方しか守れません。片方がキング（王手）なら選ぶこともできず、王手をかわしてもう片方を失います。	Ataque duplo: uma só peça ataca duas coisas ao mesmo tempo e o rival só pode salvar uma. Se uma delas é o rei (um xeque), nem pode escolher: tem que sair do xeque e perde a outra.	Serangan ganda: satu bidak menyerang dua sasaran sekaligus dan lawan hanya bisa menyelamatkan satu. Jika salah satunya raja (skak), lawan bahkan tidak bisa memilih: ia harus keluar dari skak dan kehilangan yang lain.	दोहरा हमला: एक ही मोहरा एक साथ दो चीज़ों पर हमला करता है और विरोधी सिर्फ़ एक बचा सकता है। अगर उनमें से एक राजा है (शह), तो वह चुन भी नहीं सकता: उसे शह से बचना होगा और दूसरी चीज़ खोनी पड़ेगी।	Doppelangriff: Eine einzige Figur greift zwei Ziele zugleich an und der Gegner kann nur eines retten. Ist eines davon der König (ein Schach), hat er nicht einmal die Wahl: Er muss das Schach abwehren und verliert das andere.	Двойной удар: одна фигура нападает сразу на две цели, и соперник может спасти только одну. Если одна из них — король (шах), выбора нет вовсе: нужно уйти от шаха, и вторая цель пропадает.
+%d de %d	%d of %d	%d sur %d	%d di %d	%d / %d	%d de %d	%d dari %d	%d / %d	%d von %d	%d из %d

@@ -21,7 +21,19 @@ const JAPANESE_FONT: String = "res://fonts/NotoSansJP-Subset.otf"
 ## Noto Sans Devanagari (OFL), para el hindi.
 const DEVANAGARI_FONT: String = "res://fonts/NotoSansDevanagari-Medium.ttf"
 
+## Letras de las piezas en la notación de cada idioma, por tipo (Chess: 2 caballo, 3 alfil, 4 torre, 5 dama, 6 rey).
+## Japonés, indonesio e hindi usan las inglesas, como sus libros y webs de ajedrez.
+const LETTERS: Dictionary = {
+	"es": ["", "", "C", "A", "T", "D", "R"], "it": ["", "", "C", "A", "T", "D", "R"],
+	"en": ["", "", "N", "B", "R", "Q", "K"], "ja": ["", "", "N", "B", "R", "Q", "K"],
+	"id": ["", "", "N", "B", "R", "Q", "K"], "hi": ["", "", "N", "B", "R", "Q", "K"],
+	"fr": ["", "", "C", "F", "T", "D", "R"], "pt": ["", "", "C", "B", "T", "D", "R"],
+	"de": ["", "", "S", "L", "T", "D", "K"], "ru": ["", "", "К", "С", "Л", "Ф", "Кр"],
+}
+const _ES_TYPE: Dictionary = {"C": 2, "A": 3, "T": 4, "D": 5, "R": 6}
+
 static var language: String = "es"
+static var _san_re: RegEx = null
 static var _table: Dictionary = {}
 static var _catalog: Translation = null
 static var _fallback_fonts: Dictionary = {}
@@ -61,6 +73,47 @@ static func t(message: String) -> String:
 	if language == "es" or message.is_empty():
 		return message
 	return str(_table.get(message, message))
+
+
+## Traduce una plantilla con «%» y también los textos que se meten en ella (nombres de piezas, de niveles…):
+## Loc.f("Nivel %d · %s", [3, "Alfil"]) → "Level 3 · Bishop". Lo que no está en la tabla (jugadas, nombres
+## de jugadores) entra tal cual.
+static func f(template: String, args: Variant) -> String:
+	if language == "es":
+		return template % args
+	if args is Array:
+		var out: Array = []
+		for a: Variant in args:
+			out.append(t(a) if a is String else a)
+		return t(template) % out
+	if args is String:
+		return t(template) % t(args)
+	return t(template) % args
+
+
+## Letra de una pieza (tipo de Chess) en la notación del idioma activo.
+static func piece_letter(piece_type: int) -> String:
+	return str((LETTERS.get(language, LETTERS["es"]) as Array)[piece_type])
+
+
+## Pasa las jugadas escritas en notación española dentro de un texto («Dxf2+», «Cd3», «e8=D») a la notación
+## del idioma activo. Solo toca lo que tiene forma de jugada: letra de pieza seguida de casilla.
+static func san_text(text: String) -> String:
+	if language == "es" or language == "it" or text.is_empty():
+		return text
+	if _san_re == null:
+		_san_re = RegEx.new()
+		_san_re.compile("(?<![\\p{L}\\d])([CATDR])([a-h]?[1-8]?x?[a-h][1-8])|=([CATD])(?=[+#]?(?![\\p{L}\\d]))")
+	var out := ""
+	var at := 0
+	for m: RegExMatch in _san_re.search_all(text):
+		out += text.substr(at, m.get_start() - at)
+		if m.get_string(1) != "":
+			out += piece_letter(int(_ES_TYPE[m.get_string(1)])) + m.get_string(2)
+		else:
+			out += "=" + piece_letter(int(_ES_TYPE[m.get_string(3)]))
+		at = m.get_end()
+	return out + text.substr(at)
 
 
 ## Si hay traducción de `message` en el idioma activo (para las pruebas).

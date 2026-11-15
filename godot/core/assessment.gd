@@ -67,9 +67,9 @@ static func level_of(rating: float) -> int:
 static func level_span(level: int) -> String:
 	var lo := int(LEVEL_FLOORS[level])
 	if level + 1 >= LEVEL_FLOORS.size():
-		return Loc.t("%d o más") % lo
+		return Loc.f("%d o más", lo)
 	if level == 0:
-		return Loc.t("menos de %d") % int(LEVEL_FLOORS[1])
+		return Loc.f("menos de %d", int(LEVEL_FLOORS[1]))
 	return "%d–%d" % [lo, int(LEVEL_FLOORS[level + 1]) - 1]
 
 
