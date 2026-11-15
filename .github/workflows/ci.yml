@@ -138,6 +138,13 @@ jobs:
             grep -q "TODO OK" $T.log
           done
 
+      - name: Partida online en la demo (sin red)
+        run: |
+          set -o pipefail
+          timeout 300 ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot -s tests/test_online_ui.gd 2>&1 | tee test_online_ui.log
+          ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" test_online_ui.log
+          grep -q "TODO OK" test_online_ui.log
+
       - name: APK de depuración (arm64)
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/android_firma/debug.keystore
