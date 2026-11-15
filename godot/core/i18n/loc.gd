@@ -34,6 +34,17 @@ const _ES_TYPE: Dictionary = {"C": 2, "A": 3, "T": 4, "D": 5, "R": 6}
 
 static var language: String = "es"
 static var _san_re: RegEx = null
+static var _exp_re: RegEx = null
+static var _al_re: RegEx = null
+static var _split_re: RegEx = null
+## Plantillas de las explicaciones de los problemas (data/i18n/<idioma>.json, sección con clave "@exp"):
+## «Tras {1}, la pieza de {2} puede capturarse…» → traducción con los mismos {n}, en el orden que pida el idioma.
+static var _exp: Dictionary = {}
+## Idiomas que escriben los decimales con punto (los demás, con coma, como el español).
+const DECIMAL_POINT: Array[String] = ["en", "ja", "hi"]
+## Piezas tal como salen en las explicaciones: «tu dama», «el caballo rival», «la torre blanca», «peones»…
+const _EXP_PIECE := "(?:(?:[Ee]l|[Ll]as?|[Ll]os|[Uu]na?|[Tt]us?|[Ss]us?) )?(?:peón|peones|caballos?|alfil(?:es)?|torres?|damas?|reye?s?)(?: (?:blanc[oa]s?|negr[oa]s?|rival(?:es)?))?"
+const _EXP_SAN := "(?:[RDTAC][a-h]?[1-8]?x?[a-h][1-8](?:=[DTAC])?[+#]?|[a-h]x[a-h][1-8](?:=[DTAC])?[+#]?|[a-h][1-8](?:=[DTAC])?[+#]?|O-O-O[+#]?|O-O[+#]?)"
 static var _table: Dictionary = {}
 static var _catalog: Translation = null
 static var _fallback_fonts: Dictionary = {}
@@ -53,12 +64,15 @@ static func apply(code: String) -> void:
 		TranslationServer.remove_translation(_catalog)
 		_catalog = null
 	_table = {}
+	_exp = {}
 	if language != "es":
 		var path := "res://data/i18n/%s.json" % language
 		if FileAccess.file_exists(path):
 			var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 			if typeof(parsed) == TYPE_DICTIONARY:
 				_table = parsed
+		_exp = _table.get("@exp", {})
+		_table.erase("@exp")
 		_catalog = Translation.new()
 		_catalog.locale = language
 		for key: String in _table:
@@ -114,6 +128,95 @@ static func san_text(text: String) -> String:
 			out += "=" + piece_letter(int(_ES_TYPE[m.get_string(3)]))
 		at = m.get_end()
 	return out + text.substr(at)
+
+
+## Una frase de las explicaciones de los problemas convertida en plantilla: las jugadas (y sus números), las cifras y
+## las piezas pasan a {1}, {2}… Devuelve [plantilla, valores, tipos] (tipo "m" jugadas, "n" cifra, "p" pieza).
+## «al caballo» y «del caballo» se leen como «a el caballo» y «de el caballo»: así la pieza lleva siempre su artículo
+## y salen muchas menos plantillas.
+static func exp_template(text: String) -> Array:
+	if _exp_re == null:
+		_exp_re = RegEx.new()
+		var move := "(?:\\d+(?:\\.|…) ?)?" + _EXP_SAN
+		_exp_re.compile("(?<![\\p{L}\\d])(?:(" + move + "(?: " + move + ")*)|(" + _EXP_PIECE + ")|([−+-]?\\d+(?:[.,]\\d+)?)|(?<=Lichess: )([A-Za-z0-9]+))(?![\\p{L}\\d])")
+		_al_re = RegEx.new()
+		_al_re.compile("(?<![\\p{L}])(a|de)l (?=(?:peón|caballo|alfil|rey)(?![\\p{L}]))")
+		_split_re = RegEx.new()
+		_split_re.compile("(?<=[.!?]) (?=[A-ZÁÉÍÓÚ¡¿«{])|(?<=^Aquí:) ")
+	text = _al_re.sub(text, "$1 el ", true)
+	var out := ""
+	var values: Array = []
+	var kinds: Array = []
+	var at := 0
+	for m: RegExMatch in _exp_re.search_all(text):
+		out += text.substr(at, m.get_start() - at)
+		values.append(m.get_string())
+		kinds.append("m" if m.get_string(1) != "" else ("p" if m.get_string(2) != "" else ("t" if m.get_string(4) != "" else "n")))
+		out += "{%d}" % values.size()
+		at = m.get_end()
+	return [out + text.substr(at), values, kinds]
+
+
+## Las frases de una plantilla, cada una con sus huecos numerados desde {1}: [[frase, [números globales]], …].
+static func exp_sentences(template: String) -> Array:
+	var parts: Array = []
+	var at := 0
+	for m: RegExMatch in _split_re.search_all(template):
+		parts.append(template.substr(at, m.get_start() - at))
+		at = m.get_end()
+	parts.append(template.substr(at))
+	var out: Array = []
+	var hole := RegEx.create_from_string("\\{(\\d+)\\}")
+	for part: String in parts:
+		var globals: Array = []
+		var local := ""
+		var p := 0
+		for m: RegExMatch in hole.search_all(part):
+			local += part.substr(p, m.get_start() - p)
+			globals.append(int(m.get_string(1)))
+			local += "{%d}" % globals.size()
+			p = m.get_end()
+		out.append([local + part.substr(p), globals])
+	return out
+
+
+## Traduce una frase de las explicaciones de los problemas (que vienen escritas en español): la parte en frases, busca
+## cada plantilla en la tabla del idioma y rellena los huecos. Si falta alguna frase, la deja entera en español.
+static func explain(text: String) -> String:
+	if language == "es" or text.is_empty():
+		return text
+	if _table.has(text):
+		return str(_table[text])
+	var tpl := exp_template(text)
+	var values: Array = tpl[1]
+	var kinds: Array = tpl[2]
+	var shown: Array = []
+	for i in values.size():
+		var v := str(values[i])
+		match str(kinds[i]):
+			"m":
+				v = san_text(v)
+			"p":
+				v = t(v)
+			"n":
+				if language in DECIMAL_POINT:
+					v = v.replace(",", ".")
+		shown.append(v)
+	var out: Array = []
+	for sentence: Array in exp_sentences(tpl[0]):
+		if not _exp.has(sentence[0]):
+			return text
+		var piece := str(_exp[sentence[0]])
+		var globals: Array = sentence[1]
+		for k in globals.size():
+			var g := int(globals[k]) - 1
+			# {n:acc}: la pieza como complemento directo (alemán y ruso declinan: «einen Turm», «ладью»).
+			if piece.contains("{%d:acc}" % (k + 1)):
+				var acc := str(values[g])
+				piece = piece.replace("{%d:acc}" % (k + 1), t("acc:" + acc) if str(kinds[g]) == "p" and has("acc:" + acc) else str(shown[g]))
+			piece = piece.replace("{%d}" % (k + 1), str(shown[g]))
+		out.append(piece)
+	return (" " if language != "ja" else "").join(out)
 
 
 ## Si hay traducción de `message` en el idioma activo (para las pruebas).

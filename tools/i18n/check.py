@@ -17,8 +17,17 @@ def main(langs):
     for lang in langs:
         path = os.path.join(DATA, lang + '.json')
         table = json.load(open(path, encoding='utf8')) if os.path.exists(path) else {}
+        exp = table.pop('@exp', {})
         missing = [k for k in ks if k not in table]
         wrong = [k for k, v in table.items() if FMT.findall(k) != FMT.findall(v)]
+        tpls = json.load(open(os.path.join(HERE, 'exp_plantillas.json'), encoding='utf8'))
+        hole = re.compile(r'\{\d+')
+        exp_missing = [k for k in tpls if k not in exp]
+        exp_wrong = [k for k, v in exp.items() if set(hole.findall(k)) != set(hole.findall(v))]
+        print('   explicaciones: faltan %d de %d, huecos mal %d' % (len(exp_missing), len(tpls), len(exp_wrong)))
+        for k in exp_wrong[:5]:
+            print('   huecos:', k, '->', exp[k])
+        bad += len(exp_missing) + len(exp_wrong)
         print('%s: %d de %d, faltan %d, formato mal %d' % (lang, len(ks) - len(missing), len(ks), len(missing), len(wrong)))
         for k in wrong[:10]:
             print('   formato:', k, '->', table[k])
