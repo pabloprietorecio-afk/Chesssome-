@@ -39,6 +39,9 @@ static func _art(t: int) -> String:
 
 
 static func _pron(t: int) -> String:
+	# Solo el español mete el pronombre como hueco aparte; las traducciones lo llevan en la frase.
+	if Loc.language != "es":
+		return ""
 	return "la" if _fem(t) else "lo"
 
 
@@ -54,9 +57,11 @@ static func name_at(pos: Chess, s: int, me: int, with_square: bool = true) -> St
 		var adj := ("blanca" if c == 0 else "negra") if _fem(t) else ("blanco" if c == 0 else "negro")
 		base = "%s %s %s" % [_art(t), NOUN[t], adj]
 	elif c == me:
-		base = Loc.f("tu %s", NOUN[t])
+		base = "tu %s" % NOUN[t]
 	else:
-		base = Loc.f("%s %s rival", [_art(t), NOUN[t]])
+		base = "%s %s rival" % [_art(t), NOUN[t]]
+	if Loc.language != "es":
+		return Loc.t(base) + (Loc.f(" de %s", Chess.sq_name(s)) if with_square else "")
 	return base + (" de " + Chess.sq_name(s) if with_square else "")
 
 
@@ -71,7 +76,7 @@ static func join(items: Array) -> String:
 		parts.append(str(x))
 	if parts.size() <= 1:
 		return "".join(parts)
-	return ", ".join(parts.slice(0, parts.size() - 1)) + " y " + str(parts[parts.size() - 1])
+	return Loc.list_sep().join(parts.slice(0, parts.size() - 1)) + Loc.list_and() + str(parts[parts.size() - 1])
 
 
 static func squares(list: Array) -> String:
@@ -160,7 +165,7 @@ static func line_word(from: int, to: int) -> String:
 	if t.x == 0:
 		return Loc.f(" por la columna %s", "abcdefgh"[from & 7])
 	if absi(t.x) == absi(t.y):
-		return " en diagonal"
+		return Loc.t(" en diagonal")
 	return ""
 
 
@@ -170,7 +175,7 @@ static func _line_noun(from: int, to: int) -> String:
 		return Loc.f("la fila %d", ((from >> 3) + 1))
 	if t.x == 0:
 		return Loc.f("la columna %s", "abcdefgh"[from & 7])
-	return "esa diagonal"
+	return Loc.t("esa diagonal")
 
 
 static func _between(a: int, b: int) -> Array:
@@ -190,7 +195,26 @@ static func _arrow(from: int, to: int, tone: String) -> Dictionary:
 
 
 static func _par(text: String, arrows: Array, pos: Chess, move: Array = []) -> Dictionary:
+	if Loc.language != "es":
+		# Huecos que en otro idioma quedan vacíos (pronombres, artículos): sin dobles espacios.
+		while text.contains("  "):
+			text = text.replace("  ", " ")
+		text = text.replace(" .", ".").replace(" ,", ",").strip_edges()
+		text = Loc.t(text)
+		if Loc.language == "ja":
+			text = _ja_punct(text)
 	return {"text": text, "arrows": arrows, "fen": pos.fen(), "move": move}
+
+
+## Puntuación japonesa en las frases compuestas con trozos (que llegan con la del español) y sin espacios junto a
+## los caracteres japoneses.
+static func _ja_punct(text: String) -> String:
+	text = text.replace(" (", "（").replace("(", "（").replace(")", "）").replace(": ", "：").replace(", ", "、")
+	text = text.replace(". ", "。")
+	if text.ends_with("."):
+		text = text.substr(0, text.length() - 1) + "。"
+	var re := RegEx.create_from_string(" (?=[\\x{3000}-\\x{9FFF}\\x{FF00}-\\x{FFEF}])|(?<=[\\x{3000}-\\x{9FFF}\\x{FF00}-\\x{FFEF}]) ")
+	return re.sub(text, "", true)
 
 
 static func _san(pos: Chess, m: int) -> String:
@@ -314,21 +338,21 @@ static func escape_paras(pos: Chess, played: int, me: int) -> Array:
 	for n: int in candidates:
 		arrows2.append(_arrow(k, n, "info"))
 	if checkers.size() == 1 and slider and not on_line.is_empty():
-		text = Loc.f("Mover el rey dentro de %s no sirve: %s %s en la línea de %s.", [_line_noun(c, k), squares(on_line), "sigue" if on_line.size() == 1 else "siguen", name_at(pos, c, me, false)])
+		text = Loc.f("Mover el rey dentro de %s no sirve: %s %s en la línea de %s.", [_line_noun(c, k), squares(on_line), Loc.t("sigue") if on_line.size() == 1 else Loc.t("siguen"), name_at(pos, c, me, false)])
 		if candidates.is_empty():
-			text += " Y fuera de ella no tiene ninguna casilla libre."
+			text += Loc.t(" Y fuera de ella no tiene ninguna casilla libre.")
 		else:
-			text += Loc.f(" Fuera de ella, %s %s.", ["tiene una casilla:" if candidates.size() == 1 else Loc.t("tiene %s casillas:") % _count_word(candidates.size()), squares(candidates)])
+			text += Loc.f(" Fuera de ella, %s %s.", [Loc.t("tiene una casilla:") if candidates.size() == 1 else Loc.t("tiene %s casillas:") % _count_word(candidates.size()), squares(candidates)])
 		for n: int in on_line:
 			arrows2.append(_arrow(k, n, "bad"))
 	elif candidates.is_empty():
-		text = "El rey no tiene ninguna casilla libre a su alrededor."
+		text = Loc.t("El rey no tiene ninguna casilla libre a su alrededor.")
 	else:
 		text = Loc.f("Para escapar, el rey podría ir a %s.", squares(candidates))
 	var own: Array = f["own"]
 	own.sort()
 	if not own.is_empty() and own.size() <= 3:
-		text += Loc.f(" En %s %s sus propias piezas.", [squares(own), "está una de" if own.size() == 1 else "están"])
+		text += Loc.f(" En %s %s sus propias piezas.", [squares(own), Loc.t("está una de") if own.size() == 1 else Loc.t("están")])
 	out.append(_par(text, arrows2, pos))
 	# Quién quita cada casilla.
 	if not by_attacker.is_empty() or not defended.is_empty():
@@ -346,12 +370,12 @@ static func escape_paras(pos: Chess, played: int, me: int) -> Array:
 				continue
 			phrases.append(Loc.f("%s no se puede comer porque %s %s defiende", [name_at(pos, n, me), name_at(pos, int(defs[0]), me), _pron(Chess.type_of(pos.b[n]))]))
 			arrows3.append(_arrow(int(defs[0]), n, "bad"))
-		var lead := "Pero " if not king_ok.is_empty() or candidates.size() > 0 else ""
+		var lead := Loc.t("Pero ") if not king_ok.is_empty() or candidates.size() > 0 else ""
 		var t3 := lead + join(phrases) + "."
 		if king_ok.size() == 1 and candidates.size() > 1:
 			t3 += Loc.f(" Solo le queda %s.", Chess.sq_name(int(king_ok[0])))
 		elif king_ok.is_empty() and candidates.size() > 0:
-			t3 += " El rey no puede moverse."
+			t3 += Loc.t(" El rey no puede moverse.")
 		out.append(_par(cap(t3), arrows3, pos))
 	# Comer o tapar.
 	if checkers.size() == 1:
@@ -362,9 +386,9 @@ static func escape_paras(pos: Chess, played: int, me: int) -> Array:
 		var t4 := ""
 		if captures.is_empty() and (blocks.is_empty() or not can_block):
 			t4 = Loc.f("Nada puede comer %s", name_at(pos, c, me))
-			t4 += " ni ponerse en medio." if can_block else "."
+			t4 += Loc.t(" ni ponerse en medio.") if can_block else "."
 			if ct == Chess.KNIGHT:
-				t4 += " Y al jaque de un caballo no se le puede poner nada delante."
+				t4 += Loc.t(" Y al jaque de un caballo no se le puede poner nada delante.")
 		else:
 			var parts: Array = []
 			if not captures.is_empty():
@@ -379,7 +403,7 @@ static func escape_paras(pos: Chess, played: int, me: int) -> Array:
 					sans2.append(_san(pos, m))
 					arrows4.append(_arrow(Chess.move_from(m), Chess.move_to(m), "info"))
 				parts.append(Loc.f("puede taparse (%s)", join(sans2)))
-			t4 = "También " + join(parts) + "."
+			t4 = Loc.t("También ") + join(parts) + "."
 		out.append(_par(cap(t4), arrows4, pos))
 	# Conclusión.
 	if played < 0:
@@ -399,7 +423,7 @@ static func escape_paras(pos: Chess, played: int, me: int) -> Array:
 
 
 static func _count_word(n: int) -> String:
-	var words := ["cero", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho"]
+	var words := [Loc.t("cero"), Loc.t("una"), Loc.t("dos"), Loc.t("tres"), Loc.t("cuatro"), Loc.t("cinco"), Loc.t("seis"), Loc.t("siete"), Loc.t("ocho")]
 	return words[n] if n < words.size() else str(n)
 
 
@@ -411,7 +435,7 @@ static func forced_reason(pos: Chess, me: int) -> String:
 	for a: int in by_attacker:
 		var list: Array = by_attacker[a]
 		list.sort()
-		parts.append("%s %s %s" % [squares(list), "la controla" if list.size() == 1 else "las controla", name_at(pos, a, me)])
+		parts.append(Loc.f("%s %s %s", [squares(list), Loc.t("la controla") if list.size() == 1 else Loc.t("las controla"), name_at(pos, a, me)]))
 	if parts.is_empty():
 		return ""
 	return join(parts)
@@ -448,13 +472,13 @@ static func move_paras(before: Chess, m: int, me: int) -> Array:
 		if not defended:
 			does.append(Loc.f("%s come %s (no tenía defensa)", [san, desc]))
 		elif int(VALUE[tt]) > int(VALUE[mover_t]):
-			does.append(Loc.f("%s come %s, que vale más que %s: aunque %s recuperen, sale ganando", [san, desc, _art(mover_t) + " " + str(NOUN[mover_t]), "se " + _pron(mover_t)]))
+			does.append(Loc.f("%s come %s, que vale más que %s: aunque %s recuperen, sale ganando", [san, desc, _art(mover_t) + " " + str(NOUN[mover_t]), ("se " + _pron(mover_t)) if Loc.language == "es" else ""]))
 		else:
 			does.append(Loc.f("%s come %s", [san, desc]))
 	else:
 		does.append(Loc.f("%s lleva %s a %s", [san, name_at(before, from, me, false), Chess.sq_name(to)]))
 	if Chess.move_promo(m) > 0:
-		does.append(Loc.f("el peón corona: ahora es %s %s", ["una" if _fem(new_t) else "un", NOUN[new_t]]))
+		does.append(Loc.f("el peón corona: ahora es %s %s", [Loc.t("una") if _fem(new_t) else Loc.t("un"), NOUN[new_t]]))
 	var checkers: Array = []
 	if after.in_check():
 		checkers = attackers(after, after.king_sq(opp), side)
@@ -462,7 +486,7 @@ static func move_paras(before: Chess, m: int, me: int) -> Array:
 		if direct and checkers.size() == 1:
 			does.append(Loc.f("da jaque al rey%s", line_word(to, after.king_sq(opp))))
 		elif direct:
-			does.append("da jaque doble")
+			does.append(Loc.t("da jaque doble"))
 		else:
 			does.append(Loc.f("al apartarse, %s da jaque al rey (jaque descubierto)", name_at(after, int(checkers[0]), me)))
 	var arrows1: Array = [_arrow(from, to, "good")]
@@ -502,7 +526,7 @@ static func move_paras(before: Chess, m: int, me: int) -> Array:
 			names.append(name_at(after, s, me))
 		var text2 := Loc.f("Es un ataque doble: %s ataca a la vez %s.", [name_at(after, to, me, false), join(names)])
 		if _one_falls(after, to, targets.slice(0, 2), replies):
-			text2 += " El rival no puede salvar las dos."
+			text2 += Loc.t(" El rival no puede salvar las dos.")
 		out.append(_par(text2, arrows5, after, mv))
 	elif checkers.is_empty() and targets.size() == 1:
 		var tgt2: int = targets[0]
@@ -603,7 +627,7 @@ static func short_tag(before: Chess, m: int) -> String:
 	var opp := 1 - before.turn
 	var to := Chess.move_to(m)
 	if after.is_checkmate():
-		return "jaque mate"
+		return Loc.t("jaque mate")
 	var new_t := Chess.type_of(after.b[to])
 	var check := after.in_check()
 	var best := -1
@@ -620,7 +644,7 @@ static func short_tag(before: Chess, m: int) -> String:
 	if taken != 0 and Chess.type_of(taken) >= Chess.KNIGHT:
 		return Loc.f("come %s", (_art(Chess.type_of(taken)) + " " + str(NOUN[Chess.type_of(taken)])))
 	if check:
-		return "jaque"
+		return Loc.t("jaque")
 	if best >= 0:
 		return Loc.f("ataca %s", (_art(Chess.type_of(after.b[best])) + " " + str(NOUN[Chess.type_of(after.b[best])])))
 	return ""
@@ -671,7 +695,7 @@ static func explain(before: Chess, m: int, me: int, role: String, rest: Array = 
 			paras = escape_paras(before, m, me)
 		else:
 			paras = move_paras(before, m, me)
-	return {"verdict": verdict, "label": LABELS[verdict], "san": _san(before, m), "paras": paras}
+	return {"verdict": verdict, "label": Loc.t(LABELS[verdict]), "san": _san(before, m), "paras": paras}
 
 
 ## Resumen de la combinación que sigue: «Tb1+ y, tras Rf2 (su única jugada), Cd3+: ataque doble al rey y la dama».
@@ -752,7 +776,7 @@ static func king_box(pos: Chess, me: int, kids: bool) -> Array:
 			tries.append([k, n])
 		var p: Dictionary
 		if kids:
-			p = _par(Loc.f("Si el rey se escapa por %s, %s le atacaría.", ["aquí" if squares.size() == 1 else "estas casillas", _who(kids, pos, a, me, false)]), arrows2, pos)
+			p = _par(Loc.f("Si el rey se escapa por %s, %s le atacaría.", [Loc.t("aquí") if squares.size() == 1 else Loc.t("estas casillas"), _who(kids, pos, a, me, false)]), arrows2, pos)
 		else:
 			var names: Array = []
 			for n: int in squares:
@@ -781,7 +805,7 @@ static func king_box(pos: Chess, me: int, kids: bool) -> Array:
 			tries4.append([k, n])
 			names4.append(Chess.sq_name(n))
 		var who := _who(kids, pos, own[0], me, false)
-		var kid_own := (Loc.f("Y por ahí no puede pasar: está %s, de su mismo color.", who)) if own.size() == 1 else "Y por ahí no puede pasar: están sus propias piezas."
+		var kid_own := (Loc.f("Y por ahí no puede pasar: está %s, de su mismo color.", who)) if own.size() == 1 else Loc.t("Y por ahí no puede pasar: están sus propias piezas.")
 		var p4 := _par(kid_own if kids else (Loc.f("Las casillas %s están ocupadas por sus propias piezas.", join(names4)) if own.size() > 1 else Loc.f("La casilla %s la ocupa %s.", [join(names4), _who(kids, pos, own[0], me, false)])), [], pos)
 		p4["tries"] = tries4
 		out.append(p4)
@@ -801,9 +825,9 @@ static func king_box(pos: Chess, me: int, kids: bool) -> Array:
 		var t3 := Chess.type_of(pos.b[c3])
 		var gap := not between.is_empty() and (t3 == Chess.ROOK or t3 == Chess.BISHOP or t3 == Chess.QUEEN)
 		if kids:
-			out.append(_par(Loc.f("Y nadie puede comerse %s%s.", [_who(kids, pos, c3, me, false), " ni ponerse en medio" if gap else ""]), [_arrow(c3, k, "bad")], pos))
+			out.append(_par(Loc.f("Y nadie puede comerse %s%s.", [_who(kids, pos, c3, me, false), Loc.t(" ni ponerse en medio") if gap else ""]), [_arrow(c3, k, "bad")], pos))
 		else:
-			out.append(_par(Loc.f("Ninguna pieza puede comer %s%s.", [_who(kids, pos, c3, me), " ni interponerse" if gap else ""]), [_arrow(c3, k, "bad")], pos))
+			out.append(_par(Loc.f("Ninguna pieza puede comer %s%s.", [_who(kids, pos, c3, me), Loc.t(" ni interponerse") if gap else ""]), [_arrow(c3, k, "bad")], pos))
 	elif not mate:
 		var others := 0
 		for s in 64:
@@ -811,7 +835,7 @@ static func king_box(pos: Chess, me: int, kids: bool) -> Array:
 			if q != 0 and Chess.color_of(q) == pos.turn and Chess.type_of(q) != Chess.KING:
 				others += 1
 		if others > 0:
-			out.append(_par("Sus otras piezas tampoco se pueden mover." if kids else "Y ninguna otra pieza suya tiene jugada.", [], pos))
+			out.append(_par("Sus otras piezas tampoco se pueden mover." if kids else Loc.t("Y ninguna otra pieza suya tiene jugada."), [], pos))
 	# 4. Conclusión.
 	if mate:
 		out.append(_par("No tiene salida: ¡jaque mate!" if kids else "No hay forma de salir del jaque: jaque mate.", [], pos))
@@ -830,9 +854,9 @@ static func _who(kids: bool, pos: Chess, s: int, me: int, with_square: bool = tr
 	var t := Chess.type_of(p)
 	var c := Chess.color_of(p)
 	if c == me:
-		return Loc.f("tu %s", NOUN[t])
+		return Loc.t("tu %s" % NOUN[t])
 	var adj := ("blanca" if c == 0 else "negra") if _fem(t) else ("blanco" if c == 0 else "negro")
-	return "%s %s %s" % [_art(t), NOUN[t], adj]
+	return Loc.t("%s %s %s" % [_art(t), NOUN[t], adj])
 
 
 ## Por qué el rival se defiende así: su pieza amenazada (la de más valor) no tiene casilla buena. Para cada huida,
@@ -897,7 +921,7 @@ static func defense_paras(before: Chess, m: int, me: int) -> Array:
 		parts.append(Loc.f("en %s tampoco se salva (%s): pierde aún más", [join(chased_sq), ", ".join(chased_mv)]))
 	var text := Loc.f("¿Y por qué no pone a salvo %s? No tiene casilla segura: %s", [who, "; ".join(parts)])
 	if others > 0:
-		text += ". En las demás casillas, lo mismo"
+		text += Loc.t(". En las demás casillas, lo mismo")
 	out.append(_par(text + ".", arrows, before))
 	var taken: int = before.b[Chess.move_to(m)]
 	if taken != 0:

@@ -105,6 +105,19 @@ static func f(template: String, args: Variant) -> String:
 	return t(template) % args
 
 
+## Listas: «e2, f2 y g2». Separador y última unión de cada idioma.
+const _LIST_AND: Dictionary = {"es": " y ", "en": " and ", "fr": " et ", "it": " e ", "ja": "と", "pt": " e ", "id": " dan ",
+		"hi": " और ", "de": " und ", "ru": " и "}
+
+
+static func list_sep() -> String:
+	return "、" if language == "ja" else ", "
+
+
+static func list_and() -> String:
+	return str(_LIST_AND.get(language, " y "))
+
+
 ## Letra de una pieza (tipo de Chess) en la notación del idioma activo.
 static func piece_letter(piece_type: int) -> String:
 	return str((LETTERS.get(language, LETTERS["es"]) as Array)[piece_type])

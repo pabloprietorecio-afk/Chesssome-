@@ -81,3 +81,28 @@ if __name__ == '__main__':
     json.dump(ck, open(os.path.join(os.path.dirname(__file__), 'claves_curso.json'), 'w', encoding='utf8'),
               ensure_ascii=False, indent=0)
     print(len(ck), 'textos del curso')
+
+
+def board_keys():
+    """Frases que compone el tablero (godot/core/move_why.gd): plantillas, trozos y nombres de piezas."""
+    keys = []
+    for rel, n, s in cands(os.path.join(ROOT, 'core', 'move_why.gd')):
+        if wanted(s) and not s.startswith('##'):
+            keys.append(s)
+    keys += ['sigue', 'siguen', 'aquí', 'una', 'un', 'están', 'jaque', 'cero', 'dos', 'tres', 'cuatro', 'cinco', 'seis',
+             'siete', 'ocho', ' de %s']
+    nouns = {'peón': 'el', 'caballo': 'el', 'alfil': 'el', 'torre': 'la', 'dama': 'la', 'rey': 'el'}
+    for noun, art in nouns.items():
+        fem = art == 'la'
+        keys += ['tu ' + noun, '%s %s rival' % (art, noun), '%s %s %s' % (art, noun, 'blanca' if fem else 'blanco'),
+                 '%s %s %s' % (art, noun, 'negra' if fem else 'negro')]
+    for label in ['Única jugada posible', 'La mejor jugada', 'Su mejor defensa', 'Es un error', 'La jugada']:
+        keys.append(label)
+    return list(dict.fromkeys(keys))
+
+
+if __name__ == '__main__':
+    bk = [k for k in board_keys() if k not in set(collect()) and k not in set(course_keys())]
+    json.dump(bk, open(os.path.join(os.path.dirname(__file__), 'claves_tablero.json'), 'w', encoding='utf8'),
+              ensure_ascii=False, indent=0)
+    print(len(bk), 'textos del tablero')
