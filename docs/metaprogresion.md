@@ -14,6 +14,13 @@ Capa de constancia alrededor del juego, sin monedas ni XP: el progreso real sigu
 - `godot/demo/demo.gd`: tres enganches (`_record` → `_prog_problem`, fin de lección → `_prog_lesson`, `_record_game` → `_prog_game`), la tarjeta del inicio y la página «Tu día» (`_open_day`).
 - `godot/tests/test_progress.gd` (en el CI) y las capturas `p1b`–`p1d` de `tests/pantallas.gd`.
 
+## Aviso diario (solo la lógica; falta enviarlo al sistema)
+- `godot/core/reminder.gd` decide el próximo aviso: `Reminder.plan(estado, ajustes, ahora, bias)` devuelve `{at, title, body}` o vacío. Valores en `core/reminder_config.gd`.
+- Un aviso como máximo; se recalcula tras cada cosa que haga el jugador. Si hoy cumplió el reto, no hay aviso hoy.
+- Dice lo que de verdad queda: la racha que se conserva, lo que falta del reto de hoy o el reto de la semana. Sin reproches.
+- Si no entra: diario hasta 3 días, luego uno a los 7 y otro a los 14 días, y después ninguno.
+- **Pendiente:** enviarlo al sistema. Godot no trae notificaciones locales: hace falta un plugin de Android (compilación Gradle personalizada; hoy `use_gradle_build=false`). Opciones: uno existente (kyoz/godot-local-notification o cengiz-pz Notification Scheduler, ambos MIT; compatibilidad con Godot 4.7.2 sin verificar) o uno propio en Kotlin siguiendo el patrón de WakeAgenda (AlarmManager + receptor de arranque + canal + permiso POST_NOTIFICATIONS). No hace falta alarma exacta. Kids: sin avisos.
+
 ## Pendiente
 - El progreso vive solo en el dispositivo; se perderá al cambiar de móvil hasta que exista la cuenta opcional.
 - Recordatorios (notificaciones): no incluidos.
