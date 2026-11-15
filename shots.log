@@ -1,0 +1,219 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+
+SHOTS driver=X11 pantalla=(540, 1200) lienzo=(1080.0, 2400.0)
+SHOT 01_inicio  [40 s]
+TEXTURA arce (1024.0, 1024.0) formato=17 mipmaps=true
+SHOT 01_marmol  [49 s]
+SHOT 01_metal  [58 s]
+SHOT 01_ilustrado  [75 s]
+SHOT 01_madera_con_contorno  [83 s]
+SHOT 02_jaque_y_seleccion  [90 s]
+SHOT 03_flechas  [95 s]
+SHOT 04_cenital  [99 s]
+SHOT 05_girada  [102 s]
+SHOT 06_oscuro  [108 s]
+SHOT 07_negras  [115 s]
+SHOT 08_primer_plano  [118 s]
+SHOT 09_primer_plano_negras  [121 s]
+SHOT 09_primer_plano_marmol  [127 s]
+SHOT 09_primer_plano_metal  [132 s]
+SHOT 10_salto_del_caballo  [146 s]
+SHOT 11_captura  [154 s]
+SHOT 12_enroque  [175 s]
+SHOT 13_promocion  [182 s]
+SHOT 14_mate  [198 s]
+SHOT 15_mate_final  [210 s]
+SHOT 16_arrastre  [218 s]
+SHOT 17_fichas_madera  [231 s]
+SHOT 17_fichas_marmol  [239 s]
+SHOT 17_fichas_metal  [246 s]
+SHOT 17_fichas_ilustrado  [251 s]
+SHOT 17_fichas_jaque_y_seleccion  [257 s]
+SHOT 17_fichas_cenital  [260 s]
+SHOT 17_fichas_negras  [264 s]
+SHOT 18_fichas_de_cerca_madera  [269 s]
+SHOT 18_fichas_de_cerca_marmol  [274 s]
+SHOT 18_fichas_de_cerca_metal  [278 s]
+SHOT 18_fichas_de_cerca_ilustrado  [280 s]
+SHOT 18_fichas_de_cerca_oscuras  [285 s]
+SHOT 19_fichas_mate  [321 s]
+SHOT 19_fichas_mate_final  [333 s]
+SONIDOS avisos=["capture", "slide", "place", "fall"] grabaciones: arrastre=true posar=true captura=true jaque=true caida=true
+SHOT 18_simple_ilustrado  [336 s]
+SHOT 18_simple_madera  [340 s]
+SHOT 18_simple_cenital  [341 s]
+SHOT 19_mundo_reino  [342 s]
+SHOT 19_mundo_safari  [343 s]
+SHOT 19_mundo_espacio  [344 s]
+SHOT 19_mundo_piratas  [345 s]
+SHOT 19_mundo_dino  [346 s]
+SHOT 20_demo  [378 s]
+ICONOS 56 en el atlas, faltan=[] emblema=true
+DEMO pista de gestos visible=true botones=«Pista» «Un paso» «Solución» «Saltar»
+DEMO explicaciones=true puntos=1
+SHOT 20b_demo_fallo  [402 s]
+DEMO fallo=d2e3 titulo=«No es la mejor» fase=2 parcial=true interactivo=true
+DEMO fallo dice: Tu jugada, De3, amenaza mate con Dxe1# y ataca a la dama de e1. | Pero permite Dxe3, que captura tu dama de e3. En pocas jugadas pierdes la dama y un alfil a cambio de la torre. | La mejor era Dxe1#, que es jaque mate.
+SHOT 20c_demo_fallo_variante  [422 s]
+DEMO tras la variante: fase=2 interactivo=true
+SHOT 21_demo_pieza_tocada  [429 s]
+DEMO seleccionada=11 (esperada 11)
+SHOT 22_demo_bien  [431 s]
+DEMO titulo=«¡Resuelto!» paso=2
+SHOT 23_demo_sigue  [451 s]
+DEMO titulo=«¡Resuelto!» paso=2
+SHOT 24_demo_solucion  [500 s]
+DEMO titulo=«Juegan negras» izquierda=«Solución» derecha=«Saltar»
+SHOT 24b_demo_nivel_2  [507 s]
+SHOT 24c_demo_nivel_3  [515 s]
+SHOT 24d_demo_nivel_4  [523 s]
+DEMO nivel=4 flechas=0 alto de la tarjeta=412
+SHOT 24e_demo_nivel_4_final  [525 s]
+SHOT 24g_demo_y_si_juego  [531 s]
+SHOT 24h_demo_y_si_juego_jugada  [555 s]
+DEMO y si juego d2e3: titulo=«No es la mejor» interactivo=true
+SHOT 24i_demo_pregunta_a_una_ia  [563 s]
+DEMO texto para la IA: 901 caracteres, empieza «Estoy aprendiendo ajedrez y tengo una duda sobre esta posici»
+DEMO lichess=https://lichess.org/analysis/6k1/p4pp1/2R2b1p/1P6/P7/3b4/3q1PPP/4Q1K1%20b%20-%20-%200%2037
+SHOT 25_demo_opciones  [573 s]
+SHOT 26_demo_opciones_oscuro  [580 s]
+SHOT 27_demo_oscuro  [583 s]
+SHOT 28_demo_oscuro_picado  [595 s]
+SHOT 29_demo_repetido  [623 s]
+DEMO titulo=«La solución» paso=2 problema=0
+SHOT 30_demo_ampliado  [650 s]
+DEMO ampliado zoom=1.88 desplazamiento=(-0.001215, 0.011288)
+SHOT 31_demo_desplazado  [659 s]
+DEMO desplazado zoom=1.88 desplazamiento=(-1.028388, 0.485368) seleccionada=-1
+SHOT 32_demo_entero_otra_vez  [673 s]
+DEMO entero zoom=1.00 desplazamiento=(0.0, -0.0) picado=false
+SHOT 33_demo_resuelto  [786 s]
+DEMO resuelto: fase=4 titulo=«¡Resuelto!» problema=1
+SHOT 34_demo_resuelto_por_que  [796 s]
+SHOT 35_demo_fichas  [800 s]
+SHOT 36_demo_fichas_problema  [832 s]
+SHOT 37_demo_opciones_fichas  [839 s]
+SHOT 37b_demo_opciones_final  [842 s]
+SHOT 40_demo_pista  [880 s]
+SHOT 41_demo_pista_pieza  [888 s]
+AYUDA pista nivel=2 pieza elegida=58 (esperada 58) fase=1
+SHOT 42_demo_un_paso  [907 s]
+AYUDA un paso: fase=7 titulo=«Este paso: Tc1+» paso 1→2 botones=«Solución» «Seguir»
+SHOT 43_demo_un_paso_por_que  [915 s]
+SHOT 44_demo_tras_el_paso  [945 s]
+AYUDA tras seguir: fase=1 titulo=«Juegan negras» paso=3 interactivo=true
+SHOT 45_demo_giro_fijado  [953 s]
+AYUDA giro fijado=true: tras girar dos dedos 30°, giro=0.0 pista de gestos=true
+SHOT 46_demo_girado_con_dos_dedos  [972 s]
+AYUDA giro libre: tras girar dos dedos 30° a la derecha, giro=24.0 inclinación=64.0 pista de gestos=false
+AYUDA casi derecho al soltar: giro=0.0
+SHOT 47_demo_enderezado  [987 s]
+SHOT 50_experiencia  [993 s]
+SHOT 51_test_problema  [1019 s]
+NIVEL test: modo=test fase=1 contador=«Test de nivel · problema 1» botón=«No lo sé» problema=xoGj9 dificultad=1138
+SHOT 52_test_fallo  [1040 s]
+NIVEL fallo e4d3: fase=6 anotados=1 error=«missed» paso=0 tiempo=14979 ms nivel=997±230 botón=«Siguiente»
+SHOT 53_test_acierto  [1108 s]
+NIVEL acierto: fase=4 anotados=2 correcto=true nivel=1092±195
+SHOT 54_test_no_lo_se  [1215 s]
+NIVEL no lo sé: fase=6 anotados=3 ayuda=«giveup» titulo=«La solución»
+SHOT 55_resultado  [1226 s]
+NIVEL resultado: problemas=9 nivel=787±113 mates=1/7 largos=0/2 fallos=6 respuesta=4 precipitados=0 plan=[{ "kind": "mate" }] hábitos=["reply"] modo=train página=result
+SHOT 55b_resultado_perfil  [1229 s]
+SHOT 55c_resultado_plan  [1232 s]
+SHOT 55d_entrenar  [1244 s]
+SHOT 56_entrenamiento  [1269 s]
+NIVEL entrenamiento: modo=train problema=0aY6c dificultad=559 (objetivo 596) barra=«Nivel 0 · n.º 27» insignia=true
+SHOT 57_entrenamiento_resuelto  [1429 s]
+NIVEL tras resolver: fase=1 anotados=9 cambio=[]
+SHOT 58_progreso  [1434 s]
+SHOT 58b_repaso  [1559 s]
+NIVEL repaso: problema=xoGj9 es el primer fallo del test=true ayudas=«Pista» «Un paso» anotados=11 (antes 9 + 2 nuevos)
+NIVEL repaso visto: fase=6 repasados=["xoGj9"] nivel sin cambio=true
+NIVEL repasos servidos=1
+SHOT 59_progreso_oscuro  [1615 s]
+SHOT 59b_experiencia_oscuro  [1620 s]
+SHOT 59c_test_saltar  [1642 s]
+NIVEL saltar test: modo=train nivel=600 saltado=true anotados=0→0 dificultad del problema=400
+SHOT 60_curso  [1681 s]
+CURSO lecciones=19 página=course
+SHOT 61_leccion_intro  [1690 s]
+SHOT 62_leccion_estrellas  [1693 s]
+SHOT 63_leccion_estrellas_hecho  [1711 s]
+CURSO estrellas: estado=done jugadas=2 mínimo=2 quedan=0 texto=«¡Perfecto! En 2 jugadas, el mínimo posible.»
+SHOT 64_leccion_a_salvo_fallo  [1725 s]
+CURSO a salvo: estado=fail texto=«Esa casilla la ataca una pieza negra: te capturarían. Mira antes qué casillas atacan.»
+SHOT 65_leccion_mate_fallo  [1740 s]
+CURSO mate fallo: estado=play texto=«Ta7 no es jaque: el rey negro no está atacado.»
+SHOT 66_leccion_mate  [1793 s]
+CURSO mate: estado=done texto=«¡Jaque mate! Con Ta8# el rey negro no tiene salida.»
+SHOT 67_leccion_enroque  [1826 s]
+CURSO enroque: estado=done texto=«¡Enroque corto! El rey queda resguardado y la torre entra en juego.»
+SHOT 68_leccion_fin  [1832 s]
+CURSO fin: estado=end hecha={ "enroque": 3 }
+SHOT 69_inicio  [1838 s]
+INICIO línea «Te faltan 150 puntos para el nivel 2» ancho=711 alto=49
+INICIO página=home
+SHOT 70_bienvenida_kids  [1844 s]
+SHOT 69b_inicio_kids  [1851 s]
+SHOT 71_kids_curso  [1856 s]
+SHOT 72_kids_intro  [1860 s]
+KIDS intro: «El caballo / El caballo salta haciendo una ele: dos casillas hacia un lado y una más hacia el otro. / Es la única pieza que puede saltar por encima de las demás.» voz=true
+SHOT 73_kids_ejercicio  [1864 s]
+KIDS ejercicio: «Lleva el caballo hasta la estrella.»
+SHOT 73b_kids_hecho  [1877 s]
+KIDS hecho: estado=done ventana=true
+SHOT 74_kids_mate_fallo  [1892 s]
+KIDS mate fallo: «Esa jugada no da jaque. ¡Prueba otra!»
+SHOT 75_kids_pista  [1915 s]
+KIDS pista: «Pista: mira esta pieza.» seleccionada=25
+SHOT 76_kids_opciones  [1924 s]
+SHOT 77_kids_puerta  [1934 s]
+KIDS puerta con respuesta mala: kids=true
+KIDS puerta con respuesta buena: kids=false modo=learn
+SHOT 80_partida_elegir  [1960 s]
+SHOT 81_partida_respuesta  [2023 s]
+PARTIDA tras e4: estado=play nota=«El rival ha jugado g5.» jugadas=3
+SHOT 82_partida_pista  [2045 s]
+PARTIDA pista: «Pista: Cc3.»
+PARTIDA deshacer: jugadas=1 turno=0 interactivo=true
+SHOT 83_partida_rendirse  [2087 s]
+PARTIDA rendirse: estado=over resultado=«Te has rendido.»
+SHOT 84_partida_peones  [2096 s]
+SHOT 85_partida_peones_ganada  [2106 s]
+PARTIDA peones: estado=over ganada=1 resultado=«¡Has coronado! Has ganado.»
+SHOT 86_partida_mate  [2124 s]
+PARTIDA mate: estado=over ganada=1 resultado=«¡Jaque mate! Has ganado.»
+SHOT 87_partida_ritmo  [2130 s]
+SHOT 88_partida_reloj  [2165 s]
+RELOJ: con reloj=true blancas=598667 negras=600000 acciones=2
+SHOT 88b_partida_pulsar  [2218 s]
+RELOJ pulsar: estado=press corre=true aviso=true nota=«¡Pulsa el reloj! Tu tiempo sigue corriendo.» su reloj baja=true
+RELOJ tras pulsar: estado=play
+RELOJ sin tiempo: estado=over ganada=-1 resultado=«Se te ha acabado el tiempo.»
+SHOT 89_partida_tiempo  [2309 s]
+SHOT 90_partida_fin_analisis  [2336 s]
+SHOT 91_analisis  [2360 s]
+ANALISIS: 2 momentos en 24472 ms: ["hang@4", "king@6"]
+  · Con 3. Dxf7+, tu dama quedó en f7, donde el rival la podía capturar sin perder lo mismo a cambio. Con Cc3 no perdías nada. Antes de mover, mira qué piezas tuyas quedan atacadas.
+  · En la jugada 4 moviste el rey (Re2) sin enrocar: ya no podrás enrocar. El enroque esconde al rey y saca la torre a la vez.
+SHOT 92_analisis_tablero  [2385 s]
+SHOT 93_enhorabuena  [2417 s]
+SHOT 94_nivel_nuevo  [2456 s]
+ENHORABUENA: capa=true
+PARTIDA salir: modo=learn
+SHOT 38_demo_bienvenida  [2486 s]
+SHOT 39_demo_bienvenida_oscuro  [2500 s]
+SHOTS DONE
+WARNING: 61 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2735)
+WARNING: 42 RIDs of type "Texture" were leaked.
+   at: finalize (servers/rendering/rendering_device.cpp:8900)
+WARNING: 351 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 3 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:822)
+ERROR: 39 RID allocations of type 'N10RendererRD14TextureStorage7TextureE' were leaked at exit.
+ERROR: 84 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 3 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
