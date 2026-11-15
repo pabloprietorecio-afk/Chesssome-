@@ -483,6 +483,9 @@ jobs:
           [ -f $A ]
           unzip -l $A > build/avisos-log/apk-contenido.txt
           if unzip -p $A 'classes*.dex' | grep -a -q "org/godotengine/plugin/notification"; then echo "OK plugin dentro del APK"; else echo "FALTA el plugin en el APK"; exit 1; fi
+          # El icono de la notificación: sin él Android puede descartar el aviso.
+          AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
+          if $AAPT2 dump resources $A | grep -q "ic_default_notification"; then echo "OK icono de la notificación"; else echo "FALTA el icono ic_default_notification"; exit 1; fi
           for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/ui/iconos.json; do
             if grep -q " $f$" build/avisos-log/apk-contenido.txt; then echo "OK $f"; else echo "FALTA $f"; exit 1; fi
           done
