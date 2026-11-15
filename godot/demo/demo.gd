@@ -176,6 +176,10 @@ var game := {}
 var game_color := 0
 var game_pick_color := 0
 var game_bot: Bot
+## Partida online (core/online.gd): el cliente de Firebase, si se está buscando rival, y el aviso de la pantalla.
+var online: Online
+var online_busy := false
+var online_status := ""
 var game_history: Array = []
 ## Jugadas de la partida (UCI), una menos que game_history.
 var game_moves: Array = []
@@ -685,6 +689,12 @@ func _ready() -> void:
 	_load_puzzles()
 	_load_course()
 	_load_version()
+	online = Online.new()
+	add_child(online)
+	online.started.connect(_online_started)
+	online.move_received.connect(_online_move)
+	online.ended.connect(_online_ended)
+	online.failed.connect(_online_failed)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
@@ -4106,6 +4116,8 @@ func _open_home() -> void:
 	if kids and not course.is_empty():
 		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
 	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, en cinco niveles.", _open_game_setup])
+	if not kids:
+		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
 	if not kids and not _has_player():
 		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
 	if not kids and _has_player():
@@ -4147,6 +4159,9 @@ func _sync_bar_icons() -> void:
 
 ## Botón de inicio de la barra: deja lo que se esté haciendo (una partida en curso se abandona) y abre el inicio.
 func _go_home() -> void:
+	if online.phase != "idle":
+		online.leave()
+	online_busy = false
 	if mode == "game" and game_state != "over" and game_state != "":
 		_stop_game_thread()
 		run_id += 1
@@ -4421,6 +4436,98 @@ func _close_game_setup() -> void:
 		_open_home()
 
 
+# ---------------------------------------------------------------- partida online
+
+func _open_online_home() -> void:
+	online_status = ""
+	_open_online()
+
+
+func _open_online() -> void:
+	if sheet_kind != "":
+		_close_options()
+	var page := _page("online")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var tile := _icon_tile("piece_queen", "sky", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Partida online", F_TITLE + 12, _c("ink"), font_display)))
+	var about := "Te emparejamos con el siguiente jugador que entre. Si no hay nadie esperando, abres una partida y esperas a tu rival."
+	if online_busy:
+		about = "Buscando rival… En cuanto entre otro jugador, empieza la partida. Puedes dejar esta pantalla abierta."
+	body.add_child(_centered(_para(about, F_SUB, _c("quiet"), font_medium)))
+	if online_status != "":
+		body.add_child(_spacer(20.0))
+		body.add_child(_centered(_para(online_status, F_BODY, _c("bad"), font_medium)))
+	body.add_child(_spacer(30.0))
+	if not online_busy:
+		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Sin cuenta: tu jugador es anónimo y se recuerda en este móvil.", _online_search))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
+
+
+func _online_search() -> void:
+	online_status = ""
+	online_busy = true
+	_open_online()
+	online.start()
+
+
+func _close_online() -> void:
+	online.leave()
+	online_busy = false
+	_close_progress()
+	_open_home()
+
+
+func _online_started(color: int) -> void:
+	online_busy = false
+	_start_game({"variant": "", "level": 0, "title": "Partida online", "text": "", "kids": "", "unit": "", "clock": [], "online": true}, color)
+
+
+## Jugada del rival, que llega por la red.
+func _online_move(uci: String) -> void:
+	if mode != "game" or not bool(game.get("online", false)) or game_state != "think":
+		return
+	var pos := view.board.chess.copy()
+	var m := pos.find_uci(uci)
+	if m < 0:
+		return
+	var san := SanEs.san(pos, m)
+	view.show_move(uci)
+	game_history.append(view.board.chess.fen())
+	game_moves.append(uci)
+	game_note = "El rival ha jugado %s." % san
+	if _game_check_end(pos, m):
+		return
+	game_state = "play"
+	game_clock_side = game_color
+	view.interactive = true
+	if view.board.chess.in_check():
+		game_note = "El rival ha jugado %s: tu rey está en jaque." % san
+	_refresh()
+
+
+func _online_ended(_reason: String, _winner: int) -> void:
+	if mode != "game" or not bool(game.get("online", false)) or game_state == "over":
+		return
+	game_state = "over"
+	game_won = 1
+	game_result = "Tu rival ha abandonado la partida: ¡has ganado!"
+	view.interactive = false
+	_sfx("leccion")
+	_refresh()
+
+
+func _online_failed(message: String) -> void:
+	online_busy = false
+	online_status = message
+	if progress_kind == "online" and progress != null and is_instance_valid(progress):
+		_open_online()
+
+
 ## La partida del final de una unidad del curso.
 func _start_unit_game(unit_id: String) -> void:
 	for unit: Dictionary in course:
@@ -4475,6 +4582,16 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	if line == "":
 		line = _kid_line("gameWhite" if color == 0 else "gameBlack")
 	_say([line])
+	if bool(cfg.get("online", false)):
+		# Partida online: el rival llega por la red, no hay hilo del rival.
+		game_clock_side = view.board.chess.turn
+		if view.board.chess.turn != game_color:
+			game_state = "think"
+			view.interactive = false
+		else:
+			view.interactive = true
+		_refresh()
+		return
 	if view.board.chess.turn != game_color:
 		_game_bot_turn()
 	else:
@@ -4492,7 +4609,16 @@ func _game_move(uci: String) -> void:
 	game_moves.append(uci)
 	view.board.set_arrows([])
 	game_note = ""
+	var is_online := bool(game.get("online", false))
+	if is_online:
+		online.play(uci)
 	if _game_check_end(before, m):
+		return
+	if is_online:
+		game_clock_side = 1 - game_color
+		game_state = "think"
+		view.interactive = false
+		_refresh()
 		return
 	if game_clocked and press_clock:
 		# Como en una partida de verdad: tu reloj sigue corriendo hasta que lo pulsas.
@@ -4686,6 +4812,8 @@ func _game_check_end(before: Chess, m: int) -> bool:
 			return false
 	game_state = "over"
 	view.interactive = false
+	if bool(game.get("online", false)):
+		online.finish()
 	game_won = 0 if winner < 0 else (1 if winner == game_color else -1)
 	var texts := {
 		"mate": ["¡Jaque mate! Has ganado.", "Jaque mate: gana el rival."],
@@ -4780,6 +4908,8 @@ func _game_hint() -> void:
 func _game_resign() -> void:
 	if game_state == "over":
 		return
+	if bool(game.get("online", false)):
+		online.leave()
 	_stop_game_thread()
 	run_id += 1
 	game_state = "over"
@@ -4790,10 +4920,17 @@ func _game_resign() -> void:
 
 
 func _game_again() -> void:
+	if bool(game.get("online", false)):
+		online.leave()
+		online_status = ""
+		_online_search()
+		return
 	_start_game(game, game_color)
 
 
 func _leave_game() -> void:
+	if bool(game.get("online", false)):
+		online.leave()
 	_stop_game_thread()
 	run_id += 1
 	view.interactive = false
@@ -4894,7 +5031,8 @@ func _build_game_actions() -> void:
 	if game_state == "review":
 		_build_review_actions()
 		return
-	var key := "game:%s:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked)]
+	var is_online := bool(game.get("online", false))
+	var key := "game:%s:%s:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked), str(is_online)]
 	if game_state == "press":
 		key += ":" + str(_press_warned)
 	if key == _actions_mode:
@@ -4934,8 +5072,8 @@ func _build_game_actions() -> void:
 		right_button = _tool_button("flag", "Rendirse", _game_resign, "rose")
 		var out := _tool_button("close", "Salir", _leave_game, "lilac")
 		row = [out, left_button, hint_button, right_button]
-		if game_clocked:
-			# Con reloj, como en una partida oficial: ni deshacer ni pistas.
+		if game_clocked or is_online:
+			# Con reloj o contra una persona, como en una partida oficial: ni deshacer ni pistas.
 			left_button = null
 			hint_button = null
 			row = [out, right_button]
