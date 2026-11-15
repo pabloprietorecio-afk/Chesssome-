@@ -101,7 +101,11 @@ func _por_que(demo: Control) -> void:
 		return
 	demo.view.board.anim_mode = Board3D.Anim.NONE
 	demo._start(idx)
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(0.8).timeout
+	await _frames(4)
+	await _shot("p7b_comenzar")
+	demo._begin()
+	await get_tree().create_timer(2.0).timeout
 	demo._on_step()
 	await get_tree().create_timer(1.0).timeout
 	demo._on_right()
@@ -123,10 +127,21 @@ func _por_que(demo: Control) -> void:
 		print("POR QUE · ", p["text"])
 	demo._toggle_move_why()
 	await _frames(4)
-	demo._on_step()
-	await get_tree().create_timer(1.5).timeout
+	# La última jugada la hace «el jugador»: sale la ventana «¡Resuelto!» y, tras «OK», la tarjeta pequeña.
+	demo.view.show_move("f4d3")
+	demo._on_move_played("f4d3")
+	await get_tree().create_timer(1.2).timeout
 	await _frames(4)
+	await _shot("p12a_resuelto_ventana")
+	print("RESUELTO fase=%d ventana=%s" % [demo.phase, str(demo.result_popup)])
+	demo._close_result_popup()
+	await _frames(6)
 	await _shot("p12_resuelto")
+	demo._toggle_summary()
+	await _frames(6)
+	await _shot("p12b_resumen")
+	demo._toggle_summary()
+	await _frames(2)
 	demo._toggle_story()
 	var k := 0
 	for i in demo.why_paras.size():

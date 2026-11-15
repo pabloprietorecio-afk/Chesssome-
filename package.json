@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Chessome — prototipo MVP: problemas de ajedrez explicados, evaluación inicial adaptativa y tablero 3D",
+  "description": "A Chess Way — prototipo MVP: problemas de ajedrez explicados, evaluación inicial adaptativa y tablero 3D",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

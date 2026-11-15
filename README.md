@@ -1,4 +1,4 @@
-# Chessome · prototipo MVP
+# A Chess Way · prototipo MVP
 
 Prototipo para comprobar tres hipótesis antes de construir el producto:
 

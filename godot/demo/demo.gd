@@ -1,7 +1,7 @@
 extends Control
 ## Pantalla de problema de la app: problemas reales de Lichess sobre el tablero 3D, con su explicación.
 ## Todavía no es el entrenamiento completo (falta el test de nivel y la elección de problemas según el
-## jugador), pero ya enseña lo que distingue a Chessome: cuando fallas, te explica qué tenía de bueno tu
+## jugador), pero ya enseña lo que distingue a A Chess Way: cuando fallas, te explica qué tenía de bueno tu
 ## jugada y qué permite; cuando aciertas o pides la solución, por qué funciona, en cuatro niveles de
 ## profundidad. Las explicaciones vienen ya redactadas y verificadas (core/explain_data.gd).
 ## El estilo: aire de app móvil (letra grande, tonos pastel, iconos grandes y botones con su ilustración);
@@ -112,6 +112,16 @@ var why_board := false
 var why_saved := {}
 ## Paso a paso de la solución entera, tras resolver («Jugada a jugada»).
 var why_story_open := false
+## Al resolver: primero solo una ventana «¡Resuelto!» con «OK» (aparece un instante después de la última jugada,
+## para verla); al cerrarla, debajo del tablero, «Paso a paso», «Resumen» y «¿Por qué?». El resumen, plegado.
+var result_popup := false
+var result_popup_at := 0
+var result_popup_node: Control
+var summary_open := false
+## Al cargar un problema, el tablero queda quieto hasta pulsar «Comenzar»: entonces juega el rival.
+var intro_waiting := false
+## Para las pruebas automáticas: «Comenzar» se pulsa solo.
+var auto_begin := false
 ## Icono del jugador dentro de su insignia: "" = la pieza de su rango, "piece_…" = una pieza fija, "foto" = su foto.
 const AVATAR_PATH := "user://chessome_avatar.png"
 var avatar := ""
@@ -1843,6 +1853,7 @@ func _refresh(animate: bool = true) -> void:
 	_build_card()
 	_build_actions()
 	_sync_learn_popup()
+	_sync_result_popup()
 	_layout(animate)
 
 
@@ -1968,8 +1979,12 @@ func _build_card() -> void:
 	var show_dot := false
 	match phase:
 		Phase.INTRO:
-			head = "Mira al rival"
-			sub = "Fíjate en su jugada: después te toca a ti."
+			if intro_waiting:
+				head = "Juegas con %s" % ("negras" if view.board.chess.turn == 0 else "blancas")
+				sub = "Mira la posición con calma. Al pulsar «Comenzar», el rival hace su jugada."
+			else:
+				head = "Mira al rival"
+				sub = "Fíjate en su jugada: después te toca a ti."
 		Phase.SOLVING:
 			head = "Juegan %s" % ("blancas" if view.board.chess.turn == 0 else "negras")
 			sub = "Encuentra la mejor jugada." if ask_step <= 1 else "Sigue: todavía hay más."
@@ -2033,6 +2048,11 @@ func _build_card() -> void:
 	title = _para(head, F_TITLE2 if not e.is_empty() or whatif else F_TITLE, tone, font_display)
 	title.add_theme_constant_override("line_spacing", 0)
 	title_row.add_child(title)
+	if phase == Phase.INTRO and intro_waiting and not puzzle.is_empty():
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var go := _button("play", "Comenzar", _begin, _c("accent"), _c("accent_ink"), {"font_size": F_SUB, "height": 104.0, "icon": 50.0, "radius": 52, "glow": _c("glow")})
+		go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		title_row.add_child(go)
 
 	if whatif:
 		_add_whatif(e)
@@ -2042,7 +2062,7 @@ func _build_card() -> void:
 			# El test es breve: la explicación a fondo llega después, en el entrenamiento.
 			if done and not bool(e.get("correct", false)):
 				card_body.add_child(_para("Lo repasaremos con calma en el entrenamiento.", F_SUB, _c("quiet"), font_regular))
-		elif done and not why_story_open:
+		elif done and not why_story_open and not result_popup and (exp_level >= 2 or not _solved_compact(e)):
 			_add_tools()
 		elif phase == Phase.STEP:
 			card_body.add_child(_para("Pulsa «Seguir» y continúa tú con el resto.", F_SUB, _c("quiet"), font_regular))
@@ -2055,7 +2075,7 @@ func _build_card() -> void:
 
 	# Ficha del problema. El tema es una pista: solo se enseña cuando ya está resuelto o mostrado.
 	# Con una explicación o una pista a la vista no se repite: el sitio es para ellas.
-	if total > 0 and not whatif and not why_story_open and (done or (e.is_empty() and hint_level == 0)):
+	if total > 0 and not whatif and not why_story_open and not result_popup and (done or (e.is_empty() and hint_level == 0)):
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
 		chips.add_theme_constant_override("v_separation", 10)
@@ -2178,7 +2198,22 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 		card_body.add_child(_why_block({"paras": why_paras}, "Jugada a jugada"))
 		card_body.add_child(_card_button("Cerrar el paso a paso", _toggle_story, _c("field"), _c("quiet"), F_FOOT, "close"))
 		return
-	if not board_why.is_empty() and mode != "test":
+	if _solved_compact(e):
+		# Resuelto: la tarjeta pequeña, para que el tablero se siga viendo. Con la ventana «¡Resuelto!» abierta,
+		# nada más; después, tres botones y lo que se haya abierto.
+		if result_popup:
+			return
+		card_body.add_child(_tool_tiles([
+			["step", "Paso a paso", _toggle_story, "mint"],
+			["info", "Ocultar resumen" if summary_open else "Resumen", _toggle_summary, "sky"],
+			["why", "¿Por qué?" if level < 2 else ("Más a fondo" if level < 4 else "Ya no hay más"), _on_why, "lilac"],
+		]))
+		if summary_open:
+			for p: Dictionary in board_why:
+				card_body.add_child(_para(str(p["text"]), F_BODY, _c("ink"), font_regular))
+		if level < 2:
+			return
+	elif not board_why.is_empty() and mode != "test":
 		# Qué ha conseguido la jugada, sacado del tablero (ataque doble, mate, qué casillas quedan…).
 		for p: Dictionary in board_why:
 			card_body.add_child(_para(str(p["text"]), F_BODY, _c("ink"), font_regular))
@@ -2187,7 +2222,7 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 			card_body.add_child(_para(str(first[i]), F_BODY, _c("ink"), font_regular))
 	if mode == "test":
 		return
-	if not board_why.is_empty() and not partial and not whatif:
+	if not board_why.is_empty() and not partial and not whatif and not _solved_compact(e):
 		# La solución entera, jugada a jugada y con flechas.
 		if not why_story_open:
 			var tint := _tint("mint")
@@ -2227,7 +2262,7 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 				card_body.add_child(_engine_row(row))
 		for text: Variant in engine["paragraphs"]:
 			card_body.add_child(_para(str(text), F_FOOT, _c("quiet"), font_regular))
-	if level < 4:
+	if level < 4 and not _solved_compact(e):
 		var tint := _tint("lilac")
 		var why := _button(["why", "line", "chart"][level - 1], str(WHY_LABELS[level]), _on_why, tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 60.0})
 		var why_pad := _pad(0, 8, 0, 0)
@@ -2242,6 +2277,92 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 			for fact: Array in facts:
 				var source := str(SOURCE_NAMES.get(str(fact[0]), str(fact[0])))
 				card_body.add_child(_para("%s · %s" % [source, str(fact[1])], F_FOOT, _c("quiet"), font_regular))
+
+
+## ¿Se enseña la tarjeta pequeña de «resuelto»? Con el problema terminado (resuelto o con la solución a la vista),
+## fuera del test y de Kids, y si hay explicación sacada del tablero.
+func _solved_compact(e: Dictionary) -> bool:
+	if kids or mode == "test" or whatif or not (phase == Phase.SOLVED or phase == Phase.SHOWN):
+		return false
+	return not _board_why_for(e, false).is_empty()
+
+
+func _toggle_summary() -> void:
+	summary_open = not summary_open
+	_keep_scroll = true
+	_refresh()
+
+
+func _close_result_popup() -> void:
+	result_popup = false
+	_refresh()
+
+
+## Ventana «¡Resuelto!» sobre el tablero, semitransparente, con «OK». No tapa la barra de abajo: «Siguiente»
+## sigue funcionando.
+func _sync_result_popup() -> void:
+	var want := result_popup and phase == Phase.SOLVED and mode != "learn" and mode != "game"
+	if want and Time.get_ticks_msec() < result_popup_at:
+		# Un instante para ver la última jugada.
+		var my_run := run_id
+		get_tree().create_timer(float(result_popup_at - Time.get_ticks_msec()) / 1000.0 + 0.02).timeout.connect(func() -> void:
+			if my_run == run_id and result_popup:
+				_sync_result_popup())
+		want = false
+	if result_popup_node != null and is_instance_valid(result_popup_node):
+		if want:
+			return
+		result_popup_node.queue_free()
+	result_popup_node = null
+	if not want:
+		return
+	result_popup_node = Control.new()
+	result_popup_node.set_anchors_preset(Control.PRESET_FULL_RECT)
+	result_popup_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(result_popup_node)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	var paper := _c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.82)
+	sb.set_corner_radius_all(60)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 30
+	sb.shadow_offset = Vector2(0.0, 12.0)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	result_popup_node.add_child(panel)
+	var pad := _pad(50, 40, 50, 40)
+	panel.add_child(pad)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 22)
+	pad.add_child(column)
+	var tick := _icon("check", 120.0, _c("good"))
+	tick.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(tick)
+	column.add_child(_centered(_para("¡Resuelto!", F_TITLE + 16, _c("good"), font_display)))
+	var ok := _button("check", "OK", _close_result_popup, _c("accent"), _c("accent_ink"), {"font_size": F_HEAD, "height": 120.0, "radius": 60, "glow": _c("glow")})
+	ok.custom_minimum_size = Vector2(360.0, 120.0)
+	ok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(ok)
+	# Pequeña, centrada sobre el tablero; aparece con un leve rebote.
+	var place := func() -> void:
+		if not is_instance_valid(panel) or board_slot == null or not is_instance_valid(board_slot):
+			return
+		var w := minf(size.x - 160.0, 640.0)
+		panel.size = Vector2(w, 0.0)
+		panel.reset_size()
+		panel.size.x = w
+		var h := panel.get_combined_minimum_size().y
+		var rect := board_slot.get_global_rect()
+		panel.position = Vector2((size.x - w) * 0.5, clampf(rect.get_center().y - h * 0.5, 40.0, size.y - h - 40.0))
+		panel.pivot_offset = panel.size * 0.5
+	panel.minimum_size_changed.connect(place)
+	place.call_deferred()
+	panel.scale = Vector2(0.85, 0.85)
+	panel.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(panel, "modulate:a", 1.0, 0.18)
 
 
 ## Si en la solución hay un ataque doble (lo ve el tablero, aunque el problema no lo tenga como tema), el concepto.
@@ -2335,7 +2456,6 @@ func _add_tools() -> void:
 	card_body.add_child(_section("Más ayuda"))
 	card_body.add_child(_tool_tiles([
 		["whatif", "¿Y si juego…?", _toggle_whatif, "sky"],
-		["search", "Analizar en Lichess", _open_lichess, "mint"],
 		["spark", "Pregunta a una IA", _open_ai, "rose"],
 	]))
 
@@ -2365,13 +2485,16 @@ func _add_whatif(e: Dictionary) -> void:
 	card_body.add_child(back)
 	if not e.is_empty():
 		card_body.add_child(_tool_tiles([
-			["search", "Analizar en Lichess", _open_lichess, "mint"],
 			["spark", "Pregunta a una IA", _open_ai, "rose"],
 		]))
 
 
 func _set_phase(p: Phase) -> void:
 	phase = p
+	result_popup = p == Phase.SOLVED and mode != "test" and not kids and not whatif
+	if result_popup:
+		summary_open = false
+		result_popup_at = Time.get_ticks_msec() + 450
 	# Un repaso queda hecho cuando el problema termina, resuelto o con la solución a la vista.
 	if is_review and (p == Phase.SOLVED or p == Phase.SHOWN) and not puzzle.is_empty() and not reviewed.has(str(puzzle["id"])):
 		reviewed[str(puzzle["id"])] = true
@@ -2515,6 +2638,8 @@ func _browse(delta: int) -> void:
 	move_why_open = false
 	why_board = false
 	why_story_open = false
+	summary_open = false
+	result_popup = false
 	why_paras = []
 	if phase == Phase.WRONG:
 		_clear_explanation()
@@ -2670,6 +2795,8 @@ func _why_close_for_action() -> void:
 		_why_restore()
 		move_why_open = false
 		why_story_open = false
+		summary_open = false
+		result_popup = false
 		why_paras = []
 
 
@@ -3099,11 +3226,11 @@ func _build_sheet() -> void:
 	box.add_child(_caption("Tema"))
 	box.add_child(_segments(["Claro", "Oscuro"], 1 if dark else 0, _set_theme_index, ["sun", "moon"]))
 	var tint := _tint("lilac")
-	var how := _button("book", "Cómo se usa Chessome", _open_welcome, tint[0], tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 54.0})
+	var how := _button("book", "Cómo se usa A Chess Way", _open_welcome, tint[0], tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 54.0})
 	var how_pad := _pad(0, 18, 0, 0)
 	how_pad.add_child(how)
 	box.add_child(how_pad)
-	var about := _para("Chessome · %s" % app_version, F_CAP, _c("quiet"), font_regular)
+	var about := _para("A Chess Way · %s" % app_version, F_CAP, _c("quiet"), font_regular)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(about)
 
@@ -3416,7 +3543,7 @@ func _set_dark(on: bool) -> void:
 
 # ---------------------------------------------------------------- bienvenida
 
-## Pantalla de bienvenida: qué es Chessome y cómo se usa. Sale la primera vez y desde Opciones.
+## Pantalla de bienvenida: qué es A Chess Way y cómo se usa. Sale la primera vez y desde Opciones.
 ## Emblema, nombre y cuatro ideas con su icono grande; el botón, siempre a la vista al pie.
 func _open_welcome() -> void:
 	if sheet_kind != "":
@@ -3471,7 +3598,7 @@ func _open_welcome() -> void:
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(emblem)
-	var name_label := _para("Chessome", F_LARGE, _c("ink"), font_display)
+	var name_label := _para("A Chess Way", F_LARGE, _c("ink"), font_display)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(name_label)
 	body.add_child(_spacer(6.0))
@@ -3613,13 +3740,29 @@ func _start(i: int, review: bool = false) -> void:
 	move_why_open = false
 	why_board = false
 	why_story_open = false
+	summary_open = false
+	result_popup = false
 	why_paras = []
 	view.set_fen(puzzle["fen"])
 	# Juega quien responde a la primera jugada (la del rival).
 	view.set_orientation(1 - view.board.chess.turn)
 	view.interactive = false
+	intro_waiting = true
 	_set_phase(Phase.INTRO)
-	await _wait(0.7)
+	if auto_begin:
+		await _wait(0.45)
+		if my_run == run_id:
+			_begin()
+
+
+## «Comenzar»: el rival hace su jugada y después te toca.
+func _begin() -> void:
+	if phase != Phase.INTRO or not intro_waiting or puzzle.is_empty():
+		return
+	intro_waiting = false
+	_refresh()
+	var my_run := run_id
+	await _wait(0.25)
 	if my_run != run_id:
 		return
 	var moves: Array = puzzle["moves"]
@@ -3636,6 +3779,8 @@ func _ask() -> void:
 	move_why_open = false
 	why_board = false
 	why_story_open = false
+	summary_open = false
+	result_popup = false
 	why_paras = []
 	fen_before = view.board.chess.fen()
 	ask_step = step
@@ -4616,7 +4761,7 @@ func _open_home() -> void:
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(emblem)
-	body.add_child(_centered(_para("Chessome", F_LARGE, _c("ink"), font_display)))
+	body.add_child(_centered(_para("A Chess Way", F_LARGE, _c("ink"), font_display)))
 	var sub := "¿A qué jugamos hoy?" if kids else "¿Qué quieres hacer?"
 	body.add_child(_centered(_para(sub, F_HEAD, _c("quiet"), font_medium)))
 	if _has_player():

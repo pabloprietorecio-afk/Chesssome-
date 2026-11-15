@@ -146,7 +146,7 @@ export function TrainScreen(): JSX.Element {
         if (level > startLevel) log({ type: 'why_open', puzzleId: current.puzzle.id, data: { level }, phase: current.phase, feedback });
       }}
       onLinePlay={() => log({ type: 'line_play', puzzleId: current.puzzle.id, phase: current.phase, feedback })}
-      levelLabel={s.rating ? `${levelBand(s.rating.r).name} (${Math.round(s.rating.r)} en Chessome)` : undefined}
+      levelLabel={s.rating ? `${levelBand(s.rating.r).name} (${Math.round(s.rating.r)} en A Chess Way)` : undefined}
       onAssist={(tool, data) => log({ type: 'assist', puzzleId: current.puzzle.id, phase: current.phase, feedback, data: { tool, ...data } })}
       onTap={(k) => log({ type: k === 'illegal' ? 'illegal_target' : k, puzzleId: current.puzzle.id, phase: current.phase, board })}
       onNext={() => {

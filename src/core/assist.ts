@@ -29,7 +29,7 @@ export interface ShareInput {
   puzzle: AnalyzedPuzzle;
   /** Explicación de la jugada que se pregunta (la del jugador o la que ha probado en «¿Y si juego…?»). */
   exp: Explanation;
-  /** Nivel del jugador en palabras, p. ej. "Iniciado (1150 en Chessome)". */
+  /** Nivel del jugador en palabras, p. ej. "Iniciado (1150 en A Chess Way)". */
   levelLabel?: string;
   question?: string;
   /** La jugada no se jugó: se está probando con «¿Y si juego…?». */

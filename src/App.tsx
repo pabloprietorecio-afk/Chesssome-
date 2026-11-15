@@ -89,13 +89,13 @@ export function App(): JSX.Element {
   return (
     <div className="cm-app">
       <header className="cm-top">
-        <button className="cm-brand" onClick={() => go(placed ? 'home' : 'welcome')} aria-label="Chessome, inicio">
+        <button className="cm-brand" onClick={() => go(placed ? 'home' : 'welcome')} aria-label="A Chess Way, inicio">
           <span className="cm-logo" aria-hidden="true">
             <svg viewBox="0 0 100 100">
               <PieceSvg type="n" color="w" />
             </svg>
           </span>
-          Chessome
+          A Chess Way
         </button>
         {placed && (
           <nav aria-label="Secciones">

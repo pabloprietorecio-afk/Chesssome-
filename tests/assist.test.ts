@@ -23,12 +23,12 @@ describe('Pregunta a una IA', () => {
       const pt = p.points[0];
       const wrong = new Chess(pt.fen).moves({ verbose: true }).find((m) => m.lan !== pt.solution)!;
       for (const exp of [explainSolved(p), explain(p, 0, wrong.lan)]) {
-        const text = aiShareText({ puzzle: p, exp, levelLabel: 'Iniciado (1150 en Chessome)' });
+        const text = aiShareText({ puzzle: p, exp, levelLabel: 'Iniciado (1150 en A Chess Way)' });
         expect(text).toContain(`Posición (FEN): ${pt.fen}`);
         expect(text).toContain(lichessAnalysisUrl(pt.fen));
         expect(text).toContain(exp.bestSan);
         expect(text).toContain(`Análisis de ${p.engine.name}`);
-        expect(text).toContain('Mi nivel: Iniciado (1150 en Chessome).');
+        expect(text).toContain('Mi nivel: Iniciado (1150 en A Chess Way).');
         expect(text).toContain(`Mi pregunta: ${defaultQuestion(exp)}`);
         // Nada que no sea texto plano: ni HTML ni campos vacíos.
         expect(text).not.toMatch(/undefined|NaN|\[object|<\w/);

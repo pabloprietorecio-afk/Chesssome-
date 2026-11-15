@@ -19,7 +19,7 @@ export function Welcome(): JSX.Element {
     <section className="cm-hero">
       <h1>Entiende cada error, no solo la solución.</h1>
       <p>
-        Chessome te pone problemas reales de ajedrez y, cuando fallas, te explica qué tenía de buena tu jugada, qué permitía al rival y qué
+        A Chess Way te pone problemas reales de ajedrez y, cuando fallas, te explica qué tenía de buena tu jugada, qué permitía al rival y qué
         conseguía la mejor. Cada frase sale del análisis de un motor o de las reglas del juego.
       </p>
       <button className="cm-primary cm-big" onClick={() => go('experience')}>

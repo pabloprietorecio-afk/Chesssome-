@@ -304,6 +304,7 @@ func _demo_shots() -> void:
 	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
 	# Sin ajustes guardados ni bienvenida automática: las capturas salen siempre del mismo estado.
 	demo.use_settings = false
+	demo.auto_begin = true
 	add_child(demo)
 	await _frames(30)
 	await _shot("20_demo")

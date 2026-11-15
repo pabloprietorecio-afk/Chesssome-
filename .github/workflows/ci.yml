@@ -65,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ultima-web
-          name: "Chessome · último prototipo web"
+          name: "A Chess Way · último prototipo web"
           prerelease: true
           make_latest: false
           body: "Prototipo web de un solo archivo (commit ${{ github.sha }}). Ábrelo en el navegador."
@@ -195,7 +195,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ultimo-apk
-          name: "Chessome · último APK de prueba"
+          name: "A Chess Way · último APK de prueba"
           prerelease: true
           make_latest: false
           body: "APK de depuración de la demo 3D (versión ${{ github.run_number }}, commit ${{ github.sha }})."
