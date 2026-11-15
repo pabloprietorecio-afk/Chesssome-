@@ -2751,10 +2751,26 @@ func _solver_color() -> int:
 
 ## Explicación de la jugada `i` de la línea del problema, con su veredicto: la primera del rival es el error que
 ## abre el problema; las demás del rival, su defensa (o su única jugada); las de quien resuelve, las mejores.
+## Explicaciones ya calculadas (las del rival usan una búsqueda corta del motor): por problema y jugada.
+var _why_cache := {}
+
+
 func _puzzle_move_why(i: int) -> Dictionary:
 	var moves: Array = puzzle.get("moves", [])
 	if i < 0 or i >= moves.size():
 		return {}
+	var key := "%s|%s|%d" % [str(puzzle.get("id", "")), str(puzzle.get("fen", "")), i]
+	if _why_cache.has(key):
+		return _why_cache[key]
+	if _why_cache.size() > 200:
+		_why_cache.clear()
+	var e := _puzzle_move_why_now(i)
+	_why_cache[key] = e
+	return e
+
+
+func _puzzle_move_why_now(i: int) -> Dictionary:
+	var moves: Array = puzzle.get("moves", [])
 	var before := _puzzle_pos(i)
 	var m := before.find_uci(str(moves[i]))
 	if m < 0:

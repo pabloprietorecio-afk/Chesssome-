@@ -661,7 +661,11 @@ static func explain(before: Chess, m: int, me: int, role: String, rest: Array = 
 			paras = escape_paras(before, m, me)
 		else:
 			paras = move_paras(before, m, me)
-		paras.append(_par("De todas sus jugadas, es la que más resiste.", [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+		var why_def := defense_paras(before, m, me)
+		if why_def.is_empty():
+			paras.append(_par("De todas sus jugadas, es la que más resiste.", [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+		else:
+			paras.append_array(why_def)
 	else:
 		if before.in_check():
 			paras = escape_paras(before, m, me)
@@ -829,3 +833,75 @@ static func _who(kids: bool, pos: Chess, s: int, me: int, with_square: bool = tr
 		return "tu %s" % NOUN[t]
 	var adj := ("blanca" if c == 0 else "negra") if _fem(t) else ("blanco" if c == 0 else "negro")
 	return "%s %s %s" % [_art(t), NOUN[t], adj]
+
+
+## Por qué el rival se defiende así: su pieza amenazada (la de más valor) no tiene casilla buena. Para cada huida,
+## la respuesta más fuerte (con una búsqueda corta del motor) y lo que se pierde: «Si Dе2, Txe2 se la come». Al
+## final, por qué la jugada hecha es lo que menos pierde. [] si no hay una pieza amenazada clara.
+static func defense_paras(before: Chess, m: int, me: int) -> Array:
+	var side := before.turn
+	var opp := 1 - side
+	# La pieza amenazada: atacada por otra de menos valor, o sin defensa.
+	var target := -1
+	for sq in 64:
+		var p: int = before.b[sq]
+		if p == 0 or Chess.color_of(p) != side or Chess.type_of(p) == Chess.KING:
+			continue
+		var t := Chess.type_of(p)
+		var hit := false
+		for a: int in attackers(before, sq, opp):
+			if int(VALUE[Chess.type_of(before.b[a])]) < int(VALUE[t]) or not before.attacked(sq, side):
+				hit = true
+		if hit and (target < 0 or int(VALUE[t]) > int(VALUE[Chess.type_of(before.b[target])])):
+			target = sq
+	if target < 0:
+		return []
+	var who := name_at(before, target, me, false)
+	var tt := Chess.type_of(before.b[target])
+	var bot := Bot.new(4)
+	var out: Array = []
+	var lost: Array = []  # «si va a e3, Dxe3 se la come»
+	var chased_sq: Array = []
+	var chased_mv: Array = []
+	var arrows: Array = []
+	var others := 0
+	for alt in before.legal_moves():
+		if Chess.move_from(alt) != target or alt == m:
+			continue
+		if lost.size() + chased_sq.size() >= 4:
+			others += 1
+			continue
+		var after := before.after(alt)
+		var r := bot.analyse(after, -1, 3, 0.08)
+		if r.is_empty():
+			continue
+		var reply: int = r["best"]
+		var score := int(r["best_score"])
+		var at := Chess.move_to(alt)
+		var rsan := _san(after, reply)
+		if Chess.move_to(reply) == at:
+			lost.append("si va a %s, %s se %s come" % [Chess.sq_name(at), rsan, _pron(tt)])
+		elif score >= Bot.MATE - 300:
+			lost.append("si va a %s, %s y llega el mate" % [Chess.sq_name(at), rsan])
+		else:
+			# La sigue acosando (o gana otra cosa): el problema es de Lichess, sacado con Stockfish, y su
+			# defensa es la mejor, así que esta pierde aún más.
+			chased_sq.append(Chess.sq_name(at))
+			chased_mv.append(rsan)
+		arrows.append(_arrow(Chess.move_from(alt), at, "info"))
+		arrows.append(_arrow(Chess.move_from(reply), Chess.move_to(reply), "bad"))
+	if lost.is_empty() and chased_sq.is_empty():
+		return []
+	var parts: Array = lost.duplicate()
+	if not chased_sq.is_empty():
+		parts.append("en %s tampoco se salva (%s): pierde aún más" % [join(chased_sq), ", ".join(chased_mv)])
+	var text := "¿Y por qué no pone a salvo %s? No tiene casilla segura: %s" % [who, "; ".join(parts)]
+	if others > 0:
+		text += ". En las demás casillas, lo mismo"
+	out.append(_par(text + ".", arrows, before))
+	var taken: int = before.b[Chess.move_to(m)]
+	if taken != 0:
+		out.append(_par("Así que %s: al menos se lleva %s a cambio. Es lo que menos pierde." % [_san(before, m), name_at(before, Chess.move_to(m), me, false)], [_arrow(Chess.move_from(m), Chess.move_to(m), "info")], before, [Chess.move_from(m), Chess.move_to(m)]))
+	else:
+		out.append(_par("Así que %s: de todas sus jugadas, es la que menos pierde." % _san(before, m), [_arrow(Chess.move_from(m), Chess.move_to(m), "info")], before, [Chess.move_from(m), Chess.move_to(m)]))
+	return out
