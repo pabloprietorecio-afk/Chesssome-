@@ -99,6 +99,22 @@ func _ready() -> void:
 	await _detalle(demo)
 	await _mis_partidas(demo)
 	await _por_que(demo)
+	# Ahogado: un ejemplo del curso y su «¿Por qué?» (el rey intenta escapar).
+	demo._start_lesson("ahogado")
+	await _frames(4)
+	demo._next_lesson_step()
+	await get_tree().create_timer(0.8).timeout
+	await _shot("p30_ahogado_ejemplo")
+	print("AHOGADO estado=%s porque=%s" % [demo.ex_state, str(demo._learn_why_ok())])
+	demo._learn_why_toggle()
+	await _frames(4)
+	demo._why_go(1)
+	await get_tree().create_timer(0.75).timeout
+	await _shot("p31_ahogado_porque")
+	for wp: Dictionary in demo.why_paras:
+		print("PORQUE ", wp["text"])
+	demo._learn_why_toggle()
+	await _frames(2)
 	# Personajes con la chapita de su pieza sobre la cabeza.
 	demo.view.board.set_piece_set("aventura")
 	demo.view.set_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")

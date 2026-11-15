@@ -1835,6 +1835,22 @@ func cancel_drag() -> void:
 
 
 ## «Así no»: la pieza niega con un temblor corto.
+## Una pieza «intenta» ir a `to` y no puede: da un salto hacia allí, tiembla a medio camino y vuelve a su casilla.
+## Para explicar por qué el rey no puede escapar. No cambia la posición.
+func try_square(from: int, to: int) -> void:
+	if anim_mode == Anim.NONE or not _pieces.has(from):
+		return
+	var node: Node3D = _pieces[from]
+	var a := sq_pos(from)
+	var b := a.lerp(sq_pos(to), 0.55)
+	var tw := _tw()
+	tw.tween_method(func(t: float) -> void:
+		_pose(node, a.lerp(b, t) + Vector3(0.0, sin(t * PI) * 0.3, 0.0), Vector3.UP, 0.0), 0.0, 1.0, 0.3)
+	tw.tween_method(_pose_shake.bind(node, b), 0.0, 1.0, 0.3)
+	tw.tween_method(func(t: float) -> void:
+		_pose(node, b.lerp(a, t) + Vector3(0.0, sin(t * PI) * 0.12, 0.0), Vector3.UP, 0.0), 0.0, 1.0, 0.26)
+
+
 func shake(s: int) -> void:
 	if anim_mode == Anim.NONE or anim_mode == Anim.MINIMAL or not _pieces.has(s):
 		return

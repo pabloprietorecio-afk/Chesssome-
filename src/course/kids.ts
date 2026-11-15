@@ -123,7 +123,12 @@ export const KIDS: Record<string, KidsLesson> = {
   },
   ahogado: {
     intro: ['Ojo: si el rey rival no está en jaque, pero no puede moverse a ningún sitio, es ahogado. Y entonces es empate.'],
-    exercises: ['Da jaque mate. ¡Pero no lo ahogues!', 'Otra vez: jaque mate, sin ahogarlo.'],
+    exercises: [
+      'Mira: le toca al rey negro. No está en jaque, pero no puede moverse a ningún sitio. ¡Eso es ahogado, y es empate! Pulsa «¿Por qué?».',
+      'Otro ahogado: el rey negro no está en jaque, pero tu peón y tu rey le quitan todas las casillas.',
+      'Da jaque mate. ¡Pero no lo ahogues!',
+      'Otra vez: jaque mate, sin ahogarlo.',
+    ],
     takeaway: 'Ahogado es empate. ¡Cuidado!',
   },
   enroque: {

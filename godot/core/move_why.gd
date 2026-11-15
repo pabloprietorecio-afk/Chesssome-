@@ -707,3 +707,125 @@ static func _plan(after: Chess, rest: Array, me: int) -> String:
 	var text := "La idea: tras %s, llega %s" % [_san(after, r), _san(next_pos, n)]
 	text += (": %s." % tag) if tag != "" else "."
 	return text
+
+
+## Por qué el rey del bando que mueve no tiene salida (jaque mate) o no tiene jugadas (ahogado), paso a paso y
+## con animación: en cada paso, `tries` son las casillas a las que el rey «intenta» ir (y no puede). `kids`: frases
+## muy cortas, sin coordenadas. Devuelve [] si la posición no es mate ni ahogado.
+static func king_box(pos: Chess, me: int, kids: bool) -> Array:
+	if not pos.legal_moves().is_empty():
+		return []
+	var out: Array = []
+	var f := check_facts(pos)
+	var k: int = f["king"]
+	var checkers: Array = f["checkers"]
+	var mate := not checkers.is_empty()
+	var ws := not kids
+	var king := _who(kids, pos, k, me, false)
+	# 1. ¿Está en jaque?
+	if mate:
+		var c: int = checkers[0]
+		var arrows: Array = []
+		for x: int in checkers:
+			arrows.append(_arrow(x, k, "bad"))
+		if kids:
+			out.append(_par(("¡Jaque! %s ataca a %s." % [cap(_who(kids, pos, c, me, false)), king]).replace(" a el ", " al "), arrows, pos))
+		else:
+			out.append(_par("%s está en jaque: %s lo ataca%s." % [cap(king), _who(kids, pos, c, me), line_word(c, k)], arrows, pos))
+	else:
+		if kids:
+			out.append(_par("Mira: %s no está en jaque. Nadie le ataca." % king, [], pos))
+		else:
+			out.append(_par("%s no está en jaque: ninguna pieza lo ataca ahora mismo." % cap(king), [], pos))
+	# 2. Cada casilla de alrededor: por qué no puede ir.
+	var by_attacker: Dictionary = f["by_attacker"]
+	for a: int in by_attacker:
+		var squares: Array = by_attacker[a]
+		var arrows2: Array = []
+		var tries: Array = []
+		for n: int in squares:
+			arrows2.append(_arrow(a, n, "bad"))
+			tries.append([k, n])
+		var p: Dictionary
+		if kids:
+			p = _par("Si el rey se escapa por %s, %s le atacaría." % ["aquí" if squares.size() == 1 else "estas casillas", _who(kids, pos, a, me, false)], arrows2, pos)
+		else:
+			var names: Array = []
+			for n: int in squares:
+				names.append(Chess.sq_name(n))
+			p = _par("Las casillas %s las controla %s." % [join(names), _who(kids, pos, a, me)] if squares.size() > 1 else "La casilla %s la controla %s." % [join(names), _who(kids, pos, a, me)], arrows2, pos)
+		p["tries"] = tries
+		out.append(p)
+	var on_line: Array = f["on_line"]
+	if not on_line.is_empty() and mate:
+		var c2: int = checkers[0]
+		var arrows3: Array = []
+		var tries3: Array = []
+		var names3: Array = []
+		for n: int in on_line:
+			arrows3.append(_arrow(c2, n, "bad"))
+			tries3.append([k, n])
+			names3.append(Chess.sq_name(n))
+		var p3 := _par("Si se aparta por la misma línea, %s le sigue atacando." % _who(kids, pos, c2, me, false) if kids else "En %s seguiría en la línea de %s." % [join(names3), _who(kids, pos, c2, me)], arrows3, pos)
+		p3["tries"] = tries3
+		out.append(p3)
+	var own: Array = f["own"]
+	if not own.is_empty():
+		var tries4: Array = []
+		var names4: Array = []
+		for n: int in own:
+			tries4.append([k, n])
+			names4.append(Chess.sq_name(n))
+		var who := _who(kids, pos, own[0], me, false)
+		var kid_own := ("Y por ahí no puede pasar: está %s, de su mismo color." % who) if own.size() == 1 else "Y por ahí no puede pasar: están sus propias piezas."
+		var p4 := _par(kid_own if kids else ("Las casillas %s están ocupadas por sus propias piezas." % join(names4) if own.size() > 1 else "La casilla %s la ocupa %s." % [join(names4), _who(kids, pos, own[0], me, false)]), [], pos)
+		p4["tries"] = tries4
+		out.append(p4)
+	var defended: Dictionary = f["defended"]
+	for n: int in defended:
+		var defs: Array = defended[n]
+		var arrows5: Array = []
+		for d: int in defs:
+			arrows5.append(_arrow(d, n, "bad"))
+		var p5 := _par(("No se puede comer %s: %s lo protege." % [_who(kids, pos, n, me, false), _who(kids, pos, defs[0], me, false)]) if kids else ("No puede comer %s: lo defiende %s." % [_who(kids, pos, n, me), _who(kids, pos, defs[0], me)]), arrows5, pos)
+		p5["tries"] = [[k, n]]
+		out.append(p5)
+	# 3. Comer la pieza que da jaque o tapar (en el mate), u otras piezas que muevan (en el ahogado).
+	if mate and checkers.size() == 1:
+		var c3: int = checkers[0]
+		var between := _between(c3, k)
+		var t3 := Chess.type_of(pos.b[c3])
+		var gap := not between.is_empty() and (t3 == Chess.ROOK or t3 == Chess.BISHOP or t3 == Chess.QUEEN)
+		if kids:
+			out.append(_par("Y nadie puede comerse %s%s." % [_who(kids, pos, c3, me, false), " ni ponerse en medio" if gap else ""], [_arrow(c3, k, "bad")], pos))
+		else:
+			out.append(_par("Ninguna pieza puede comer %s%s." % [_who(kids, pos, c3, me), " ni interponerse" if gap else ""], [_arrow(c3, k, "bad")], pos))
+	elif not mate:
+		var others := 0
+		for s in 64:
+			var q: int = pos.b[s]
+			if q != 0 and Chess.color_of(q) == pos.turn and Chess.type_of(q) != Chess.KING:
+				others += 1
+		if others > 0:
+			out.append(_par("Sus otras piezas tampoco se pueden mover." if kids else "Y ninguna otra pieza suya tiene jugada.", [], pos))
+	# 4. Conclusión.
+	if mate:
+		out.append(_par("No tiene salida: ¡jaque mate!" if kids else "No hay forma de salir del jaque: jaque mate.", [], pos))
+	else:
+		out.append(_par("No está en jaque, pero no puede mover nada: es ahogado. ¡Y el ahogado es empate!" if kids else "Sin jaque y sin ninguna jugada legal: ahogado. La partida acaba en tablas.", [], pos))
+	return out
+
+
+## Nombre de una pieza: para niños, «tu torre» o «el rey negro» (sin casilla); si no, como name_at.
+static func _who(kids: bool, pos: Chess, s: int, me: int, with_square: bool = true) -> String:
+	if not kids:
+		return name_at(pos, s, me, with_square)
+	var p: int = pos.b[s]
+	if p == 0:
+		return Chess.sq_name(s)
+	var t := Chess.type_of(p)
+	var c := Chess.color_of(p)
+	if c == me:
+		return "tu %s" % NOUN[t]
+	var adj := ("blanca" if c == 0 else "negra") if _fem(t) else ("blanco" if c == 0 else "negro")
+	return "%s %s %s" % [_art(t), NOUN[t], adj]

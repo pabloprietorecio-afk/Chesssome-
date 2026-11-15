@@ -2845,6 +2845,16 @@ func _why_apply() -> void:
 		view.board.mark_last_move(int(mv[0]), int(mv[1]))
 	view.board.set_arrows(p.get("arrows", []))
 	view.interactive = false
+	# El rey «intenta» ir a cada casilla, una detrás de otra.
+	var tries: Array = p.get("tries", [])
+	if not tries.is_empty():
+		var my_idx := why_idx
+		var my_paras := why_paras
+		for i in tries.size():
+			var tr: Array = tries[i]
+			get_tree().create_timer(0.35 + 1.0 * float(i)).timeout.connect(func() -> void:
+				if why_board and why_idx == my_idx and why_paras == my_paras:
+					view.board.try_square(int(tr[0]), int(tr[1])))
 
 
 func _why_go(delta: int) -> void:
@@ -4582,6 +4592,12 @@ func _build_learn_card() -> void:
 	var step := _chip("Ejercicio %d de %d" % [lesson_ex + 1, exercises.size()], _c("field"), _c("quiet"))
 	step.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	card_body.add_child(step)
+	if learn_why_open:
+		# Con el «¿Por qué?» abierto, solo él: así no se sale de la tarjeta.
+		var e0 := _learn_why()
+		if not e0.is_empty():
+			card_body.add_child(_why_block(e0, "Por qué"))
+			return
 	card_body.add_child(_para(_ex_text(ex), F_BODY, _c("ink"), font_regular if ex_state != "play" else font_medium))
 	if str(ex.get("kind", "")) == "collect" and ex_state == "play":
 		var stars_total: int = (ex.get("stars", []) as Array).size()
@@ -4591,18 +4607,43 @@ func _build_learn_card() -> void:
 		card_body.add_child(_para(line, F_SUB, _c("quiet"), font_medium))
 	if ex_text != "":
 		card_body.add_child(_para(ex_text, F_BODY, _c("good") if ex_good else _c("bad"), font_medium))
-	if learn_why_open and ex_state == "done":
+	if learn_why_open and ex_state in ["done", "fail", "info"]:
 		var e := _learn_why()
 		if not e.is_empty():
 			card_body.add_child(_why_block(e, "Por qué"))
 
 
-## ¿Tiene el ejercicio un «¿Por qué?» sacado del tablero? Solo en los de jugada y fuera del nivel Kids.
+## ¿Tiene el ejercicio un «¿Por qué?» sacado del tablero? En los de jugada (fuera de Kids) y, también en Kids, cuando
+## hay mate o ahogado (en un ejemplo o tras tu jugada).
 func _learn_why_ok() -> bool:
+	if not _learn_box().is_empty():
+		return true
 	return not kids and str(ex.get("kind", "")) == "move" and ex_last_uci != "" and Chess.from_fen(str(ex.get("fen", ""))).find_uci(ex_last_uci) >= 0
 
 
+## Mate o ahogado en la lección (la posición de un ejemplo, o la que deja tu jugada): por qué el rey no tiene salida,
+## paso a paso y con el rey intentando escapar. [] si no hay ni mate ni ahogado.
+func _learn_box() -> Array:
+	var kind := str(ex.get("kind", ""))
+	var pos := Chess.from_fen(str(ex.get("fen", "")))
+	if kind == "move":
+		if ex_last_uci == "" or not ex_state in ["done", "fail"]:
+			return []
+		var m := pos.find_uci(ex_last_uci)
+		if m < 0:
+			return []
+		var me := pos.turn
+		pos.apply(m)
+		return MoveWhy.king_box(pos, me, kids)
+	if kind == "info":
+		return MoveWhy.king_box(pos, 1 - pos.turn, kids)
+	return []
+
+
 func _learn_why() -> Dictionary:
+	var box := _learn_box()
+	if not box.is_empty():
+		return {"paras": box}
 	var before := Chess.from_fen(str(ex.get("fen", "")))
 	var m := before.find_uci(ex_last_uci)
 	if m < 0:
@@ -4646,6 +4687,14 @@ func _build_learn_actions() -> void:
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Empezar", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"info":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if _learn_why_ok():
+				if learn_why_open:
+					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+				else:
+					var tint0 := _tint("lilac")
+					var why0 := wide.duplicate()
+					why0["icon_color"] = tint0[1]
+					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint0[0], _c("ink"), why0))
 		"play":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet)]
 			if str(ex.get("kind", "")) == "move":
@@ -4656,6 +4705,14 @@ func _build_learn_actions() -> void:
 			row.append(_button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide))
 		"fail":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if _learn_why_ok():
+				if learn_why_open:
+					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
+				else:
+					var tint1 := _tint("lilac")
+					var why1 := wide.duplicate()
+					why1["icon_color"] = tint1[1]
+					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint1[0], _c("ink"), why1))
 		"done":
 			row = [_button("retry", "Repetir", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 			if _learn_why_ok():
@@ -4690,7 +4747,6 @@ func _build_learn_actions() -> void:
 		actions.add_child(b)
 
 
-## Ventana semitransparente con el resultado del ejercicio o de la lección y sus botones, encima del tablero.
 ## Llama a `cb` cuando el tablero termina de moverse (la jugada, el rey que cae…), con una pausa para verlo.
 func _when_board_still(cb: Callable) -> void:
 	if not view.board.is_animating():
@@ -4703,6 +4759,7 @@ func _when_board_still(cb: Callable) -> void:
 var _learn_popup_wait := false
 
 
+## Ventana semitransparente con el resultado del ejercicio o de la lección y sus botones, encima del tablero.
 func _sync_learn_popup() -> void:
 	var want := mode == "learn" and ex_state in ["done", "fail", "end"] and not _popup_row.is_empty() and not learn_why_open
 	# Primero se ve la jugada entera (y el rey que cae); después, la ventana.
