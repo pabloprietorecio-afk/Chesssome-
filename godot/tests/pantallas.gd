@@ -61,6 +61,27 @@ func _ready() -> void:
 	await _shot("p7_online_lamina_asienta")
 	demo.online_busy = false
 	demo._close_progress()
+	# Partida online: el rival (nivel e icono), un gesto y mirar una jugada atrás.
+	demo.view.board.anim_mode = Board3D.Anim.NONE
+	demo._online_started(0)
+	await _frames(6)
+	demo._online_rival_profile({"nivel": 4, "icono": "piece_bishop"})
+	demo.view.show_move("e2e4")
+	demo._game_move("e2e4")
+	await _frames(4)
+	demo._online_move("e7e5")
+	await _frames(4)
+	demo._online_gesture(false, "aplauso")
+	await get_tree().create_timer(0.5).timeout
+	await _shot("p14_online_partida")
+	demo._game_browse(1)
+	await _frames(4)
+	demo._online_move("g1f3")
+	await _frames(4)
+	await _shot("p15_online_atras")
+	print("ONLINE atrás=%d pendientes=%d" % [demo.game_back, demo._online_pending.size()])
+	demo._leave_game()
+	await _frames(4)
 	await _por_que(demo)
 	print("PANTALLAS DONE")
 	get_tree().quit()

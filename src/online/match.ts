@@ -6,7 +6,7 @@
  * la base de datos, atómicamente) y, si no hay ninguna, abrir una. Dos jugadores que abren a la vez se encuentran porque
  * el de la partida más reciente se une a la más antigua.
  */
-import { colorFor, movesOf, replay, type GameDoc } from './game';
+import { colorFor, gesturesOf, movesOf, profileOf, replay, type GameDoc, type Gesture, type GestureEvent, type Profile } from './game';
 import { isFresh, newGameId } from './ids';
 import { Rtdb, SERVER_TIME } from './rtdb';
 import { applyEvent } from './sse';
@@ -23,6 +23,9 @@ export type MatchState =
       turn: 'w' | 'b';
       moves: string[];
       lastMove: { from: string; to: string } | null;
+      /** Lo que enseña el rival (nivel, icono, foto), cuando llega. */
+      rival: Profile | null;
+      gestures: GestureEvent[];
       /** Solo en 'ended'. */
       end?: { kind: 'checkmate' | 'draw' | 'abandoned'; winner: 'w' | 'b' | null; why: string };
     }
@@ -36,6 +39,8 @@ export interface MatchOptions {
   /** Espera antes de borrar una partida terminada. */
   cleanupMs?: number;
   rand?: () => number;
+  /** Lo que se enseña al rival. */
+  profile?: Profile;
 }
 
 export class OnlineMatch {
@@ -53,7 +58,7 @@ export class OnlineMatch {
   private readonly o: Required<MatchOptions>;
 
   constructor(private readonly db: Rtdb, opts: MatchOptions = {}) {
-    this.o = { heartbeatMs: 10000, scanMs: 3000, freshMs: 30000, cleanupMs: 4000, rand: Math.random, ...opts };
+    this.o = { heartbeatMs: 10000, scanMs: 3000, freshMs: 30000, cleanupMs: 30000, rand: Math.random, profile: { nivel: -1 }, ...opts };
   }
 
   get current(): MatchState {
@@ -109,7 +114,30 @@ export class OnlineMatch {
     this.id = id;
     this.role = 'rival';
     this.listen();
+    void this.sendProfile(id);
     return true;
+  }
+
+  /** El perfil propio, dentro de la partida (se borra con ella). Si las reglas no lo dejan, la partida sigue igual. */
+  private async sendProfile(id: string): Promise<void> {
+    try {
+      await this.db.request('PUT', `partidas/${id}/perfiles/${this.uid}`, this.o.profile);
+    } catch {
+      /* sin perfil */
+    }
+  }
+
+  private lastGesture = 0;
+
+  /** Gesto del chat. Uno cada segundo y medio como mucho. */
+  async gesture(g: Gesture): Promise<boolean> {
+    const s = this.state;
+    if ((s.phase !== 'playing' && s.phase !== 'ended') || !this.id) return false;
+    const now = Date.now();
+    if (now - this.lastGesture < 1500) return false;
+    this.lastGesture = now;
+    const r = await this.db.request('POST', `partidas/${this.id}/gestos`, { de: this.uid, g, t: SERVER_TIME });
+    return r.status === 200;
   }
 
   private async open(): Promise<void> {
@@ -121,6 +149,7 @@ export class OnlineMatch {
     this.role = 'creador';
     this.set({ phase: 'waiting', id });
     this.listen();
+    void this.sendProfile(id);
     this.timers.push(
       setInterval(() => void this.db.request('PATCH', `abiertas/${id}`, { latido: SERVER_TIME }).catch(() => undefined), this.o.heartbeatMs),
       setInterval(() => void this.scanOlder(), this.o.scanMs),
@@ -145,6 +174,7 @@ export class OnlineMatch {
           this.doc = null;
           this.seen = false;
           this.listen();
+          void this.sendProfile(c);
           return;
         }
       }
@@ -187,9 +217,16 @@ export class OnlineMatch {
       this.stopTimers();
       void this.db.request('DELETE', `abiertas/${this.id}`).catch(() => undefined);
     }
-    if (this.state.phase === 'ended') return;
+    const other = doc.creador === this.uid ? doc.rival ?? '' : doc.creador ?? '';
+    const rival = profileOf(doc, other);
+    const gestures = gesturesOf(doc, this.uid);
+    if (this.state.phase === 'ended') {
+      // Terminada: ya no cambian las jugadas, pero aún llegan gestos («buena partida»).
+      this.set({ ...this.state, rival: rival ?? this.state.rival, gestures });
+      return;
+    }
     const rp = replay(movesOf(doc));
-    const base = { id: this.id, color, fen: rp.fen, turn: rp.turn, moves: rp.moves, lastMove: rp.lastMove };
+    const base = { id: this.id, color, fen: rp.fen, turn: rp.turn, moves: rp.moves, lastMove: rp.lastMove, rival, gestures };
     if (rp.over) {
       this.set({ ...base, phase: 'ended', end: rp.over });
       this.finish();

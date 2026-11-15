@@ -1209,3 +1209,92 @@ a {
 :root[data-theme='dark'] .cm-flip::after {
   background: rgba(0, 0, 0, 0.45);
 }
+
+/* Partida online: el rival, los gestos y sus globos. */
+.cm-rival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+.cm-rival-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--soft-blue);
+  overflow: hidden;
+  font-size: 22px;
+}
+.cm-rival-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cm-gestures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cm-gesture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--tint);
+  color: var(--ink);
+  font-size: 24px;
+  cursor: pointer;
+}
+.cm-gesture small {
+  font-size: 0.75rem;
+  color: var(--quiet);
+}
+.cm-bubbles {
+  position: relative;
+  height: 0;
+}
+.cm-bubble {
+  position: absolute;
+  left: 50%;
+  z-index: 20;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+  white-space: nowrap;
+  animation: cm-bubble 2.8s ease-out forwards;
+}
+.cm-bubble-rival {
+  top: 10px;
+}
+.cm-bubble-mine {
+  top: 60px;
+}
+@keyframes cm-bubble {
+  0% {
+    transform: translate(-50%, 10px) scale(0.6);
+    opacity: 0;
+  }
+  12% {
+    transform: translate(-50%, 0) scale(1.08);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -24px) scale(1);
+    opacity: 0;
+  }
+}

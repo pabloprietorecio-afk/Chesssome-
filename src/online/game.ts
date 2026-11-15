@@ -7,6 +7,53 @@ export interface GameDoc {
   rival?: string;
   unidoEn?: number;
   jugadas?: unknown;
+  perfiles?: Record<string, unknown>;
+  gestos?: Record<string, unknown>;
+}
+
+/** Lo que cada jugador enseña de sí mismo al rival: su nivel (−1 sin nivel), su icono y, si quiere, su foto. */
+export interface Profile {
+  nivel: number;
+  icono?: string;
+  /** JPEG pequeño en base64. Solo si el jugador ha elegido enseñarla. */
+  foto?: string;
+}
+
+/** Gestos del chat: solo estos, sin texto libre. */
+export const GESTURES = ['saludo', 'aplauso', 'genial', 'arriba', 'abajo', 'buena'] as const;
+export type Gesture = (typeof GESTURES)[number];
+export const GESTURE_TEXT: Record<Gesture, { emoji: string; text: string }> = {
+  saludo: { emoji: '👋', text: '¡Hola!' },
+  aplauso: { emoji: '👏', text: '¡Bravo!' },
+  genial: { emoji: '⭐', text: '¡Genial!' },
+  arriba: { emoji: '👍', text: 'Bien' },
+  abajo: { emoji: '👎', text: 'Vaya' },
+  buena: { emoji: '🤝', text: 'Buena partida' },
+};
+
+export interface GestureEvent {
+  key: string;
+  mine: boolean;
+  g: Gesture;
+}
+
+export function profileOf(doc: GameDoc | null, uid: string): Profile | null {
+  const p = doc?.perfiles?.[uid] as { nivel?: unknown; icono?: unknown; foto?: unknown } | undefined;
+  if (!p || typeof p.nivel !== 'number') return null;
+  return { nivel: p.nivel, icono: typeof p.icono === 'string' ? p.icono : undefined, foto: typeof p.foto === 'string' ? p.foto : undefined };
+}
+
+/** Gestos en orden de llegada (las claves de Firebase ordenan por tiempo). */
+export function gesturesOf(doc: GameDoc | null, uid: string): GestureEvent[] {
+  const g = doc?.gestos;
+  if (!g || typeof g !== 'object') return [];
+  return Object.keys(g)
+    .sort()
+    .flatMap((key) => {
+      const v = g[key] as { de?: unknown; g?: unknown } | null;
+      if (!v || typeof v.g !== 'string' || !(GESTURES as readonly string[]).includes(v.g)) return [];
+      return [{ key, mine: v.de === uid, g: v.g as Gesture }];
+    });
 }
 
 /** Jugadas en orden, sin huecos (Firebase puede devolver la lista como objeto o como array). */

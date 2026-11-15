@@ -70,6 +70,13 @@ const ICONS = {
   clock: ['timer', 'duotone'],
   flag: ['flag-checkered', 'duotone'],
   trend: ['trend-up', 'bold'],
+  // Gestos del chat de las partidas online.
+  g_saludo: ['hand-waving', 'duotone'],
+  g_aplauso: ['hands-clapping', 'duotone'],
+  g_genial: ['star', 'duotone'],
+  g_arriba: ['thumbs-up', 'duotone'],
+  g_abajo: ['thumbs-down', 'duotone'],
+  g_buena: ['handshake', 'duotone'],
 };
 
 // ---------- PNG (mismo formato sencillo que tools/pieces/fichas.mjs: 8 bits RGBA, sin filtro) ----------

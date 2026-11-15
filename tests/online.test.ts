@@ -12,7 +12,7 @@ const mem = () => {
   const m = new Map<string, string>();
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
 };
-const player = (fb: ReturnType<typeof createFakeFirebase>) => new OnlineMatch(new Rtdb(cfg(fb), { fetch: fb.fetch }), FAST);
+const player = (fb: ReturnType<typeof createFakeFirebase>, profile?: { nivel: number; icono?: string }) => new OnlineMatch(new Rtdb(cfg(fb), { fetch: fb.fetch }), { ...FAST, profile });
 type Live = Extract<MatchState, { phase: 'playing' | 'ended' }>;
 const cur = (p: OnlineMatch): MatchState => p.current;
 const playing = (s: MatchState): s is Extract<MatchState, { phase: 'playing' | 'ended' }> => s.phase === 'playing' || s.phase === 'ended';
@@ -207,6 +207,24 @@ describe('emparejamiento y partida', () => {
     await A.leave();
     await until(() => B.current.phase === 'ended', 2000, 'aviso de abandono');
     expect((B.current as { end?: unknown }).end).toMatchObject({ kind: 'abandoned', winner: color });
+    await B.leave();
+  });
+
+  it('cada uno ve el nivel y el icono del rival, y los gestos llegan a los dos', async () => {
+    const fb = createFakeFirebase();
+    const A = player(fb, { nivel: 5, icono: 'piece_bishop' });
+    const B = player(fb, { nivel: 2 });
+    await A.start();
+    await B.start();
+    await until(() => !!(A.current as Live).rival && !!(B.current as Live).rival, 2000, 'perfiles');
+    expect((A.current as Live).rival).toEqual({ nivel: 2, icono: undefined, foto: undefined });
+    expect((B.current as Live).rival).toMatchObject({ nivel: 5, icono: 'piece_bishop' });
+    expect(await A.gesture('aplauso')).toBe(true);
+    expect(await A.gesture('genial')).toBe(false); // demasiado seguido
+    await until(() => (B.current as Live).gestures.length === 1, 2000, 'gesto');
+    expect((B.current as Live).gestures[0]).toMatchObject({ g: 'aplauso', mine: false });
+    expect((A.current as Live).gestures[0]).toMatchObject({ g: 'aplauso', mine: true });
+    await A.leave();
     await B.leave();
   });
 

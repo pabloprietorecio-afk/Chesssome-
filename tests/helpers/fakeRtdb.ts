@@ -12,6 +12,7 @@ interface Watcher {
 export function createFakeFirebase(base = 'https://fake.firebaseio.test') {
   let root: Json = null;
   let users = 0;
+  let pushes = 0;
   const tokens = new Map<string, string>(); // idToken → uid
   const refresh = new Map<string, string>(); // refreshToken → uid
   const watchers = new Set<Watcher>();
@@ -134,6 +135,14 @@ export function createFakeFirebase(base = 'https://fake.firebaseio.test') {
       setAt(path, v);
       notify(path, 'put', v);
       return json(200, v);
+    }
+    if (method === 'POST') {
+      // Clave como las de Firebase: ordenan por tiempo.
+      const key = `-k${String(++pushes).padStart(8, '0')}`;
+      const v = stamp(body, now);
+      setAt(`${path}/${key}`, v);
+      notify(`${path}/${key}`, 'put', v);
+      return json(200, { name: key });
     }
     if (method === 'PATCH') {
       const v = stamp(body, now) as Record<string, Json>;

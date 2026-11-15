@@ -194,6 +194,14 @@ var online: Online
 var online_busy := false
 ## Cuándo empezó la búsqueda de rival (Time.get_ticks_msec), para el reloj de espera.
 var online_wait_ms := 0
+## Enseñar la foto propia al rival (solo si el icono es una foto). Desactivado salvo que se elija.
+var online_photo := false
+## Lo que enseña el rival y su foto ya decodificada.
+var online_rival := {}
+var _rival_tex: Texture2D
+## Partida online: cuántas jugadas se ha ido hacia atrás (0 = en directo) y las del rival que llegan mientras.
+var game_back := 0
+var _online_pending: Array = []
 var online_status := ""
 var game_history: Array = []
 ## Jugadas de la partida (UCI), una menos que game_history.
@@ -906,6 +914,8 @@ func _ready() -> void:
 	online.move_received.connect(_online_move)
 	online.ended.connect(_online_ended)
 	online.failed.connect(_online_failed)
+	online.rival_profile.connect(_online_rival_profile)
+	online.gesture.connect(_online_gesture)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
@@ -1077,6 +1087,7 @@ func _load_settings() -> void:
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	kids = bool(cfg.get_value("app", "kids", false))
 	avatar = str(cfg.get_value("app", "icono", ""))
+	online_photo = bool(cfg.get_value("online", "foto", false))
 	var world := str(cfg.get_value("app", "mundo", ""))
 	if WORLDS.has(world):
 		kids_world = world
@@ -1101,6 +1112,7 @@ func _save_settings() -> void:
 	cfg.set_value("app", "contorno_por_defecto", true)
 	cfg.set_value("tablero", "animaciones", int(view.board.anim_mode) if view != null else _saved_anim)
 	cfg.set_value("pantalla", "oscuro", dark)
+	cfg.set_value("online", "foto", online_photo)
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
@@ -5076,6 +5088,12 @@ func _open_online() -> void:
 	body.add_child(_spacer(30.0))
 	if not online_busy:
 		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Sin cuenta: tu jugador es anónimo.", _online_search, true))
+		body.add_child(_spacer(16.0))
+		var lv_text := "Tu rival verá tu nivel y tu icono."
+		body.add_child(_centered(_para(lv_text, F_SUB, _c("quiet"), font_regular)))
+		if avatar == "foto" and _avatar_photo() != null:
+			body.add_child(_spacer(10.0))
+			body.add_child(_card_button("Enseñar mi foto al rival: %s" % ("sí" if online_photo else "no"), _toggle_online_photo, _c("field"), _c("ink"), F_SUB, "check" if online_photo else "eye"))
 	body.add_child(_spacer(10.0, true))
 	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
 
@@ -5084,6 +5102,9 @@ func _online_search() -> void:
 	online_status = ""
 	online_busy = true
 	online_wait_ms = Time.get_ticks_msec()
+	online_rival = {}
+	_rival_tex = null
+	online.my_profile = _online_profile()
 	_open_online()
 	online.start()
 
@@ -5103,6 +5124,12 @@ func _online_started(color: int) -> void:
 ## Jugada del rival, que llega por la red.
 func _online_move(uci: String) -> void:
 	if mode != "game" or not bool(game.get("online", false)) or game_state != "think":
+		return
+	if game_back > 0:
+		# Mirando jugadas anteriores: se guarda y se aplica al volver al directo.
+		_online_pending.append(uci)
+		_actions_mode = ""
+		_refresh()
 		return
 	var pos := view.board.chess.copy()
 	var m := pos.find_uci(uci)
@@ -5126,11 +5153,237 @@ func _online_move(uci: String) -> void:
 func _online_ended(_reason: String, _winner: int) -> void:
 	if mode != "game" or not bool(game.get("online", false)) or game_state == "over":
 		return
+	if game_back > 0:
+		game_back = 0
+		_online_pending = []
+		view.set_fen(str(game_history[game_history.size() - 1]))
 	game_state = "over"
 	game_won = 1
 	game_result = "Tu rival ha abandonado la partida: ¡has ganado!"
 	view.interactive = false
 	_sfx("leccion")
+	_refresh()
+
+
+## Lo que se enseña al rival: nivel, icono y, si se ha elegido, una foto pequeña.
+func _online_profile() -> Dictionary:
+	var p := {"nivel": Assessment.level_of(float(player["rating"]["r"])) if _has_player() else -1}
+	if avatar.begins_with("piece_"):
+		p["icono"] = avatar
+	elif _has_player():
+		p["icono"] = str(_rank(int(p["nivel"]))[0])
+	if online_photo and avatar == "foto" and not kids:
+		var b64 := _photo_b64()
+		if b64 != "":
+			p["foto"] = b64
+	return p
+
+
+## La foto de la insignia, a 96 px, sobre blanco y en JPEG: unos pocos KB.
+func _photo_b64() -> String:
+	if not FileAccess.file_exists(AVATAR_PATH):
+		return ""
+	var img := Image.new()
+	if img.load_png_from_buffer(FileAccess.get_file_as_bytes(AVATAR_PATH)) != OK:
+		return ""
+	img.resize(96, 96, Image.INTERPOLATE_LANCZOS)
+	var flat := Image.create(96, 96, false, Image.FORMAT_RGBA8)
+	flat.fill(Color.WHITE)
+	img.convert(Image.FORMAT_RGBA8)
+	flat.blend_rect(img, Rect2i(0, 0, 96, 96), Vector2i.ZERO)
+	flat.convert(Image.FORMAT_RGB8)
+	var jpg := flat.save_jpg_to_buffer(0.7)
+	return Marshalls.raw_to_base64(jpg) if jpg.size() < 14000 else ""
+
+
+func _toggle_online_photo() -> void:
+	online_photo = not online_photo
+	_save_settings()
+	_open_online()
+
+
+func _online_rival_profile(p: Dictionary) -> void:
+	online_rival = p
+	_rival_tex = null
+	var b64 := str(p.get("foto", ""))
+	if b64 != "":
+		var img := Image.new()
+		if img.load_jpg_from_buffer(Marshalls.base64_to_raw(b64)) == OK:
+			img.convert(Image.FORMAT_RGBA8)
+			var w := img.get_width()
+			for y in img.get_height():
+				for x in w:
+					var d := Vector2(float(x) - w * 0.5 + 0.5, float(y) - w * 0.5 + 0.5).length()
+					var px := img.get_pixel(x, y)
+					px.a = clampf(w * 0.5 - 0.5 - d, 0.0, 1.0)
+					img.set_pixel(x, y, px)
+			img.generate_mipmaps()
+			_rival_tex = ImageTexture.create_from_image(img)
+	if mode == "game" and bool(game.get("online", false)):
+		_refresh()
+
+
+## Insignia del rival: su foto o su icono dentro del anillo del color de su nivel, con el número.
+func _rival_badge(side: float) -> Control:
+	var lv := int(online_rival.get("nivel", -1))
+	var rank := _rank(maxi(lv, 0))
+	var tint := _tint(str(rank[2])) if lv >= 0 else [_c("field"), _c("quiet")]
+	var badge := LevelBadge.new()
+	badge.custom_minimum_size = Vector2(side, side)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.fill = tint[0]
+	badge.ring = tint[1]
+	badge.track = Color(tint[1].r, tint[1].g, tint[1].b, 0.18)
+	badge.bubble = tint[1]
+	badge.bubble_ink = Color.WHITE
+	badge.progress = 1.0
+	badge.level = lv if lv >= 0 else 0
+	badge.font = font_display
+	if _rival_tex != null:
+		var pic := TextureRect.new()
+		pic.texture = _rival_tex
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var inset := side * 0.11
+		pic.offset_left = inset
+		pic.offset_top = inset
+		pic.offset_right = -inset
+		pic.offset_bottom = -inset
+		pic.show_behind_parent = true
+		badge.fill = Color(tint[0].r, tint[0].g, tint[0].b, 0.0)
+		badge.add_child(pic)
+		return badge
+	var glyph := str(online_rival.get("icono", ""))
+	if not (glyph.begins_with("piece_") and UiIcons.has(glyph)):
+		glyph = str(rank[0])
+	var icon := _icon(glyph, side * 0.5, tint[1])
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.offset_left = side * 0.25
+	icon.offset_top = side * 0.22
+	icon.offset_right = -side * 0.25
+	icon.offset_bottom = -side * 0.28
+	badge.add_child(icon)
+	return badge
+
+
+## Fila del rival en la tarjeta de la partida online.
+func _rival_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_rival_badge(104.0))
+	var lv := int(online_rival.get("nivel", -1))
+	var text := "Rival · …"
+	if not online_rival.is_empty():
+		text = ("Rival · Nivel %d · %s" % [lv, str(_rank(lv)[1])]) if lv >= 0 else "Rival · todavía sin nivel"
+	var l := _para(text, F_BODY, _c("ink"), font_semibold)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(l)
+	return row
+
+
+## Los gestos del chat: una fila de botones redondos con su dibujo.
+func _gesture_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac"}
+	for g: String in Online.GESTURES:
+		var tint := _tint(str(tints[g]))
+		var b := _round_button("g_" + g, _send_gesture.bind(g), 112.0, tint[0], tint[1], false)
+		b.tooltip_text = str(Online.GESTURE_TEXT[g])
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	return row
+
+
+func _send_gesture(kind: String) -> void:
+	online.send_gesture(kind)
+
+
+## Globo con el gesto, encima del tablero: arriba los del rival, abajo los míos. Aparece, se queda un momento y
+## se desvanece subiendo.
+func _online_gesture(mine: bool, kind: String) -> void:
+	if mode != "game" or not bool(game.get("online", false)) or board_slot == null or not is_instance_valid(board_slot):
+		return
+	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac"}
+	var tint := _tint(str(tints.get(kind, "sky")))
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	var paper := _c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.94)
+	sb.set_corner_radius_all(60)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 18
+	sb.content_margin_left = 30
+	sb.content_margin_right = 38
+	sb.content_margin_top = 16
+	sb.content_margin_bottom = 16
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_icon("g_" + kind, 76.0, tint[1]))
+	var l := _text("%s: %s" % ["Tú" if mine else "Rival", str(Online.GESTURE_TEXT.get(kind, ""))], F_BODY, _c("ink"), font_semibold)
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	l.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(l)
+	panel.add_child(row)
+	add_child(panel)
+	var rect := board_slot.get_global_rect()
+	var place := func() -> void:
+		if not is_instance_valid(panel):
+			return
+		panel.reset_size()
+		var w := panel.get_combined_minimum_size()
+		var y := rect.position.y + rect.size.y * (0.12 if not mine else 0.78)
+		panel.position = Vector2((size.x - w.x) * 0.5, y - w.y * 0.5)
+		panel.pivot_offset = w * 0.5
+	place.call_deferred()
+	panel.scale = Vector2(0.6, 0.6)
+	panel.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "scale", Vector2(1.06, 1.06), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(panel, "modulate:a", 1.0, 0.15)
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.1)
+	tw.tween_interval(2.0)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.6)
+	tw.parallel().tween_property(panel, "position:y", -40.0, 0.6).as_relative()
+	tw.tween_callback(panel.queue_free)
+	if not mine:
+		_sfx("acierto")
+
+
+## Partida online: mirar jugadas anteriores sin perder la partida. delta −99 vuelve al directo.
+func _game_browse(delta: int) -> void:
+	if mode != "game" or game_history.is_empty():
+		return
+	var was := game_back
+	game_back = 0 if delta <= -99 else clampi(game_back + delta, 0, game_history.size() - 1)
+	if game_back == was and delta > -99:
+		return
+	var ply := game_history.size() - 1 - game_back
+	view.set_fen(str(game_history[ply]))
+	view.board.set_arrows([])
+	if ply >= 1 and ply - 1 < game_moves.size():
+		var last := str(game_moves[ply - 1])
+		view.board.mark_last_move(Chess.sq_index(last.substr(0, 2)), Chess.sq_index(last.substr(2, 2)))
+	if game_back == 0:
+		view.interactive = game_state == "play"
+		# Lo que llegó mientras se miraba atrás.
+		var pending := _online_pending.duplicate()
+		_online_pending = []
+		for uci: String in pending:
+			_online_move(uci)
+	else:
+		view.interactive = false
+	_actions_mode = ""
 	_refresh()
 
 
@@ -5183,6 +5436,8 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	view.set_orientation(color)
 	game_history = [view.board.chess.fen()]
 	game_moves = []
+	game_back = 0
+	_online_pending = []
 	review = []
 	review_done = false
 	review_at = -1
@@ -5618,6 +5873,14 @@ func _build_game_card() -> void:
 		chips.add_child(_chip("%d+%d" % [int(clock[0]), int(clock[1])], _c("field"), _c("quiet"), "clock"))
 	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet"), "sun" if game_color == 0 else "moon"))
 	card_body.add_child(chips)
+	if bool(game.get("online", false)):
+		card_body.add_child(_rival_row())
+		card_body.add_child(_gesture_row())
+		if game_back > 0:
+			var where := "Viendo la jugada %d de %d" % [game_history.size() - 1 - game_back, game_history.size() - 1]
+			if not _online_pending.is_empty():
+				where += " · ¡el rival ya ha jugado!"
+			card_body.add_child(_para(where, F_SUB, _c("accent_text"), font_semibold))
 	_clock_labels = []
 	if game_clocked:
 		var clocks := HBoxContainer.new()
@@ -5645,7 +5908,7 @@ func _build_game_actions() -> void:
 		_build_review_actions()
 		return
 	var is_online := bool(game.get("online", false))
-	var key := "game:%s:%s:%s:%s" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked), str(is_online)]
+	var key := "game:%s:%s:%s:%s:%d:%d" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked), str(is_online), mini(game_back, 1), _online_pending.size()]
 	if game_state == "press":
 		key += ":" + str(_press_warned)
 	if key == _actions_mode:
@@ -5690,6 +5953,16 @@ func _build_game_actions() -> void:
 			left_button = null
 			hint_button = null
 			row = [out, right_button]
+			if is_online:
+				# Mirar jugadas anteriores y volver al directo.
+				var back := _tool_button("back", "Atrás", _game_browse.bind(1), "peach")
+				var fwd := _tool_button("next", "Adelante", _game_browse.bind(-1), "mint")
+				var live := _tool_button("play", "Directo" if _online_pending.is_empty() else "¡Directo!", _game_browse.bind(-99), "sky")
+				fwd.disabled = game_back == 0
+				fwd.modulate.a = 0.42 if game_back == 0 else 1.0
+				live.disabled = game_back == 0
+				live.modulate.a = 0.42 if game_back == 0 else 1.0
+				row = [out, back, fwd, live, right_button]
 			if game_state == "press":
 				var press := _button("clock", "Pulsar reloj", _press_game_clock, _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": BAR_HEIGHT, "icon": 56.0, "radius": 60, "glow": _c("glow")})
 				row.append(press)

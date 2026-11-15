@@ -169,32 +169,56 @@
    1,
    5
   ],
-  "piece_pawn": [
+  "g_saludo": [
    2,
    5
   ],
-  "piece_knight": [
+  "g_aplauso": [
    3,
    5
   ],
-  "piece_bishop": [
+  "g_genial": [
    4,
    5
   ],
-  "piece_rook": [
+  "g_arriba": [
    5,
    5
   ],
-  "piece_queen": [
+  "g_abajo": [
    6,
    5
   ],
-  "piece_king": [
+  "g_buena": [
    7,
    5
   ],
-  "token_pawn": [
+  "piece_pawn": [
    0,
+   6
+  ],
+  "piece_knight": [
+   1,
+   6
+  ],
+  "piece_bishop": [
+   2,
+   6
+  ],
+  "piece_rook": [
+   3,
+   6
+  ],
+  "piece_queen": [
+   4,
+   6
+  ],
+  "piece_king": [
+   5,
+   6
+  ],
+  "token_pawn": [
+   6,
    6
   ]
  }

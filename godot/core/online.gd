@@ -12,6 +12,10 @@ signal started(color: int)
 signal move_received(uci: String)
 signal ended(reason: String, winner: int)
 signal failed(message: String)
+## Lo que enseña el rival (nivel, icono, foto en base64), cuando llega.
+signal rival_profile(profile: Dictionary)
+## Un gesto del chat (mine: si lo mandé yo).
+signal gesture(mine: bool, kind: String)
 signal _auth_done
 
 const API_KEY := "AIzaSyDCBUYJqrn1Q6AKB9rA5eSBzIUw3dpTWe4"
@@ -21,11 +25,22 @@ const MARGIN := 300.0
 const HEARTBEAT := 10.0
 const SCAN := 3.0
 const FRESH_MS := 30000.0
-const CLEANUP := 4.0
+## Tras el final se deja un rato la partida (para los gestos de «buena partida»); después se borra.
+const CLEANUP := 30.0
 const MONTHS := {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
+
+## Gestos del chat: solo estos, sin texto libre.
+const GESTURES := ["saludo", "aplauso", "genial", "arriba", "abajo", "buena"]
+const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡Genial!", "arriba": "Bien", "abajo": "Vaya", "buena": "Buena partida"}
 
 ## idle, searching, waiting, playing, ended
 var phase := "idle"
+## Lo que se enseña al rival: {"nivel": −1…10, "icono": "piece_…", "foto": base64 (solo si se quiere)}.
+var my_profile := {"nivel": -1}
+var rival := {}
+var _rival_json := ""
+var _seen_gestures := {}
+var _last_gesture := 0
 var uid := ""
 var game_id := ""
 var my_color := -1
@@ -321,6 +336,9 @@ func start() -> void:
 
 func _reset() -> void:
 	_gen += 1
+	rival = {}
+	_rival_json = ""
+	_seen_gestures = {}
 	game_id = ""
 	my_color = -1
 	_role = ""
@@ -371,7 +389,25 @@ func _try_join(id: String) -> bool:
 	game_id = id
 	_role = "rival"
 	_listen("partidas/" + id)
+	_send_profile(id)
 	return true
+
+
+## El perfil propio, dentro de la partida (se borra con ella). Si no se puede escribir, la partida sigue igual.
+func _send_profile(id: String) -> void:
+	await request(HTTPClient.METHOD_PUT, "partidas/%s/perfiles/%s" % [id, uid], my_profile)
+
+
+## Gesto del chat. Uno cada segundo y medio como mucho.
+func send_gesture(kind: String) -> bool:
+	if (phase != "playing" and phase != "ended") or game_id == "" or not GESTURES.has(kind):
+		return false
+	var now := Time.get_ticks_msec()
+	if now - _last_gesture < 1500:
+		return false
+	_last_gesture = now
+	var r := await request(HTTPClient.METHOD_POST, "partidas/%s/gestos" % game_id, {"de": uid, "g": kind, "t": {".sv": "timestamp"}})
+	return int(r["status"]) == 200
 
 
 func _open() -> void:
@@ -388,6 +424,7 @@ func _open() -> void:
 	_role = "creador"
 	phase = "waiting"
 	_listen("partidas/" + id)
+	_send_profile(id)
 
 
 func _process(delta: float) -> void:
@@ -430,6 +467,7 @@ func _scan_older() -> void:
 				_role = "rival"
 				_seen = false
 				_listen("partidas/" + id)
+				_send_profile(id)
 				break
 	_scan_busy = false
 
@@ -457,6 +495,7 @@ func _on_tree() -> void:
 		phase = "playing"
 		_applied = 0
 		started.emit(color)
+	_check_extras(doc)
 	if phase != "playing":
 		return
 	var moves := moves_of(doc)
@@ -468,6 +507,31 @@ func _on_tree() -> void:
 			move_received.emit(str(moves[i]))
 		if phase != "playing":
 			return
+
+
+## Perfil del rival y gestos nuevos (también con la partida terminada: «buena partida»).
+func _check_extras(doc: Variant) -> void:
+	var d: Dictionary = doc
+	var other := str(d.get("rival", "")) if str(d.get("creador", "")) == uid else str(d.get("creador", ""))
+	var perfiles: Variant = d.get("perfiles")
+	if perfiles is Dictionary and (perfiles as Dictionary).get(other) is Dictionary:
+		var p: Dictionary = (perfiles as Dictionary)[other]
+		var text := JSON.stringify(p)
+		if text != _rival_json:
+			_rival_json = text
+			rival = p
+			rival_profile.emit(p)
+	var gestos: Variant = d.get("gestos")
+	if gestos is Dictionary:
+		var keys: Array = (gestos as Dictionary).keys()
+		keys.sort()
+		for k in keys:
+			if _seen_gestures.has(str(k)):
+				continue
+			_seen_gestures[str(k)] = true
+			var g: Variant = (gestos as Dictionary)[k]
+			if g is Dictionary and GESTURES.has(str((g as Dictionary).get("g", ""))):
+				gesture.emit(str((g as Dictionary).get("de", "")) == uid, str((g as Dictionary)["g"]))
 
 
 func _fire(method: HTTPClient.Method, path: String) -> void:

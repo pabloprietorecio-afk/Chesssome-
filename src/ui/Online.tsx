@@ -2,8 +2,10 @@
  * Partida online: se busca rival automáticamente (el siguiente jugador que entra) y se juega en directo.
  * Todo el emparejamiento y las jugadas viven en src/online; aquí solo está la pantalla.
  */
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { levelOf } from '../core/assessment';
 import { FIREBASE } from '../online/config';
+import { GESTURES, GESTURE_TEXT, type GestureEvent } from '../online/game';
 import { OnlineMatch, type MatchState } from '../online/match';
 import { Rtdb } from '../online/rtdb';
 import { useAppState } from '../app/store';
@@ -23,7 +25,8 @@ function localStore() {
 
 export function OnlineScreen(): JSX.Element {
   const s = useAppState();
-  const match = useMemo(() => new OnlineMatch(new Rtdb(FIREBASE, { store: localStore() })), []);
+  const nivel = s.rating && s.placement?.done ? levelOf(s.rating.r) : -1;
+  const match = useMemo(() => new OnlineMatch(new Rtdb(FIREBASE, { store: localStore() }), { profile: { nivel } }), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [st, setSt] = useState<MatchState>(match.current);
   const [since, setSince] = useState(() => Date.now());
   const search = () => {
@@ -91,7 +94,17 @@ export function OnlineScreen(): JSX.Element {
           <span>Partida online</span>
           <span className="cm-quiet">Juegas con {st.color === 'w' ? 'blancas' : 'negras'}</span>
         </div>
+        <div className="cm-rival">
+          <span className="cm-rival-icon" aria-hidden="true">
+            {st.rival?.foto ? <img src={`data:image/jpeg;base64,${st.rival.foto}`} alt="" /> : '♟'}
+          </span>
+          <span>
+            <strong>Rival</strong>
+            <span className="cm-quiet"> · {st.rival ? (st.rival.nivel >= 0 ? `Nivel ${st.rival.nivel}` : 'Sin nivel todavía') : '…'}</span>
+          </span>
+        </div>
         <div className={`cm-turn cm-turn-${st.turn}`}>{status}</div>
+        <GestureBubbles events={st.gestures} />
         <BoardView
           mode={s.settings.board}
           fen={st.fen}
@@ -106,12 +119,44 @@ export function OnlineScreen(): JSX.Element {
       </div>
       <div className="cm-side">
         <div className="cm-card">
+          <div className="cm-gestures" role="group" aria-label="Gestos para el rival">
+            {GESTURES.map((g) => (
+              <button key={g} className="cm-gesture" title={GESTURE_TEXT[g].text} onClick={() => void match.gesture(g)}>
+                <span aria-hidden="true">{GESTURE_TEXT[g].emoji}</span>
+                <small>{GESTURE_TEXT[g].text}</small>
+              </button>
+            ))}
+          </div>
           <p className="cm-quiet">Jugadas: {st.moves.length}</p>
           <button className="cm-primary" onClick={() => void match.leave()}>
             {st.phase === 'ended' ? 'Salir' : 'Rendirse y salir'}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/** Los gestos que van llegando, como globos que suben y se desvanecen (cada uno se ve unos segundos). */
+function GestureBubbles({ events }: { events: GestureEvent[] }): JSX.Element {
+  const [shown, setShown] = useState<GestureEvent[]>([]);
+  const seen = useRef(new Set<string>());
+  useEffect(() => {
+    const fresh = events.filter((e) => !seen.current.has(e.key));
+    if (!fresh.length) return;
+    for (const e of fresh) seen.current.add(e.key);
+    setShown((list) => [...list, ...fresh].slice(-4));
+    const t = setTimeout(() => setShown((list) => list.filter((e) => !fresh.includes(e))), 2800);
+    return () => clearTimeout(t);
+  }, [events]);
+  return (
+    <div className="cm-bubbles" aria-live="polite">
+      {shown.map((e) => (
+        <div key={e.key} className={`cm-bubble ${e.mine ? 'cm-bubble-mine' : 'cm-bubble-rival'}`}>
+          <span aria-hidden="true">{GESTURE_TEXT[e.g].emoji}</span> {e.mine ? 'Tú' : 'Rival'}: {GESTURE_TEXT[e.g].text}
+        </div>
+      ))}
     </div>
   );
 }

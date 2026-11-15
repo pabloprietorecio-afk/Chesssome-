@@ -81,7 +81,7 @@ export class Rtdb {
     return (this.current = { uid: j.localId, idToken: j.idToken, expiresAt: this.now() + Number(j.expiresIn ?? 3600) * 1000 });
   }
 
-  async request(method: 'GET' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown, query = ''): Promise<Reply> {
+  async request(method: 'GET' | 'PUT' | 'PATCH' | 'POST' | 'DELETE', path: string, body?: unknown, query = ''): Promise<Reply> {
     const s = await this.session();
     const url = `${this.base}/${path}.json?${[query, `auth=${s.idToken}`].filter(Boolean).join('&')}`;
     const r = await this.f(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
