@@ -1,0 +1,91 @@
+name: Medir la fuerza del rival (calibración)
+
+# Partidas de cada nivel del rival de la app (godot/core/bot.gd) contra Stockfish con fuerza limitada
+# (UCI_LimitStrength + UCI_Elo, que Stockfish ancla a CCRL 40/4, una lista de motores) y contra los niveles vecinos.
+# El ajuste (tools/calibrar/ajustar.py) da el Elo de cada nivel con su margen y se publica en la versión preliminar
+# «calibracion-bot». Ojo: la CI es más rápida que un móvil; los niveles que piensan con tope de tiempo pueden
+# jugar algo peor en el teléfono.
+on:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  partidas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { a: 4, b: "sf:1600", n: 24 }
+          - { a: 4, b: "sf:2000", n: 24 }
+          - { a: 3, b: "sf:1320", n: 24 }
+          - { a: 3, b: "sf:1600", n: 24 }
+          - { a: 3, b: "4", n: 24 }
+          - { a: 2, b: "sf:1320", n: 24 }
+          - { a: 2, b: "3", n: 24 }
+          - { a: 1, b: "sf:1320", n: 16 }
+          - { a: 1, b: "2", n: 24 }
+          - { a: 0, b: "1", n: 24 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Godot y Stockfish
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq stockfish
+          echo "uci" | /usr/games/stockfish | grep -E "^id name|UCI_Elo" || true
+          mkdir -p ~/godot-dl && cd ~/godot-dl
+          BASE=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          ED=Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          W="wget -nv --tries=6 --waitretry=15 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+          $W $BASE/SHA512-SUMS.txt
+          $W $BASE/$ED
+          grep -E "  $ED$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q $ED && rm $ED
+      - name: Importar el proyecto
+        run: ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import > import.log 2>&1 || true
+      - name: Jugar
+        run: |
+          set -o pipefail
+          B="${{ matrix.b }}"
+          OUT="res-${{ matrix.a }}-${B/:/_}.json"
+          timeout 19000 ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot -s tests/calibrar.gd -- \
+            --a ${{ matrix.a }} --b "$B" --partidas ${{ matrix.n }} --stockfish /usr/games/stockfish --salida "$GITHUB_WORKSPACE/$OUT" 2>&1 | tee juego.log
+          grep -q "^HECHO" juego.log
+          echo "OUT=$OUT" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT }}
+          path: ${{ env.OUT }}
+
+  ajuste:
+    needs: partidas
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: resultados
+          merge-multiple: true
+      - name: Ajustar el Elo de cada nivel
+        run: |
+          ls resultados
+          python3 tools/calibrar/ajustar.py resultados/*.json --salida calibracion.json --md calibracion.md
+          cat calibracion.md >> $GITHUB_STEP_SUMMARY
+      - name: Publicar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: calibracion-bot
+          name: A Chess Way · fuerza medida del rival
+          prerelease: true
+          body_path: calibracion.md
+          files: |
+            calibracion.json
+            calibracion.md
+            resultados/*.json

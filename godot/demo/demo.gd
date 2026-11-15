@@ -2167,7 +2167,7 @@ func _build_card() -> void:
 				var lv0 := Assessment.level_of(float(_rating_shown[0]))
 				var lv1 := Assessment.level_of(float(_rating_shown[1]))
 				if lv1 > lv0:
-					chips.add_child(_chip("¡Subes al nivel %d!" % lv1, chip_tint[0], chip_tint[1], "trend"))
+					chips.add_child(_chip(("¡Subes al nivel %d!" if kids else "¡Táctica: nivel %d!") % lv1, chip_tint[0], chip_tint[1], "trend"))
 				chips.add_child(_chip("Puntuación %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
 			chips.add_child(_chip("Nivel %d · %d" % [Assessment.level_of(float(rating)), rating], _c("field"), _c("ink")))
 			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet"), "open"))
@@ -4960,7 +4960,8 @@ func _open_home() -> void:
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
-		words.add_child(_line("Nivel %d de %d · %s" % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
+		# El nivel que sale de los problemas mide la táctica, no la fuerza en partidas (eso es el nivel de juego).
+		words.add_child(_line(("Nivel %d de %d · %s" if kids else "Táctica: nivel %d de %d · %s") % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
@@ -5115,7 +5116,7 @@ func _open_train_hub() -> void:
 		seen[str(t["id"])] = str(t.get("family", "otros"))
 		if bool(t["correct"]):
 			solved[str(t["id"])] = true
-	var where := "Nivel %d de %d · %s" % [lv, top, str(rank[1])]
+	var where := ("Nivel %d de %d · %s" if kids else "Táctica: nivel %d de %d · %s") % [lv, top, str(rank[1])]
 	body.add_child(_centered(_para(where, F_HEAD, _c("ink"), font_display)))
 	var left_text := "¡Nivel máximo!"
 	if lv < top:
@@ -7293,7 +7294,7 @@ func _level_up(level_now: int, before: float, now: float) -> void:
 	trophy.pivot_offset = Vector2(150.0, 150.0)
 	column.add_child(trophy)
 	column.add_child(_centered(_para("¡Enhorabuena!", F_LARGE, _c("ink"), font_display)))
-	column.add_child(_centered(_para("Has subido al nivel %d" % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
+	column.add_child(_centered(_para(("Has subido al nivel %d" if kids else "Nivel %d de táctica") % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
 	var badge := _level_badge(now, 170.0)
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(badge)
