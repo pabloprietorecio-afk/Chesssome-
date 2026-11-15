@@ -707,4 +707,141 @@ export const CLIPS: ClipSource[] = [
     notes:
       'Vídeo de comentario de ChessBase India (IM Sagar Shah): imagen de la sala, tablero 2D y relojes. El comentario y el análisis en el tablero 2D pueden adelantar la respuesta; Pablo lo da por bueno (15 nov 2026). El error 53…Ag5?? ocurre antes del 16:51 y no está en el clip. Marcas sin comprobar en el móvil.',
   },
+  {
+    id: 'nakamura-carlsen-2024-norway-armageddon',
+    title: 'Se le acabó el tiempo',
+    subtitle: 'Nakamura – Carlsen · Norway Chess 2024, armagedón',
+    event: 'Norway Chess 2024, ronda 7, armagedón · Stavanger',
+    year: 2024,
+    white: 'Hikaru Nakamura',
+    black: 'Magnus Carlsen',
+    video: {
+      provider: 'youtube',
+      id: '_xbZRdj-U0A',
+      title: 'The most thrilling Nakamura vs Carlsen encounter',
+      channel: 'ChessBase India',
+      channelUrl: 'https://www.youtube.com/@ChessBaseIndiachannel',
+      // En las grabaciones de Pablo se ven el título («The most thrilling Nakamura vs Carlsen encounter | N…»),
+      // @ChessBaseIndiachannel y 18:43 de duración. La página de YouTube no se pudo abrir desde aquí.
+      official: true,
+      checked: '2026-11-15',
+      duration: 1123,
+    },
+    // Marcas medidas por Claude (15 nov 2026) sobre dos grabaciones de pantalla de Pablo: la primera (14:00–16:02) y la
+    // segunda (15:57–17:46). Desfases sacados del contador del reproductor en la segunda (15:57 → 15:58 a los 0,9 s) y del
+    // solape de imagen entre las dos (115,9 s). Hasta 38.Txd2, cada jugada sale de la mano que mueve; desde 38…Ce6, del
+    // tablero 2D de la retransmisión, que en este tramo cambia a la vez que las manos (comprobado en 51.Rh5). 51…Tg5+ solo
+    // se ve en la mano. El tablero 2D muestra también análisis de Sagar Shah (por ejemplo 36.Rf1): esos cambios no se usan.
+    start: 843,
+    end: 1066,
+    marks: 'pending',
+    sync: {
+      startPly: 68,
+      marks: [
+        { ply: 69, at: 883.7 },
+        { ply: 70, at: 893.1 },
+        { ply: 71, at: 934.4 },
+        { ply: 72, at: 937.3 },
+        { ply: 73, at: 951.0 },
+        { ply: 74, at: 952.0 },
+        { ply: 75, at: 952.7 },
+        { ply: 76, at: 962.0 },
+        { ply: 77, at: 975.1 },
+        { ply: 78, at: 977.9 },
+        { ply: 79, at: 978.9 },
+        { ply: 80, at: 981.7 },
+        { ply: 81, at: 999.2 },
+        { ply: 82, at: 1001.1 },
+        { ply: 83, at: 1008.2 },
+        { ply: 84, at: 1013.0 },
+        { ply: 85, at: 1019.9 },
+        { ply: 86, at: 1021.1 },
+        { ply: 87, at: 1022.7 },
+        { ply: 88, at: 1023.7 },
+        { ply: 89, at: 1024.9 },
+        { ply: 90, at: 1031.0 },
+        { ply: 91, at: 1036.1 },
+        { ply: 92, at: 1041.3 },
+        { ply: 93, at: 1046.6 },
+        { ply: 94, at: 1048.5 },
+        { ply: 95, at: 1049.7 },
+        { ply: 96, at: 1052.0 },
+        { ply: 97, at: 1056.4 },
+        { ply: 98, at: 1057.6 },
+        { ply: 99, at: 1059.0 },
+        { ply: 100, at: 1059.9 },
+        { ply: 101, at: 1061.1 },
+        { ply: 102, at: 1062.7 },
+      ],
+    },
+    moves: '1. d4 Nf6 2. c4 e6 3. Nc3 d5 4. cxd5 exd5 5. Bg5 Be7 6. e3 h6 7. Bh4 Bg4 8. f3 Be6 9. Bd3 c5 10. Nge2 Nc6 11. O-O O-O 12. Re1 Re8 13. Bc2 Rc8 14. Nf4 cxd4 15. Nxe6 fxe6 16. exd4 Nxd4 17. Bg6 Rf8 18. Bf2 Nc6 19. Rxe6 d4 20. Ne2 Bc5 21. Nf4 Nd5 22. Qb3 Nxf4 23. Rd6+ Kh8 24. Rxd8 Rcxd8 25. Qxb7 Ne5 26. Be4 Bb6 27. a4 Nc4 28. Qa6 Nd2 29. a5 Bc5 30. Bb7 Nb3 31. Rd1 d3 32. Bxc5 Nxc5 33. Qxa7 Nxb7 34. Qxb7 Rfe8 35. g3 d2 36. Qb4 Rd4 37. Qxd2 Rxd2 38. Rxd2 Ne6 39. b4 Kg8 40. b5 Ra8 41. Ra2 Kf7 42. Kf2 Ke7 43. b6 Nc5 44. Ke3 Kd6 45. Kf4 g6 46. h4 Kd5 47. Kg4 Kc6 48. h5 Rg8 49. Rc2 Kb5 50. hxg6 Rxg6+ 51. Kh5 Rg5+ 1-0',
+    gameSource:
+      'Partida pública. Jugadas que pasó Pablo (15 nov 2026), validadas con chess.js y cotejadas con el tablero 2D de la retransmisión en sus grabaciones: de 21.Cf4 a 27.a4 y de 34…Tfe8 a 51.Rh5, posición a posición. Coinciden también con los fragmentos que citan ChessBase India (16…Cxd4 a 24…Tcxd8 y 36.Db4 Td4 37.Dxd2 Txd2 38.Txd2) y Chess.com. 51…Tg5+ se ve en la mano de Carlsen, no en el tablero 2D: cae su bandera.',
+    orientation: 'w',
+    intro:
+      'Stavanger, junio de 2024. Armagedón de la séptima ronda de Norway Chess: Nakamura necesita ganar, porque las tablas dan la victoria a Carlsen. Nakamura tiene dama contra dos torres y caballo, pero las negras tienen un peón en d3 a punto de coronar. Y a Carlsen le queda menos de un minuto.',
+    // Comprobado con Stockfish 19 Lite (profundidad 20–22, 15 nov 2026): tras 35…d2, 36.Rf1 +4,1; 36.Db4 +0,8; el resto,
+    // pierde. Tras 36.Db4, 36…Td4 es la única que aguanta (−1,1 para las negras; 36…Te1+, −4,8). 36.Txd2? Txd2 pierde la
+    // torre. Tras 36…Td4: 37.Dxd4? Ce2+ recupera la dama. Posición final (tras 51…Tg5+): 0,0.
+    lesson: {
+      title: 'El peón que casi corona',
+      takeaway: 'Antes de comerte un peón peligroso, mira qué lo defiende y qué jugadas tiene el rival. A veces una jugada tranquila de rey gana más que un ataque.',
+      from: 70,
+      steps: [
+        {
+          moves: '',
+          text: 'El peón de d2 está a un paso de coronar. Lo defiende la torre de d8; la torre de d1 lo frena.',
+          arrows: [{ from: 'd8', to: 'd2', tone: 'bad' }],
+        },
+        {
+          moves: 'Rxd2 Rxd2',
+          text: 'Comérselo ya no sirve: 36.Txd2? Txd2, y las blancas pierden la torre.',
+        },
+        {
+          moves: 'Kf1',
+          text: '36.Rf1!: el rey se acerca al peón y vigila e1 y e2, para que las piezas negras no entren por ahí. Las blancas ganaban.',
+          arrows: [{ from: 'f1', to: 'e2', tone: 'good' }],
+        },
+        {
+          moves: 'Qb4',
+          text: 'En la partida, 36.Db4?: la dama ataca el caballo de f4 y el peón de d2.',
+          arrows: [
+            { from: 'b4', to: 'f4', tone: 'bad' },
+            { from: 'b4', to: 'd2', tone: 'bad' },
+          ],
+        },
+        {
+          moves: 'Qb4 Rd4',
+          text: '36…Td4!: la torre corta la fila y protege el caballo. Si 37.Dxd4, Ce2+ ataca rey y dama a la vez.',
+          arrows: [{ from: 'f4', to: 'e2', tone: 'bad' }],
+        },
+        {
+          moves: 'Qb4 Rd4 Qxd2 Rxd2',
+          text: '37.Dxd2 Txd2: Nakamura se come el peón, pero tiene que dar la dama por la torre.',
+        },
+        {
+          moves: 'Qb4 Rd4 Qxd2 Rxd2 Rxd2',
+          text: '38.Txd2: queda torre y peones contra torre y caballo. La ventaja blanca ha desaparecido.',
+        },
+      ],
+    },
+    // Una parada. 933,4: la mano de Nakamura entra en el plano hacia 934,2 y deja la dama en b4 hacia
+    // 934,6. Margen corto (unos 0,8 s).
+    stops: [
+      {
+        at: 933.4,
+        questions: [
+          {
+            ply: 71,
+            question: 'Juega Nakamura, con blancas y algo más de dos minutos. A Carlsen le quedan menos de 40 segundos. ¿Qué jugarías?',
+            hint: 'Comerte el peón de d2 ahora no funciona: lo defiende la torre de d8. ¿Qué pieza blanca puede acercarse?',
+            why: '36.Rf1!: el rey se acerca al peón de d2 y vigila e1 y e2. Era la única que ganaba. En la partida, Nakamura jugó 36.Db4?, que ataca el caballo de f4 y el peón de d2, pero Carlsen encontró 36…Td4!: la torre protege el caballo y, si 37.Dxd4, Ce2+ ataca rey y dama. Nakamura tuvo que dar la dama por la torre y la ventaja se esfumó.',
+          },
+        ],
+      },
+    ],
+    outro: 'La posición final estaba igualada, y en un armagedón las tablas daban la victoria a Carlsen. Pero tras 51…Tg5+, la bandera de Carlsen cayó: perdió por tiempo y Nakamura ganó la ronda.',
+    notes:
+      'Vídeo de comentario de ChessBase India (IM Sagar Shah). El análisis del tablero 2D enseña 36.Rf1 antes de la pausa: es una pista; Pablo lo da por bueno (15 nov 2026). 36…Td4! no va como pregunta: las negras quedan algo peor (−1,1) y no hay un resultado claro que defender; va en la explicación y en la lección. Tampoco 22.Db3 (+2,2, ventaja sin resultado claro): hay grabación de Pablo (7:00–10:01) por si el cine admite algún día preguntas de ventaja. La partida terminó por tiempo, no por abandono: no hay «¿Por qué abandonó?». Marcas sin comprobar en el móvil.',
+  },
 ];

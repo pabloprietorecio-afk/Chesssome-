@@ -296,3 +296,11 @@ Las líneas se calcularon con Stockfish 19 Lite WASM a profundidad 30 por jugada
 - Marcas sobre una grabación de Pablo desde el 16:51 (desfase ±0,5 s). De 61…Rxh6 a 62…Rh7 el tablero 2D se puso al día de golpe; ahí mandan las manos.
 - Preguntas: 56.Txf6+ (la mejor con diferencia) y 63.Rf6! (única, con mate forzado según el empaquetado). Lección de 10 pasos y abandono: 69…Rh6 70.Th1+ Ah4 71.Txh4+.
 - `pipeline/build-video-cine.ts --only <id>` rehace un solo clip y conserva los demás del paquete.
+
+## «Se le acabó el tiempo» (Nakamura – Carlsen, Norway Chess 2024, ronda 7, armagedón)
+
+- Vídeo de ChessBase India «The most thrilling Nakamura vs Carlsen encounter» (_xbZRdj-U0A, 18:43). Armagedón: blancas 10 min, negras 7, +1 s desde la jugada 41; las tablas dan la victoria a las negras.
+- Partida que pasó Pablo, validada con chess.js y cotejada posición a posición con el tablero 2D del vídeo (21.Cf4–27.a4 y 34…Tfe8–51.Rh5) y con los fragmentos de ChessBase India. 51…Tg5+ solo se ve en la mano de Carlsen: cae su bandera.
+- Clip 843–1066 sobre dos grabaciones de Pablo (14:00–16:02 y 15:57–17:46). Desfase del contador del reproductor en la segunda; la primera se ancla a la segunda por solape de imagen (115,9 s).
+- Una pregunta: 36.Rf1! (única que gana; en la partida, 36.Db4?). 36…Td4! va en la explicación y en la lección (7 pasos). Sin «¿Por qué abandonó?»: acabó por tiempo, con la posición igualada.
+- Descartadas como preguntas, porque el cine solo admite posiciones con resultado claro (ganar o hacer tablas): 22.Db3! (+2,2) y 36…Td4! (−1,1). Hay grabación de Pablo de 7:00–10:01 con 22.Db3, con desfase medido (420,55 s), por si algún día se admiten preguntas de ventaja.
