@@ -27,6 +27,16 @@ func _init() -> void:
 	var back := GameLog.load_log("user://_test_log.json")
 	_ok((back["partidas"] as Array).size() == 5, "se guarda y se lee")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://_test_log.json"))
+	# Cómo terminó y filtros
+	_ok(GameLog.reason({"motivo": "Se te ha acabado el tiempo.", "resultado": -1}) == "tiempo", "por tiempo")
+	_ok(GameLog.reason({"motivo": "Tu rival ha abandonado la partida: ¡has ganado!", "resultado": 1}) == "abandono", "abandono")
+	_ok(GameLog.reason({"motivo": "Te has rendido.", "resultado": -1}) == "rendicion", "rendición")
+	_ok(GameLog.reason({"motivo": "No queda material para dar mate: tablas.", "resultado": 0}) == "tablas", "tablas (no mate)")
+	_ok(GameLog.reason({"motivo": "Jaque mate: gana el rival.", "resultado": -1}) == "mate", "mate")
+	var flog := {"partidas": [{"resultado": -1, "motivo": "Se te ha acabado el tiempo."}, {"resultado": 1, "motivo": "¡Jaque mate! Has ganado."}, {"resultado": -1, "motivo": "Jaque mate: gana el rival."}], "rivales": {}}
+	_ok(GameLog.filtered(flog, "perdidas", "") == [0, 2], "solo perdidas")
+	_ok(GameLog.filtered(flog, "perdidas", "tiempo") == [0], "perdidas por tiempo")
+	_ok(GameLog.filtered(flog, "", "mate") == [1, 2], "todas por mate")
 	# Nombres
 	_ok(GameLog.name_problem("Penélope") == "", "Penélope vale")
 	_ok(GameLog.name_problem("Pablo_88") == "", "con números y guion bajo")

@@ -95,9 +95,16 @@ func _ready() -> void:
 	await _shot("p23_comidas")
 	demo._leave_game()
 	await _frames(4)
+	await _reloj(demo)
 	await _detalle(demo)
 	await _mis_partidas(demo)
 	await _por_que(demo)
+	# Personajes con la chapita de su pieza sobre la cabeza.
+	demo.view.board.set_piece_set("aventura")
+	demo.view.set_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+	await get_tree().create_timer(1.5).timeout
+	await _shot("p29_aventura_chapas")
+	demo.view.board.set_piece_set("clasico")
 	print("PANTALLAS DONE")
 	get_tree().quit()
 
@@ -194,8 +201,13 @@ func _detalle(demo: Control) -> void:
 	await _frames(4)
 	for e: Dictionary in demo.detail:
 		print("DETALLE %s · %s · %s" % [e["san"], e["label"], " / ".join(e["paras"])])
+	demo._detail_show(1)
+	await get_tree().create_timer(1.4).timeout
+	await _shot("p17a_detalle_buena")
 	demo._detail_show(2)
-	await _frames(6)
+	await get_tree().create_timer(0.55).timeout
+	await _shot("p17b_detalle_respuesta")
+	await get_tree().create_timer(1.6).timeout
 	await _shot("p17_detalle_error")
 	demo._detail_back()
 	await _frames(4)
@@ -219,14 +231,25 @@ func _mis_partidas(demo: Control) -> void:
 	var t := int(Time.get_unix_time_from_system()) - 4000
 	for def: Array in [["u1", "Ana", 1, 0, 5], ["bot:2", "Ordenador · Medio", -1, 1, -1], ["u1", "Ana", 0, 1, 5], ["u2", "Luis", 1, 0, 2], ["u3", "Marta", -1, 1, 7]]:
 		t += 600
-		GameLog.add(log, {"fecha": t, "tipo": "ordenador" if str(def[0]).begins_with("bot:") else "online", "rival_id": def[0], "rival_nombre": def[1], "color": def[3], "resultado": def[2], "motivo": "", "inicio": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "jugadas": ["e2e4", "e7e5", "g1f3", "b8c6"]}, {"nivel": def[4], "icono": "piece_rook" if def[0] == "u1" else "piece_knight"} if not str(def[0]).begins_with("bot:") else {})
+		var why := "Se te ha acabado el tiempo." if int(def[2]) < 0 else ("¡Jaque mate! Has ganado." if int(def[2]) > 0 else "La misma posición tres veces: tablas.")
+		GameLog.add(log, {"fecha": t, "tipo": "ordenador" if str(def[0]).begins_with("bot:") else "online", "rival_id": def[0], "rival_nombre": def[1], "color": def[3], "resultado": def[2], "motivo": why, "inicio": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "jugadas": ["e2e4", "e7e5", "g1f3", "b8c6"]}, {"nivel": def[4], "icono": "piece_rook" if def[0] == "u1" else "piece_knight"} if not str(def[0]).begins_with("bot:") else {})
 	demo.game_log = log
+	# Una evolución de prueba: intentos con su dificultad (la gráfica recalcula la puntuación).
+	demo.experience = "casual"
+	var tries: Array = []
+	for k in 24:
+		tries.append({"id": "t%d" % k, "rating": 1050.0 + 18.0 * k, "rd": 60.0, "correct": k % 4 != 1, "phase": "train"})
+	demo.player = {"rating": {"r": 1300.0, "rd": 80.0, "vol": 0.06}, "tries": tries, "done": true}
 	demo._open_my_games_from("online")
 	await _frames(8)
 	await _shot("p21_mis_partidas")
+	demo._filter_my_games("perdidas", "tiempo")
+	await _frames(8)
+	await _shot("p21b_mis_partidas_filtro")
 	demo.progress_scroll.scroll_vertical = 100000
 	await _frames(3)
 	await _shot("p22_mis_partidas_lista")
+	demo._filter_my_games("", "")
 	demo._close_progress()
 
 
@@ -250,3 +273,33 @@ func _shot(shot_name: String) -> void:
 	var image := get_viewport().get_texture().get_image()
 	image.save_png(out_dir.path_join(shot_name + ".png"))
 	print("SHOT ", shot_name)
+
+
+## Partida con reloj contra el ordenador: el reloj de verdad (pulsadores y pantallas) y la confirmación de rendirse.
+func _reloj(demo: Control) -> void:
+	demo.press_clock = true
+	demo._start_game({"variant": "", "level": 1, "title": "Partida · Medio", "text": "", "kids": "", "unit": "", "clock": [20, 0]}, 0)
+	await get_tree().create_timer(0.6).timeout
+	await _shot("p24_reloj_te_toca")
+	demo.view.show_move("e2e4")
+	demo._game_move("e2e4")
+	await get_tree().create_timer(0.5).timeout
+	await _shot("p25_reloj_pulsa")
+	print("RELOJ estado=%s" % demo.game_state)
+	demo._on_clock_pressed()
+	await get_tree().create_timer(0.05).timeout
+	await _shot("p26_reloj_bajando")
+	var guard := 0
+	while demo.game_state != "play" and guard < 400:
+		guard += 1
+		await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
+	await _shot("p27_reloj_rival_pulso")
+	demo._ask_resign()
+	await get_tree().create_timer(0.4).timeout
+	await _shot("p28_confirmar_rendirse")
+	print("CONFIRMAR abierta=%s" % str(demo.confirm_node != null))
+	demo._close_confirm()
+	await _frames(2)
+	demo._leave_game()
+	await _frames(4)

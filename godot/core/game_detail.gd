@@ -14,8 +14,9 @@ const INACCURACY := "inaccuracy"
 const MISTAKE := "mistake"
 const BLUNDER := "blunder"
 const LABELS := {"only": "Única jugada", "best": "La mejor", "good": "Buena", "inaccuracy": "Imprecisión", "mistake": "Error", "blunder": "Error grave"}
-## Chapa de anotación en el tablero (las de demo.gd: best «!», dubious «?!», wrong «?», blunder «??»).
-const BADGE := {"only": "", "best": "best", "good": "", "inaccuracy": "dubious", "mistake": "wrong", "blunder": "blunder"}
+## Chapa de anotación en el tablero (las de demo.gd: best «!», good e only con icono, dubious «?!», wrong «?»,
+## blunder «??»).
+const BADGE := {"only": "only", "best": "best", "good": "good", "inaccuracy": "dubious", "mistake": "wrong", "blunder": "blunder"}
 const NEAR_MATE := Bot.MATE - 300
 
 

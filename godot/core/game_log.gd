@@ -51,6 +51,39 @@ static func add(log: Dictionary, game: Dictionary, rival: Dictionary) -> Diction
 	return log
 
 
+## Cómo terminó una partida, para filtrar: mate, tiempo, abandono, rendicion, tablas u otros. Sale del texto
+## guardado (vale también para las partidas antiguas).
+static func reason(g: Dictionary) -> String:
+	var text := str(g.get("motivo", "")).to_lower()
+	if text.contains("abandon"):
+		return "abandono"
+	if text.contains("tiempo"):
+		return "tiempo"
+	if text.contains("rendido"):
+		return "rendicion"
+	if int(g.get("resultado", 0)) == 0:
+		return "tablas"
+	if text.contains("mate"):
+		return "mate"
+	return "otros"
+
+
+## Partidas que pasan un filtro: resultado ("", "ganadas", "tablas", "perdidas") y final ("" o uno de reason).
+## Devuelve los índices en la lista (la más reciente, primero).
+static func filtered(log: Dictionary, result: String, why: String) -> Array:
+	var out: Array = []
+	var games: Array = log["partidas"]
+	for i in games.size():
+		var g: Dictionary = games[i]
+		var res := int(g.get("resultado", 0))
+		if result == "ganadas" and res <= 0 or result == "perdidas" and res >= 0 or result == "tablas" and res != 0:
+			continue
+		if why != "" and reason(g) != why:
+			continue
+		out.append(i)
+	return out
+
+
 ## {total, ganadas, tablas, perdidas, online, ordenador, blancas: [g, t, p], negras: [g, t, p], racha (actual:
 ## positiva de victorias, negativa de derrotas), mejor_racha}.
 static func stats(log: Dictionary) -> Dictionary:
