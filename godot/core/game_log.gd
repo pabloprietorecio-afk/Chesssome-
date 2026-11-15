@@ -51,6 +51,35 @@ static func add(log: Dictionary, game: Dictionary, rival: Dictionary) -> Diction
 	return log
 
 
+## Partidas para que el nivel de juego deje de ser provisional.
+const RATED_MIN := 10
+
+
+## Nivel de juego: Glicko-2 con las partidas contra el ordenador, de la más antigua a la más reciente. Cada nivel
+## del ordenador cuenta con su fuerza medida (Bot.LEVELS: «elo» y «rd»; tools/calibrar); los que no la tienen no
+## cuentan. `levels` es para las pruebas. Devuelve {r, rd, n (partidas que cuentan), provisional}.
+static func game_rating(log: Dictionary, levels: Array = []) -> Dictionary:
+	if levels.is_empty():
+		levels = Bot.LEVELS
+	var rating := {"r": 1500.0, "rd": 350.0, "vol": 0.06}
+	var n := 0
+	var games: Array = log.get("partidas", [])
+	for i in range(games.size() - 1, -1, -1):
+		var g: Dictionary = games[i]
+		var id := str(g.get("rival_id", ""))
+		if not id.begins_with("bot:"):
+			continue
+		var lv := int(id.substr(4))
+		if lv < 0 or lv >= levels.size() or not (levels[lv] as Dictionary).has("elo"):
+			continue
+		var def: Dictionary = levels[lv]
+		var res := int(g.get("resultado", 0))
+		var score := 1.0 if res > 0 else (0.5 if res == 0 else 0.0)
+		rating = Glicko2.update(rating, [{"opponent": {"r": float(def["elo"]), "rd": float(def.get("rd", 60.0))}, "score": score}])
+		n += 1
+	return {"r": float(rating["r"]), "rd": float(rating["rd"]), "n": n, "provisional": n < RATED_MIN}
+
+
 ## Cómo terminó una partida, para filtrar: mate, tiempo, abandono, rendicion, tablas u otros. Sale del texto
 ## guardado (vale también para las partidas antiguas).
 static func reason(g: Dictionary) -> String:

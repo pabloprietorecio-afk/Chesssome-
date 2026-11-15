@@ -4966,6 +4966,10 @@ func _open_home() -> void:
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
 		words.add_child(_line(left_text, F_SUB + 2, _c("quiet"), font_medium))
+		if not kids:
+			var gr := GameLog.game_rating(_log())
+			if int(gr["n"]) > 0:
+				words.add_child(_line("Juego: %d%s" % [roundi(float(gr["r"])), " (provisional)" if bool(gr["provisional"]) else ""], F_SUB + 2, _c("quiet"), font_medium))
 		rank_row.add_child(words)
 		body.add_child(_spacer(22.0))
 		body.add_child(rank_row)
@@ -5448,7 +5452,7 @@ func _open_online() -> void:
 		body.add_child(_spacer(16.0))
 		body.add_child(_option_button("trend", "mint", "Mis partidas", "Rivales, resultados y estadísticas.", _open_my_games_from.bind("online"), true))
 		body.add_child(_spacer(16.0))
-		var lv_text := "Tu rival verá tu nombre, tu nivel y tu icono."
+		var lv_text := "Tu rival verá tu nombre, tu nivel de táctica y tu icono."
 		body.add_child(_centered(_para(lv_text, F_SUB, _c("quiet"), font_regular)))
 		body.add_child(_card_button("Cambiar mi nombre", _change_online_name, _c("field"), _c("ink"), F_SUB, "sliders"))
 		if avatar == "foto" and _avatar_photo() != null:
@@ -5810,6 +5814,9 @@ func _open_my_games() -> void:
 	body.add_child(_spacer(16.0))
 	body.add_child(_centered(_para("Mis partidas", F_LARGE, _c("ink"), font_display)))
 	body.add_child(_spacer(20.0))
+	if not kids:
+		body.add_child(_levels_row(log))
+		body.add_child(_spacer(18.0))
 	if int(st["total"]) == 0:
 		body.add_child(_centered(_para("Todavía no has terminado ninguna partida. Aquí verás contra quién has jugado, tus resultados y tus estadísticas.", F_BODY, _c("quiet"), font_regular)))
 	else:
@@ -5893,7 +5900,7 @@ func _open_my_games() -> void:
 			var lv := int(r.get("nivel", -1))
 			var who := str(r.get("nombre", "Rival"))
 			if lv >= 0 and not id.begins_with("bot:"):
-				who += " · nivel %d" % lv
+				who += " · táctica %d" % lv
 			texts.add_child(_para(who, F_BODY, _c("ink"), font_semibold))
 			var n := int(r.get("partidas", 0))
 			var g := int(r.get("ganadas", 0))
@@ -5925,6 +5932,50 @@ func _open_my_games() -> void:
 			body.add_child(_spacer(10.0))
 	body.add_child(_spacer(10.0, true))
 	footer.add_child(_button("back", "Volver", _close_my_games, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+## Los dos niveles, uno al lado del otro: táctica (problemas) y juego (partidas contra el ordenador).
+func _levels_row(log: Dictionary) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var defs: Array = []
+	if _has_player():
+		var r := float(player["rating"]["r"])
+		defs.append(["target", "peach", "Táctica", "Nivel %d · %d" % [Assessment.level_of(r), roundi(r)], "Sale de los problemas"])
+	else:
+		defs.append(["target", "peach", "Táctica", "Sin medir", "Haz el test de nivel"])
+	var gr := GameLog.game_rating(log)
+	if int(gr["n"]) == 0:
+		defs.append(["piece_knight", "sky", "Juego", "Sin medir", "Juega contra el ordenador"])
+	elif bool(gr["provisional"]):
+		defs.append(["piece_knight", "sky", "Juego", "%d (provisional)" % roundi(float(gr["r"])), "%d de %d partidas" % [int(gr["n"]), GameLog.RATED_MIN]])
+	else:
+		defs.append(["piece_knight", "sky", "Juego", "%d" % roundi(float(gr["r"])), "Sale de tus partidas"])
+	for d: Array in defs:
+		var t := _tint(str(d[1]))
+		var panel := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = t[0]
+		sb.set_corner_radius_all(40)
+		sb.content_margin_left = 26.0
+		sb.content_margin_right = 20.0
+		sb.content_margin_top = 18.0
+		sb.content_margin_bottom = 18.0
+		panel.add_theme_stylebox_override("panel", sb)
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var inner := HBoxContainer.new()
+		inner.add_theme_constant_override("separation", 16)
+		inner.add_child(_icon(str(d[0]), 64.0, t[1]))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_child(_para(str(d[2]), F_FOOT, _c("quiet"), font_medium))
+		col.add_child(_para(str(d[3]), F_BODY, t[1], font_display))
+		col.add_child(_para(str(d[4]), F_FOOT, _c("quiet"), font_regular))
+		inner.add_child(col)
+		panel.add_child(inner)
+		row.add_child(panel)
+	return row
 
 
 ## Pone un filtro en «Mis partidas» y la vuelve a dibujar.
@@ -6103,7 +6154,7 @@ func _rival_row() -> HBoxContainer:
 	var text := "Rival · …"
 	if not online_rival.is_empty():
 		var who := str(online_rival.get("nombre", "Rival"))
-		text = ("%s · Nivel %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
+		text = ("%s · Táctica %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
 	var l := _para(text, F_BODY, _c("ink"), font_semibold)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

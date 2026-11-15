@@ -37,6 +37,16 @@ func _init() -> void:
 	_ok(GameLog.filtered(flog, "perdidas", "") == [0, 2], "solo perdidas")
 	_ok(GameLog.filtered(flog, "perdidas", "tiempo") == [0], "perdidas por tiempo")
 	_ok(GameLog.filtered(flog, "", "mate") == [1, 2], "todas por mate")
+	# Nivel de juego: solo cuentan los niveles con fuerza medida.
+	var levels := [{"name": "A"}, {"name": "B", "elo": 1400.0, "rd": 40.0}]
+	var glog := {"partidas": [], "rivales": {}}
+	_ok(int(GameLog.game_rating(glog, levels)["n"]) == 0, "sin partidas, sin nivel de juego")
+	for k in 6:
+		GameLog.add(glog, {"fecha": 1000 + k, "tipo": "ordenador", "rival_id": "bot:1", "rival_nombre": "B", "color": 0, "resultado": 1, "motivo": "", "inicio": "", "jugadas": ["e2e4"]}, {})
+	GameLog.add(glog, {"fecha": 2000, "tipo": "ordenador", "rival_id": "bot:0", "rival_nombre": "A", "color": 0, "resultado": -1, "motivo": "", "inicio": "", "jugadas": ["e2e4"]}, {})
+	var gr := GameLog.game_rating(glog, levels)
+	_ok(int(gr["n"]) == 6 and bool(gr["provisional"]), "cuentan 6 partidas (el nivel sin medir no)")
+	_ok(float(gr["r"]) > 1500.0, "ganar siempre a un 1400 sube el nivel de juego")
 	# Nombres
 	_ok(GameLog.name_problem("Penélope") == "", "Penélope vale")
 	_ok(GameLog.name_problem("Pablo_88") == "", "con números y guion bajo")
