@@ -133,6 +133,9 @@ export function Home(): JSX.Element {
       <button className="cm-primary cm-big" onClick={() => go('train')}>
         {done > 0 ? 'Seguir entrenando' : 'Entrenar'}
       </button>
+      <button className="cm-primary" data-testid="home-online" onClick={() => go('online')}>
+        Partida online
+      </button>
       {tips.length > 0 && (
         <ul className="cm-insights">
           {tips.map((t) => (

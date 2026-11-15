@@ -1,5 +1,6 @@
 import { useEffect, type JSX } from 'react';
 import { go, useAppState, type Screen } from './app/store';
+import { OnlineScreen } from './ui/Online';
 import { PlacementScreen, TrainScreen } from './ui/Play';
 import { PieceSvg } from './ui/pieces';
 import { ExperienceScreen, Home, PlacementResult, Profile, SettingsScreen, StudyScreen, Welcome } from './ui/screens';
@@ -75,6 +76,8 @@ export function App(): JSX.Element {
         return <SettingsScreen />;
       case 'study':
         return <StudyScreen />;
+      case 'online':
+        return placed ? <OnlineScreen /> : <Welcome />;
       default:
         return placed ? <Home /> : <Welcome />;
     }
