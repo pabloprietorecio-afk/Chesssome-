@@ -95,6 +95,11 @@ func _ready() -> void:
 	await _shot("p23_comidas")
 	demo._leave_game()
 	await _frames(4)
+	demo._open_game_setup()
+	await _frames(6)
+	await _shot("p32_configurar_partida")
+	demo._close_progress()
+	await _frames(2)
 	await _reloj(demo)
 	await _detalle(demo)
 	await _mis_partidas(demo)
@@ -115,6 +120,12 @@ func _ready() -> void:
 		print("PORQUE ", wp["text"])
 	demo._learn_why_toggle()
 	await _frames(2)
+	# Flechas cortas (a la casilla de al lado) por encima de las piezas: Txf2 en verde, Cxd1 en violeta.
+	demo.view.set_fen("r1b1k2r/ppppn1pp/2n5/2p1N3/2P5/8/P4nPP/2RQ1RK1 b - - 0 16")
+	demo.view.board.set_arrows([{"from": 5, "to": 13, "tone": "good"}, {"from": 13, "to": 3, "tone": "info"}, {"from": 53, "to": 36, "tone": "bad"}])
+	await _frames(6)
+	await _shot("p33_flechas_cortas")
+	demo.view.board.set_arrows([])
 	# Personajes con la chapita de su pieza sobre la cabeza.
 	demo.view.board.set_piece_set("aventura")
 	demo.view.set_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
@@ -206,6 +217,22 @@ func _detalle(demo: Control) -> void:
 	demo.view.set_fen(pos.fen())
 	demo.review = []
 	demo.review_done = true
+	demo.game["online"] = false
+	demo._actions_mode = ""
+	demo._refresh()
+	await _frames(6)
+	await _shot("p16a_final_partida")
+	demo._open_detail_from_over()
+	var g0 := 0
+	while not demo.detail_done and g0 < 600:
+		g0 += 1
+		await get_tree().process_frame
+	await get_tree().create_timer(1.2).timeout
+	await _shot("p16b_jugada_a_jugada_desde_final")
+	demo._detail_back()
+	await _frames(4)
+	print("VUELTA estado=%s" % demo.game_state)
+	demo.game["online"] = true
 	demo._show_review_page()
 	await _frames(6)
 	await _shot("p16_analisis_resumen")
@@ -225,6 +252,15 @@ func _detalle(demo: Control) -> void:
 	await _shot("p17b_detalle_respuesta")
 	await get_tree().create_timer(1.6).timeout
 	await _shot("p17_detalle_error")
+	demo._detail_line_open()
+	await get_tree().create_timer(1.0).timeout
+	await _shot("p17c_la_mejor_era")
+	demo._detail_line_step(2)
+	await get_tree().create_timer(1.0).timeout
+	await _shot("p17d_la_mejor_sigue")
+	print("LINEA %s" % " ".join(PackedStringArray(demo.detail_line_san)))
+	demo._detail_line_close()
+	await get_tree().create_timer(1.2).timeout
 	demo._detail_back()
 	await _frames(4)
 	await _shot("p18_analisis_con_recuento")
@@ -311,6 +347,13 @@ func _reloj(demo: Control) -> void:
 		await get_tree().process_frame
 	await get_tree().create_timer(0.4).timeout
 	await _shot("p27_reloj_rival_pulso")
+	demo._game_browse(1)
+	await _frames(6)
+	await _shot("p27b_reloj_atras")
+	print("ATRAS back=%d" % demo.game_back)
+	demo._on_view_tapped("locked")
+	await _frames(4)
+	print("DIRECTO back=%d" % demo.game_back)
 	demo._ask_resign()
 	await get_tree().create_timer(0.4).timeout
 	await _shot("p28_confirmar_rendirse")

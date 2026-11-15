@@ -17,7 +17,8 @@ extends Control
 
 ## La jugada ya se ha hecho en el tablero (texto UCI, p. ej. «e2e4»).
 signal move_played(uci: String)
-## Para medir toques fallidos: "select", "deselect", "illegal" o "move".
+## Para medir toques fallidos: "select", "deselect", "illegal" o "move"; "locked": un toque (sin arrastrar el
+## tablero) cuando no se puede mover.
 signal tapped(kind: String)
 ## El jugador ha movido la vista con los dedos: "zoom" (ampliar), "twist" (girar), "orbit" (inclinar y rodear)
 ## o "pan" (desplazar el tablero ampliado). Se avisa una vez por gesto, cuando se reconoce.
@@ -444,6 +445,8 @@ func _on_drag(pos: Vector2) -> void:
 
 
 func _on_release(_pos: Vector2) -> void:
+	if not interactive and not _panning:
+		tapped.emit("locked")
 	if _empty_press:
 		# Toque en vacío con una pieza seleccionada: «ahí no» y se suelta la selección.
 		if not _panning and interactive and board.selected >= 0:

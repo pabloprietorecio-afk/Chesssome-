@@ -1337,6 +1337,9 @@ func set_arrows(arrows: Array) -> void:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 		mat.albedo_color = Color(color.r, color.g, color.b, 0.86)
+		# Por encima de las piezas: si no, una flecha corta (a la casilla de al lado) queda tapada por ellas.
+		mat.no_depth_test = true
+		mat.render_priority = 2
 		mi.material_override = mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position = Vector3(0.0, 0.014, 0.0)
@@ -1347,8 +1350,10 @@ func set_arrows(arrows: Array) -> void:
 func _arrow_mesh(a: Vector3, b: Vector3, occupied: bool) -> ArrayMesh:
 	var dir := (b - a).normalized()
 	var side := Vector3(-dir.z, 0.0, dir.x)
-	var start := a + dir * 0.4
-	var tip := b - dir * 0.36 if occupied else b + dir * 0.12
+	# En las flechas cortas, el hueco de las piezas se reduce para que se vean (se dibujan por encima de ellas).
+	var d := a.distance_to(b)
+	var start := a + dir * minf(0.4, d * 0.16)
+	var tip := b - dir * minf(0.36, d * 0.2) if occupied else b + dir * 0.12
 	var neck := tip - dir * 0.42
 	var w := 0.085
 	var hw := 0.24

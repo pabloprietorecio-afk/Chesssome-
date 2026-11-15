@@ -130,6 +130,9 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 	e["paras"] = paras
 	e["arrows"] = arrows
 	e["best_san"] = SanEs.san(pos, best)
+	if best != m:
+		# Para enseñar la mejor en el tablero, con cómo seguiría la partida.
+		e["best_uci"] = Chess.uci(best)
 	return _finish(e)
 
 
