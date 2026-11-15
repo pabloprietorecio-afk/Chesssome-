@@ -40,8 +40,10 @@ res('colores opuestos y misma partida', sa.color !== sb.color && sa.id === sb.id
 // Perfiles y gestos (reglas publicadas el 15 nov).
 const perfiles = await until(() => !!(A.current as Live).rival && !!(B.current as Live).rival, 8000);
 res('cada uno ve el perfil del rival', perfiles, JSON.stringify((A.current as Live).rival));
-const rj = ((A.current as Live).rival as unknown as { juego?: { r: number } })?.juego;
-res('el perfil lleva el nivel de juego (regla «juego», 15 nov)', !!rj && rj.r === 1480, JSON.stringify(rj));
+// Lo que hay guardado (el cliente web solo lee nivel e icono): los dos perfiles, con su nivel de juego.
+const crudo = await new Rtdb(cfg).request('GET', `partidas/${sa.id}/perfiles`);
+const perfilesCrudos = Object.values((crudo.json ?? {}) as Record<string, { juego?: { r: number } }>);
+res('los perfiles guardados llevan el nivel de juego (regla «juego», 15 nov)', perfilesCrudos.length === 2 && perfilesCrudos.every((p) => p.juego?.r === 1480), `HTTP ${crudo.status} ${JSON.stringify(crudo.json)}`);
 const g1 = await A.gesture('aplauso');
 const llega = await until(() => ((B.current as Live).gestures ?? []).some((g) => g.g === 'aplauso' && !g.mine), 8000);
 res('un gesto llega al rival', g1 && llega);
