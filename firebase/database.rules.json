@@ -1,0 +1,38 @@
+{
+  "rules": {
+    "abiertas": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && !newData.exists() && data.child('creador').val() === auth.uid",
+        "creador": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+        },
+        "latido": {
+          ".write": "auth != null && newData.val() === now && (data.parent().child('creador').val() === auth.uid || newData.parent().child('creador').val() === auth.uid)"
+        }
+      }
+    },
+    "partidas": {
+      "$id": {
+        ".read": "auth != null",
+        ".write": "auth != null && !newData.exists() && (data.child('creador').val() === auth.uid || data.child('rival').val() === auth.uid)",
+        "creador": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+        },
+        "rival": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && root.child('partidas').child($id).child('creador').exists() && root.child('partidas').child($id).child('creador').val() !== auth.uid"
+        },
+        "unidoEn": {
+          ".write": "auth != null && !data.exists() && newData.val() === now",
+          ".validate": "newData.parent().child('rival').val() === auth.uid"
+        },
+        "jugadas": {
+          "$n": {
+            ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('unidoEn').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
+            ".validate": "newData.isString() && newData.val().length <= 8"
+          }
+        }
+      }
+    }
+  }
+}
