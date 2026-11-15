@@ -328,7 +328,7 @@ func start() -> void:
 	if gen != _gen:
 		return
 	if not bool(c["ok"]):
-		_fail("No se pudo leer la lista de partidas (código %d)." % int(c["status"]))
+		_fail(Loc.t("No se pudo leer la lista de partidas (código %d).") % int(c["status"]))
 		return
 	var ids: Array = c["ids"]
 	for id in ids:
@@ -365,7 +365,7 @@ func _fail(message: String) -> void:
 
 ## Partidas abiertas y vivas de otros jugadores, la más antigua primero (con `before`, solo las anteriores).
 func _candidates(before: String) -> Dictionary:
-	var r := await request(HTTPClient.METHOD_GET, "abiertas", null, "orderBy=%22%24key%22&limitToLast=20")
+	var r := await request(HTTPClient.METHOD_GET, "abiertas", null, Loc.t("orderBy=%22%24key%22&limitToLast=20"))
 	if int(r["status"]) != 200:
 		return {"ok": false, "status": int(r["status"]), "ids": []}
 	var ids: Array = []
@@ -426,7 +426,7 @@ func _open() -> void:
 	if gen != _gen:
 		return
 	if int(a["status"]) != 200 or int(b["status"]) != 200:
-		_fail("No se pudo abrir la partida (código %d/%d)." % [int(a["status"]), int(b["status"])])
+		_fail(Loc.t("No se pudo abrir la partida (código %d/%d).") % [int(a["status"]), int(b["status"])])
 		return
 	game_id = id
 	_role = "creador"
@@ -649,7 +649,7 @@ func _sse_tick(delta: float) -> void:
 	match st:
 		HTTPClient.STATUS_CONNECTED:
 			if _sse_state == 1:
-				var err := _sse.request(HTTPClient.METHOD_GET, "/%s.json?auth=%s" % [_sse_path, _sse_token], PackedStringArray(["Accept: text/event-stream"]))
+				var err := _sse.request(HTTPClient.METHOD_GET, Loc.t("/%s.json?auth=%s") % [_sse_path, _sse_token], PackedStringArray(["Accept: text/event-stream"]))
 				if err != OK:
 					_sse_fail()
 				else:

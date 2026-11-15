@@ -78,14 +78,14 @@ static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionar
 	var mate := mate_in_one(before)
 	if mate >= 0:
 		return {"kind": "missed_mate", "better": Chess.uci(mate), "square": Chess.move_to(mate),
-			"text": "Con %s tenías jaque mate: %s. Antes de cada jugada, mira si tienes un jaque que el rival no pueda parar." % [at, SanEs.san(before, mate)]}
+			"text": Loc.t("Con %s tenías jaque mate: %s. Antes de cada jugada, mira si tienes un jaque que el rival no pueda parar.") % [at, SanEs.san(before, mate)]}
 	# Mate en una que se permite.
 	var their_mate := mate_in_one(after)
 	if their_mate >= 0:
 		var safe := _safe_from_mate(before)
 		if safe >= 0:
 			return {"kind": "allowed_mate", "better": Chess.uci(safe), "square": Chess.move_to(their_mate),
-				"text": "Tras %s, el rival podía darte jaque mate con %s. Por ejemplo, %s lo evitaba. Antes de mover, pregúntate qué amenaza el rival." % [at, SanEs.san(after, their_mate), SanEs.san(before, safe)]}
+				"text": Loc.t("Tras %s, el rival podía darte jaque mate con %s. Por ejemplo, %s lo evitaba. Antes de mover, pregúntate qué amenaza el rival.") % [at, SanEs.san(after, their_mate), SanEs.san(before, safe)]}
 	# Material: lo que gana la jugada contando la mejor captura que deja al rival (una jugada y media de vista).
 	var played_net := net(before, m)
 	if played_net <= -MIN_GAIN:
@@ -96,10 +96,10 @@ static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionar
 			var piece := Chess.type_of(after.b[sq]) if sq >= 0 else Chess.PAWN
 			var text := ""
 			if sq == Chess.move_to(m):
-				text = "Con %s, tu %s quedó en %s, donde el rival %s podía capturar sin perder lo mismo a cambio." % [at, NAME[piece], Chess.sq_name(sq), IT[piece]]
+				text = Loc.t("Con %s, tu %s quedó en %s, donde el rival %s podía capturar sin perder lo mismo a cambio.") % [at, NAME[piece], Chess.sq_name(sq), IT[piece]]
 			else:
-				text = "Tras %s, tu %s de %s quedó a tiro: el rival podía capturar%s y ganar material." % [at, NAME[piece], Chess.sq_name(sq), IT[piece]]
-			text += " Con %s no perdías nada. Antes de mover, mira qué piezas tuyas quedan atacadas." % SanEs.san(before, alt)
+				text = Loc.t("Tras %s, tu %s de %s quedó a tiro: el rival podía capturar%s y ganar material.") % [at, NAME[piece], Chess.sq_name(sq), IT[piece]]
+			text += Loc.t(" Con %s no perdías nada. Antes de mover, mira qué piezas tuyas quedan atacadas.") % SanEs.san(before, alt)
 			return {"kind": "hang", "better": Chess.uci(alt), "square": sq, "text": text}
 	# Si la jugada daba jaque, puede que buscara algo más (no se sabe con esta vista tan corta): no se dice nada.
 	var cm := -1 if after.in_check() else _best_net_move(before, true)
@@ -108,7 +108,7 @@ static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionar
 		if gain >= MIN_GAIN and gain >= played_net + MIN_GAIN:
 			var sq := Chess.move_to(cm)
 			return {"kind": "missed_capture", "better": Chess.uci(cm), "square": sq,
-				"text": "En la jugada %d, %s capturaba el %s de %s y ganaba material: no estaba bien defendido. Jugaste %s. Antes de mover, mira qué piezas del rival puedes capturar." % [n, SanEs.san(before, cm), NAME[Chess.type_of(before.b[sq])], Chess.sq_name(sq), san]}
+				"text": Loc.t("En la jugada %d, %s capturaba el %s de %s y ganaba material: no estaba bien defendido. Jugaste %s. Antes de mover, mira qué piezas del rival puedes capturar.") % [n, SanEs.san(before, cm), NAME[Chess.type_of(before.b[sq])], Chess.sq_name(sq), san]}
 	return {}
 
 
@@ -123,7 +123,7 @@ static func _opening(before: Chess, m: int, ply: int, moved_count: Dictionary, m
 	var flag := Chess.move_flag(m)
 	if t == Chess.KING and rights != 0 and flag != Chess.F_CASTLE_K and flag != Chess.F_CASTLE_Q and not before.in_check():
 		return {"kind": "king", "better": "", "square": from,
-			"text": "En la jugada %d moviste el rey (%s) sin enrocar: ya no podrás enrocar. El enroque esconde al rey y saca la torre a la vez." % [n, san]}
+			"text": Loc.t("En la jugada %d moviste el rey (%s) sin enrocar: ya no podrás enrocar. El enroque esconde al rey y saca la torre a la vez.") % [n, san]}
 	# La misma pieza por tercera vez con piezas menores sin sacar.
 	if int(moved_count.get(from, 0)) >= 2 and t != Chess.PAWN and t != Chess.KING and Chess.move_flag(m) == Chess.F_NORMAL and before.b[Chess.move_to(m)] == 0:
 		var home := [1, 6, 2, 5] if me == 0 else [57, 62, 58, 61]
@@ -134,7 +134,7 @@ static func _opening(before: Chess, m: int, ply: int, moved_count: Dictionary, m
 				undeveloped += 1
 		if undeveloped >= 2:
 			return {"kind": "repeat", "better": "", "square": from,
-				"text": "En la jugada %d moviste tu %s por tercera vez (%s) mientras %d de tus caballos y alfiles seguían sin salir. En la apertura conviene sacar primero todas las piezas: cada jugada con la misma pieza es una que no usas para desarrollar otra." % [n, NAME[t], san, undeveloped]}
+				"text": Loc.t("En la jugada %d moviste tu %s por tercera vez (%s) mientras %d de tus caballos y alfiles seguían sin salir. En la apertura conviene sacar primero todas las piezas: cada jugada con la misma pieza es una que no usas para desarrollar otra.") % [n, NAME[t], san, undeveloped]}
 	return {}
 
 

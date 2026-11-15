@@ -299,6 +299,10 @@ var _streak := 0
 var _celebration: Control
 ## Con false no se leen ni se guardan los ajustes ni se enseña la bienvenida (lo usan las pruebas).
 var use_settings := true
+## Idioma de la app (Loc.LANGUAGES). La primera vez, el del móvil si la app lo tiene; si no, inglés.
+var language := "es"
+## La hoja de idiomas se abrió desde Opciones (al elegir se vuelve a Opciones) o desde el tablerito del inicio.
+var _lang_from_options := false
 var welcome_seen := false
 var app_version := ""
 
@@ -994,6 +998,7 @@ func _ready() -> void:
 		_digits_font = FontVariation.new()
 		_digits_font.base_font = font_display
 		_digits_font.opentype_features = {"tnum": 1}
+	Loc.add_fallbacks([font_regular, font_medium, font_semibold, font_display])
 	_load_puzzles()
 	_load_course()
 	_load_version()
@@ -1017,6 +1022,7 @@ func _ready() -> void:
 	if use_settings:
 		_load_settings()
 		_load_course_progress()
+	Loc.apply(language)
 
 	bg = SkyBackdrop.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1137,7 +1143,7 @@ func _puzzle_name(id: String) -> String:
 	var n: Array = _numbers.get(id, [])
 	if n.is_empty():
 		return ""
-	return "Nivel %d · n.º %d" % [int(n[0]), int(n[1])]
+	return Loc.t("Nivel %d · n.º %d") % [int(n[0]), int(n[1])]
 
 
 ## Versión de la app, para enseñarla en Opciones: la escribe la CI en data/version.json al generar el APK.
@@ -1147,7 +1153,7 @@ func _load_version() -> void:
 		return
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/version.json"))
 	if typeof(data) == TYPE_DICTIONARY and str(data.get("version", "")) != "":
-		app_version = "versión %s" % str(data["version"])
+		app_version = Loc.t("versión %s") % str(data["version"])
 		if str(data.get("commit", "")) != "":
 			app_version += " · %s" % str(data["commit"])
 
@@ -1160,7 +1166,12 @@ func _load_settings() -> void:
 	top_view = true
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) != OK:
+		language = Loc.device_language()
 		return
+	# Quien ya tenía ajustes de antes de los idiomas sigue en español; quien no, empieza en el idioma del móvil.
+	language = str(cfg.get_value("app", "idioma", "es"))
+	if not language in Loc.LANGUAGES:
+		language = "es"
 	# Quien ya tenía ajustes guardados de antes pasa una vez a lo nuevo por defecto; después manda lo que elija.
 	var fresh_defaults := not cfg.has_section_key("app", "vista_por_defecto_2")
 	var style := str(cfg.get_value("tablero", "acabado", board_style))
@@ -1210,6 +1221,7 @@ func _save_settings() -> void:
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
+	cfg.set_value("app", "idioma", language)
 	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("app", "icono", avatar)
 	cfg.set_value("partida", "pulsar_reloj", press_clock)
@@ -1732,6 +1744,8 @@ func _build_chrome() -> void:
 		_build_sheet()
 	elif sheet_kind == "ai":
 		_build_ai_sheet()
+	elif sheet_kind == "language":
+		_build_language_sheet()
 
 
 ## Chincheta de la barra: fija el giro del tablero (ni los dedos ni el móvil lo giran) o lo vuelve a soltar.
@@ -1924,17 +1938,17 @@ func _refresh(animate: bool = true) -> void:
 		counter.text = "Partida"
 	elif mode == "train" and _has_player():
 		var lv := Assessment.level_of(float(player["rating"]["r"]))
-		counter.text = "Nivel %d · %s" % [lv, str(_rank(lv)[1])]
+		counter.text = Loc.t("Nivel %d · %s") % [lv, str(_rank(lv)[1])]
 		if train_family != "":
-			counter.text = "Nivel %d · %s" % [lv, str(FAMILY_KIDS[train_family]) if kids else str(Assessment.FAMILY_NAME[train_family])]
+			counter.text = Loc.t("Nivel %d · %s") % [lv, str(FAMILY_KIDS[train_family]) if kids else str(Assessment.FAMILY_NAME[train_family])]
 		# Cada problema, con su nombre: nivel, número y si ya está resuelto.
 		if not puzzle.is_empty() and _puzzle_name(str(puzzle.get("id", ""))) != "":
 			counter.text = _puzzle_name(str(puzzle.get("id", "")))
 	elif mode == "test":
 		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
-		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
+		counter.text = Loc.t("Test de nivel · problema %d") % (_test_count() + (0 if answered else 1))
 	else:
-		counter.text = ("Problema %d de %d" % [index + 1, total]) if total > 0 else "Sin problemas"
+		counter.text = (Loc.t("Problema %d de %d") % [index + 1, total]) if total > 0 else "Sin problemas"
 		if not puzzle.is_empty() and _puzzle_name(str(puzzle.get("id", ""))) != "":
 			counter.text = _puzzle_name(str(puzzle.get("id", "")))
 	if kids_wall != null and is_instance_valid(kids_wall):
@@ -2070,13 +2084,13 @@ func _build_card() -> void:
 	match phase:
 		Phase.INTRO:
 			if intro_waiting:
-				head = "Juegas con %s" % ("negras" if view.board.chess.turn == 0 else "blancas")
+				head = Loc.t("Juegas con %s") % ("negras" if view.board.chess.turn == 0 else "blancas")
 				sub = "Mira la posición con calma. Al pulsar «Comenzar», el rival hace su jugada."
 			else:
 				head = "Mira al rival"
 				sub = "Fíjate en su jugada: después te toca a ti."
 		Phase.SOLVING:
-			head = "Juegan %s" % ("blancas" if view.board.chess.turn == 0 else "negras")
+			head = Loc.t("Juegan %s") % ("blancas" if view.board.chess.turn == 0 else "negras")
 			sub = "Encuentra la mejor jugada." if ask_step <= 1 else "Sigue: todavía hay más."
 			if mode == "test" and ask_step <= 1:
 				sub = "Encuentra la mejor jugada. Solo hay un intento."
@@ -2185,9 +2199,9 @@ func _build_card() -> void:
 				var lv0 := Assessment.level_of(float(_rating_shown[0]))
 				var lv1 := Assessment.level_of(float(_rating_shown[1]))
 				if lv1 > lv0:
-					chips.add_child(_chip(("¡Subes al nivel %d!" if kids else "¡Táctica: nivel %d!") % lv1, chip_tint[0], chip_tint[1], "trend"))
-				chips.add_child(_chip("Puntuación %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
-			chips.add_child(_chip("Nivel %d · %d" % [Assessment.level_of(float(rating)), rating], _c("field"), _c("ink")))
+					chips.add_child(_chip((Loc.t("¡Subes al nivel %d!") if kids else Loc.t("¡Táctica: nivel %d!")) % lv1, chip_tint[0], chip_tint[1], "trend"))
+				chips.add_child(_chip(Loc.t("Puntuación %d → %d") % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
+			chips.add_child(_chip(Loc.t("Nivel %d · %d") % [Assessment.level_of(float(rating)), rating], _c("field"), _c("ink")))
 			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet"), "open"))
 		var chips_pad := _pad(0, 8, 0, 0)
 		chips_pad.add_child(chips)
@@ -2240,9 +2254,9 @@ func _hint_block() -> PanelContainer:
 	var theme_name := _hint_theme()
 	var lines := PackedStringArray()
 	if theme_name != "":
-		lines.append("Busca esto: %s." % theme_name.to_lower())
+		lines.append(Loc.t("Busca esto: %s.") % theme_name.to_lower())
 	if hint_level >= 2 or theme_name == "":
-		lines.append("Mueve %s." % _hint_piece())
+		lines.append(Loc.t("Mueve %s.") % _hint_piece())
 	panel.add_child(_icon_row("bulb", "butter", "Pista", " ".join(lines), 84.0))
 	return panel
 
@@ -2261,7 +2275,7 @@ func _hint_piece() -> String:
 	var from := Chess.sq_index(str(moves[ask_step]).substr(0, 2))
 	var names := ["", "el peón", "el caballo", "el alfil", "la torre", "la dama", "el rey"]
 	var piece := Chess.type_of(Chess.from_fen(fen_before).b[from])
-	return "%s de %s" % [names[clampi(piece, 0, 6)], Chess.sq_name(from)]
+	return Loc.t("%s de %s") % [names[clampi(piece, 0, 6)], Chess.sq_name(from)]
 
 
 ## Los bloques de una explicación hasta el nivel abierto. Con partial = true solo se cuenta qué hace la jugada
@@ -2520,7 +2534,7 @@ func _line_block(line: Dictionary, label: String) -> VBoxContainer:
 					(child as TextureRect).flip_h = true
 		row.add_child(b)
 	if active:
-		var where := "inicio" if line_ply < 0 else "%d de %d" % [line_ply + 1, ucis.size()]
+		var where := "inicio" if line_ply < 0 else Loc.t("%d de %d") % [line_ply + 1, ucis.size()]
 		var mark := _text(where, F_FOOT, _c("quiet"), font_medium)
 		mark.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2539,7 +2553,7 @@ func _engine_row(row: PackedStringArray) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(_para("%s · %s · %s · prof. %s" % [row[0], row[1], row[2], row[3]], F_SUB, _c("ink"), font_medium))
+	box.add_child(_para(Loc.t("%s · %s · %s · prof. %s") % [row[0], row[1], row[2], row[3]], F_SUB, _c("ink"), font_medium))
 	box.add_child(_para(row[4], F_FOOT, _c("quiet"), font_regular))
 	return box
 
@@ -2572,9 +2586,9 @@ func _add_whatif(e: Dictionary) -> void:
 	if e.is_empty():
 		var fen := _decision_fen()
 		var side := "blancas" if fen != "" and Chess.from_fen(fen).turn == 0 else "negras"
-		card_body.add_child(_para("Mueve cualquier pieza de las %s y te explico qué pasaría con esa jugada." % side, F_BODY, _c("ink"), font_regular))
+		card_body.add_child(_para(Loc.t("Mueve cualquier pieza de las %s y te explico qué pasaría con esa jugada.") % side, F_BODY, _c("ink"), font_regular))
 	else:
-		card_body.add_child(_para("Probando %s" % str(e.get("san", "")), F_SUB, _c("quiet"), font_semibold))
+		card_body.add_child(_para(Loc.t("Probando %s") % str(e.get("san", "")), F_SUB, _c("quiet"), font_semibold))
 		_add_explanation(e, whatif_level, false)
 		card_body.add_child(_para("Prueba otra jugada en el tablero o vuelve a la explicación.", F_SUB, _c("quiet"), font_regular))
 	var back := _card_button("Volver a la explicación", _toggle_whatif, _c("field"), _c("ink"), F_SUB, "back")
@@ -2754,7 +2768,7 @@ func _browse(delta: int) -> void:
 			view.board.mark_last_move(Chess.sq_index(last.substr(0, 2)), Chess.sq_index(last.substr(2, 2)))
 		view.board.set_arrows([])
 		view.interactive = false
-		_note("Posición de partida" if ply == 0 else ("Hace %d jugada%s" % [browse_back, "" if browse_back == 1 else "s"]))
+		_note("Posición de partida" if ply == 0 else (Loc.t("Hace %d jugada%s") % [browse_back, "" if browse_back == 1 else "s"]))
 	_actions_mode = ""
 	_refresh()
 
@@ -2811,7 +2825,7 @@ func _add_move_why() -> void:
 	var e := _puzzle_move_why(ply - 1)
 	if e.is_empty():
 		return
-	card_body.add_child(_why_block(e, ("Tu jugada: %s" if mine else "La jugada del rival: %s") % str(e["san"])))
+	card_body.add_child(_why_block(e, (Loc.t("Tu jugada: %s") if mine else Loc.t("La jugada del rival: %s")) % str(e["san"])))
 	card_body.add_child(_card_button("Ocultar", _toggle_move_why, _c("field"), _c("quiet"), F_FOOT, "close"))
 
 
@@ -2852,7 +2866,7 @@ func _why_block(e: Dictionary, heading: String) -> VBoxContainer:
 		prev.disabled = why_idx <= 0
 		prev.modulate.a = 0.4 if why_idx <= 0 else 1.0
 		row.add_child(prev)
-		var where := _text("%d de %d" % [why_idx + 1, paras.size()], F_SUB, _c("quiet"), font_medium)
+		var where := _text(Loc.t("%d de %d") % [why_idx + 1, paras.size()], F_SUB, _c("quiet"), font_medium)
 		where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		where.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		where.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -3098,39 +3112,39 @@ func _ai_text() -> String:
 	var out := PackedStringArray([
 		"Estoy aprendiendo ajedrez y tengo una duda sobre esta posición de un problema real de Lichess.",
 		"",
-		"Posición (FEN): %s" % fen,
-		"Juegan %s." % side,
+		Loc.t("Posición (FEN): %s") % fen,
+		Loc.t("Juegan %s.") % side,
 	])
 	var question := ""
 	if whatif:
-		out.append("Estoy probando %s%s" % [played, ", que es la mejor jugada." if correct else "; la mejor es %s." % best])
+		out.append(Loc.t("Estoy probando %s%s") % [played, ", que es la mejor jugada." if correct else Loc.t("; la mejor es %s.") % best])
 	elif bool(e.get("asked", false)):
-		out.append("La mejor jugada es %s." % best)
+		out.append(Loc.t("La mejor jugada es %s.") % best)
 	elif correct:
-		out.append("He jugado %s, que es la mejor jugada." % played)
+		out.append(Loc.t("He jugado %s, que es la mejor jugada.") % played)
 	else:
-		out.append("He jugado %s, pero la mejor era %s." % [played, best])
+		out.append(Loc.t("He jugado %s, pero la mejor era %s.") % [played, best])
 	if correct or bool(e.get("asked", false)):
-		question = "¿Por qué %s es la mejor jugada en esta posición? Explícamelo de forma sencilla." % best
+		question = Loc.t("¿Por qué %s es la mejor jugada en esta posición? Explícamelo de forma sencilla.") % best
 	else:
-		question = "¿Por qué %s no funciona y %s sí? Explícamelo de forma sencilla." % [played, best]
+		question = Loc.t("¿Por qué %s no funciona y %s sí? Explícamelo de forma sencilla.") % [played, best]
 	var levels: Array = e.get("levels", [])
 	if levels.size() >= 4:
 		for line: Dictionary in (levels[2] as Dictionary)["lines"]:
 			if str(line.get("tone", "")) == "good":
-				out.append("Solución: %s" % str(line.get("text", "")))
+				out.append(Loc.t("Solución: %s") % str(line.get("text", "")))
 				break
 		var rows: Array = (levels[3] as Dictionary)["rows"]
 		if not rows.is_empty():
 			out.append("")
-			out.append("Análisis de %s (positivo = ventaja para quien mueve):" % explain.engine)
+			out.append(Loc.t("Análisis de %s (positivo = ventaja para quien mueve):") % explain.engine)
 			for row: PackedStringArray in rows:
 				if row.size() >= 5:
-					out.append("- %s: %s, profundidad %s. Sigue: %s" % [row[1], row[2], row[3], row[4]])
+					out.append(Loc.t("- %s: %s, profundidad %s. Sigue: %s") % [row[1], row[2], row[3], row[4]])
 	out.append("")
-	out.append("Tablero: %s" % _lichess_url(fen))
+	out.append(Loc.t("Tablero: %s") % _lichess_url(fen))
 	out.append("")
-	out.append("Mi pregunta: %s" % question)
+	out.append(Loc.t("Mi pregunta: %s") % question)
 	out.append("")
 	out.append("Usa solo jugadas legales en esta posición, apóyate en el análisis del motor y, si no estás seguro de algo, dilo.")
 	return "\n".join(out)
@@ -3313,6 +3327,8 @@ func _build_sheet() -> void:
 	if use_settings:
 		var home_tint := _tint("peach")
 		box.add_child(_button("home", "Inicio", _open_home, home_tint[0], home_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
+	box.add_child(_caption("Idioma"))
+	box.add_child(_language_row())
 	if not course.is_empty():
 		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
 		if kids:
@@ -3323,7 +3339,7 @@ func _build_sheet() -> void:
 		box.add_child(_caption("Partidas con reloj"))
 		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
 		if press_clock:
-			box.add_child(_switch_row("bulb", "butter", "Aviso si no lo pulsas", "A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo." % int(PRESS_REMINDER), press_reminder, _set_press_reminder))
+			box.add_child(_switch_row("bulb", "butter", "Aviso si no lo pulsas", Loc.t("A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo.") % int(PRESS_REMINDER), press_reminder, _set_press_reminder))
 	if kids:
 		box.add_child(_caption("Mundo de las partidas"))
 		box.add_child(_world_tiles())
@@ -3350,7 +3366,7 @@ func _build_sheet() -> void:
 	var how_pad := _pad(0, 18, 0, 0)
 	how_pad.add_child(how)
 	box.add_child(how_pad)
-	var about := _para("A Chess Way · %s" % app_version, F_CAP, _c("quiet"), font_regular)
+	var about := _para(Loc.t("A Chess Way · %s") % app_version, F_CAP, _c("quiet"), font_regular)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(about)
 
@@ -3652,6 +3668,120 @@ func _set_theme_index(i: int) -> void:
 	_set_dark(i == 1)
 
 
+# ---------------------------------------------------------------- idiomas
+
+## Tablerito con los colores de la bandera del idioma, arriba a la derecha del inicio: abre la hoja de idiomas.
+func _flag_button() -> Button:
+	var side := 132.0
+	var b := Button.new()
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	for state in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
+		b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	b.custom_minimum_size = Vector2(side, side)
+	b.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	var top := maxf(_insets().x, 60.0) + 24.0
+	b.offset_right = -40.0
+	b.offset_left = -40.0 - side
+	b.offset_top = top
+	b.offset_bottom = top + side
+	b.tooltip_text = Loc.NAMES.get(language, "")
+	var board := LangBoard.new()
+	board.code = language
+	board.set_anchors_preset(Control.PRESET_FULL_RECT)
+	board.offset_left = 10.0
+	board.offset_top = 10.0
+	board.offset_right = -10.0
+	board.offset_bottom = -10.0
+	b.add_child(board)
+	b.pressed.connect(_open_language.bind(false))
+	return b
+
+
+## Fila de Opciones con el idioma actual: su tablerito y su nombre. Abre la hoja de idiomas.
+func _language_row() -> Button:
+	var b := _button("", str(Loc.NAMES.get(language, language)), _open_language.bind(true), _c("field"), _c("ink"), {"font_size": F_BODY, "height": 120.0, "font": font_semibold})
+	var mark := LangBoard.new()
+	mark.code = language
+	mark.custom_minimum_size = Vector2(80.0, 80.0)
+	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var inner := b.get_child(0)
+	inner.add_child(mark)
+	inner.move_child(mark, 0)
+	return b
+
+
+func _open_language(from_options: bool) -> void:
+	_lang_from_options = from_options
+	options_open = from_options
+	sheet_kind = "language"
+	_build_language_sheet()
+	if not from_options:
+		overlay.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(overlay, "modulate:a", 1.0, 0.14)
+
+
+## Hoja con los diez idiomas, de dos en dos: tablerito con su bandera y el nombre en su propio idioma.
+func _build_language_sheet() -> void:
+	var box := _sheet("Idioma")
+	if box == null:
+		return
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for code: String in Loc.LANGUAGES:
+		var chosen := code == language
+		var colors := _choice_colors(chosen)
+		var b := _button("", str(Loc.NAMES[code]), _set_language.bind(code), colors[0], colors[1], {"vertical": true, "font_size": F_SUB, "height": 220.0, "radius": 44, "border": colors[2], "font": font_semibold if chosen else font_medium})
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# El nombre del idioma no se traduce: cada uno se ve en su idioma.
+		for l in b.find_children("*", "Label", true, false):
+			(l as Label).auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		var mark := LangBoard.new()
+		mark.code = code
+		mark.custom_minimum_size = Vector2(112.0, 112.0)
+		mark.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var inner := b.get_child(0)
+		inner.add_child(mark)
+		inner.move_child(mark, 0)
+		grid.add_child(b)
+	box.add_child(grid)
+	if _lang_from_options:
+		var back_tint := _tint("sky")
+		box.add_child(_button("sliders", "Opciones", _open_options, back_tint[0], back_tint[1], {"font_size": F_SUB, "height": 108.0, "icon": 52.0}))
+
+
+## Cambia el idioma: se guarda y se rehace la pantalla (como al cambiar de tema).
+func _set_language(code: String) -> void:
+	if not code in Loc.LANGUAGES:
+		return
+	var changed := code != language
+	language = code
+	if changed:
+		Loc.apply(language)
+		_save_settings()
+	if _lang_from_options:
+		sheet_kind = "options"
+		options_open = true
+	else:
+		sheet_kind = ""
+		options_open = false
+		if overlay != null and is_instance_valid(overlay):
+			overlay.visible = false
+			overlay.queue_free()
+		overlay = null
+	if changed:
+		_keep_scroll = true
+		_build_chrome.call_deferred()
+		if welcome != null and is_instance_valid(welcome):
+			_open_welcome.call_deferred()
+	elif sheet_kind == "options":
+		_build_sheet()
+
+
 func _set_dark(on: bool) -> void:
 	if dark == on:
 		return
@@ -3689,6 +3819,7 @@ func _open_welcome() -> void:
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.mouse_filter = Control.MOUSE_FILTER_STOP
 	welcome.add_child(back)
+	welcome.add_child(_flag_button())
 	var inset := _insets()
 	var pad := _pad(60, int(maxf(inset.x, 60.0)) + 20, 60, int(inset.y) + 44)
 	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -3976,7 +4107,7 @@ func _on_step() -> void:
 	if explain != null and explain.ok:
 		expl = explain.for_move(k, uci)
 		if not expl.is_empty():
-			expl["headline"] = "Este paso: %s" % str(expl.get("san", ""))
+			expl["headline"] = Loc.t("Este paso: %s") % str(expl.get("san", ""))
 			expl["asked"] = true
 		exp_point = k
 	# Si era la última jugada, el problema queda resuelto: no hay nada más que seguir.
@@ -4394,7 +4525,7 @@ func _open_course() -> void:
 	for l: Dictionary in lessons:
 		if course_done.has(str(l["id"])):
 			done += 1
-	var sub := "%d de %d lecciones" % [done, lessons.size()] if kids else "%d de %d lecciones · desde cero hasta el jaque mate" % [done, lessons.size()]
+	var sub := Loc.t("%d de %d lecciones") % [done, lessons.size()] if kids else Loc.t("%d de %d lecciones · desde cero hasta el jaque mate") % [done, lessons.size()]
 	body.add_child(_centered(_para(sub, F_SUB, _c("quiet"), font_medium)))
 	var tints := ["peach", "mint", "lilac", "sky", "butter", "rose"]
 	var n := 0
@@ -4547,7 +4678,7 @@ func _learn_move(uci: String) -> void:
 			ex_state = "done"
 			ex_good = true
 			view.interactive = false
-			ex_text = ("¡Perfecto! En %d jugadas, el mínimo posible." % ex_moves) if ex_moves <= par else ("¡Hecho! En %d jugadas. Se puede en %d: prueba a repetirlo." % [ex_moves, par])
+			ex_text = (Loc.t("¡Perfecto! En %d jugadas, el mínimo posible.") % ex_moves) if ex_moves <= par else (Loc.t("¡Hecho! En %d jugadas. Se puede en %d: prueba a repetirlo.") % [ex_moves, par])
 			if kids:
 				ex_text = _kid_line("good") if ex_moves <= par else _kid_line("fewer")
 				_say([BRAVO] if ex_moves <= par else [BRAVO, ex_text])
@@ -4607,7 +4738,7 @@ func _build_learn_card() -> void:
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
 		chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chips.add_child(_chip("%d ejercicios" % exercises.size(), _c("field"), _c("ink"), "book"))
+		chips.add_child(_chip(Loc.t("%d ejercicios") % exercises.size(), _c("field"), _c("ink"), "book"))
 		card_body.add_child(chips)
 		return
 	if ex_state == "end":
@@ -4616,7 +4747,7 @@ func _build_learn_card() -> void:
 		card_body.add_child(_para("★".repeat(stars) + "☆".repeat(3 - stars), F_TITLE, _tint("butter")[1], font_display))
 		card_body.add_child(_para(str(_lesson_text("takeaway")), F_BODY, _c("ink"), font_regular))
 		return
-	var step := _chip("Ejercicio %d de %d" % [lesson_ex + 1, exercises.size()], _c("field"), _c("quiet"))
+	var step := _chip(Loc.t("Ejercicio %d de %d") % [lesson_ex + 1, exercises.size()], _c("field"), _c("quiet"))
 	step.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	card_body.add_child(step)
 	if learn_why_open:
@@ -4628,9 +4759,9 @@ func _build_learn_card() -> void:
 	card_body.add_child(_para(_ex_text(ex), F_BODY, _c("ink"), font_regular if ex_state != "play" else font_medium))
 	if str(ex.get("kind", "")) == "collect" and ex_state == "play":
 		var stars_total: int = (ex.get("stars", []) as Array).size()
-		var line := "Jugadas: %d" % ex_moves
+		var line := Loc.t("Jugadas: %d") % ex_moves
 		if stars_total > 0:
-			line = "Estrellas: %d de %d · %s" % [stars_total - view.board.goals_left(), stars_total, line]
+			line = Loc.t("Estrellas: %d de %d · %s") % [stars_total - view.board.goals_left(), stars_total, line]
 		card_body.add_child(_para(line, F_SUB, _c("quiet"), font_medium))
 	if ex_text != "":
 		card_body.add_child(_para(ex_text, F_BODY, _c("good") if ex_good else _c("bad"), font_medium))
@@ -4938,6 +5069,7 @@ func _open_home() -> void:
 	var page := _page("home")
 	var body: VBoxContainer = page["body"]
 	var footer: VBoxContainer = page["footer"]
+	progress.add_child(_flag_button())
 	body.add_child(_spacer(6.0, true))
 	var emblem := TextureRect.new()
 	emblem.texture = UiIcons.emblem()
@@ -4972,15 +5104,15 @@ func _open_home() -> void:
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
 		# El nivel que sale de los problemas mide la táctica, no la fuerza en partidas (eso es el nivel de juego).
-		words.add_child(_line(("Nivel %d de %d · %s" if kids else "Táctica: nivel %d de %d · %s") % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
+		words.add_child(_line((Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
-			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
+			left_text = Loc.t("Te faltan %d puntos para el nivel %d") % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
 		words.add_child(_line(left_text, F_SUB + 2, _c("quiet"), font_medium))
 		if not kids:
 			var gr := GameLog.game_rating(_log())
 			if int(gr["n"]) > 0:
-				words.add_child(_line("Juego: %d%s" % [roundi(float(gr["r"])), " (provisional)" if bool(gr["provisional"]) else ""], F_SUB + 2, _c("quiet"), font_medium))
+				words.add_child(_line(Loc.t("Juego: %d%s") % [roundi(float(gr["r"])), " (provisional)" if bool(gr["provisional"]) else ""], F_SUB + 2, _c("quiet"), font_medium))
 		rank_row.add_child(words)
 		body.add_child(_spacer(22.0))
 		body.add_child(rank_row)
@@ -5001,7 +5133,7 @@ func _open_home() -> void:
 		items.append(["target", "peach", "Entrenar", "Problemas para pensar, a tu nivel.", _home_train])
 	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
 	if kids and not course.is_empty():
-		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza.", _open_course])
+		items.append(["chick", "butter", "Aprende desde cero", Loc.t("%d de %d lecciones hechas.") % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza.", _open_course])
 	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 5 niveles.", _open_game_setup])
 	if not kids:
 		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
@@ -5012,7 +5144,7 @@ func _open_home() -> void:
 	if not kids and not course.is_empty():
 		items.append(["party", "sky", "Modo Kids", "Desde 8 años, con voz.", _set_kids.bind(true)])
 	if not kids and not course.is_empty():
-		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza.", _open_course])
+		items.append(["chick", "butter", "Aprende desde cero", Loc.t("%d de %d lecciones hechas.") % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza.", _open_course])
 	for def: Array in items:
 		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4], true))
 		body.add_child(_spacer(20.0))
@@ -5131,12 +5263,12 @@ func _open_train_hub() -> void:
 		seen[str(t["id"])] = str(t.get("family", "otros"))
 		if bool(t["correct"]):
 			solved[str(t["id"])] = true
-	var where := ("Nivel %d de %d · %s" if kids else "Táctica: nivel %d de %d · %s") % [lv, top, str(rank[1])]
+	var where := (Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, top, str(rank[1])]
 	body.add_child(_centered(_para(where, F_HEAD, _c("ink"), font_display)))
 	var left_text := "¡Nivel máximo!"
 	if lv < top:
-		left_text = "Te faltan %d puntos para el nivel %d." % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
-	body.add_child(_centered(_para("%s Has visto %d problemas de %d." % [left_text, seen.size(), pool.size()], F_SUB, _c("quiet"), font_medium)))
+		left_text = Loc.t("Te faltan %d puntos para el nivel %d.") % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
+	body.add_child(_centered(_para(Loc.t("%s Has visto %d problemas de %d.") % [left_text, seen.size(), pool.size()], F_SUB, _c("quiet"), font_medium)))
 	body.add_child(_spacer(18.0))
 	var go := _button("play", "Entrenamiento recomendado" if not kids else "¡A entrenar!", _train_family.bind(""), _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": 132.0, "icon": 56.0, "radius": 60, "glow": _c("glow")})
 	body.add_child(go)
@@ -5167,10 +5299,10 @@ func _open_train_hub() -> void:
 				mine += 1
 				if solved.has(id):
 					right += 1
-		var text := "Vistos %d de %d" % [mine, total]
+		var text := Loc.t("Vistos %d de %d") % [mine, total]
 		if mine > 0:
-			text += " · %d resueltos" % right
-		text += ". Niveles %d a %d; %s." % [lo, hi, ("%d nuevos cerca de tu nivel" % near) if near > 0 else "ninguno nuevo cerca de tu nivel"]
+			text += Loc.t(" · %d resueltos") % right
+		text += Loc.t(". Niveles %d a %d; %s.") % [lo, hi, (Loc.t("%d nuevos cerca de tu nivel") % near) if near > 0 else "ninguno nuevo cerca de tu nivel"]
 		var look: Array = FAMILY_ICONS.get(fam, ["spark", "sky"])
 		var fam_name := str(FAMILY_KIDS[fam]) if kids else str(Assessment.FAMILY_NAME[fam])
 		body.add_child(_option_button(str(look[0]), str(look[1]), fam_name, text, _train_family.bind(fam)))
@@ -5189,7 +5321,7 @@ func _on_level_pressed(i: int, current: int) -> void:
 	if i <= current:
 		_open_level_list(i)
 	elif _path_hint != null and is_instance_valid(_path_hint):
-		_path_hint.text = "El nivel %d se desbloquea cuando llegues a él." % i
+		_path_hint.text = Loc.t("El nivel %d se desbloquea cuando llegues a él.") % i
 
 
 ## Los problemas de un nivel, numerados del más fácil al más difícil, con una marca en los resueltos. Se toca uno
@@ -5200,12 +5332,12 @@ func _open_level_list(lv: int) -> void:
 	var body: VBoxContainer = page["body"]
 	var footer: VBoxContainer = page["footer"]
 	body.add_child(_spacer(20.0))
-	body.add_child(_centered(_para("Nivel %d · %s" % [lv, str(_rank(lv)[1])], F_TITLE + 6, _c("ink"), font_display)))
+	body.add_child(_centered(_para(Loc.t("Nivel %d · %s") % [lv, str(_rank(lv)[1])], F_TITLE + 6, _c("ink"), font_display)))
 	var solved := 0
 	for item: Dictionary in list:
 		if _puzzle_state(str(item["id"])) == 2:
 			solved += 1
-	body.add_child(_centered(_para("%d problemas · %d resueltos" % [list.size(), solved], F_BODY, _c("quiet"), font_medium)))
+	body.add_child(_centered(_para(Loc.t("%d problemas · %d resueltos") % [list.size(), solved], F_BODY, _c("quiet"), font_medium)))
 	body.add_child(_spacer(30.0))
 	var grid := GridContainer.new()
 	grid.columns = 5
@@ -5321,7 +5453,7 @@ func _open_game_setup() -> void:
 			body.add_child(_stepper("Minutos por jugador", custom_minutes, _step_minutes))
 			body.add_child(_stepper("Segundos más por jugada", custom_increment, _step_increment))
 		var tc := _time_control()
-		var about := "Sin prisa: piensa lo que necesites. Puedes deshacer y pedir pistas." if tc[0] == 0 else "%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes." % [tc[0], " y %d segundos más por jugada" % tc[1] if tc[1] > 0 else ""]
+		var about := "Sin prisa: piensa lo que necesites. Puedes deshacer y pedir pistas." if tc[0] == 0 else Loc.t("%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes.") % [tc[0], Loc.t(" y %d segundos más por jugada") % tc[1] if tc[1] > 0 else ""]
 		body.add_child(_spacer(10.0))
 		body.add_child(_para(about, F_FOOT + 2, _c("quiet"), font_regular))
 	body.add_child(_spacer(30.0))
@@ -5330,7 +5462,7 @@ func _open_game_setup() -> void:
 	var tints := ["mint", "sky", "butter", "peach", "rose"]
 	var icons := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen"]
 	for i in Bot.LEVELS.size():
-		var cfg := {"variant": "", "level": i, "title": "Partida · %s" % str(Bot.LEVELS[i]["name"]), "text": "", "kids": "", "unit": "", "clock": []}
+		var cfg := {"variant": "", "level": i, "title": Loc.t("Partida · %s") % str(Bot.LEVELS[i]["name"]), "text": "", "kids": "", "unit": "", "clock": []}
 		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
 		body.add_child(_spacer(14.0))
 	body.add_child(_spacer(10.0, true))
@@ -5464,7 +5596,7 @@ func _open_online() -> void:
 		# La primera vez: el nombre con el que te verán tus rivales.
 		body.add_child(_name_block())
 	elif not online_busy:
-		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Juegas como «%s»." % online_name, _online_search, true))
+		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", Loc.t("Juegas como «%s».") % online_name, _online_search, true))
 		body.add_child(_spacer(16.0))
 		body.add_child(_option_button("trend", "mint", "Mis partidas", "Rivales, resultados y estadísticas.", _open_my_games_from.bind("online"), true))
 		body.add_child(_spacer(16.0))
@@ -5473,7 +5605,7 @@ func _open_online() -> void:
 		body.add_child(_card_button("Cambiar mi nombre", _change_online_name, _c("field"), _c("ink"), F_SUB, "sliders"))
 		if avatar == "foto" and _avatar_photo() != null:
 			body.add_child(_spacer(10.0))
-			body.add_child(_card_button("Enseñar mi foto al rival: %s" % ("sí" if online_photo else "no"), _toggle_online_photo, _c("field"), _c("ink"), F_SUB, "check" if online_photo else "eye"))
+			body.add_child(_card_button(Loc.t("Enseñar mi foto al rival: %s") % ("sí" if online_photo else "no"), _toggle_online_photo, _c("field"), _c("ink"), F_SUB, "check" if online_photo else "eye"))
 	body.add_child(_spacer(10.0, true))
 	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
 
@@ -5520,14 +5652,14 @@ func _online_move(uci: String) -> void:
 	view.show_move(uci)
 	game_history.append(view.board.chess.fen())
 	game_moves.append(uci)
-	game_note = "El rival ha jugado %s." % san
+	game_note = Loc.t("El rival ha jugado %s.") % san
 	if _game_check_end(pos, m):
 		return
 	game_state = "play"
 	game_clock_side = game_color
 	view.interactive = true
 	if view.board.chess.in_check():
-		game_note = "El rival ha jugado %s: tu rey está en jaque." % san
+		game_note = Loc.t("El rival ha jugado %s: tu rey está en jaque.") % san
 	_refresh()
 
 
@@ -5726,7 +5858,7 @@ func _record_game() -> void:
 	else:
 		var lv := int(game.get("level", 0))
 		rid = "bot:%d" % lv
-		rname = "Ordenador · %s" % str(Bot.LEVELS[clampi(lv, 0, Bot.LEVELS.size() - 1)]["name"])
+		rname = Loc.t("Ordenador · %s") % str(Bot.LEVELS[clampi(lv, 0, Bot.LEVELS.size() - 1)]["name"])
 	var g := {
 		"fecha": int(Time.get_unix_time_from_system()),
 		"tipo": "online" if is_online else "ordenador",
@@ -5889,16 +6021,16 @@ func _open_my_games() -> void:
 		body.add_child(_spacer(18.0))
 		var total := maxi(int(st["total"]), 1)
 		var lines: Array = []
-		lines.append("Ganas el %d %% de tus partidas." % roundi(100.0 * float(st["ganadas"]) / float(total)))
+		lines.append(Loc.t("Ganas el %d %% de tus partidas.") % roundi(100.0 * float(st["ganadas"]) / float(total)))
 		var w: Array = st["blancas"]
 		var b: Array = st["negras"]
-		lines.append("Con blancas: %d ganadas, %d tablas, %d perdidas. Con negras: %d, %d y %d." % [w[0], w[1], w[2], b[0], b[1], b[2]])
-		lines.append("Online: %d · contra el ordenador: %d." % [int(st["online"]), int(st["ordenador"])])
+		lines.append(Loc.t("Con blancas: %d ganadas, %d tablas, %d perdidas. Con negras: %d, %d y %d.") % [w[0], w[1], w[2], b[0], b[1], b[2]])
+		lines.append(Loc.t("Online: %d · contra el ordenador: %d.") % [int(st["online"]), int(st["ordenador"])])
 		var run := int(st["racha"])
 		if run >= 2:
-			lines.append("Llevas %d victorias seguidas. Tu mejor racha: %d." % [run, int(st["mejor_racha"])])
+			lines.append(Loc.t("Llevas %d victorias seguidas. Tu mejor racha: %d.") % [run, int(st["mejor_racha"])])
 		elif int(st["mejor_racha"]) >= 2:
-			lines.append("Tu mejor racha: %d victorias seguidas." % int(st["mejor_racha"]))
+			lines.append(Loc.t("Tu mejor racha: %d victorias seguidas.") % int(st["mejor_racha"]))
 		for t2: String in lines:
 			body.add_child(_para(t2, F_SUB, _c("quiet"), font_medium))
 		_add_evolution(body, log)
@@ -5918,14 +6050,14 @@ func _open_my_games() -> void:
 			var lv := int(r.get("nivel", -1))
 			var who := str(r.get("nombre", "Rival"))
 			if lv >= 0 and not id.begins_with("bot:"):
-				who += " · táctica %d" % lv
+				who += Loc.t(" · táctica %d") % lv
 			texts.add_child(_para(who, F_BODY, _c("ink"), font_semibold))
 			var n := int(r.get("partidas", 0))
 			var g := int(r.get("ganadas", 0))
 			var d := int(r.get("tablas", 0))
 			var l2 := int(r.get("perdidas", 0))
 			texts.add_child(_para("%d %s · %d %s, %d %s, %d %s" % [n, "partida" if n == 1 else "partidas", g, "ganada" if g == 1 else "ganadas", d, "tablas", l2, "perdida" if l2 == 1 else "perdidas"], F_SUB, _c("quiet"), font_regular))
-			texts.add_child(_para("Última: %s" % _date_text(int(r.get("ultima", 0))), F_FOOT, _c("quiet"), font_regular))
+			texts.add_child(_para(Loc.t("Última: %s") % _date_text(int(r.get("ultima", 0))), F_FOOT, _c("quiet"), font_regular))
 			row.add_child(texts)
 			rows.add_child(row)
 			body.add_child(panel_rows[0])
@@ -5935,7 +6067,7 @@ func _open_my_games() -> void:
 		var shown := GameLog.filtered(log, my_games_result, my_games_why)
 		var head := "Últimas partidas"
 		if my_games_result != "" or my_games_why != "":
-			head = "Partidas filtradas · %d" % shown.size()
+			head = Loc.t("Partidas filtradas · %d") % shown.size()
 		body.add_child(_section(head))
 		if shown.is_empty():
 			body.add_child(_para("Ninguna partida con ese filtro.", F_BODY, _c("quiet"), font_regular))
@@ -5944,7 +6076,7 @@ func _open_my_games() -> void:
 			var res := int(g.get("resultado", 0))
 			var word: Array = RESULT_WORDS.get(res, RESULT_WORDS[0])
 			var moves_n := (g.get("jugadas", []) as Array).size()
-			var line := "%s · %s · %d jugadas · %s" % [str(g.get("rival_nombre", "Rival")), "blancas" if int(g.get("color", 0)) == 0 else "negras", (moves_n + 1) / 2, _date_text(int(g.get("fecha", 0)))]
+			var line := Loc.t("%s · %s · %d jugadas · %s") % [str(g.get("rival_nombre", "Rival")), "blancas" if int(g.get("color", 0)) == 0 else "negras", (moves_n + 1) / 2, _date_text(int(g.get("fecha", 0)))]
 			var btn := _option_button("check" if res > 0 else ("info" if res == 0 else "wrong"), str(word[1]), str(word[0]), line, _open_saved_game.bind(i))
 			body.add_child(btn)
 			body.add_child(_spacer(10.0))
@@ -5959,14 +6091,14 @@ func _levels_row(log: Dictionary) -> HBoxContainer:
 	var defs: Array = []
 	if _has_player():
 		var r := float(player["rating"]["r"])
-		defs.append(["target", "peach", "Táctica", "Nivel %d · %d" % [Assessment.level_of(r), roundi(r)], "Sale de los problemas"])
+		defs.append(["target", "peach", "Táctica", Loc.t("Nivel %d · %d") % [Assessment.level_of(r), roundi(r)], "Sale de los problemas"])
 	else:
 		defs.append(["target", "peach", "Táctica", "Sin medir", "Haz el test de nivel"])
 	var gr := GameLog.game_rating(log)
 	if int(gr["n"]) == 0:
 		defs.append(["piece_knight", "sky", "Juego", "Sin medir", "Juega contra el ordenador"])
 	elif bool(gr["provisional"]):
-		defs.append(["piece_knight", "sky", "Juego", "%d (provisional)" % roundi(float(gr["r"])), "%d de %d partidas" % [int(gr["n"]), GameLog.RATED_MIN]])
+		defs.append(["piece_knight", "sky", "Juego", Loc.t("%d (provisional)") % roundi(float(gr["r"])), Loc.t("%d de %d partidas") % [int(gr["n"]), GameLog.RATED_MIN]])
 	else:
 		defs.append(["piece_knight", "sky", "Juego", "%d" % roundi(float(gr["r"])), "Sale de tus partidas"])
 	for d: Array in defs:
@@ -6172,10 +6304,10 @@ func _rival_row() -> HBoxContainer:
 	var text := "Rival · …"
 	if not online_rival.is_empty():
 		var who := str(online_rival.get("nombre", "Rival"))
-		text = ("%s · Táctica %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
+		text = (Loc.t("%s · Táctica %d · %s") % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else Loc.t("%s · todavía sin nivel") % who
 		var rj: Variant = online_rival.get("juego", {})
 		if rj is Dictionary and (rj as Dictionary).has("r"):
-			text += " · Juego %d" % int((rj as Dictionary)["r"])
+			text += Loc.t(" · Juego %d") % int((rj as Dictionary)["r"])
 	var l := _para(text, F_BODY, _c("ink"), font_semibold)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -6592,14 +6724,14 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	game_moves.append(Chess.uci(m))
 	if game_clocked:
 		game_clock[1 - game_color] += game_inc_ms
-	game_note = "Ha movido el rival. ¡Te toca!" if kids else "El rival ha jugado %s." % san
+	game_note = "Ha movido el rival. ¡Te toca!" if kids else Loc.t("El rival ha jugado %s.") % san
 	if _game_check_end(pos, m):
 		return
 	game_state = "play"
 	game_clock_side = game_color
 	view.interactive = true
 	if str(game.get("variant", "")) == "" and view.board.chess.in_check():
-		game_note = _kid_line("inCheck") if kids else "El rival ha jugado %s: tu rey está en jaque." % san
+		game_note = _kid_line("inCheck") if kids else Loc.t("El rival ha jugado %s: tu rey está en jaque.") % san
 		_say([_kid_line("inCheck")])
 	_refresh()
 
@@ -6737,7 +6869,7 @@ func _game_hint() -> void:
 	if m < 0:
 		return
 	view.board.set_arrows([{"from": Chess.move_from(m), "to": Chess.move_to(m), "tone": "info"}])
-	game_note = _kid_line("gameHint") if kids else "Pista: %s." % SanEs.san(view.board.chess, m)
+	game_note = _kid_line("gameHint") if kids else Loc.t("Pista: %s.") % SanEs.san(view.board.chess, m)
 	_say([_kid_line("gameHint")])
 	_refresh()
 
@@ -6964,13 +7096,13 @@ func _build_game_card() -> void:
 	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet"), "sun" if game_color == 0 else "moon"))
 	var where := ""
 	if game_back > 0 and game_state != "over":
-		where = "Viendo la jugada %d de %d · toca el tablero para volver" % [game_history.size() - 1 - game_back, game_history.size() - 1]
+		where = Loc.t("Viendo la jugada %d de %d · toca el tablero para volver") % [game_history.size() - 1 - game_back, game_history.size() - 1]
 	if game_clocked and where != "":
 		# Con reloj no cabe una línea más: el aviso va en lugar de las etiquetas.
 		chips = HFlowContainer.new()
 		chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var t := _tint("peach")
-		chips.add_child(_chip("Jugada %d de %d · toca el tablero para volver" % [game_history.size() - 1 - game_back, game_history.size() - 1], t[0], t[1], "back"))
+		chips.add_child(_chip(Loc.t("Jugada %d de %d · toca el tablero para volver") % [game_history.size() - 1 - game_back, game_history.size() - 1], t[0], t[1], "back"))
 	card_body.add_child(chips)
 	if bool(game.get("online", false)):
 		card_body.add_child(_rival_row())
@@ -7334,9 +7466,9 @@ func _celebrate(before: float, now: float) -> void:
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cheer := str(STREAK_CHEERS[_rng.randi() % STREAK_CHEERS.size()]) if _streak >= 3 else str(CHEERS[_rng.randi() % CHEERS.size()])
 	words.add_child(_line(cheer, F_HEAD + 4, _c("ink"), font_display))
-	var sub := "+%d puntos · ahora %d" % [gained, int(round(now))]
+	var sub := Loc.t("+%d puntos · ahora %d") % [gained, int(round(now))]
 	if _streak >= 3:
-		sub += " · %d seguidos" % _streak
+		sub += Loc.t(" · %d seguidos") % _streak
 	words.add_child(_line(sub, F_SUB, tint[1], font_semibold))
 	row.add_child(words)
 	toast.add_child(pill)
@@ -7396,12 +7528,12 @@ func _level_up(level_now: int, before: float, now: float) -> void:
 	trophy.pivot_offset = Vector2(150.0, 150.0)
 	column.add_child(trophy)
 	column.add_child(_centered(_para("¡Enhorabuena!", F_LARGE, _c("ink"), font_display)))
-	column.add_child(_centered(_para(("Has subido al nivel %d" if kids else "Nivel %d de táctica") % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
+	column.add_child(_centered(_para((Loc.t("Has subido al nivel %d") if kids else Loc.t("Nivel %d de táctica")) % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
 	var badge := _level_badge(now, 170.0)
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(badge)
-	column.add_child(_centered(_para("Rango: %s" % str(_rank(level_now)[1]), F_SUB, _c("quiet"), font_semibold)))
-	column.add_child(_centered(_para("%d → %d puntos" % [int(round(before)), int(round(now))], F_SUB, _c("quiet"), font_medium)))
+	column.add_child(_centered(_para(Loc.t("Rango: %s") % str(_rank(level_now)[1]), F_SUB, _c("quiet"), font_semibold)))
+	column.add_child(_centered(_para(Loc.t("%d → %d puntos") % [int(round(before)), int(round(now))], F_SUB, _c("quiet"), font_medium)))
 	column.add_child(_spacer(10.0))
 	var pad := _pad(80, 0, 80, 0)
 	pad.add_child(_centered(_para(str(LEVEL_CHEERS[_rng.randi() % LEVEL_CHEERS.size()]), F_HEAD, _c("ink"), font_medium)))
@@ -7506,7 +7638,7 @@ func _show_review_page() -> void:
 		body.add_child(_para(none, F_BODY, _c("ink"), font_regular))
 		_say([_kid_line("reviewNone")])
 	else:
-		var intro := _kid_line("reviewIntro") if kids else "%d %s para aprender. Toca «Ver» para ir a esa posición." % [review.size(), "momento" if review.size() == 1 else "momentos"]
+		var intro := _kid_line("reviewIntro") if kids else Loc.t("%d %s para aprender. Toca «Ver» para ir a esa posición.") % [review.size(), "momento" if review.size() == 1 else "momentos"]
 		body.add_child(_para(intro, F_BODY, _c("ink"), font_regular))
 		_say([_kid_line("reviewIntro")])
 		body.add_child(_spacer(20.0))
@@ -7517,7 +7649,7 @@ func _show_review_page() -> void:
 			var panel_rows := _panel()
 			var rows: VBoxContainer = panel_rows[1]
 			var move_no := int(mo["ply"]) / 2 + 1
-			rows.add_child(_icon_row("target" if kind in ["hang", "missed_capture"] else ("flag" if kind.ends_with("mate") else "piece_king"), str(tints.get(kind, "sky")), GameReview.title_of(kind), "Jugada %d" % move_no, 96.0))
+			rows.add_child(_icon_row("target" if kind in ["hang", "missed_capture"] else ("flag" if kind.ends_with("mate") else "piece_king"), str(tints.get(kind, "sky")), GameReview.title_of(kind), Loc.t("Jugada %d") % move_no, 96.0))
 			rows.add_child(_para(_kid_line(GameReview.kids_key(kind)) if kids else str(mo["text"]), F_BODY, _c("ink"), font_regular))
 			var buttons := HBoxContainer.new()
 			buttons.add_theme_constant_override("separation", 14)
@@ -7617,8 +7749,8 @@ func _build_review_card() -> void:
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 12)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chips.add_child(_chip("Jugada %d" % (int(mo.get("ply", 0)) / 2 + 1), _c("field"), _c("ink")))
-	chips.add_child(_chip("%d de %d" % [review_at + 1, review.size()], _c("field"), _c("quiet")))
+	chips.add_child(_chip(Loc.t("Jugada %d") % (int(mo.get("ply", 0)) / 2 + 1), _c("field"), _c("ink")))
+	chips.add_child(_chip(Loc.t("%d de %d") % [review_at + 1, review.size()], _c("field"), _c("quiet")))
 	card_body.add_child(chips)
 	card_body.add_child(_para(_kid_line(GameReview.kids_key(str(mo.get("kind", "")))) if kids else str(mo.get("text", "")), F_BODY, _c("ink"), font_regular))
 	if not kids:
@@ -7689,7 +7821,7 @@ func _detail_work(fens: Array, moves: Array, color: int, my_run: int) -> void:
 
 func _detail_tick(done: int, total: int) -> void:
 	if _detail_progress != null and is_instance_valid(_detail_progress):
-		_detail_progress.text = "Jugada %d de %d" % [done, total]
+		_detail_progress.text = Loc.t("Jugada %d de %d") % [done, total]
 
 
 func _detail_ready(found: Array, my_run: int) -> void:
@@ -7769,8 +7901,8 @@ func _build_detail_card() -> void:
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 12)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chips.add_child(_chip("Jugada %d" % int(e.get("n", 0)), _c("field"), _c("ink")))
-	chips.add_child(_chip("%d de %d" % [detail_at + 1, detail.size()], _c("field"), _c("quiet")))
+	chips.add_child(_chip(Loc.t("Jugada %d") % int(e.get("n", 0)), _c("field"), _c("ink")))
+	chips.add_child(_chip(Loc.t("%d de %d") % [detail_at + 1, detail.size()], _c("field"), _c("quiet")))
 	card_body.add_child(chips)
 	if not detail_line.is_empty():
 		_add_detail_line(e)
@@ -7866,7 +7998,7 @@ func _add_detail_line(e: Dictionary) -> void:
 			num = "%d… " % n
 		var san := str(detail_line_san[k])
 		parts.append(num + ("[%s]" % san if k == detail_line_ply else san))
-	card_body.add_child(_para("La mejor era %s. Así podía seguir la partida:" % str(detail_line_san[0]), F_SUB, _c("good"), font_semibold))
+	card_body.add_child(_para(Loc.t("La mejor era %s. Así podía seguir la partida:") % str(detail_line_san[0]), F_SUB, _c("good"), font_semibold))
 	card_body.add_child(_para(" ".join(parts), F_BODY, _c("ink"), font_medium))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -7877,7 +8009,7 @@ func _add_detail_line(e: Dictionary) -> void:
 				if child is TextureRect:
 					(child as TextureRect).flip_h = true
 		row.add_child(b)
-	var mark := _text("inicio" if detail_line_ply < 0 else "%d de %d" % [detail_line_ply + 1, detail_line.size()], F_FOOT, _c("quiet"), font_medium)
+	var mark := _text("inicio" if detail_line_ply < 0 else Loc.t("%d de %d") % [detail_line_ply + 1, detail_line.size()], F_FOOT, _c("quiet"), font_medium)
 	mark.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -8199,7 +8331,7 @@ func _open_gate(then: Callable) -> void:
 	body.add_child(_spacer(24.0))
 	body.add_child(_centered(_para("Para mayores", F_TITLE + 12, _c("ink"), font_display)))
 	body.add_child(_spacer(4.0))
-	body.add_child(_centered(_para("Para salir del modo Kids, responde: ¿cuánto es %d × %d?" % [a, b], F_HEAD, _c("quiet"), font_medium)))
+	body.add_child(_centered(_para(Loc.t("Para salir del modo Kids, responde: ¿cuánto es %d × %d?") % [a, b], F_HEAD, _c("quiet"), font_medium)))
 	body.add_child(_spacer(40.0))
 	var answers := [_gate_answer, _gate_answer + _rng.randi_range(1, 4), _gate_answer - _rng.randi_range(1, 4)]
 	answers.shuffle()
@@ -8454,7 +8586,7 @@ func _duration(ms: float) -> String:
 	var seconds := int(round(ms / 1000.0))
 	if seconds < 60:
 		return "%d s" % maxi(seconds, 1)
-	return "%d min %d s" % [seconds / 60, seconds % 60] if seconds % 60 != 0 else "%d min" % (seconds / 60)
+	return Loc.t("%d min %d s") % [seconds / 60, seconds % 60] if seconds % 60 != 0 else Loc.t("%d min") % (seconds / 60)
 
 
 ## Resultado del test ("result") o progreso ("progress"): el nivel, el perfil por dimensiones y el plan.
@@ -8476,7 +8608,7 @@ func _open_progress(kind: String = "progress") -> void:
 	body.add_child(_spacer(4.0))
 	body.add_child(_centered(_para("TU NIVEL" if kind != "result" else "RESULTADO DEL TEST", F_CAP, _c("quiet"), font_semibold)))
 	var level := Assessment.level_of(r)
-	var level_text := "Nivel %d" % level
+	var level_text := Loc.t("Nivel %d") % level
 	var limit_note := ""
 	if r < float(limits["min"]):
 		limit_note = "Casi no hay problemas más fáciles que los de este nivel: tu puntuación exacta aún no es fiable."
@@ -8486,7 +8618,7 @@ func _open_progress(kind: String = "progress") -> void:
 	number.add_theme_constant_override("line_spacing", -8)
 	body.add_child(number)
 	# De cuántos niveles, y a qué tramo de la escala de problemas de Lichess corresponde.
-	body.add_child(_centered(_para("de %d · problemas de Lichess de %s" % [Assessment.LEVEL_FLOORS.size() - 1, Assessment.level_span(level)], F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_centered(_para(Loc.t("de %d · problemas de Lichess de %s") % [Assessment.LEVEL_FLOORS.size() - 1, Assessment.level_span(level)], F_SUB, _c("quiet"), font_medium)))
 	body.add_child(_spacer(6.0))
 	var band_row := CenterContainer.new()
 	band_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -8497,7 +8629,7 @@ func _open_progress(kind: String = "progress") -> void:
 	body.add_child(_centered(_para(str(band["blurb"]), F_BODY, _c("ink"), font_regular)))
 	body.add_child(_spacer(10.0))
 	var margin := int(round(2.0 * float(rating["rd"]) / 10.0)) * 10
-	var small := "Puntuación %d (margen ±%d). Se afina con cada problema. Es la escala de los problemas de Lichess. No es Elo: no hay una equivalencia fiable entre las dos." % [int(round(r)), margin]
+	var small := Loc.t("Puntuación %d (margen ±%d). Se afina con cada problema. Es la escala de los problemas de Lichess. No es Elo: no hay una equivalencia fiable entre las dos.") % [int(round(r)), margin]
 	if limit_note != "":
 		small = limit_note + " " + small
 	if test_skipped:
@@ -8507,7 +8639,7 @@ func _open_progress(kind: String = "progress") -> void:
 	# El perfil.
 	body.add_child(_spacer(40.0))
 	var n := tries.size()
-	body.add_child(_text(("PERFIL · %d PROBLEMAS" % n) if n != 1 else "PERFIL · 1 PROBLEMA", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_text((Loc.t("PERFIL · %d PROBLEMAS") % n) if n != 1 else "PERFIL · 1 PROBLEMA", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(8.0))
 	if n < 20:
 		body.add_child(_para("Primeras observaciones: con tan pocos problemas son indicios, no un veredicto. Se afinan al entrenar.", F_FOOT + 2, _c("quiet"), font_regular))
@@ -8521,17 +8653,17 @@ func _open_progress(kind: String = "progress") -> void:
 		var family_name := str(Assessment.FAMILY_NAME.get(f["family"], f["family"]))
 		var family_state := Assessment.status(f)
 		if family_state == "few":
-			few.append("%s, %d de %d" % [family_name.to_lower(), int(f["correct"]), int(f["n"])])
+			few.append(Loc.t("%s, %d de %d") % [family_name.to_lower(), int(f["correct"]), int(f["n"])])
 		else:
-			rows.add_child(_profile_row("whatif", "sky", family_name, "%d de %d acertados" % [int(f["correct"]), int(f["n"])], family_state))
+			rows.add_child(_profile_row("whatif", "sky", family_name, Loc.t("%d de %d acertados") % [int(f["correct"]), int(f["n"])], family_state))
 	var mate: Dictionary = pr["mate"]
 	if int(mate["n"]) > 0:
-		rows.add_child(_profile_row("target", "rose", "Visión de mate", "%d de %d problemas que acaban en mate" % [int(mate["correct"]), int(mate["n"])], Assessment.status(mate)))
+		rows.add_child(_profile_row("target", "rose", "Visión de mate", Loc.t("%d de %d problemas que acaban en mate") % [int(mate["correct"]), int(mate["n"])], Assessment.status(mate)))
 	var long: Dictionary = pr["long"]
 	if int(long["n"]) > 0:
-		var calc := "%d de %d problemas de tres jugadas o más." % [int(long["correct"]), int(long["n"])]
+		var calc := Loc.t("%d de %d problemas de tres jugadas o más.") % [int(long["correct"]), int(long["n"])]
 		if int(pr["failLater"]) > 0:
-			calc += " En %d acertaste la primera jugada y fallaste después." % int(pr["failLater"])
+			calc += Loc.t(" En %d acertaste la primera jugada y fallaste después.") % int(pr["failLater"])
 		rows.add_child(_profile_row("line", "lilac", "Cálculo", calc, Assessment.status(long)))
 	var fails := int(pr["fails"])
 	if fails > 0:
@@ -8542,13 +8674,13 @@ func _open_progress(kind: String = "progress") -> void:
 				parts.append("%s ×%d" % [_error_name(error_kind), count])
 		var detail := " · ".join(parts) + "."
 		if int(pr["replyBlind"]) > 0:
-			detail += " %d de %d se castigaban con la respuesta inmediata del rival." % [int(pr["replyBlind"]), fails]
-		rows.add_child(_profile_row("wrong", "peach", "Tus jugadas equivocadas: %d" % fails, detail))
+			detail += Loc.t(" %d de %d se castigaban con la respuesta inmediata del rival.") % [int(pr["replyBlind"]), fails]
+		rows.add_child(_profile_row("wrong", "peach", Loc.t("Tus jugadas equivocadas: %d") % fails, detail))
 	var time: Dictionary = pr["time"]
 	if int(time["n"]) > 0:
-		var pace := "Sueles tardar %s en mover." % _duration(float(time["median"]))
+		var pace := Loc.t("Sueles tardar %s en mover.") % _duration(float(time["median"]))
 		if int(time["rushed"]) > 0:
-			pace += " %d fallos llegaron en menos de la mitad de lo que tardas cuando aciertas." % int(time["rushed"])
+			pace += Loc.t(" %d fallos llegaron en menos de la mitad de lo que tardas cuando aciertas.") % int(time["rushed"])
 		rows.add_child(_profile_row("clock", "butter", "Ritmo", pace))
 	if not few.is_empty():
 		rows.add_child(_profile_row("chart", "sky", "Con pocos datos todavía", _sentence("; ".join(few) + ".")))
@@ -8575,11 +8707,11 @@ func _open_progress(kind: String = "progress") -> void:
 	for lv in Assessment.LEVEL_FLOORS.size():
 		if not per_level.has(lv):
 			continue
-		var line := "%d de %d problemas resueltos · puntuación %s" % [int(done_level.get(lv, 0)), int(per_level[lv]), Assessment.level_span(lv)]
+		var line := Loc.t("%d de %d problemas resueltos · puntuación %s") % [int(done_level.get(lv, 0)), int(per_level[lv]), Assessment.level_span(lv)]
 		var state := ""
 		if lv == level:
 			state = "here"
-		var row := _profile_row("flag" if lv == level else "check", str(tints[lv % tints.size()]), "Nivel %d" % lv, line)
+		var row := _profile_row("flag" if lv == level else "check", str(tints[lv % tints.size()]), Loc.t("Nivel %d") % lv, line)
 		if state == "here":
 			var here := _chip("Estás aquí", _tint("lilac")[0], _tint("lilac")[1], "pin_on")
 			here.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -8599,9 +8731,9 @@ func _open_progress(kind: String = "progress") -> void:
 	var target := float(todo["target"])
 	var lowest := float(pool[0]["rating"]) if not pool.is_empty() else 0.0
 	if target < lowest:
-		plan_rows.add_child(_profile_row("target", "peach", "Los problemas más fáciles que hay", "La muestra empieza en %d: al principio fallarás más de lo que conviene." % int(lowest)))
+		plan_rows.add_child(_profile_row("target", "peach", "Los problemas más fáciles que hay", Loc.t("La muestra empieza en %d: al principio fallarás más de lo que conviene.") % int(lowest)))
 	else:
-		plan_rows.add_child(_profile_row("target", "peach", "Problemas de dificultad %d" % int(round(target)), "Algo por debajo de tu nivel, para acertar unos tres de cada cuatro."))
+		plan_rows.add_child(_profile_row("target", "peach", Loc.t("Problemas de dificultad %d") % int(round(target)), "Algo por debajo de tu nivel, para acertar unos tres de cada cuatro."))
 	var focus: Array = todo["focus"]
 	if focus.is_empty():
 		plan_rows.add_child(_profile_row("whatif", "sky", "Problemas variados", "Todavía no hay un punto flojo claro."))
@@ -8611,7 +8743,7 @@ func _open_progress(kind: String = "progress") -> void:
 			what = "tres jugadas o más"
 		elif str(item["kind"]) == "family":
 			what = str(Assessment.FAMILY_NAME.get(item["family"], "")).to_lower()
-		plan_rows.add_child(_profile_row("flag", "rose", "Más problemas de %s" % what, "Es donde rindes por debajo de tu nivel: saldrán más a menudo."))
+		plan_rows.add_child(_profile_row("flag", "rose", Loc.t("Más problemas de %s") % what, "Es donde rindes por debajo de tu nivel: saldrán más a menudo."))
 	for habit: String in todo["habits"]:
 		match habit:
 			"reply":
