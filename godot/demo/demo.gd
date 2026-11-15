@@ -5469,6 +5469,8 @@ func _online_search() -> void:
 	online_rival = {}
 	_rival_tex = null
 	online.my_profile = _online_profile()
+	var gr := GameLog.game_rating(_log())
+	online.my_game_rating = {} if kids or int(gr["n"]) == 0 else {"r": roundi(float(gr["r"])), "rd": clampi(roundi(float(gr["rd"])), 30, 350), "n": int(gr["n"])}
 	_open_online()
 	online.start()
 
@@ -5719,6 +5721,7 @@ func _record_game() -> void:
 		"color": game_color,
 		"resultado": game_won,
 		"motivo": game_result,
+		"rival_juego": (rival_info.get("juego", {}) as Dictionary).duplicate() if rival_info.get("juego", {}) is Dictionary else {},
 		"inicio": str(game_history[0]) if not game_history.is_empty() else Board3D.START_FEN,
 		"jugadas": game_moves.duplicate(),
 	}
@@ -6155,6 +6158,9 @@ func _rival_row() -> HBoxContainer:
 	if not online_rival.is_empty():
 		var who := str(online_rival.get("nombre", "Rival"))
 		text = ("%s · Táctica %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
+		var rj: Variant = online_rival.get("juego", {})
+		if rj is Dictionary and (rj as Dictionary).has("r"):
+			text += " · Juego %d" % int((rj as Dictionary)["r"])
 	var l := _para(text, F_BODY, _c("ink"), font_semibold)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

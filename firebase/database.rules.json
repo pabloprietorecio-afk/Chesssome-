@@ -48,6 +48,21 @@
             "nombre": {
               ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 16"
             },
+            "juego": {
+              ".validate": "newData.hasChildren(['r', 'rd', 'n'])",
+              "r": {
+                ".validate": "newData.isNumber() && newData.val() >= 100 && newData.val() <= 3500"
+              },
+              "rd": {
+                ".validate": "newData.isNumber() && newData.val() >= 30 && newData.val() <= 350"
+              },
+              "n": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+              },
+              "$otro": {
+                ".validate": false
+              }
+            },
             "$otro": {
               ".validate": false
             }

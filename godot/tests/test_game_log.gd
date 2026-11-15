@@ -47,6 +47,9 @@ func _init() -> void:
 	var gr := GameLog.game_rating(glog, levels)
 	_ok(int(gr["n"]) == 6 and bool(gr["provisional"]), "cuentan 6 partidas (el nivel sin medir no)")
 	_ok(float(gr["r"]) > 1500.0, "ganar siempre a un 1400 sube el nivel de juego")
+	GameLog.add(glog, {"fecha": 3000, "tipo": "online", "rival_id": "u9", "rival_nombre": "Eva", "color": 1, "resultado": 0, "motivo": "", "inicio": "", "jugadas": ["e2e4"], "rival_juego": {"r": 1700, "rd": 90, "n": 12}}, {})
+	GameLog.add(glog, {"fecha": 3100, "tipo": "online", "rival_id": "u8", "rival_nombre": "Leo", "color": 1, "resultado": 1, "motivo": "", "inicio": "", "jugadas": ["e2e4"]}, {})
+	_ok(int(GameLog.game_rating(glog, levels)["n"]) == 7, "online cuenta si el rival enseñó su nivel de juego")
 	# Nombres
 	_ok(GameLog.name_problem("Penélope") == "", "Penélope vale")
 	_ok(GameLog.name_problem("Pablo_88") == "", "con números y guion bajo")

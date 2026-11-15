@@ -55,9 +55,9 @@ static func add(log: Dictionary, game: Dictionary, rival: Dictionary) -> Diction
 const RATED_MIN := 10
 
 
-## Nivel de juego: Glicko-2 con las partidas contra el ordenador, de la más antigua a la más reciente. Cada nivel
-## del ordenador cuenta con su fuerza medida (Bot.LEVELS: «elo» y «rd»; tools/calibrar); los que no la tienen no
-## cuentan. `levels` es para las pruebas. Devuelve {r, rd, n (partidas que cuentan), provisional}.
+## Nivel de juego: Glicko-2 con las partidas, de la más antigua a la más reciente. Contra el ordenador, cada nivel
+## cuenta con su fuerza medida (Bot.LEVELS: «elo» y «rd»; tools/calibrar), y los que no la tienen no cuentan; online,
+## con el nivel de juego que enseñó el rival (su desviación, como poco 60, para que un número dudoso pese menos). `levels` es para las pruebas. Devuelve {r, rd, n (partidas que cuentan), provisional}.
 static func game_rating(log: Dictionary, levels: Array = []) -> Dictionary:
 	if levels.is_empty():
 		levels = Bot.LEVELS
@@ -67,15 +67,21 @@ static func game_rating(log: Dictionary, levels: Array = []) -> Dictionary:
 	for i in range(games.size() - 1, -1, -1):
 		var g: Dictionary = games[i]
 		var id := str(g.get("rival_id", ""))
-		if not id.begins_with("bot:"):
+		var opp := {}
+		if id.begins_with("bot:"):
+			var lv := int(id.substr(4))
+			if lv >= 0 and lv < levels.size() and (levels[lv] as Dictionary).has("elo"):
+				opp = {"r": float(levels[lv]["elo"]), "rd": float(levels[lv].get("rd", 60.0))}
+		else:
+			# Online: el nivel de juego que enseñó el rival (lo calcula su app; no se puede comprobar).
+			var rj: Variant = g.get("rival_juego", {})
+			if rj is Dictionary and (rj as Dictionary).has("r") and (rj as Dictionary).has("rd"):
+				opp = {"r": clampf(float(rj["r"]), 100.0, 3500.0), "rd": clampf(float(rj["rd"]), 60.0, 350.0)}
+		if opp.is_empty():
 			continue
-		var lv := int(id.substr(4))
-		if lv < 0 or lv >= levels.size() or not (levels[lv] as Dictionary).has("elo"):
-			continue
-		var def: Dictionary = levels[lv]
 		var res := int(g.get("resultado", 0))
 		var score := 1.0 if res > 0 else (0.5 if res == 0 else 0.0)
-		rating = Glicko2.update(rating, [{"opponent": {"r": float(def["elo"]), "rd": float(def.get("rd", 60.0))}, "score": score}])
+		rating = Glicko2.update(rating, [{"opponent": opp, "score": score}])
 		n += 1
 	return {"r": float(rating["r"]), "rd": float(rating["rd"]), "n": n, "provisional": n < RATED_MIN}
 
