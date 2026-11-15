@@ -4649,7 +4649,7 @@ func _build_avatar_sheet() -> void:
 			row = HBoxContainer.new()
 			row.add_theme_constant_override("separation", 12)
 			box.add_child(row)
-		var on := avatar == pieces[i]
+		var on: bool = avatar == str(pieces[i])
 		var colors := _choice_colors(on)
 		var glyph: String = pieces[i]
 		if glyph == "":
