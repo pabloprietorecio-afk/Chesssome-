@@ -14,6 +14,8 @@ export interface GameDoc {
 /** Lo que cada jugador enseña de sí mismo al rival: su nivel (−1 sin nivel), su icono y, si quiere, su foto. */
 export interface Profile {
   nivel: number;
+  /** Nombre con el que juega (2–16 caracteres). */
+  nombre?: string;
   icono?: string;
   /** JPEG pequeño en base64. Solo si el jugador ha elegido enseñarla. */
   foto?: string;
@@ -38,9 +40,11 @@ export interface GestureEvent {
 }
 
 export function profileOf(doc: GameDoc | null, uid: string): Profile | null {
-  const p = doc?.perfiles?.[uid] as { nivel?: unknown; icono?: unknown; foto?: unknown } | undefined;
+  const p = doc?.perfiles?.[uid] as { nivel?: unknown; icono?: unknown; foto?: unknown; nombre?: unknown } | undefined;
   if (!p || typeof p.nivel !== 'number') return null;
-  return { nivel: p.nivel, icono: typeof p.icono === 'string' ? p.icono : undefined, foto: typeof p.foto === 'string' ? p.foto : undefined };
+  const out: Profile = { nivel: p.nivel, icono: typeof p.icono === 'string' ? p.icono : undefined, foto: typeof p.foto === 'string' ? p.foto : undefined };
+  if (typeof p.nombre === 'string') out.nombre = p.nombre;
+  return out;
 }
 
 /** Gestos en orden de llegada (las claves de Firebase ordenan por tiempo). */

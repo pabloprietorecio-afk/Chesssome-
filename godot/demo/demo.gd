@@ -196,6 +196,18 @@ var online_busy := false
 var online_wait_ms := 0
 ## Enseñar la foto propia al rival (solo si el icono es una foto). Desactivado salvo que se elija.
 var online_photo := false
+## Nombre con el que se juega online (se pide la primera vez).
+var online_name := ""
+var _name_edit: LineEdit
+var _name_error := ""
+## Historial de partidas (core/game_log.gd), cargado la primera vez que hace falta; y si la partida de ahora ya se
+## anotó.
+var game_log := {}
+var game_recorded := false
+## Adónde vuelve «Mis partidas»: "online" o "setup" (la página de jugar contra el ordenador).
+var my_games_back := "online"
+## Fotos de rivales ya decodificadas, por identificador.
+var _photo_cache := {}
 ## Lo que enseña el rival y su foto ya decodificada.
 var online_rival := {}
 var _rival_tex: Texture2D
@@ -457,6 +469,8 @@ class LevelBadge extends Control:
 	var bubble_ink := Color.BLACK
 	var progress := 0.0
 	var level := 0
+	## Sin la burbuja del número (el ordenador o un rival sin nivel).
+	var no_level := false
 	var font: Font
 
 	func _draw() -> void:
@@ -469,6 +483,8 @@ class LevelBadge extends Control:
 		if progress > 0.0:
 			draw_arc(c, r - w * 0.5 - 1.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(progress, 0.0, 1.0), 64, ring, w, true)
 		# Burbuja con el número, abajo a la derecha.
+		if no_level:
+			return
 		var br := r * 0.36
 		var bc := c + Vector2(r * 0.7, r * 0.7)
 		draw_circle(bc, br + 3.0, fill)
@@ -1093,6 +1109,7 @@ func _load_settings() -> void:
 	kids = bool(cfg.get_value("app", "kids", false))
 	avatar = str(cfg.get_value("app", "icono", ""))
 	online_photo = bool(cfg.get_value("online", "foto", false))
+	online_name = str(cfg.get_value("online", "nombre", ""))
 	var world := str(cfg.get_value("app", "mundo", ""))
 	if WORLDS.has(world):
 		kids_world = world
@@ -1118,6 +1135,7 @@ func _save_settings() -> void:
 	cfg.set_value("tablero", "animaciones", int(view.board.anim_mode) if view != null else _saved_anim)
 	cfg.set_value("pantalla", "oscuro", dark)
 	cfg.set_value("online", "foto", online_photo)
+	cfg.set_value("online", "nombre", online_name)
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
@@ -4972,6 +4990,8 @@ func _open_game_setup() -> void:
 		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
 		body.add_child(_spacer(14.0))
 	body.add_child(_spacer(10.0, true))
+	if not kids:
+		footer.add_child(_button("trend", "Mis partidas", _open_my_games_from.bind("setup"), Color(0, 0, 0, 0), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	footer.add_child(_button("close", "Cancelar", _close_game_setup, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
 
 
@@ -5091,11 +5111,17 @@ func _open_online() -> void:
 		body.add_child(_spacer(20.0))
 		body.add_child(_centered(_para(online_status, F_BODY, _c("bad"), font_medium)))
 	body.add_child(_spacer(30.0))
-	if not online_busy:
-		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Sin cuenta: tu jugador es anónimo.", _online_search, true))
+	if not online_busy and online_name == "":
+		# La primera vez: el nombre con el que te verán tus rivales.
+		body.add_child(_name_block())
+	elif not online_busy:
+		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", "Juegas como «%s»." % online_name, _online_search, true))
 		body.add_child(_spacer(16.0))
-		var lv_text := "Tu rival verá tu nivel y tu icono."
+		body.add_child(_option_button("trend", "mint", "Mis partidas", "Rivales, resultados y estadísticas.", _open_my_games_from.bind("online"), true))
+		body.add_child(_spacer(16.0))
+		var lv_text := "Tu rival verá tu nombre, tu nivel y tu icono."
 		body.add_child(_centered(_para(lv_text, F_SUB, _c("quiet"), font_regular)))
+		body.add_child(_card_button("Cambiar mi nombre", _change_online_name, _c("field"), _c("ink"), F_SUB, "sliders"))
 		if avatar == "foto" and _avatar_photo() != null:
 			body.add_child(_spacer(10.0))
 			body.add_child(_card_button("Enseñar mi foto al rival: %s" % ("sí" if online_photo else "no"), _toggle_online_photo, _c("field"), _c("ink"), F_SUB, "check" if online_photo else "eye"))
@@ -5170,9 +5196,63 @@ func _online_ended(_reason: String, _winner: int) -> void:
 	_refresh()
 
 
+## Pide el nombre para jugar online: un campo de texto y «Guardar».
+func _name_block() -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 16)
+	box.add_child(_centered(_para("¿Cómo quieres que te vean tus rivales?", F_HEAD, _c("ink"), font_semibold)))
+	_name_edit = LineEdit.new()
+	_name_edit.placeholder_text = "Tu nombre (2 a 16 letras)"
+	_name_edit.max_length = 16
+	_name_edit.text = online_name
+	_name_edit.add_theme_font_size_override("font_size", F_HEAD)
+	_name_edit.add_theme_font_override("font", font_medium)
+	_name_edit.custom_minimum_size = Vector2(0.0, 120.0)
+	_name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = _c("surface")
+	sb.set_corner_radius_all(40)
+	sb.border_color = _c("track")
+	sb.set_border_width_all(3)
+	sb.content_margin_left = 30
+	sb.content_margin_right = 30
+	_name_edit.add_theme_stylebox_override("normal", sb)
+	_name_edit.add_theme_stylebox_override("focus", sb)
+	_name_edit.add_theme_color_override("font_color", _c("ink"))
+	_name_edit.text_submitted.connect(func(_t: String) -> void: _save_online_name())
+	box.add_child(_name_edit)
+	if _name_error != "":
+		box.add_child(_centered(_para(_name_error, F_SUB, _c("bad"), font_medium)))
+	box.add_child(_centered(_para("Es lo único que verán de ti, junto con tu nivel y tu icono. No pongas tu nombre completo.", F_FOOT, _c("quiet"), font_regular)))
+	var tint := _tint("sky")
+	box.add_child(_button("check", "Guardar", _save_online_name, tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0}))
+	return box
+
+
+func _save_online_name() -> void:
+	if _name_edit == null or not is_instance_valid(_name_edit):
+		return
+	var problem := GameLog.name_problem(_name_edit.text)
+	if problem != "":
+		_name_error = problem
+		_open_online()
+		return
+	_name_error = ""
+	online_name = _name_edit.text.strip_edges()
+	_save_settings()
+	_open_online()
+
+
+func _change_online_name() -> void:
+	online_name = ""
+	_open_online()
+
+
 ## Lo que se enseña al rival: nivel, icono y, si se ha elegido, una foto pequeña.
 func _online_profile() -> Dictionary:
 	var p := {"nivel": Assessment.level_of(float(player["rating"]["r"])) if _has_player() else -1}
+	if online_name != "":
+		p["nombre"] = online_name
 	if avatar.begins_with("piece_"):
 		p["icono"] = avatar
 	elif _has_player():
@@ -5273,6 +5353,300 @@ func _rival_badge(side: float) -> Control:
 	return badge
 
 
+## Historial de partidas, cargado la primera vez.
+func _log() -> Dictionary:
+	if game_log.is_empty():
+		game_log = GameLog.load_log()
+	return game_log
+
+
+## Anota la partida terminada (una vez): online y contra el ordenador; no las del curso, las variantes ni Kids.
+func _record_game() -> void:
+	if game_recorded or kids or game_moves.is_empty() or str(game.get("unit", "")) != "" or str(game.get("variant", "")) != "" or bool(game.get("saved", false)):
+		return
+	game_recorded = true
+	var is_online := bool(game.get("online", false))
+	var rid := ""
+	var rname := ""
+	var rival_info := {}
+	if is_online:
+		rid = online.rival_uid if online.rival_uid != "" else "online:?"
+		rival_info = online_rival.duplicate()
+		rname = str(online_rival.get("nombre", "Rival anónimo"))
+	else:
+		var lv := int(game.get("level", 0))
+		rid = "bot:%d" % lv
+		rname = "Ordenador · %s" % str(Bot.LEVELS[clampi(lv, 0, Bot.LEVELS.size() - 1)]["name"])
+	var g := {
+		"fecha": int(Time.get_unix_time_from_system()),
+		"tipo": "online" if is_online else "ordenador",
+		"rival_id": rid,
+		"rival_nombre": rname,
+		"rival_nivel": int(rival_info.get("nivel", -1)),
+		"color": game_color,
+		"resultado": game_won,
+		"motivo": game_result,
+		"inicio": str(game_history[0]) if not game_history.is_empty() else Board3D.START_FEN,
+		"jugadas": game_moves.duplicate(),
+	}
+	GameLog.add(_log(), g, rival_info)
+	GameLog.save_log(_log())
+
+
+## Insignia de un rival guardado (o del de ahora): su foto o su icono dentro del anillo del color de su nivel.
+func _profile_badge(p: Dictionary, side: float, key: String = "") -> Control:
+	var lv := int(p.get("nivel", -1))
+	var bot := key.begins_with("bot:")
+	var rank := _rank(maxi(lv, 0))
+	var tint := _tint(str(rank[2])) if lv >= 0 else ([_tint("sky")[0], _tint("sky")[1]] if bot else [_c("field"), _c("quiet")])
+	var badge := LevelBadge.new()
+	badge.custom_minimum_size = Vector2(side, side)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.fill = tint[0]
+	badge.ring = tint[1]
+	badge.track = Color(tint[1].r, tint[1].g, tint[1].b, 0.18)
+	badge.bubble = tint[1]
+	badge.bubble_ink = Color.WHITE
+	badge.progress = 1.0
+	badge.level = maxi(lv, 0)
+	badge.no_level = lv < 0
+	badge.font = font_display
+	var tex: Texture2D = null
+	var b64 := str(p.get("foto", ""))
+	if b64 != "":
+		var ck := key if key != "" else str(b64.hash())
+		if not _photo_cache.has(ck):
+			_photo_cache[ck] = _decode_photo(b64)
+		tex = _photo_cache[ck]
+	if tex != null:
+		var pic := TextureRect.new()
+		pic.texture = tex
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var inset := side * 0.11
+		pic.offset_left = inset
+		pic.offset_top = inset
+		pic.offset_right = -inset
+		pic.offset_bottom = -inset
+		pic.show_behind_parent = true
+		badge.fill = Color(tint[0].r, tint[0].g, tint[0].b, 0.0)
+		badge.add_child(pic)
+		return badge
+	var glyph := str(p.get("icono", ""))
+	if bot:
+		glyph = "bot"
+	elif not (glyph.begins_with("piece_") and UiIcons.has(glyph)):
+		glyph = str(rank[0])
+	var icon := _icon(glyph, side * 0.5, tint[1])
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.offset_left = side * 0.25
+	icon.offset_top = side * 0.22
+	icon.offset_right = -side * 0.25
+	icon.offset_bottom = -side * 0.28
+	badge.add_child(icon)
+	return badge
+
+
+func _decode_photo(b64: String) -> Texture2D:
+	var img := Image.new()
+	if img.load_jpg_from_buffer(Marshalls.base64_to_raw(b64)) != OK:
+		return null
+	img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	for y in img.get_height():
+		for x in w:
+			var d := Vector2(float(x) - w * 0.5 + 0.5, float(y) - w * 0.5 + 0.5).length()
+			var px := img.get_pixel(x, y)
+			px.a = clampf(w * 0.5 - 0.5 - d, 0.0, 1.0)
+			img.set_pixel(x, y, px)
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+const RESULT_WORDS := {1: ["Ganada", "mint"], 0: ["Tablas", "sky"], -1: ["Perdida", "rose"]}
+
+
+## «Mis partidas»: el resumen en números, los rivales y las últimas partidas (se toca una para analizarla).
+func _open_my_games() -> void:
+	var log := _log()
+	var st := GameLog.stats(log)
+	var page := _page("my_games")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var tile := _icon_tile("trend", "mint", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(16.0))
+	body.add_child(_centered(_para("Mis partidas", F_LARGE, _c("ink"), font_display)))
+	body.add_child(_spacer(20.0))
+	if int(st["total"]) == 0:
+		body.add_child(_centered(_para("Todavía no has terminado ninguna partida. Aquí verás contra quién has jugado, tus resultados y tus estadísticas.", F_BODY, _c("quiet"), font_regular)))
+	else:
+		# Cuatro teselas con los números grandes.
+		var tiles := HBoxContainer.new()
+		tiles.add_theme_constant_override("separation", 14)
+		for def: Array in [["Jugadas", "total", "lilac"], ["Ganadas", "ganadas", "mint"], ["Tablas", "tablas", "sky"], ["Perdidas", "perdidas", "rose"]]:
+			var t := _tint(str(def[2]))
+			var panel := PanelContainer.new()
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = t[0]
+			sb.set_corner_radius_all(40)
+			sb.content_margin_top = 18
+			sb.content_margin_bottom = 18
+			panel.add_theme_stylebox_override("panel", sb)
+			panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var col := VBoxContainer.new()
+			col.add_theme_constant_override("separation", 0)
+			col.add_child(_centered(_para(str(int(st[str(def[1])])), F_TITLE + 8, t[1], font_display)))
+			col.add_child(_centered(_para(str(def[0]), F_FOOT, _c("ink"), font_medium)))
+			panel.add_child(col)
+			tiles.add_child(panel)
+		body.add_child(tiles)
+		body.add_child(_spacer(18.0))
+		var total := maxi(int(st["total"]), 1)
+		var lines: Array = []
+		lines.append("Ganas el %d %% de tus partidas." % roundi(100.0 * float(st["ganadas"]) / float(total)))
+		var w: Array = st["blancas"]
+		var b: Array = st["negras"]
+		lines.append("Con blancas: %d ganadas, %d tablas, %d perdidas. Con negras: %d, %d y %d." % [w[0], w[1], w[2], b[0], b[1], b[2]])
+		lines.append("Online: %d · contra el ordenador: %d." % [int(st["online"]), int(st["ordenador"])])
+		var run := int(st["racha"])
+		if run >= 2:
+			lines.append("Llevas %d victorias seguidas. Tu mejor racha: %d." % [run, int(st["mejor_racha"])])
+		elif int(st["mejor_racha"]) >= 2:
+			lines.append("Tu mejor racha: %d victorias seguidas." % int(st["mejor_racha"]))
+		for t2: String in lines:
+			body.add_child(_para(t2, F_SUB, _c("quiet"), font_medium))
+		# Rivales.
+		body.add_child(_section("Rivales"))
+		for pair: Array in GameLog.rivals_by_date(log).slice(0, 20):
+			var id := str(pair[0])
+			var r: Dictionary = pair[1]
+			var panel_rows := _panel()
+			var rows: VBoxContainer = panel_rows[1]
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 22)
+			row.add_child(_profile_badge(r, 110.0, id))
+			var texts := VBoxContainer.new()
+			texts.add_theme_constant_override("separation", 2)
+			texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var lv := int(r.get("nivel", -1))
+			var who := str(r.get("nombre", "Rival"))
+			if lv >= 0 and not id.begins_with("bot:"):
+				who += " · nivel %d" % lv
+			texts.add_child(_para(who, F_BODY, _c("ink"), font_semibold))
+			var n := int(r.get("partidas", 0))
+			var g := int(r.get("ganadas", 0))
+			var d := int(r.get("tablas", 0))
+			var l2 := int(r.get("perdidas", 0))
+			texts.add_child(_para("%d %s · %d %s, %d %s, %d %s" % [n, "partida" if n == 1 else "partidas", g, "ganada" if g == 1 else "ganadas", d, "tablas", l2, "perdida" if l2 == 1 else "perdidas"], F_SUB, _c("quiet"), font_regular))
+			texts.add_child(_para("Última: %s" % _date_text(int(r.get("ultima", 0))), F_FOOT, _c("quiet"), font_regular))
+			row.add_child(texts)
+			rows.add_child(row)
+			body.add_child(panel_rows[0])
+			body.add_child(_spacer(12.0))
+		# Últimas partidas.
+		body.add_child(_section("Últimas partidas"))
+		var games: Array = log["partidas"]
+		for i in mini(games.size(), 30):
+			var g: Dictionary = games[i]
+			var res := int(g.get("resultado", 0))
+			var word: Array = RESULT_WORDS.get(res, RESULT_WORDS[0])
+			var moves_n := (g.get("jugadas", []) as Array).size()
+			var line := "%s · %s · %d jugadas · %s" % [str(g.get("rival_nombre", "Rival")), "blancas" if int(g.get("color", 0)) == 0 else "negras", (moves_n + 1) / 2, _date_text(int(g.get("fecha", 0)))]
+			var btn := _option_button("check" if res > 0 else ("info" if res == 0 else "wrong"), str(word[1]), str(word[0]), line, _open_saved_game.bind(i))
+			body.add_child(btn)
+			body.add_child(_spacer(10.0))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("back", "Volver", _close_my_games, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+func _back_to_my_games() -> void:
+	_stop_game_thread()
+	run_id += 1
+	game_state = ""
+	mode = "free"
+	view.board.set_arrows([])
+	view.set_orientation(0)
+	_idle()
+	_open_my_games()
+
+
+func _open_my_games_from(where: String) -> void:
+	my_games_back = where
+	_open_my_games()
+
+
+func _close_my_games() -> void:
+	_close_progress()
+	if mode == "game" and bool(game.get("saved", false)):
+		_leave_game()
+		return
+	if my_games_back == "setup":
+		_open_game_setup()
+	else:
+		_open_online()
+
+
+## «15 nov · 10:42» con la hora local.
+func _date_text(unix: int) -> String:
+	if unix <= 0:
+		return "—"
+	var d := Time.get_datetime_dict_from_unix_time(unix + int(Time.get_time_zone_from_system().get("bias", 0)) * 60)
+	var months := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+	return "%d %s · %02d:%02d" % [int(d["day"]), months[int(d["month"]) - 1], int(d["hour"]), int(d["minute"])]
+
+
+## Una partida guardada, en el tablero y con su análisis (resumen y detalle).
+func _open_saved_game(i: int) -> void:
+	var games: Array = _log()["partidas"]
+	if i < 0 or i >= games.size():
+		return
+	var g: Dictionary = games[i]
+	_close_progress()
+	_stop_game_thread()
+	run_id += 1
+	_clear_explanation()
+	mode = "game"
+	game = {"variant": "", "level": 0, "title": str(g.get("rival_nombre", "Partida")), "text": "", "kids": "", "unit": "", "clock": [], "online": false, "saved": true}
+	game_color = int(g.get("color", 0))
+	game_clocked = false
+	var pos := Chess.from_fen(str(g.get("inicio", Board3D.START_FEN)))
+	game_history = [pos.fen()]
+	game_moves = []
+	for u: Variant in g.get("jugadas", []):
+		var m := pos.find_uci(str(u))
+		if m < 0:
+			break
+		pos.apply(m)
+		game_moves.append(str(u))
+		game_history.append(pos.fen())
+	game_won = int(g.get("resultado", 0))
+	game_result = str(g.get("motivo", ""))
+	game_state = "over"
+	game_recorded = true
+	game_back = 0
+	_online_pending = []
+	review = []
+	review_done = false
+	review_at = -1
+	detail = []
+	detail_done = false
+	detail_at = -1
+	view.board.set_arrows([])
+	view.set_orientation(game_color)
+	view.set_fen(pos.fen())
+	if not game_moves.is_empty():
+		var last := str(game_moves[game_moves.size() - 1])
+		view.board.mark_last_move(Chess.sq_index(last.substr(0, 2)), Chess.sq_index(last.substr(2, 2)))
+	view.interactive = false
+	_actions_mode = ""
+	_refresh()
+	_open_review()
+
+
 ## Fila del rival en la tarjeta de la partida online.
 func _rival_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -5282,7 +5656,8 @@ func _rival_row() -> HBoxContainer:
 	var lv := int(online_rival.get("nivel", -1))
 	var text := "Rival · …"
 	if not online_rival.is_empty():
-		text = ("Rival · Nivel %d · %s" % [lv, str(_rank(lv)[1])]) if lv >= 0 else "Rival · todavía sin nivel"
+		var who := str(online_rival.get("nombre", "Rival"))
+		text = ("%s · Nivel %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
 	var l := _para(text, F_BODY, _c("ink"), font_semibold)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -5449,6 +5824,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	detail = []
 	detail_done = false
 	detail_at = -1
+	game_recorded = false
 	game_clock_side = view.board.chess.turn
 	game_state = "play"
 	game_won = 0
@@ -5942,7 +6318,15 @@ func _build_game_actions() -> void:
 	go["glow"] = _c("glow")
 	go["trailing"] = true
 	var row: Array[Button] = []
-	if game_state == "over":
+	if game_state == "over" and bool(game.get("saved", false)):
+		# Una partida guardada: su análisis y volver a la lista.
+		var tool0 := wide.duplicate()
+		tool0["font_size"] = F_SUB
+		left_button = _button("why", "Análisis", _open_review, _c("field"), _c("ink"), tool0)
+		right_button = _button("trend", "Mis partidas", _back_to_my_games, _c("accent"), _c("accent_ink"), go)
+		row = [left_button, right_button]
+	elif game_state == "over":
+		_record_game()
 		var next: Button
 		if str(game.get("unit", "")) != "":
 			next = _button("next", "Seguir", _game_next_lesson, _c("accent"), _c("accent_ink"), go)

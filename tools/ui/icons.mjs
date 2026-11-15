@@ -77,6 +77,7 @@ const ICONS = {
   g_arriba: ['thumbs-up', 'duotone'],
   g_abajo: ['thumbs-down', 'duotone'],
   g_buena: ['handshake', 'duotone'],
+  bot: ['robot', 'duotone'],
 };
 
 // ---------- PNG (mismo formato sencillo que tools/pieces/fichas.mjs: 8 bits RGBA, sin filtro) ----------

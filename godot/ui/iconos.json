@@ -193,32 +193,36 @@
    7,
    5
   ],
-  "piece_pawn": [
+  "bot": [
    0,
    6
   ],
-  "piece_knight": [
+  "piece_pawn": [
    1,
    6
   ],
-  "piece_bishop": [
+  "piece_knight": [
    2,
    6
   ],
-  "piece_rook": [
+  "piece_bishop": [
    3,
    6
   ],
-  "piece_queen": [
+  "piece_rook": [
    4,
    6
   ],
-  "piece_king": [
+  "piece_queen": [
    5,
    6
   ],
-  "token_pawn": [
+  "piece_king": [
    6,
+   6
+  ],
+  "token_pawn": [
+   7,
    6
   ]
  }

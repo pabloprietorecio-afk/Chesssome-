@@ -45,6 +45,9 @@
             "foto": {
               ".validate": "newData.isString() && newData.val().length <= 20000"
             },
+            "nombre": {
+              ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 16"
+            },
             "$otro": {
               ".validate": false
             }

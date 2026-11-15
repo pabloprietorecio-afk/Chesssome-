@@ -38,6 +38,8 @@ var phase := "idle"
 ## Lo que se enseña al rival: {"nivel": −1…10, "icono": "piece_…", "foto": base64 (solo si se quiere)}.
 var my_profile := {"nivel": -1}
 var rival := {}
+## Identificador anónimo del rival (el mismo en cada partida desde su móvil): sirve para reconocerlo después.
+var rival_uid := ""
 var _rival_json := ""
 var _seen_gestures := {}
 var _last_gesture := 0
@@ -337,6 +339,7 @@ func start() -> void:
 func _reset() -> void:
 	_gen += 1
 	rival = {}
+	rival_uid = ""
 	_rival_json = ""
 	_seen_gestures = {}
 	game_id = ""
@@ -513,6 +516,7 @@ func _on_tree() -> void:
 func _check_extras(doc: Variant) -> void:
 	var d: Dictionary = doc
 	var other := str(d.get("rival", "")) if str(d.get("creador", "")) == uid else str(d.get("creador", ""))
+	rival_uid = other
 	var perfiles: Variant = d.get("perfiles")
 	if perfiles is Dictionary and (perfiles as Dictionary).get(other) is Dictionary:
 		var p: Dictionary = (perfiles as Dictionary)[other]

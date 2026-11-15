@@ -83,6 +83,7 @@ func _ready() -> void:
 	demo._leave_game()
 	await _frames(4)
 	await _detalle(demo)
+	await _mis_partidas(demo)
 	await _por_que(demo)
 	print("PANTALLAS DONE")
 	get_tree().quit()
@@ -174,6 +175,31 @@ func _detalle(demo: Control) -> void:
 	demo._close_progress()
 	demo._leave_game()
 	await _frames(4)
+
+
+## El nombre para jugar online y «Mis partidas» con unas partidas de ejemplo.
+func _mis_partidas(demo: Control) -> void:
+	demo.online_name = ""
+	demo._open_online_home()
+	await _frames(6)
+	await _shot("p19_online_nombre")
+	demo.online_name = "Pablo"
+	demo._open_online_home()
+	await _frames(6)
+	await _shot("p20_online_con_nombre")
+	var log := {"partidas": [], "rivales": {}}
+	var t := int(Time.get_unix_time_from_system()) - 4000
+	for def: Array in [["u1", "Ana", 1, 0, 5], ["bot:2", "Ordenador · Medio", -1, 1, -1], ["u1", "Ana", 0, 1, 5], ["u2", "Luis", 1, 0, 2], ["u3", "Marta", -1, 1, 7]]:
+		t += 600
+		GameLog.add(log, {"fecha": t, "tipo": "ordenador" if str(def[0]).begins_with("bot:") else "online", "rival_id": def[0], "rival_nombre": def[1], "color": def[3], "resultado": def[2], "motivo": "", "inicio": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "jugadas": ["e2e4", "e7e5", "g1f3", "b8c6"]}, {"nivel": def[4], "icono": "piece_rook" if def[0] == "u1" else "piece_knight"} if not str(def[0]).begins_with("bot:") else {})
+	demo.game_log = log
+	demo._open_my_games_from("online")
+	await _frames(8)
+	await _shot("p21_mis_partidas")
+	demo.progress_scroll.scroll_vertical = 100000
+	await _frames(3)
+	await _shot("p22_mis_partidas_lista")
+	demo._close_progress()
 
 
 func _find_clock(n: Node) -> FlipClock:

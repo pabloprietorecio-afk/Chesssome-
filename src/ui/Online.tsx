@@ -99,7 +99,7 @@ export function OnlineScreen(): JSX.Element {
             {st.rival?.foto ? <img src={`data:image/jpeg;base64,${st.rival.foto}`} alt="" /> : '♟'}
           </span>
           <span>
-            <strong>Rival</strong>
+            <strong>{st.rival?.nombre ?? 'Rival'}</strong>
             <span className="cm-quiet"> · {st.rival ? (st.rival.nivel >= 0 ? `Nivel ${st.rival.nivel}` : 'Sin nivel todavía') : '…'}</span>
           </span>
         </div>
