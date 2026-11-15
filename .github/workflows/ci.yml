@@ -19,6 +19,8 @@ jobs:
   web:
     name: Núcleo TypeScript y prototipo web
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +41,19 @@ jobs:
           name: chessome-web
           path: dist/chessome.html
           retention-days: 14
+
+      # Enlace fijo de descarga del prototipo web (se abre desde el móvil; en un artefacto de Claude no puede conectar con Firebase).
+      - name: Prototipo web en la versión preliminar «ultima-web»
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ultima-web
+          name: "Chessome · último prototipo web"
+          prerelease: true
+          make_latest: false
+          body: "Prototipo web de un solo archivo (commit ${{ github.sha }}). Ábrelo en el navegador."
+          files: dist/chessome.html
+          overwrite_files: true
 
   godot:
     name: Godot (reglas y APK de depuración)
