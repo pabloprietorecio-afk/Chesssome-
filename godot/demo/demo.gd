@@ -95,6 +95,10 @@ var piece_set := "clasico"
 const WORLDS := ["", "aventura", "reino", "safari", "espacio", "piratas", "dino"]
 const WORLD_NAMES := ["Normales", "Aventura 3D", "Reino", "Safari", "Espacio", "Piratas", "Dinos"]
 var kids_world := ""
+## Icono del jugador dentro de su insignia: "" = la pieza de su rango, "piece_…" = una pieza fija, "foto" = su foto.
+const AVATAR_PATH := "user://chessome_avatar.png"
+var avatar := ""
+var _avatar_tex: Texture2D
 var sound_on := true
 ## Pista animada sobre el tablero: recuerda que se puede ampliar y girar. Viene activada y se apaga sola
 ## la primera vez que el jugador amplía, gira o desplaza el tablero (se puede volver a activar en Opciones).
@@ -743,6 +747,7 @@ func _load_settings() -> void:
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	kids = bool(cfg.get_value("app", "kids", false))
+	avatar = str(cfg.get_value("app", "icono", ""))
 	var world := str(cfg.get_value("app", "mundo", ""))
 	if WORLDS.has(world):
 		kids_world = world
@@ -771,6 +776,7 @@ func _save_settings() -> void:
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
 	cfg.set_value("app", "mundo", kids_world)
+	cfg.set_value("app", "icono", avatar)
 	cfg.set_value("partida", "pulsar_reloj", press_clock)
 	cfg.set_value("partida", "aviso_reloj", press_reminder)
 	cfg.set_value("sonido", "voz", voice_on)
@@ -1163,7 +1169,7 @@ func _build_chrome() -> void:
 	level_slot.focus_mode = Control.FOCUS_NONE
 	level_slot.custom_minimum_size = Vector2(112.0, 112.0)
 	level_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	level_slot.pressed.connect(_open_progress.bind("progress"))
+	level_slot.pressed.connect(_open_avatar)
 	level_slot.visible = false
 	bar.add_child(level_slot)
 	counter = _text("", F_SUB, _c("quiet"), font_medium)
@@ -3761,11 +3767,20 @@ func _open_home() -> void:
 		var rank_row := HBoxContainer.new()
 		rank_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		rank_row.add_theme_constant_override("separation", 22)
-		rank_row.add_child(_level_badge(r, 150.0))
+		var mine := Button.new()
+		mine.flat = true
+		mine.focus_mode = Control.FOCUS_NONE
+		mine.custom_minimum_size = Vector2(150.0, 150.0)
+		mine.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		mine.pressed.connect(_open_avatar)
+		var mine_badge := _level_badge(r, 150.0)
+		mine_badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		mine.add_child(mine_badge)
+		rank_row.add_child(mine)
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
-		words.add_child(_line("Nivel %d · %s" % [lv, str(_rank(lv)[1])], F_HEAD + 4, _c("ink"), font_display))
+		words.add_child(_line("Nivel %d de %d · %s" % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_HEAD + 4, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
@@ -4575,7 +4590,27 @@ func _level_badge(rating: float, side: float) -> Control:
 	badge.progress = _level_progress(rating)
 	badge.level = lv
 	badge.font = font_display
-	var icon := _icon(str(rank[0]), side * 0.5, tint[1])
+	var photo := _avatar_photo() if avatar == "foto" else null
+	if photo != null:
+		# La foto (ya recortada en círculo) llena la insignia por dentro del anillo.
+		var pic := TextureRect.new()
+		pic.texture = photo
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var inset := side * 0.11
+		pic.offset_left = inset
+		pic.offset_top = inset
+		pic.offset_right = -inset
+		pic.offset_bottom = -inset
+		pic.show_behind_parent = true
+		badge.fill = Color(tint[0].r, tint[0].g, tint[0].b, 0.0)
+		badge.add_child(pic)
+		return badge
+	var glyph := avatar if avatar.begins_with("piece_") and UiIcons.has(avatar) else str(rank[0])
+	var icon := _icon(glyph, side * 0.5, tint[1])
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon.offset_left = side * 0.25
 	icon.offset_top = side * 0.22
@@ -4583,6 +4618,107 @@ func _level_badge(rating: float, side: float) -> Control:
 	icon.offset_bottom = -side * 0.28
 	badge.add_child(icon)
 	return badge
+
+
+func _avatar_photo() -> Texture2D:
+	if _avatar_tex == null and FileAccess.file_exists(AVATAR_PATH):
+		var img := Image.new()
+		if img.load_png_from_buffer(FileAccess.get_file_as_bytes(AVATAR_PATH)) == OK:
+			img.generate_mipmaps()
+			_avatar_tex = ImageTexture.create_from_image(img)
+	return _avatar_tex
+
+
+## Hoja «Tu icono»: elegir una pieza, la del rango (automática) o una foto del dispositivo.
+func _open_avatar() -> void:
+	options_open = true
+	sheet_kind = "avatar"
+	_build_avatar_sheet()
+
+
+func _build_avatar_sheet() -> void:
+	var box := _sheet("Tu icono")
+	if box == null:
+		return
+	box.add_child(_para("Es el dibujo de tu insignia. El anillo y el número siguen marcando tu nivel.", F_SUB, _c("quiet"), font_regular))
+	var pieces := ["", "piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen", "piece_king"]
+	var labels := ["Mi rango", "Peón", "Caballo", "Alfil", "Torre", "Dama", "Rey"]
+	var row: HBoxContainer = null
+	for i in pieces.size():
+		if i % 4 == 0:
+			row = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 12)
+			box.add_child(row)
+		var on := avatar == pieces[i]
+		var colors := _choice_colors(on)
+		var glyph: String = pieces[i]
+		if glyph == "":
+			glyph = str(_rank(Assessment.level_of(float(player["rating"]["r"])) if _has_player() else 0)[0])
+		var b := _button(glyph, str(labels[i]), _set_avatar.bind(pieces[i]), colors[0], colors[1], {"vertical": true, "font_size": F_FOOT, "height": 178.0, "icon": 84.0, "radius": 40, "pad_x": 6.0, "border": colors[2], "font": font_semibold if on else font_medium})
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	if not kids:
+		# En el nivel Kids no se ofrece cargar fotos.
+		var photo_tint := _tint("sky")
+		box.add_child(_button("open", "Cargar una foto", _pick_avatar_photo, photo_tint[0], photo_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 52.0}))
+		box.add_child(_para("La foto se guarda solo en este dispositivo.", F_FOOT, _c("quiet"), font_regular))
+	if _has_player() and not kids:
+		var mine_tint := _tint("lilac")
+		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 52.0}))
+
+
+func _set_avatar(value: String) -> void:
+	avatar = value
+	_save_settings()
+	_avatar_changed()
+
+
+## Rehace las insignias que hay a la vista con el icono nuevo.
+func _avatar_changed() -> void:
+	if level_slot != null and is_instance_valid(level_slot):
+		level_slot.set_meta("key", "")
+	_sync_level_badge()
+	_close_options()
+	if progress_kind == "home":
+		_open_home()
+
+
+func _pick_avatar_photo() -> void:
+	if not DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE):
+		_close_options()
+		_note("Este dispositivo no deja elegir una foto")
+		return
+	DisplayServer.file_dialog_show("Elige una foto", "", "", false, DisplayServer.FILE_DIALOG_MODE_OPEN_FILE, PackedStringArray(["*.png,*.jpg,*.jpeg,*.webp;Imágenes"]), _on_avatar_photo)
+
+
+func _on_avatar_photo(ok: bool, paths: PackedStringArray, _filter: int) -> void:
+	if not ok or paths.is_empty():
+		return
+	var bytes := FileAccess.get_file_as_bytes(paths[0])
+	var img := Image.new()
+	var loaded := false
+	for loader: String in ["load_jpg_from_buffer", "load_png_from_buffer", "load_webp_from_buffer"]:
+		if not bytes.is_empty() and img.call(loader, bytes) == OK:
+			loaded = true
+			break
+	if not loaded:
+		_close_options()
+		_note("No se ha podido abrir esa foto")
+		return
+	# Cuadrada por el centro, a 256 px y recortada en círculo: así encaja en la insignia.
+	var side := mini(img.get_width(), img.get_height())
+	img = img.get_region(Rect2i((img.get_width() - side) / 2, (img.get_height() - side) / 2, side, side))
+	img.resize(256, 256, Image.INTERPOLATE_LANCZOS)
+	img.convert(Image.FORMAT_RGBA8)
+	for y in 256:
+		for x in 256:
+			var d := Vector2(float(x) - 127.5, float(y) - 127.5).length()
+			var px := img.get_pixel(x, y)
+			px.a = clampf(127.0 - d, 0.0, 1.0)
+			img.set_pixel(x, y, px)
+	img.save_png(AVATAR_PATH)
+	_avatar_tex = null
+	_set_avatar("foto")
 
 
 ## Botón de la barra con la insignia: lleva a «Mi nivel y mi plan».
@@ -4594,7 +4730,7 @@ func _sync_level_badge() -> void:
 	if not show:
 		return
 	var r := float(player["rating"]["r"])
-	var key := "%d:%d:%s" % [Assessment.level_of(r), int(_level_progress(r) * 40.0), str(dark)]
+	var key := "%d:%d:%s:%s" % [Assessment.level_of(r), int(_level_progress(r) * 40.0), str(dark), avatar]
 	if str(level_slot.get_meta("key", "")) == key:
 		return
 	level_slot.set_meta("key", key)
@@ -5470,6 +5606,9 @@ func _open_progress(kind: String = "progress") -> void:
 	var number := _centered(_para(level_text, F_LARGE + 44, _c("ink"), font_display))
 	number.add_theme_constant_override("line_spacing", -8)
 	body.add_child(number)
+	# De cuántos niveles, y a qué tramo de la escala de problemas de Lichess corresponde.
+	body.add_child(_centered(_para("de %d · problemas de Lichess de %s" % [Assessment.LEVEL_FLOORS.size() - 1, Assessment.level_span(level)], F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_spacer(6.0))
 	var band_row := CenterContainer.new()
 	band_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var lilac := _tint("lilac")
@@ -5479,7 +5618,7 @@ func _open_progress(kind: String = "progress") -> void:
 	body.add_child(_centered(_para(str(band["blurb"]), F_BODY, _c("ink"), font_regular)))
 	body.add_child(_spacer(10.0))
 	var margin := int(round(2.0 * float(rating["rd"]) / 10.0)) * 10
-	var small := "Puntuación %d (margen ±%d). Se afina con cada problema. Es la escala de los problemas de Lichess, no Elo." % [int(round(r)), margin]
+	var small := "Puntuación %d (margen ±%d). Se afina con cada problema. Es la escala de los problemas de Lichess. No es Elo: no hay una equivalencia fiable entre las dos." % [int(round(r)), margin]
 	if limit_note != "":
 		small = limit_note + " " + small
 	if test_skipped:
