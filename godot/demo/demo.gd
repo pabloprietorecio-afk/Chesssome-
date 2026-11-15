@@ -3301,14 +3301,7 @@ func _build_sheet() -> void:
 		if kids:
 			box.add_child(_switch_row("sound", "sky", "Voz", "Lee en voz alta las lecciones y lo que pasa en cada jugada.", voice_on, _set_voice))
 			box.add_child(_switch_row("party", "rose", "Música", "Una melodía infantil de fondo, en bucle. Baja sola cuando habla la voz.", music_on, _set_music))
-	if _has_player() and not kids:
-		var mine_tint := _tint("lilac")
-		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
-	var play_tint := _tint("mint")
-	box.add_child(_button("piece_knight", "Jugar una partida", _open_game_setup, play_tint[0], play_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
-	if not course.is_empty():
-		var learn_tint := _tint("butter")
-		box.add_child(_button("chick", "Aprende desde cero", _open_course, learn_tint[0], learn_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 64.0}))
+	# «Mi nivel y mi plan», «Jugar una partida» y «Aprende desde cero» están en el inicio: aquí solo opciones.
 	if not kids:
 		box.add_child(_caption("Partidas con reloj"))
 		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
