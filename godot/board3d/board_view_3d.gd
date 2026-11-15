@@ -505,11 +505,15 @@ func _build_promotion_panel() -> void:
 	column.add_child(row)
 	var names := {Chess.QUEEN: "Dama", Chess.ROOK: "Torre", Chess.BISHOP: "Alfil", Chess.KNIGHT: "Caballo"}
 	for t: int in names:
+		# Cada botón enseña la figura de la pieza (su nombre queda para lectores de pantalla y como ayuda).
 		var b := Button.new()
-		b.text = names[t]
-		b.custom_minimum_size = Vector2(210.0, 132.0)
+		b.tooltip_text = names[t]
+		b.custom_minimum_size = Vector2(210.0, 190.0)
 		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 44)
+		b.icon = UiIcons.texture("piece_" + str(Board3D.PIECE_FILES[t]))
+		b.expand_icon = true
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.add_theme_constant_override("icon_max_width", 132)
 		b.pressed.connect(_on_promotion_chosen.bind(t))
 		row.add_child(b)
 		_promo_buttons.append(b)
@@ -543,6 +547,8 @@ func _style_promotion(dark: bool) -> void:
 			sb.set_content_margin_all(14.0)
 			b.add_theme_stylebox_override(state, sb)
 		for c: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(c, fg)
+		for c: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
 			b.add_theme_color_override(c, fg)
 
 

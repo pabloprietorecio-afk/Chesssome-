@@ -1052,7 +1052,7 @@ func _round_button(icon_name: String, on_press: Callable, side: float = 112.0, f
 
 
 ## Etiqueta en forma de píldora.
-func _chip(text: String, fill: Color, fg: Color) -> PanelContainer:
+func _chip(text: String, fill: Color, fg: Color, icon_name: String = "") -> PanelContainer:
 	var chip := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = fill
@@ -1070,7 +1070,15 @@ func _chip(text: String, fill: Color, fg: Color) -> PanelContainer:
 	l.add_theme_color_override("font_color", fg)
 	if font_medium != null:
 		l.add_theme_font_override("font", font_medium)
-	chip.add_child(l)
+	if icon_name != "" and UiIcons.has(icon_name):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(_icon(icon_name, float(F_CAP) + 10.0, fg))
+		row.add_child(l)
+		chip.add_child(row)
+	else:
+		chip.add_child(l)
 	return chip
 
 
@@ -1253,12 +1261,16 @@ func _build_chrome() -> void:
 func _pin_button() -> Button:
 	var locked := view.view_locked
 	var tint := _tint("peach")
-	if locked:
-		return _round_button("pin_on", _on_toggle_pin, 112.0, tint[0], tint[1])
-	return _round_button("pin", _on_toggle_pin)
+	var b := _round_button("pin_on", _on_toggle_pin, 112.0, tint[0], tint[1]) if locked else _round_button("pin", _on_toggle_pin)
+	# Con «Simple» el tablero no gira: la chincheta no pinta nada y se esconde.
+	b.visible = not view.board.is_simple()
+	return b
 
 
 func _on_toggle_pin() -> void:
+	if view.board.is_simple():
+		_note("Con «Simple» el tablero no gira")
+		return
 	_set_lock(not view.view_locked)
 	_note("Giro fijado" if view.view_locked else "Giro libre")
 
@@ -1647,21 +1659,21 @@ func _build_card() -> void:
 			chips.add_child(_chip(theme_name, _c("accent_soft"), _c("accent_text")))
 		if mode == "test":
 			# En el test no se enseña la dificultad: no hay que saber por dónde va la estimación.
-			chips.add_child(_chip("Test de nivel", _c("field"), _c("ink")))
+			chips.add_child(_chip("Test de nivel", _c("field"), _c("ink"), "cap"))
 		else:
 			if is_review:
 				var review_tint := _tint("lilac")
-				chips.add_child(_chip("Repaso de un fallo", review_tint[0], review_tint[1]))
+				chips.add_child(_chip("Repaso de un fallo", review_tint[0], review_tint[1], "retry"))
 			if done and _rating_shown.size() == 2:
 				var up := float(_rating_shown[1]) >= float(_rating_shown[0])
 				var chip_tint := _tint("mint" if up else "peach")
 				var lv0 := Assessment.level_of(float(_rating_shown[0]))
 				var lv1 := Assessment.level_of(float(_rating_shown[1]))
 				if lv1 > lv0:
-					chips.add_child(_chip("¡Subes al nivel %d!" % lv1, chip_tint[0], chip_tint[1]))
+					chips.add_child(_chip("¡Subes al nivel %d!" % lv1, chip_tint[0], chip_tint[1], "trend"))
 				chips.add_child(_chip("Puntuación %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
 			chips.add_child(_chip("Nivel %d · %d" % [Assessment.level_of(float(rating)), rating], _c("field"), _c("ink")))
-			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet")))
+			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet"), "open"))
 		var chips_pad := _pad(0, 8, 0, 0)
 		chips_pad.add_child(chips)
 		card_body.add_child(chips_pad)
@@ -2162,6 +2174,10 @@ func _on_scrim_input(event: InputEvent) -> void:
 ## Arma una hoja inferior vacía, con su título y su botón de cerrar, y devuelve la caja donde va el contenido.
 ## Si el contenido no cabe en la pantalla, se desplaza.
 func _sheet(heading_text: String) -> VBoxContainer:
+	# Al rehacer la hoja (tras cambiar un ajuste), se queda en la misma altura en la que estaba.
+	var scroll_at := 0
+	if overlay != null and is_instance_valid(overlay) and overlay.visible and sheet_scroll != null and is_instance_valid(sheet_scroll):
+		scroll_at = sheet_scroll.scroll_vertical
 	if overlay != null and is_instance_valid(overlay):
 		overlay.visible = false
 		overlay.queue_free()
@@ -2231,7 +2247,18 @@ func _sheet(heading_text: String) -> VBoxContainer:
 	var fit := _fit_sheet.bind(scroll, box)
 	box.minimum_size_changed.connect(fit)
 	fit.call_deferred()
+	if scroll_at > 0:
+		_restore_scroll(scroll, scroll_at)
 	return box
+
+
+## Devuelve una lista a la altura en la que estaba, cuando su contenido ya tiene medida.
+func _restore_scroll(scroll: ScrollContainer, at: int) -> void:
+	for i in 3:
+		await get_tree().process_frame
+		if not is_instance_valid(scroll):
+			return
+		scroll.scroll_vertical = at
 
 
 func _fit_sheet(scroll: ScrollContainer, box: VBoxContainer) -> void:
@@ -2278,12 +2305,12 @@ func _build_sheet() -> void:
 	box.add_child(_switch_row("outline", "lilac", "Contorno de las piezas", "Una línea de tinta alrededor de cada pieza.", board_outline, _set_outline))
 	box.add_child(_switch_row("sound", "mint", "Sonido", "Piezas, jaque y caída del rey; aciertos, errores y final de lección.", sound_on, _set_sound))
 	box.add_child(_caption("Animaciones"))
-	box.add_child(_segments(["Completas", "Rápidas", "Mínimas", "Sin"], int(view.board.anim_mode), _set_anim))
+	box.add_child(_segments(["Completas", "Rápidas", "Mínimas", "Sin"], int(view.board.anim_mode), _set_anim, ["film", "skip", "step", "close"], true))
 	box.add_child(_caption("Vista"))
 	if view.board.is_simple():
 		box.add_child(_para("Con las piezas «Simple», el tablero se ve siempre desde arriba: solo se puede ampliar con dos dedos.", F_SUB, _c("quiet"), font_regular))
 	else:
-		box.add_child(_segments(["Inclinada", "En picado"], 1 if top_view else 0, _set_top_view))
+		box.add_child(_segments(["Inclinada", "En picado"], 1 if top_view else 0, _set_top_view, ["view", "eye"]))
 		box.add_child(_switch_row("pin", "peach", "Fijar el giro", "El tablero no gira con los dedos ni con el móvil. Ampliar sigue funcionando.", view.view_locked, _set_lock))
 		box.add_child(_switch_row("zoom", "sky", "Pista de gestos", "Recuerda, sobre el tablero, que se puede ampliar y girar con dos dedos.", gesture_hint, _set_gesture_hint))
 		box.add_child(_switch_row("phone", "butter", "Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
@@ -2313,12 +2340,12 @@ func _choice_colors(chosen: bool) -> Array:
 
 
 ## Fila de botones en la que solo uno está elegido. Con iconos, cada botón lleva el suyo delante.
-func _segments(names: Array, selected: int, on_pick: Callable, icons: Array = []) -> HBoxContainer:
+func _segments(names: Array, selected: int, on_pick: Callable, icons: Array = [], stacked: bool = false) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	for i in names.size():
 		var colors := _choice_colors(i == selected)
-		var b := _button(str(icons[i]) if i < icons.size() else "", str(names[i]), on_pick.bind(i), colors[0], colors[1], {"font_size": F_FOOT, "height": 108.0, "icon": 48.0, "pad_x": 12.0, "border": colors[2], "font": font_semibold if i == selected else font_medium})
+		var b := _button(str(icons[i]) if i < icons.size() else "", str(names[i]), on_pick.bind(i), colors[0], colors[1], {"font_size": F_FOOT, "height": 150.0 if stacked else 108.0, "icon": 48.0, "pad_x": 12.0, "vertical": stacked, "border": colors[2], "font": font_semibold if i == selected else font_medium})
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(b)
 	return row
@@ -2463,6 +2490,8 @@ var _flat_view := false
 
 
 func _apply_simple_view() -> void:
+	if pin_button != null and is_instance_valid(pin_button):
+		pin_button.visible = not view.board.is_simple()
 	if view.board.is_simple():
 		view.set_tilt_enabled(false)
 		view.set_view_locked(true)
@@ -3303,7 +3332,7 @@ func _open_course() -> void:
 	if use_settings:
 		footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if mode == "learn" and not lesson.is_empty():
-		footer.add_child(_button("", "Volver a la lección", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+		footer.add_child(_button("back", "Volver a la lección", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
 
 func _start_lesson(id: String) -> void:
@@ -3490,7 +3519,7 @@ func _build_learn_card() -> void:
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
 		chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chips.add_child(_chip("%d ejercicios" % exercises.size(), _c("field"), _c("ink")))
+		chips.add_child(_chip("%d ejercicios" % exercises.size(), _c("field"), _c("ink"), "book"))
 		card_body.add_child(chips)
 		return
 	if ex_state == "end":
@@ -3868,7 +3897,7 @@ func _open_game_setup() -> void:
 	body.add_child(_spacer(30.0))
 	body.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
-	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color))
+	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color, ["sun", "moon", "why"]))
 	if kids:
 		body.add_child(_spacer(30.0))
 		body.add_child(_text("MUNDO", F_CAP, _c("quiet"), font_semibold))
@@ -3899,7 +3928,7 @@ func _open_game_setup() -> void:
 		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
 		body.add_child(_spacer(14.0))
 	body.add_child(_spacer(10.0, true))
-	footer.add_child(_button("", "Cancelar", _close_game_setup, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+	footer.add_child(_button("close", "Cancelar", _close_game_setup, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
 
 
 func _set_game_color(i: int) -> void:
@@ -4420,8 +4449,8 @@ func _build_game_card() -> void:
 	chips.add_child(_chip(str(game.get("title", "Partida")), _c("field"), _c("ink")))
 	if game_clocked:
 		var clock: Array = game.get("clock", [0, 0])
-		chips.add_child(_chip("%d+%d" % [int(clock[0]), int(clock[1])], _c("field"), _c("quiet")))
-	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet")))
+		chips.add_child(_chip("%d+%d" % [int(clock[0]), int(clock[1])], _c("field"), _c("quiet"), "clock"))
+	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet"), "sun" if game_color == 0 else "moon"))
 	card_body.add_child(chips)
 	_clock_labels = []
 	if game_clocked:
@@ -4836,7 +4865,7 @@ func _show_review_page() -> void:
 	if not kids:
 		footer.add_child(_para("Solo se señala lo que se puede comprobar con seguridad: piezas que quedan a tiro, capturas gratis y mates en una jugada. Otras ideas de la partida (planes, estructura) no se analizan todavía.", F_FOOT + 2, _c("quiet"), font_regular))
 		footer.add_child(_spacer(10.0))
-	footer.add_child(_button("", "Volver a la partida", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+	footer.add_child(_button("back", "Volver a la partida", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if use_settings:
 		footer.add_child(_button("home", "Inicio", _go_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
@@ -5169,7 +5198,7 @@ func _open_gate(then: Callable) -> void:
 		row.add_child(b2)
 	body.add_child(row)
 	body.add_child(_spacer(8.0, true))
-	footer.add_child(_button("", "Seguir en modo Kids", _close_gate, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+	footer.add_child(_button("party", "Seguir en modo Kids", _close_gate, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	_say([_kid_line("gate")])
 
 
@@ -5313,9 +5342,9 @@ func _open_experience() -> void:
 	footer.add_child(_spacer(14.0))
 	if _has_player():
 		# Se llega aquí desde «Repetir el test»: se puede dejar todo como estaba.
-		footer.add_child(_button("", "Cancelar", _open_home if use_settings else _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+		footer.add_child(_button("close", "Cancelar", _open_home if use_settings else _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
 	else:
-		footer.add_child(_button("", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "font": font_medium}))
+		footer.add_child(_button("skip", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 		if use_settings and welcome_seen:
 			footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
@@ -5370,14 +5399,14 @@ func _status_chip(state: String) -> Control:
 	match state:
 		"weak":
 			var rose := _tint("rose")
-			chip = _chip("A reforzar", rose[0], rose[1])
+			chip = _chip("A reforzar", rose[0], rose[1], "target")
 		"strong":
 			var mint := _tint("mint")
-			chip = _chip("Fuerte", mint[0], mint[1])
+			chip = _chip("Fuerte", mint[0], mint[1], "spark")
 		"ok":
-			chip = _chip("En tu nivel", _c("field"), _c("ink"))
+			chip = _chip("En tu nivel", _c("field"), _c("ink"), "check")
 		"few":
-			chip = _chip("Pocos datos", _c("field"), _c("quiet"))
+			chip = _chip("Pocos datos", _c("field"), _c("quiet"), "info")
 	return chip
 
 
@@ -5534,7 +5563,7 @@ func _open_progress(kind: String = "progress") -> void:
 			state = "here"
 		var row := _profile_row("flag" if lv == level else "check", str(tints[lv % tints.size()]), "Nivel %d" % lv, line)
 		if state == "here":
-			var here := _chip("Estás aquí", _tint("lilac")[0], _tint("lilac")[1])
+			var here := _chip("Estás aquí", _tint("lilac")[0], _tint("lilac")[1], "pin_on")
 			here.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 			var line_box := HBoxContainer.new()
 			line_box.add_child(_spacer_w(116.0))
