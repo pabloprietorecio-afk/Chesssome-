@@ -95,6 +95,10 @@ var piece_set := "clasico"
 const WORLDS := ["", "aventura", "reino", "safari", "espacio", "piratas", "dino"]
 const WORLD_NAMES := ["Normales", "Aventura 3D", "Reino", "Safari", "Espacio", "Piratas", "Dinos"]
 var kids_world := ""
+## «Retroceder» en un problema: cuántas jugadas atrás se está mirando (0 = la posición de ahora).
+var browse_back := 0
+## Explicación de la última jugada (la del rival, o la que se está repasando) a la vista.
+var move_why_open := false
 ## Icono del jugador dentro de su insignia: "" = la pieza de su rango, "piece_…" = una pieza fija, "foto" = su foto.
 const AVATAR_PATH := "user://chessome_avatar.png"
 var avatar := ""
@@ -1484,6 +1488,8 @@ func _build_actions() -> void:
 	var done := phase == Phase.SOLVED or phase == Phase.SHOWN
 	var kind := "done" if done else ("step" if phase == Phase.STEP else "solve")
 	var last_test := mode == "test" and done and bool(player.get("done", false))
+	if browse_back > 0:
+		kind = "browse"
 	var key := "%s:%s:%s" % [mode, kind, str(last_test)]
 	var can_help := phase == Phase.SOLVING or phase == Phase.WRONG
 	if key != _actions_mode:
@@ -1510,12 +1516,17 @@ func _build_actions() -> void:
 				left_button = _button("next", "Ver mi nivel" if last_test else "Siguiente", _on_right, _c("accent"), _c("accent_ink"), go)
 				right_button = left_button
 				row = [left_button]
+		elif kind == "browse":
+			# Repasando posiciones anteriores: atrás, adelante y volver a jugar.
+			left_button = _tool_button("back", "Retroceder", _browse.bind(1), "peach")
+			right_button = _tool_button("next", "Avanzar", _browse.bind(-1), "mint")
+			row = [left_button, right_button, _tool_button("play", "Volver a jugar", _browse.bind(-99), "sky")]
 		elif kind == "solve":
-			hint_button = _tool_button("bulb", "Pista", _on_hint, "butter")
-			step_button = _tool_button("step", "Un paso", _on_step, "mint")
-			left_button = _tool_button("eye", "Solución", _on_left, "lilac")
-			right_button = _tool_button("skip", "Saltar", _on_right, "sky")
-			row = [hint_button, step_button, left_button, right_button]
+			hint_button = _tool_button("bulb", "Pista", _on_hint, "butter", F_FOOT - 6)
+			step_button = _tool_button("step", "Un paso", _on_step, "mint", F_FOOT - 6)
+			left_button = _tool_button("eye", "Solución", _on_left, "lilac", F_FOOT - 6)
+			right_button = _tool_button("skip", "Saltar", _on_right, "sky", F_FOOT - 6)
+			row = [_tool_button("back", "Retroceder", _browse.bind(1), "peach", F_FOOT - 6), hint_button, step_button, left_button, right_button]
 		else:
 			if kind == "done":
 				left_button = _button("retry", "Repetir", _on_left, _c("accent_soft"), _c("accent_text"), wide)
@@ -1541,9 +1552,9 @@ func _build_actions() -> void:
 
 
 ## Botón de la barra de ayuda: una tesela pastel con su icono grande y el nombre debajo.
-func _tool_button(icon_name: String, text: String, on_press: Callable, tint_name: String) -> Button:
+func _tool_button(icon_name: String, text: String, on_press: Callable, tint_name: String, font_size: int = F_FOOT) -> Button:
 	var tint := _tint(tint_name)
-	var b := _button(icon_name, text, on_press, tint[0], _c("ink"), {"vertical": true, "font_size": F_FOOT, "height": BAR_HEIGHT, "icon": 62.0, "radius": 44, "icon_color": tint[1], "pad_x": 8.0})
+	var b := _button(icon_name, text, on_press, tint[0], _c("ink"), {"vertical": true, "font_size": font_size, "height": BAR_HEIGHT, "icon": 62.0, "radius": 44, "icon_color": tint[1], "pad_x": 8.0})
 	b.mouse_filter = Control.MOUSE_FILTER_STOP
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return b
@@ -1562,6 +1573,12 @@ func _build_card() -> void:
 		return
 	if mode == "game":
 		_build_game_card()
+		_fit_card.call_deferred()
+		return
+	if not line_on.is_empty():
+		# Viendo una variante jugada a jugada: la ficha se recoge y deja solo sus mandos, para que se vea el tablero.
+		var bad_line := str(line_on.get("tone", "")) != "good"
+		card_body.add_child(_line_block(line_on, str(line_on.get("label", "")) if not (exp_partial and bad_line) else "Qué pasaría"))
 		_fit_card.call_deferred()
 		return
 	var total := puzzles.size()
@@ -1656,6 +1673,8 @@ func _build_card() -> void:
 			card_body.add_child(_para("Pulsa «Seguir» y continúa tú con el resto.", F_SUB, _c("quiet"), font_regular))
 	else:
 		card_body.add_child(_para(sub, F_BODY, _c("quiet"), font_regular))
+		if mode != "test" and not kids and (phase == Phase.SOLVING or browse_back > 0):
+			_add_move_why()
 	if hint_level > 0 and not whatif and (phase == Phase.SOLVING or phase == Phase.WRONG):
 		card_body.add_child(_hint_block())
 
@@ -1783,6 +1802,8 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 				card_body.add_child(_line_block(line, "Qué pasaría"))
 		if hint_level == 0:
 			card_body.add_child(_para("Prueba otra jugada. Si te atascas, pide una pista o que resuelva solo este paso.", F_SUB, _c("quiet"), font_regular))
+		if phase == Phase.WRONG:
+			card_body.add_child(_card_button("Reiniciar la posición", _retry_position, _c("accent_soft"), _c("accent_text"), F_SUB, "retry"))
 		return
 	if level >= 2:
 		var concept: Dictionary = levels[1]
@@ -1849,7 +1870,9 @@ func _line_block(line: Dictionary, label: String) -> VBoxContainer:
 		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(mark)
-		var back := _button("back", "Volver", _leave_line, _c("accent_soft"), _c("accent_text"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0})
+		# Con una jugada fallada, se vuelve a la posición para reintentar; si no, a la explicación.
+		var again := phase == Phase.WRONG and not whatif
+		var back := _button("retry" if again else "back", "Reiniciar" if again else "Explicación", _leave_line, _c("accent_soft"), _c("accent_text"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0})
 		row.add_child(back)
 	box.add_child(row)
 	return box
@@ -2016,9 +2039,152 @@ func _leave_line() -> void:
 	if whatif:
 		_show_decision(_arrows_for(e, whatif_level, false) if not e.is_empty() else [])
 	elif phase == Phase.WRONG:
-		_show_decision(_arrows_for(e, 1, true))
+		# De vuelta a la posición para intentarlo otra vez: limpia, sin la flecha de la jugada fallada.
+		_show_decision([])
 	else:
 		_show_decision(_arrows_for(e, maxi(exp_level, 1), false))
+
+
+# ---------------------------------------------------------------- retroceder y «¿por qué esa jugada?»
+
+## Posición del problema tras sus primeras `ply` jugadas (0 = la de partida).
+func _puzzle_pos(ply: int) -> Chess:
+	var pos := Chess.from_fen(str(puzzle.get("fen", "")))
+	var moves: Array = puzzle.get("moves", [])
+	for i in mini(ply, moves.size()):
+		var m := pos.find_uci(str(moves[i]))
+		if m < 0:
+			break
+		pos.apply(m)
+	return pos
+
+
+## «Retroceder» / «Avanzar»: enseña posiciones anteriores del problema sin perder la de ahora. Con −99 vuelve a ella.
+func _browse(delta: int) -> void:
+	if mode == "test" or (phase != Phase.SOLVING and phase != Phase.WRONG):
+		return
+	var was := browse_back
+	browse_back = 0 if delta <= -99 else clampi(browse_back + delta, 0, ask_step)
+	if browse_back == was:
+		if was == 0:
+			_note("Es la primera posición")
+		return
+	run_id += 1
+	line_on = {}
+	line_ply = -1
+	move_why_open = false
+	if phase == Phase.WRONG:
+		_clear_explanation()
+		phase = Phase.SOLVING
+	if browse_back == 0:
+		_restore_position()
+		view.board.set_arrows([])
+		view.interactive = true
+		_note("De vuelta: te toca")
+	else:
+		var ply := ask_step - browse_back
+		view.set_fen(_puzzle_pos(ply).fen())
+		var moves: Array = puzzle.get("moves", [])
+		if ply >= 1 and ply - 1 < moves.size():
+			var last := str(moves[ply - 1])
+			view.board.mark_last_move(Chess.sq_index(last.substr(0, 2)), Chess.sq_index(last.substr(2, 2)))
+		view.board.set_arrows([])
+		view.interactive = false
+		_note("Posición de partida" if ply == 0 else ("Hace %d jugada%s" % [browse_back, "" if browse_back == 1 else "s"]))
+	_actions_mode = ""
+	_refresh()
+
+
+const PIECE_WORDS := {1: "el peón", 2: "el caballo", 3: "el alfil", 4: "la torre", 5: "la dama", 6: "el rey"}
+
+
+## Qué hace una jugada, con hechos que se pueden comprobar en el tablero: qué captura, si da jaque, si recaptura, si
+## retira una pieza atacada. Sin valoraciones inventadas.
+func _move_facts(before: Chess, m: int, prev_uci: String) -> Array:
+	var out: Array = []
+	var from := Chess.move_from(m)
+	var to := Chess.move_to(m)
+	var mover := Chess.type_of(before.board[from])
+	var after := before.copy()
+	after.apply(m)
+	var taken := Chess.type_of(before.board[to]) if before.board[to] != 0 else (1 if Chess.move_flag(m) == Chess.F_EN_PASSANT else 0)
+	if taken > 0:
+		var again := prev_uci.length() >= 4 and Chess.sq_index(prev_uci.substr(2, 2)) == to
+		out.append("%s %s de %s con %s." % ["Recaptura" if again else "Captura", str(PIECE_WORDS[taken]), Chess.sq_name(to), str(PIECE_WORDS[mover])])
+	if Chess.move_promo(m) > 0:
+		out.append("El peón corona.")
+	if after.is_checkmate():
+		out.append("Es jaque mate.")
+	elif after.in_check():
+		out.append("Da jaque: el otro bando tiene que responder al jaque antes que nada.")
+	if taken == 0 and mover != Chess.KING and GameReview.see(before, from) > 0:
+		out.append("%s estaba atacad%s en %s y se podía perder: la retira." % [str(PIECE_WORDS[mover]).capitalize(), "a" if mover == Chess.ROOK or mover == Chess.QUEEN else "o", Chess.sq_name(from)])
+	if out.is_empty():
+		out.append("No captura ni da jaque: mueve %s a %s." % [str(PIECE_WORDS[mover]), Chess.sq_name(to)])
+	return out
+
+
+## Botón «¿Por qué esa jugada?» y, abierto, la explicación de la última jugada que se ve en el tablero (la del rival
+## mientras se resuelve; la que toque al retroceder).
+func _add_move_why() -> void:
+	var moves: Array = puzzle.get("moves", [])
+	var ply := ask_step - browse_back  # jugadas hechas en la posición que se ve
+	if ply < 1 or ply - 1 >= moves.size():
+		return
+	var mine := (ply - 1) % 2 == 1
+	if not move_why_open:
+		card_body.add_child(_card_button("¿Por qué jugaste eso?" if mine else "¿Por qué ha jugado eso el rival?", _toggle_move_why, _c("field"), _c("ink"), F_SUB, "why"))
+		return
+	var before := _puzzle_pos(ply - 1)
+	var uci := str(moves[ply - 1])
+	var m := before.find_uci(uci)
+	if m < 0:
+		return
+	card_body.add_child(_section(("Tu jugada: %s" if mine else "La jugada del rival: %s") % SanEs.san(before, m)))
+	for fact: Variant in _move_facts(before, m, str(moves[ply - 2]) if ply >= 2 else ""):
+		card_body.add_child(_para(str(fact), F_BODY, _c("ink"), font_regular))
+	var context := ""
+	if mine:
+		context = "Era la jugada de la solución del problema."
+	elif ply == 1:
+		context = "Es el error que hace posible la combinación: mira qué ha dejado sin defensa o qué permite ahora."
+	else:
+		context = "En los problemas de Lichess, las respuestas del rival son las que el motor de análisis dio como su mejor defensa: con otra jugada, perdería más o antes."
+	card_body.add_child(_para(context, F_SUB, _c("quiet"), font_regular))
+	card_body.add_child(_card_button("Ocultar", _toggle_move_why, _c("field"), _c("quiet"), F_FOOT, "close"))
+
+
+## Chapa con la valoración de la jugada en su casilla de destino, con los signos de anotación de siempre:
+## «!» buena jugada (aquí, la de la solución), «?» error, «??» error grave (pierde material o permite mate).
+const BADGES := {"best": ["!", Color("2f9e63")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
+
+
+func _move_badge(uci: String, kind: String) -> void:
+	if kids or uci.length() < 4 or not BADGES.has(kind):
+		return
+	var def: Array = BADGES[kind]
+	view.board.set_badge(Chess.sq_index(uci.substr(2, 2)), str(def[0]), def[1])
+
+
+func _toggle_move_why() -> void:
+	move_why_open = not move_why_open
+	_refresh()
+
+
+## «Reiniciar» tras una jugada que no era la mejor: la posición vuelve a estar como al pedir la jugada, sin flechas
+## ni explicación, lista para probar otra.
+func _retry_position() -> void:
+	if phase != Phase.WRONG:
+		return
+	run_id += 1
+	line_on = {}
+	line_ply = -1
+	_clear_explanation()
+	hint_level = 0
+	_restore_position()
+	view.board.set_arrows([])
+	view.interactive = true
+	_set_phase(Phase.SOLVING)
 
 
 ## «¿Y si juego…?»: entra o sale del modo de probar jugadas.
@@ -2838,6 +3004,8 @@ func _start(i: int, review: bool = false) -> void:
 		_try = {"item": item, "t0": 0, "ms_first": 0.0, "fail_step": -1, "error": "", "help": "", "recorded": seen}
 	view.sounds.stop_all()
 	view.board.set_arrows([])
+	browse_back = 0
+	move_why_open = false
 	view.set_fen(puzzle["fen"])
 	# Juega quien responde a la primera jugada (la del rival).
 	view.set_orientation(1 - view.board.chess.turn)
@@ -2856,6 +3024,8 @@ func _start(i: int, review: bool = false) -> void:
 
 
 func _ask() -> void:
+	browse_back = 0
+	move_why_open = false
 	fen_before = view.board.chess.fen()
 	ask_step = step
 	hint_level = 0
@@ -3004,6 +3174,8 @@ func _on_move_played(uci: String) -> void:
 		hint_level = 0
 		expl = _explanation_for(k, uci)
 		exp_point = k
+		var slip := str(expl.get("error", ""))
+		_move_badge(uci, "blunder" if ["mate", "hangMoved", "hangOther", "material"].has(slip) else ("dubious" if ["missed", "slower"].has(slip) else "wrong"))
 		# La primera jugada equivocada decide el intento: en qué paso fue y qué clase de error.
 		if not _try.is_empty() and not bool(_try["recorded"]):
 			_try["fail_step"] = k
@@ -3028,6 +3200,7 @@ func _on_move_played(uci: String) -> void:
 		view.interactive = true
 		return
 	step += 1
+	_move_badge(uci, "best")
 	_clear_explanation()
 	hint_level = 0
 	if mate or step >= moves.size():
@@ -5015,10 +5188,38 @@ func _show_review_page() -> void:
 
 
 ## Lleva el tablero a la posición del momento i, con la jugada hecha (roja) y la otra (verde).
+## «Siguiente» en el repaso: antes de enseñar el momento siguiente, se ven en el tablero las jugadas de la partida
+## que hubo entre uno y otro, con su movimiento (más deprisa si son muchas).
+func _review_advance() -> void:
+	var i := review_at + 1
+	if i < 0 or i >= review.size():
+		return
+	var from_ply := int((review[review_at] as Dictionary).get("ply", -1)) if review_at >= 0 else -1
+	var to_ply := int((review[i] as Dictionary).get("ply", -1))
+	if from_ply < 0 or to_ply <= from_ply or to_ply > game_moves.size() or from_ply >= game_history.size():
+		_review_show(i)
+		return
+	run_id += 1
+	var my_run := run_id
+	view.interactive = false
+	view.board.deselect()
+	view.board.set_arrows([])
+	view.set_fen(str(game_history[from_ply]))
+	view.set_orientation(game_color)
+	var pause := clampf(4.0 / float(to_ply - from_ply), 0.16, 0.5)
+	for ply in range(from_ply, to_ply):
+		view.show_move(str(game_moves[ply]))
+		await _wait(pause)
+		if my_run != run_id or game_state != "review":
+			return
+	_review_show(i)
+
+
 func _review_show(i: int) -> void:
 	if i < 0 or i >= review.size():
 		return
 	_close_progress()
+	run_id += 1
 	review_at = i
 	game_state = "review"
 	var mo: Dictionary = review[i]
@@ -5026,6 +5227,12 @@ func _review_show(i: int) -> void:
 	view.set_fen(str(mo["fen"]))
 	view.set_orientation(game_color)
 	view.board.set_arrows(mo.get("arrows", []))
+	# Valoración de la jugada, en su casilla de destino: «??» si permitió mate o dejó una pieza, «?» si dejó pasar
+	# un mate, «?!» en lo demás.
+	var at_ply := int(mo.get("ply", -1))
+	if at_ply >= 0 and at_ply < game_moves.size():
+		var how := str(mo.get("kind", ""))
+		_move_badge(str(game_moves[at_ply]), "blunder" if how == "allowed_mate" or how == "hang" else ("wrong" if how == "missed_mate" else "dubious"))
 	if int(mo.get("square", -1)) >= 0:
 		view.board.select(int(mo["square"]))
 	_say([_kid_line(GameReview.kids_key(str(mo["kind"])))])
@@ -5066,7 +5273,7 @@ func _build_review_actions() -> void:
 	step_button = null
 	left_button = _tool_button("back", "Anterior", _review_show.bind(review_at - 1), "sky")
 	var list := _tool_button("why", "Lista", _review_back, "lilac")
-	right_button = _tool_button("next", "Siguiente", _review_show.bind(review_at + 1), "mint")
+	right_button = _tool_button("next", "Siguiente", _review_advance, "mint")
 	left_button.disabled = review_at <= 0
 	left_button.modulate.a = 1.0 if review_at > 0 else 0.42
 	right_button.disabled = review_at >= review.size() - 1

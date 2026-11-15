@@ -165,6 +165,8 @@ var _token_mats: Array[ShaderMaterial] = []
 var _token_mesh: Mesh
 var _simple_tex: Texture2D
 var _flat_cache := {}
+var _badge: Node3D
+var _badge_tex: Texture2D
 var _rig_scenes := {}
 var _rig_dark := {}
 ## Ejes de la cámara (los calcula apply_camera): los recortables miran siempre hacia ella.
@@ -1125,6 +1127,7 @@ func _pose_flat(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash:
 
 
 func set_fen(fen: String) -> void:
+	set_badge(-1, "")
 	_kill_tweens()
 	chess = Chess.from_fen(fen)
 	last_from = -1
@@ -1198,6 +1201,48 @@ func mark_last_move(from: int, to: int) -> void:
 
 
 ## Flechas de las explicaciones: lista de diccionarios {from: int, to: int, tone: "good" | "bad" | "info"}.
+## Valoración de una jugada, a la manera de las anotaciones de ajedrez («!», «?», «??»…): una chapa redonda en la
+## esquina de la casilla de destino. Con texto vacío se quita.
+func set_badge(sq: int, glyph: String, color: Color = Color.WHITE) -> void:
+	if _badge != null and is_instance_valid(_badge):
+		_badge.queue_free()
+	_badge = null
+	if glyph == "" or sq < 0:
+		return
+	if _badge_tex == null:
+		var img := Image.create(96, 96, false, Image.FORMAT_RGBA8)
+		for y in 96:
+			for x in 96:
+				var d := Vector2(float(x) - 47.5, float(y) - 47.5).length()
+				var a := clampf(46.0 - d, 0.0, 1.0)
+				var rim := clampf(d - 39.0, 0.0, 1.0)
+				img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a).lerp(Color(0.92, 0.92, 0.92, a), rim))
+		_badge_tex = ImageTexture.create_from_image(img)
+	_badge = Node3D.new()
+	var disc := Sprite3D.new()
+	disc.texture = _badge_tex
+	disc.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	disc.no_depth_test = true
+	disc.shaded = false
+	disc.pixel_size = 0.0042
+	disc.modulate = color
+	disc.render_priority = 3
+	_badge.add_child(disc)
+	var mark := Label3D.new()
+	mark.text = glyph
+	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mark.no_depth_test = true
+	mark.shaded = false
+	mark.font_size = 64 if glyph.length() < 2 else 52
+	mark.pixel_size = 0.0042
+	mark.outline_size = 0
+	mark.modulate = Color.WHITE
+	mark.render_priority = 4
+	_badge.add_child(mark)
+	_badge.position = sq_pos(sq) + (_cam_right + _cam_up) * 0.36 + Vector3(0.0, 0.06, 0.0)
+	add_child(_badge)
+
+
 func set_arrows(arrows: Array) -> void:
 	for n in _arrows_root.get_children():
 		_arrows_root.remove_child(n)
@@ -1801,6 +1846,7 @@ func _apply_promotion(node: Node3D) -> void:
 ## Juega una jugada legal: actualiza la posición al instante y anima según el modo.
 ## Con dropped = true la pieza ya está en su sitio (la soltó el dedo): solo se asienta.
 func play_move(m: int, dropped: bool = false) -> void:
+	set_badge(-1, "")
 	finish_animations()
 	_stop_idle()
 	var from := Chess.move_from(m)

@@ -71,3 +71,16 @@ y problemas.
 - Se guarda un resumen de cada partida analizada en `user://chessome_partidas.json` (fecha, nivel, resultado,
   clases de momento): base para que el entrenador elija lecciones más adelante.
 - Prueba: `godot/tests/test_review.gd` (en la CI).
+
+## Entrenamiento y repaso: cambios del 15 nov 2026 (peticiones de Pablo)
+
+- Tras una jugada que no era la mejor: botón «Reiniciar la posición» siempre a la vista; al volver de una variante,
+  el tablero queda limpio (sin la flecha de la jugada fallada).
+- «Retroceder» (barra de resolver): repasa las posiciones anteriores del problema; «Avanzar» y «Volver a jugar».
+- «¿Por qué ha jugado eso el rival?»: hechos comprobables de la jugada (qué captura, si da jaque, si recaptura, si
+  retira una pieza atacada; `_move_facts`). El contexto se apoya en cómo se generan los problemas de Lichess.
+- Al ver una variante jugada a jugada, la ficha se recoge y deja solo sus mandos: se ve el tablero entero.
+- Valoración de la jugada con los signos de anotación de ajedrez, en una chapa sobre la casilla de destino
+  (`Board3D.set_badge`, `BADGES`): «!» la jugada de la solución, «?!», «?» y «??» según la clase de error. No hay
+  «!!» (genialidad): sin un motor fuerte en el móvil no se puede afirmar. En partidas solo sale en el repaso.
+- Repaso de la partida: «Siguiente» reproduce las jugadas intermedias hasta el momento siguiente.
