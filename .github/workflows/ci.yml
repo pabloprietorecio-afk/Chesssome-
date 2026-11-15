@@ -42,6 +42,23 @@ jobs:
           path: dist/chessome.html
           retention-days: 14
 
+      # Web de pruebas en GitHub Pages, carpeta /app (la raíz es del cine): …github.io/Chesssome-/app/
+      # Se conserva lo que ya haya en la rama gh-pages.
+      - name: Web de pruebas en GitHub Pages (/app)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          if ! git clone -q --depth 1 --branch gh-pages "$URL" _pages; then
+            mkdir _pages && cd _pages && git init -q && git checkout -q -b gh-pages && git remote add origin "$URL" && cd ..
+          fi
+          mkdir -p _pages/app
+          cp dist/chessome.html _pages/app/index.html
+          touch _pages/.nojekyll
+          cd _pages
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Web de pruebas (main): ${GITHUB_SHA::7}" || { echo "Sin cambios"; exit 0; }
+          git push -q origin gh-pages
+
       # Enlace fijo de descarga del prototipo web (se abre desde el móvil; en un artefacto de Claude no puede conectar con Firebase).
       - name: Prototipo web en la versión preliminar «ultima-web»
         if: github.ref == 'refs/heads/main'

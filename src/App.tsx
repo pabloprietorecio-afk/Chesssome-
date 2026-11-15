@@ -58,6 +58,10 @@ export function App(): JSX.Element {
   const s = useAppState();
   const placed = !!s.rating && !!s.placement?.done;
   useTheme(s.settings.theme ?? 'auto');
+  // Enlace directo a la partida online (…/#online), sin pasar por el test.
+  useEffect(() => {
+    if (window.location.hash === '#online') go('online');
+  }, []);
   const view = ((): JSX.Element => {
     switch (s.screen) {
       case 'welcome':
@@ -77,7 +81,7 @@ export function App(): JSX.Element {
       case 'study':
         return <StudyScreen />;
       case 'online':
-        return placed ? <OnlineScreen /> : <Welcome />;
+        return <OnlineScreen />;
       default:
         return placed ? <Home /> : <Welcome />;
     }
