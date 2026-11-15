@@ -80,6 +80,19 @@ func _ready() -> void:
 	await _frames(4)
 	await _shot("p15_online_atras")
 	print("ONLINE atrás=%d pendientes=%d" % [demo.game_back, demo._online_pending.size()])
+	# Piezas comidas: arriba, las que ha comido el rival; abajo, las tuyas y la ventaja.
+	var cpos := Chess.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	var cfens: Array = [cpos.fen()]
+	for u: String in ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3", "d5a2", "a1a2"]:
+		cpos.apply(cpos.find_uci(u))
+		cfens.append(cpos.fen())
+	demo.game_history = cfens
+	demo.game_moves = ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3", "d5a2", "a1a2"]
+	demo.game_back = 0
+	demo.view.set_fen(cpos.fen())
+	demo._refresh()
+	await _frames(8)
+	await _shot("p23_comidas")
 	demo._leave_game()
 	await _frames(4)
 	await _detalle(demo)

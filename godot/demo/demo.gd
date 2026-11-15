@@ -327,6 +327,11 @@ var bg: SkyBackdrop
 var bar_row: Control
 var chrome: VBoxContainer
 var board_slot: Control
+## En las partidas, las piezas comidas: arriba las que ha comido el bando de arriba, abajo las del de abajo.
+var cap_top: CaptureStrip
+var cap_bottom: CaptureStrip
+var _cap_key := ""
+const CAP_H := 64.0
 var top_gap: Control
 var card_pad: MarginContainer
 var card: PanelContainer
@@ -909,6 +914,45 @@ class TurnMark extends Control:
 				o + Vector2(14.0 - grow, 18.0 - grow), o + Vector2(26.0 + grow, 18.0 - grow),
 				o + Vector2(30.0 + grow, 35.0), o + Vector2(10.0 - grow, 35.0)]), color)
 			draw_circle(o + Vector2(20.0, 12.0), 9.0 + grow, color, true, -1.0, true)
+
+
+## Piezas comidas, en fila y agrupadas por tipo, con la ventaja de material al final («+3»).
+class CaptureStrip extends Control:
+	const GLYPHS := ["", "piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen", "piece_king"]
+	var pieces: Array = []
+	var fill := Color.WHITE
+	var line := Color.BLACK
+	var lead := 0
+	var ink := Color.BLACK
+	var font: Font
+	var font_size := 40
+	var pad_x := 56.0
+	## Desplazamiento vertical al dibujar: la fila de arriba baja un poco hacia el tablero (el encuadre deja aire
+	## sobre las piezas del fondo) y la de abajo sube; así quedan pegadas a su bando.
+	var dy := 0.0
+
+	func _draw() -> void:
+		var s := size.y
+		var y := dy
+		var x := pad_x
+		var prev := -1
+		for t: int in pieces:
+			if prev != -1:
+				x += s * (0.42 if t == prev else 0.8)
+			prev = t
+			var tex := UiIcons.texture(str(GLYPHS[t]))
+			if tex == null:
+				continue
+			var r := Rect2(Vector2(x, y), Vector2(s, s))
+			# Un contorno (la silueta desplazada alrededor) y encima el relleno: se lee sobre cualquier fondo y
+			# separa las piezas que se solapan.
+			for o: Vector2 in [Vector2(-2.5, 0.0), Vector2(2.5, 0.0), Vector2(0.0, -2.5), Vector2(0.0, 2.5), Vector2(-1.8, -1.8), Vector2(1.8, -1.8), Vector2(-1.8, 1.8), Vector2(1.8, 1.8)]:
+				draw_texture_rect(tex, Rect2(r.position + o, r.size), false, line)
+			draw_texture_rect(tex, r, false, fill)
+		if lead > 0 and font != null:
+			if prev != -1:
+				x += s + 12.0
+			draw_string(font, Vector2(x, dy + size.y * 0.5 + font_size * 0.36), "+%d" % lead, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ink)
 
 
 ## Interruptor de dos posiciones.
@@ -1571,11 +1615,21 @@ func _build_chrome() -> void:
 	top_gap = _spacer(0.0)
 	chrome.add_child(top_gap)
 
+	cap_top = CaptureStrip.new()
+	cap_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cap_top.dy = 36.0
+	chrome.add_child(cap_top)
+
 	# Hueco del tablero: el tablero 3D se coloca encima de este hueco (ver _place_board).
 	board_slot = Control.new()
 	board_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	board_slot.item_rect_changed.connect(_place_board)
 	chrome.add_child(board_slot)
+
+	cap_bottom = CaptureStrip.new()
+	cap_bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cap_bottom.dy = -18.0
+	chrome.add_child(cap_bottom)
 
 	# Tarjeta del entrenador, bajo el tablero. Ocupa lo que necesita su contenido y, si no cabe, se desplaza.
 	card_pad = _pad(28, 20, 28, 0)
@@ -1700,6 +1754,8 @@ func _place_tip() -> void:
 	if gesture_tip == null or not is_instance_valid(gesture_tip) or board_slot == null or not is_instance_valid(board_slot):
 		return
 	var slot_top := board_slot.get_global_rect().position.y
+	if cap_top != null and is_instance_valid(cap_top) and cap_top.visible:
+		slot_top = cap_top.get_global_rect().position.y
 	var bar_bottom := bar_row.get_global_rect().end.y if bar_row != null and is_instance_valid(bar_row) else 0.0
 	var room := slot_top - bar_bottom
 	var fits := room >= gesture_tip.size.y + 56.0
@@ -6060,7 +6116,53 @@ func _game_bot_turn() -> void:
 
 
 ## El reloj de la partida corre para el bando que mueve.
+## Piezas comidas: se ven en las partidas (también al mirar jugadas anteriores o al analizar). Se recalculan solo
+## cuando cambia la posición, el bando de abajo o los colores.
+func _sync_captures() -> void:
+	if cap_top == null or not is_instance_valid(cap_top):
+		return
+	var on := mode == "game" and not game_history.is_empty()
+	var h := CAP_H if on else 0.0
+	if absf(cap_top.custom_minimum_size.y - h) > 0.5:
+		cap_top.custom_minimum_size = Vector2(0.0, h)
+		cap_bottom.custom_minimum_size = Vector2(0.0, h)
+		_cap_key = ""
+		_layout()
+	cap_top.visible = on
+	cap_bottom.visible = on
+	if not on:
+		return
+	var now: Chess = view.board.chess
+	var bottom := view.board.orientation
+	var swatches: Array = view.board.piece_swatches()
+	var key := "%d|%d|%s|%s|%s" % [hash(now.b), bottom, str(game_history[0]), str(swatches), str(dark)]
+	if key == _cap_key:
+		return
+	_cap_key = key
+	var r := Captures.of(Chess.from_fen(str(game_history[0])), now)
+	var lost: Array = r["lost"]
+	var lead := int(r["lead"])
+	# Arriba, lo que ha comido el de arriba (piezas del color de abajo); abajo, al revés.
+	for i in 2:
+		var strip: CaptureStrip = cap_top if i == 0 else cap_bottom
+		var eater := 1 - bottom if i == 0 else bottom
+		var victim := 1 - eater
+		var fill: Color = swatches[victim]
+		strip.pieces = lost[victim]
+		strip.fill = fill
+		if victim == 0:
+			strip.line = fill.darkened(0.72)
+		else:
+			strip.line = fill.lightened(0.6) if dark else fill.darkened(0.6)
+		strip.lead = lead if eater == 0 else -lead
+		strip.ink = _c("quiet")
+		strip.font = font_semibold
+		strip.font_size = F_SUB
+		strip.queue_redraw()
+
+
 func _process(delta: float) -> void:
+	_sync_captures()
 	if mode != "game" or not game_clocked or not (game_state in ["play", "think", "press"]):
 		return
 	var side := game_clock_side
