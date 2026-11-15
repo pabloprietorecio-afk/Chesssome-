@@ -99,6 +99,8 @@ class FlipCard extends Control:
 		if t >= 1.0:
 			t = -1.0
 			bottom.face.show_digit(digit)
+			rise.scale = Vector2.ONE
+			fall.scale = Vector2.ONE
 		_pose()
 
 	func _pose() -> void:
@@ -112,7 +114,8 @@ class FlipCard extends Control:
 			var a := t / 0.5
 			fall.visible = true
 			rise.visible = false
-			fall.scale = Vector2(1.0, maxf(0.001, 1.0 - a * a))
+			# Al caer hacia quien mira se ensancha un poco: da sensación de perspectiva.
+			fall.scale = Vector2(1.0 + 0.07 * a, maxf(0.001, 1.0 - a * a))
 			fall.modulate = Color.WHITE.lerp(Color(0.74, 0.77, 0.86), a)
 			top.modulate = Color(0.82, 0.84, 0.9).lerp(Color.WHITE, a)
 			bottom.modulate = Color.WHITE.lerp(Color(0.9, 0.91, 0.95), a)
@@ -123,7 +126,7 @@ class FlipCard extends Control:
 			# Asienta con un rebote corto al llegar abajo.
 			var e := 1.0 - pow(1.0 - b, 3.0)
 			var bounce := 0.06 * sin(b * PI) * (1.0 - b)
-			rise.scale = Vector2(1.0, clampf(e - bounce, 0.001, 1.0))
+			rise.scale = Vector2(1.0 + 0.07 * (1.0 - e), clampf(e - bounce, 0.001, 1.0))
 			rise.modulate = Color(0.78, 0.8, 0.88).lerp(Color.WHITE, b)
 			top.modulate = Color.WHITE
 			bottom.modulate = Color.WHITE
