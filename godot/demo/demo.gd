@@ -104,6 +104,14 @@ var train_level := -1
 var _path_hint: Label
 ## Explicación de la última jugada (la del rival, o la que se está repasando) a la vista.
 var move_why_open := false
+## Explicación paso a paso de una jugada (core/move_why.gd): sus párrafos, el que se ve y si el tablero se ha
+## cambiado para enseñarlo (con lo que había antes, para volver).
+var why_paras: Array = []
+var why_idx := 0
+var why_board := false
+var why_saved := {}
+## Paso a paso de la solución entera, tras resolver («Jugada a jugada»).
+var why_story_open := false
 ## Icono del jugador dentro de su insignia: "" = la pieza de su rango, "piece_…" = una pieza fija, "foto" = su foto.
 const AVATAR_PATH := "user://chessome_avatar.png"
 var avatar := ""
@@ -127,6 +135,8 @@ var mode := "free":
 ## Lo que la evaluación sabe de cada problema (Assessment.item_of), en el orden de la lista, y dónde está cada id.
 var pool: Array = []
 var _index_of := {}
+## Número de cada problema dentro de su nivel, del más fácil al más difícil: id → [nivel, número].
+var _numbers := {}
 ## El jugador: {rating, tries, done} (ver Assessment). Vacío hasta que hace el test o lo salta.
 var player := {}
 ## Lo que dijo de su experiencia ("never", "rules", "casual" o "regular") y si saltó el test.
@@ -232,6 +242,9 @@ var ex_state := ""
 var ex_moves := 0
 var ex_fails := 0
 var ex_text := ""
+## Lecciones: la última jugada del ejercicio y si se está viendo su «¿Por qué?» (con flechas en el tablero).
+var ex_last_uci := ""
+var learn_why_open := false
 var ex_good := false
 var ex_stars: Array = []
 ## Piezas negras que quedan en un ejercicio de recoger (para sonar al capturar una).
@@ -288,6 +301,8 @@ var card_style: StyleBoxFlat
 var _card_float := 0.0
 var card_body: VBoxContainer
 var counter: Label
+## Marca verde junto al nombre del problema si ya está resuelto.
+var counter_check: TextureRect
 var title: Label
 var turn_dot: TurnMark
 ## Botones del pie. left_button es «Solución» (o «Repetir» al terminar); right_button, «Saltar» («Siguiente»
@@ -975,6 +990,52 @@ func _load_puzzles() -> void:
 		var item := Assessment.item_of(puzzles[i])
 		pool.append(item)
 		_index_of[item["id"]] = i
+	_numbers = {}
+	for lv: int in _level_lists():
+		var list: Array = _level_lists()[lv]
+		for k in list.size():
+			_numbers[str((list[k] as Dictionary)["id"])] = [lv, k + 1]
+
+
+## Problemas de cada nivel, ordenados del más fácil al más difícil (el orden fija su número): nivel → [items].
+var _levels_cache := {}
+
+
+func _level_lists() -> Dictionary:
+	if not _levels_cache.is_empty() or pool.is_empty():
+		return _levels_cache
+	for item: Dictionary in pool:
+		var lv := Assessment.level_of(float(item["rating"]))
+		if not _levels_cache.has(lv):
+			_levels_cache[lv] = []
+		(_levels_cache[lv] as Array).append(item)
+	for lv: int in _levels_cache:
+		(_levels_cache[lv] as Array).sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			if float(a["rating"]) != float(b["rating"]):
+				return float(a["rating"]) < float(b["rating"])
+			return str(a["id"]) < str(b["id"]))
+	return _levels_cache
+
+
+## 2 resuelto (alguna vez, sin ayuda), 1 intentado, 0 sin ver.
+func _puzzle_state(id: String) -> int:
+	if not _has_player():
+		return 0
+	var state := 0
+	for t: Dictionary in player["tries"]:
+		if str(t["id"]) == id:
+			if bool(t.get("correct", false)):
+				return 2
+			state = 1
+	return state
+
+
+## «Nivel 4 · n.º 12»: el nombre de un problema (su nivel y su número dentro del nivel).
+func _puzzle_name(id: String) -> String:
+	var n: Array = _numbers.get(id, [])
+	if n.is_empty():
+		return ""
+	return "Nivel %d · n.º %d" % [int(n[0]), int(n[1])]
 
 
 ## Versión de la app, para enseñarla en Opciones: la escribe la CI en data/version.json al generar el APK.
@@ -1445,6 +1506,10 @@ func _build_chrome() -> void:
 	level_slot.pressed.connect(_open_avatar)
 	level_slot.visible = false
 	bar.add_child(level_slot)
+	counter_check = _icon("check", 46.0, _c("good"))
+	counter_check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	counter_check.visible = false
+	bar.add_child(counter_check)
 	counter = _text("", F_SUB, _c("quiet"), font_medium)
 	counter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	counter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1716,6 +1781,8 @@ func _refresh(animate: bool = true) -> void:
 	var total := puzzles.size()
 	level_pill.visible = false
 	_sync_level_badge()
+	if counter_check != null:
+		counter_check.visible = (mode == "train" or mode == "free") and not puzzle.is_empty() and _puzzle_state(str(puzzle.get("id", ""))) == 2
 	if mode == "learn":
 		counter.text = "Aprende desde cero"
 	elif mode == "game":
@@ -1725,13 +1792,16 @@ func _refresh(animate: bool = true) -> void:
 		counter.text = "Nivel %d · %s" % [lv, str(_rank(lv)[1])]
 		if train_family != "":
 			counter.text = "Nivel %d · %s" % [lv, str(FAMILY_KIDS[train_family]) if kids else str(Assessment.FAMILY_NAME[train_family])]
-		if train_level >= 0:
-			counter.text = "Repaso del nivel %d · %s" % [train_level, str(_rank(train_level)[1])]
+		# Cada problema, con su nombre: nivel, número y si ya está resuelto.
+		if not puzzle.is_empty() and _puzzle_name(str(puzzle.get("id", ""))) != "":
+			counter.text = _puzzle_name(str(puzzle.get("id", "")))
 	elif mode == "test":
 		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
 		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
 	else:
 		counter.text = ("Problema %d de %d" % [index + 1, total]) if total > 0 else "Sin problemas"
+		if not puzzle.is_empty() and _puzzle_name(str(puzzle.get("id", ""))) != "":
+			counter.text = _puzzle_name(str(puzzle.get("id", "")))
 	if kids_wall != null and is_instance_valid(kids_wall):
 		kids_wall.visible = kids
 	_sync_music()
@@ -1805,6 +1875,8 @@ func _build_actions() -> void:
 		for b: Button in row:
 			b.mouse_filter = Control.MOUSE_FILTER_STOP
 			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			# Al pulsar (antes de soltar), el tablero vuelve de la explicación a la partida.
+			b.button_down.connect(_why_close_for_action)
 			actions.add_child(b)
 	# La pista y el paso solo tienen sentido cuando le toca jugar al jugador.
 	for b: Button in [hint_button, step_button]:
@@ -1935,7 +2007,7 @@ func _build_card() -> void:
 			# El test es breve: la explicación a fondo llega después, en el entrenamiento.
 			if done and not bool(e.get("correct", false)):
 				card_body.add_child(_para("Lo repasaremos con calma en el entrenamiento.", F_SUB, _c("quiet"), font_regular))
-		elif done:
+		elif done and not why_story_open:
 			_add_tools()
 		elif phase == Phase.STEP:
 			card_body.add_child(_para("Pulsa «Seguir» y continúa tú con el resto.", F_SUB, _c("quiet"), font_regular))
@@ -1948,7 +2020,7 @@ func _build_card() -> void:
 
 	# Ficha del problema. El tema es una pista: solo se enseña cuando ya está resuelto o mostrado.
 	# Con una explicación o una pista a la vista no se repite: el sitio es para ellas.
-	if total > 0 and not whatif and (done or (e.is_empty() and hint_level == 0)):
+	if total > 0 and not whatif and not why_story_open and (done or (e.is_empty() and hint_level == 0)):
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
 		chips.add_theme_constant_override("v_separation", 10)
@@ -2065,10 +2137,29 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 	if partial and not bool(e.get("correct", false)) and count > 1:
 		# La última frase dice cuál era la mejor jugada.
 		count -= 1
-	for i in count:
-		card_body.add_child(_para(str(first[i]), F_BODY, _c("ink"), font_regular))
+	var board_why := _board_why_for(e, partial)
+	if why_story_open and not board_why.is_empty():
+		# Paso a paso abierto: solo él, para que la tarjeta no tape el tablero.
+		card_body.add_child(_why_block({"paras": why_paras}, "Jugada a jugada"))
+		card_body.add_child(_card_button("Cerrar el paso a paso", _toggle_story, _c("field"), _c("quiet"), F_FOOT, "close"))
+		return
+	if not board_why.is_empty() and mode != "test":
+		# Qué ha conseguido la jugada, sacado del tablero (ataque doble, mate, qué casillas quedan…).
+		for p: Dictionary in board_why:
+			card_body.add_child(_para(str(p["text"]), F_BODY, _c("ink"), font_regular))
+	else:
+		for i in count:
+			card_body.add_child(_para(str(first[i]), F_BODY, _c("ink"), font_regular))
 	if mode == "test":
 		return
+	if not board_why.is_empty() and not partial and not whatif:
+		# La solución entera, jugada a jugada y con flechas.
+		if not why_story_open:
+			var tint := _tint("mint")
+			var story := _button("step", "Jugada a jugada, con flechas", _toggle_story, tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 60.0})
+			var story_pad := _pad(0, 8, 0, 0)
+			story_pad.add_child(story)
+			card_body.add_child(story_pad)
 	var lines: Array = (levels[2] as Dictionary)["lines"]
 	if partial:
 		# Lo que pasaría tras la jugada, para verlo en el tablero.
@@ -2083,8 +2174,12 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 	if level >= 2:
 		var concept: Dictionary = levels[1]
 		card_body.add_child(_section(str(concept["title"])))
+		var named := _board_concept(e)
 		for text: Variant in concept["paragraphs"]:
-			card_body.add_child(_para(str(text), F_BODY, _c("ink"), font_regular))
+			var t := str(text)
+			if named != "" and t.contains("no tiene un motivo táctico con nombre"):
+				t = named
+			card_body.add_child(_para(t, F_BODY, _c("ink"), font_regular))
 	if level >= 3:
 		card_body.add_child(_section(str((levels[2] as Dictionary)["title"])))
 		for line: Dictionary in lines:
@@ -2112,6 +2207,40 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 			for fact: Array in facts:
 				var source := str(SOURCE_NAMES.get(str(fact[0]), str(fact[0])))
 				card_body.add_child(_para("%s · %s" % [source, str(fact[1])], F_FOOT, _c("quiet"), font_regular))
+
+
+## Si en la solución hay un ataque doble (lo ve el tablero, aunque el problema no lo tenga como tema), el concepto.
+func _board_concept(e: Dictionary) -> String:
+	if not bool(e.get("correct", false)) or puzzle.is_empty():
+		return ""
+	var moves: Array = puzzle.get("moves", [])
+	var pos := _puzzle_pos(1)
+	for i in range(1, moves.size()):
+		var m := pos.find_uci(str(moves[i]))
+		if m < 0:
+			break
+		if i % 2 == 1 and MoveWhy.short_tag(pos, m).begins_with("ataque doble"):
+			return "Ataque doble: una sola pieza ataca dos cosas a la vez y el rival solo puede salvar una. Si una de ellas es el rey (un jaque), ni siquiera puede elegir: tiene que salir del jaque y pierde la otra."
+		pos.apply(m)
+	return ""
+
+
+## Párrafos sacados del tablero para una jugada acertada de quien resuelve: los de la última jugada de la solución
+## que se ha visto (lo que ha conseguido). Vacío si no toca (fallo, niños, otra pantalla).
+func _board_why_for(e: Dictionary, partial: bool) -> Array:
+	if kids or partial or whatif or not bool(e.get("correct", false)) or puzzle.is_empty() or mode == "learn":
+		return []
+	var moves: Array = puzzle.get("moves", [])
+	# La última jugada de quien resuelve que ya está en el tablero.
+	var last := -1
+	var upto := moves.size() if phase == Phase.SOLVED or phase == Phase.SHOWN else mini(ask_step, moves.size())
+	for i in range(1, upto):
+		if i % 2 == 1:
+			last = i
+	if last < 0:
+		return []
+	var w := _puzzle_move_why(last)
+	return w.get("paras", [])
 
 
 ## Una variante con sus botones para verla jugada a jugada en el tablero.
@@ -2267,6 +2396,7 @@ func _sync_board_to_explanation() -> void:
 
 ## Botón «Explícame por qué» / «Ver la variante» / «Ver el análisis»: un nivel más de profundidad.
 func _on_why() -> void:
+	_why_close_for_action()
 	if whatif:
 		whatif_level = mini(whatif_level + 1, 4)
 	else:
@@ -2348,6 +2478,9 @@ func _browse(delta: int) -> void:
 	line_on = {}
 	line_ply = -1
 	move_why_open = false
+	why_board = false
+	why_story_open = false
+	why_paras = []
 	if phase == Phase.WRONG:
 		_clear_explanation()
 		phase = Phase.SOLVING
@@ -2370,37 +2503,30 @@ func _browse(delta: int) -> void:
 	_refresh()
 
 
-const PIECE_WORDS := {1: "el peón", 2: "el caballo", 3: "el alfil", 4: "la torre", 5: "la dama", 6: "el rey"}
+## Bando de quien resuelve: el que no mueve en la posición de partida (la primera jugada es la del rival).
+func _solver_color() -> int:
+	var fen := str(puzzle.get("fen", ""))
+	if fen == "":
+		return 0
+	return 1 - Chess.from_fen(fen).turn
 
 
-## Qué hace una jugada, con hechos que se pueden comprobar en el tablero: qué captura, si da jaque, si recaptura, si
-## retira una pieza atacada. Sin valoraciones inventadas.
-func _move_facts(before: Chess, m: int, prev_uci: String) -> Array:
-	var out: Array = []
-	var from := Chess.move_from(m)
-	var to := Chess.move_to(m)
-	var mover := Chess.type_of(before.board[from])
-	var after := before.copy()
-	after.apply(m)
-	var taken := Chess.type_of(before.board[to]) if before.board[to] != 0 else (1 if Chess.move_flag(m) == Chess.F_EN_PASSANT else 0)
-	if taken > 0:
-		var again := prev_uci.length() >= 4 and Chess.sq_index(prev_uci.substr(2, 2)) == to
-		out.append("%s %s de %s con %s." % ["Recaptura" if again else "Captura", str(PIECE_WORDS[taken]), Chess.sq_name(to), str(PIECE_WORDS[mover])])
-	if Chess.move_promo(m) > 0:
-		out.append("El peón corona.")
-	if after.is_checkmate():
-		out.append("Es jaque mate.")
-	elif after.in_check():
-		out.append("Da jaque: el otro bando tiene que responder al jaque antes que nada.")
-	if taken == 0 and mover != Chess.KING and GameReview.see(before, from) > 0:
-		out.append("%s estaba atacad%s en %s y se podía perder: la retira." % [str(PIECE_WORDS[mover]).capitalize(), "a" if mover == Chess.ROOK or mover == Chess.QUEEN else "o", Chess.sq_name(from)])
-	if out.is_empty():
-		out.append("No captura ni da jaque: mueve %s a %s." % [str(PIECE_WORDS[mover]), Chess.sq_name(to)])
-	return out
+## Explicación de la jugada `i` de la línea del problema, con su veredicto: la primera del rival es el error que
+## abre el problema; las demás del rival, su defensa (o su única jugada); las de quien resuelve, las mejores.
+func _puzzle_move_why(i: int) -> Dictionary:
+	var moves: Array = puzzle.get("moves", [])
+	if i < 0 or i >= moves.size():
+		return {}
+	var before := _puzzle_pos(i)
+	var m := before.find_uci(str(moves[i]))
+	if m < 0:
+		return {}
+	var role := "solution" if i % 2 == 1 else ("blunder" if i == 0 else "reply")
+	return MoveWhy.explain(before, m, _solver_color(), role, moves.slice(i + 1))
 
 
 ## Botón «¿Por qué esa jugada?» y, abierto, la explicación de la última jugada que se ve en el tablero (la del rival
-## mientras se resuelve; la que toque al retroceder).
+## mientras se resuelve; la que toque al retroceder), párrafo a párrafo y con flechas.
 func _add_move_why() -> void:
 	var moves: Array = puzzle.get("moves", [])
 	var ply := ask_step - browse_back  # jugadas hechas en la posición que se ve
@@ -2410,23 +2536,136 @@ func _add_move_why() -> void:
 	if not move_why_open:
 		card_body.add_child(_card_button("¿Por qué jugaste eso?" if mine else "¿Por qué ha jugado eso el rival?", _toggle_move_why, _c("field"), _c("ink"), F_SUB, "why"))
 		return
-	var before := _puzzle_pos(ply - 1)
-	var uci := str(moves[ply - 1])
-	var m := before.find_uci(uci)
-	if m < 0:
+	var e := _puzzle_move_why(ply - 1)
+	if e.is_empty():
 		return
-	card_body.add_child(_section(("Tu jugada: %s" if mine else "La jugada del rival: %s") % SanEs.san(before, m)))
-	for fact: Variant in _move_facts(before, m, str(moves[ply - 2]) if ply >= 2 else ""):
-		card_body.add_child(_para(str(fact), F_BODY, _c("ink"), font_regular))
-	var context := ""
-	if mine:
-		context = "Era la jugada de la solución del problema."
-	elif ply == 1:
-		context = "Es el error que hace posible la combinación: mira qué ha dejado sin defensa o qué permite ahora."
-	else:
-		context = "En los problemas de Lichess, las respuestas del rival son las que el motor de análisis dio como su mejor defensa: con otra jugada, perdería más o antes."
-	card_body.add_child(_para(context, F_SUB, _c("quiet"), font_regular))
+	card_body.add_child(_why_block(e, ("Tu jugada: %s" if mine else "La jugada del rival: %s") % str(e["san"])))
 	card_body.add_child(_card_button("Ocultar", _toggle_move_why, _c("field"), _c("quiet"), F_FOOT, "close"))
+
+
+const WHY_TONES := {"only": "info", "best": "good", "defense": "info", "error": "bad", "plain": "quiet"}
+
+
+## Tarjeta de una explicación paso a paso: el veredicto, el párrafo que toca y los botones para pasar de uno a otro.
+## Cada párrafo trae sus flechas: se ven en el tablero.
+func _why_block(e: Dictionary, heading: String) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if heading != "":
+		box.add_child(_section(heading))
+	var paras: Array = e.get("paras", [])
+	if paras.is_empty():
+		return box
+	if why_paras != paras:
+		why_paras = paras
+		why_idx = 0
+	var p: Dictionary = paras[clampi(why_idx, 0, paras.size() - 1)]
+	var verdict := str(p.get("verdict", e.get("verdict", "")))
+	var label := str(p.get("label", e.get("label", "")))
+	var tone := str(WHY_TONES.get(verdict, "quiet"))
+	var color := _c("good") if tone == "good" else (_c("bad") if tone == "bad" else ((Color("a593ff") if dark else Color("5b3fd0")) if tone == "info" else _c("quiet")))
+	if label != "":
+		var title := label if not p.has("san") else "%s · %s" % [str(p["san"]), label]
+		box.add_child(_para(title, F_BODY, color, font_semibold))
+	box.add_child(_para(str(p["text"]), F_BODY, _c("ink"), font_regular))
+	if paras.size() > 1:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 14)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var prev := _round_button("play", _why_go.bind(-1), 96.0, _c("field"), _c("ink"), false)
+		for child in prev.get_child(0).get_children():
+			if child is TextureRect:
+				(child as TextureRect).flip_h = true
+		prev.disabled = why_idx <= 0
+		prev.modulate.a = 0.4 if why_idx <= 0 else 1.0
+		row.add_child(prev)
+		var where := _text("%d de %d" % [why_idx + 1, paras.size()], F_SUB, _c("quiet"), font_medium)
+		where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		where.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		where.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(where)
+		var next := _round_button("play", _why_go.bind(1), 96.0, _c("accent_soft"), _c("accent_text"), false)
+		next.disabled = why_idx >= paras.size() - 1
+		next.modulate.a = 0.4 if why_idx >= paras.size() - 1 else 1.0
+		row.add_child(next)
+		box.add_child(row)
+	return box
+
+
+## Enseña en el tablero el párrafo que se está leyendo: su posición, la jugada resaltada y sus flechas.
+func _why_apply() -> void:
+	if why_paras.is_empty():
+		return
+	var p: Dictionary = why_paras[clampi(why_idx, 0, why_paras.size() - 1)]
+	if not why_board:
+		why_saved = {"fen": view.board.chess.fen(), "from": view.board.last_from, "to": view.board.last_to, "interactive": view.interactive}
+		why_board = true
+	view.set_fen(str(p["fen"]))
+	var mv: Array = p.get("move", [])
+	if mv.size() == 2:
+		view.board.mark_last_move(int(mv[0]), int(mv[1]))
+	view.board.set_arrows(p.get("arrows", []))
+	view.interactive = false
+
+
+func _why_go(delta: int) -> void:
+	if why_paras.is_empty():
+		return
+	why_idx = clampi(why_idx + delta, 0, why_paras.size() - 1)
+	_why_apply()
+	_keep_scroll = true
+	_refresh()
+
+
+## Deja el tablero como estaba antes de la explicación.
+func _why_restore() -> void:
+	if not why_board:
+		return
+	why_board = false
+	view.set_fen(str(why_saved.get("fen", view.board.chess.fen())))
+	view.board.mark_last_move(int(why_saved.get("from", -1)), int(why_saved.get("to", -1)))
+	view.board.set_arrows([])
+	view.interactive = bool(why_saved.get("interactive", false))
+
+
+## Antes de cualquier botón de la barra: si se estaba enseñando una explicación en el tablero, se cierra.
+func _why_close_for_action() -> void:
+	if move_why_open or why_story_open:
+		_why_restore()
+		move_why_open = false
+		why_story_open = false
+		why_paras = []
+
+
+## La solución entera, jugada a jugada: cada jugada con su veredicto y sus párrafos.
+func _story_paras() -> Array:
+	var out: Array = []
+	var moves: Array = puzzle.get("moves", [])
+	for i in range(1, moves.size()):
+		var e := _puzzle_move_why(i)
+		if e.is_empty():
+			break
+		for p: Dictionary in e["paras"]:
+			var q := p.duplicate()
+			q["verdict"] = e["verdict"]
+			q["label"] = e["label"]
+			q["san"] = e["san"]
+			out.append(q)
+	return out
+
+
+func _toggle_story() -> void:
+	why_story_open = not why_story_open
+	if why_story_open:
+		why_paras = _story_paras()
+		why_idx = 0
+		_why_apply()
+	else:
+		_why_restore()
+		why_paras = []
+	_keep_scroll = true
+	_refresh()
 
 
 ## Explicación para niños de una jugada de un problema: una frase fija (con voz) según la clase de error que
@@ -2488,6 +2727,16 @@ func _move_badge(uci: String, kind: String) -> void:
 
 func _toggle_move_why() -> void:
 	move_why_open = not move_why_open
+	why_paras = []
+	why_idx = 0
+	if move_why_open:
+		var ply := ask_step - browse_back
+		var e := _puzzle_move_why(ply - 1)
+		if not e.is_empty():
+			why_paras = e["paras"]
+			_why_apply()
+	else:
+		_why_restore()
 	_refresh()
 
 
@@ -2511,6 +2760,7 @@ func _retry_position() -> void:
 func _toggle_whatif() -> void:
 	if explain == null or not explain.ok:
 		return
+	_why_close_for_action()
 	run_id += 1
 	whatif = not whatif
 	whatif_exp = {}
@@ -3326,6 +3576,9 @@ func _start(i: int, review: bool = false) -> void:
 	view.board.set_arrows([])
 	browse_back = 0
 	move_why_open = false
+	why_board = false
+	why_story_open = false
+	why_paras = []
 	view.set_fen(puzzle["fen"])
 	# Juega quien responde a la primera jugada (la del rival).
 	view.set_orientation(1 - view.board.chess.turn)
@@ -3346,6 +3599,9 @@ func _start(i: int, review: bool = false) -> void:
 func _ask() -> void:
 	browse_back = 0
 	move_why_open = false
+	why_board = false
+	why_story_open = false
+	why_paras = []
 	fen_before = view.board.chess.fen()
 	ask_step = step
 	hint_level = 0
@@ -3880,6 +4136,9 @@ func _start_lesson(id: String) -> void:
 func _show_lesson_step() -> void:
 	run_id += 1
 	_clear_explanation()
+	learn_why_open = false
+	why_board = false
+	why_paras = []
 	_try = {}
 	_gap_limit = INF
 	var exercises: Array = lesson.get("exercises", [])
@@ -3997,6 +4256,7 @@ func _learn_move(uci: String) -> void:
 		_refresh()
 		return
 	var verdict: Dictionary = (ex.get("moves", {}) as Dictionary).get(uci, {})
+	ex_last_uci = uci
 	ex_text = str(verdict.get("k" if kids else "t", verdict.get("t", "")))
 	_say([BRAVO, ex_text] if bool(verdict.get("ok", false)) else [ex_text])
 	_sfx("acierto" if bool(verdict.get("ok", false)) else "error")
@@ -4068,11 +4328,42 @@ func _build_learn_card() -> void:
 		card_body.add_child(_para(line, F_SUB, _c("quiet"), font_medium))
 	if ex_text != "":
 		card_body.add_child(_para(ex_text, F_BODY, _c("good") if ex_good else _c("bad"), font_medium))
+	if learn_why_open and ex_state == "done":
+		var e := _learn_why()
+		if not e.is_empty():
+			card_body.add_child(_why_block(e, "Por qué"))
+
+
+## ¿Tiene el ejercicio un «¿Por qué?» sacado del tablero? Solo en los de jugada y fuera del nivel Kids.
+func _learn_why_ok() -> bool:
+	return not kids and str(ex.get("kind", "")) == "move" and ex_last_uci != "" and Chess.from_fen(str(ex.get("fen", ""))).find_uci(ex_last_uci) >= 0
+
+
+func _learn_why() -> Dictionary:
+	var before := Chess.from_fen(str(ex.get("fen", "")))
+	var m := before.find_uci(ex_last_uci)
+	if m < 0:
+		return {}
+	return MoveWhy.explain(before, m, before.turn, "solution")
+
+
+func _learn_why_toggle() -> void:
+	learn_why_open = not learn_why_open
+	why_paras = []
+	why_idx = 0
+	if learn_why_open:
+		var e := _learn_why()
+		if not e.is_empty():
+			why_paras = e["paras"]
+			_why_apply()
+	else:
+		_why_restore()
+	_refresh()
 
 
 func _build_learn_actions() -> void:
 	var last_lesson := _is_last_lesson()
-	var key := "learn:%s:%d:%s:%s" % [ex_state, lesson_ex, str(last_lesson), str(kids)]
+	var key := "learn:%s:%d:%s:%s:%s" % [ex_state, lesson_ex, str(last_lesson), str(kids), str(learn_why_open)]
 	if key == _actions_mode:
 		return
 	_actions_mode = key
@@ -4104,6 +4395,14 @@ func _build_learn_actions() -> void:
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"done":
 			row = [_button("retry", "Repetir", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if _learn_why_ok():
+				if learn_why_open:
+					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+				else:
+					var tint := _tint("lilac")
+					var why := wide.duplicate()
+					why["icon_color"] = tint[1]
+					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint[0], _c("ink"), why))
 		"end":
 			var unit := _unit_of(str(lesson.get("id", "")))
 			if not unit.is_empty() and unit.has("game") and _is_last_of_unit(str(lesson.get("id", ""))):
@@ -4120,7 +4419,7 @@ func _build_learn_actions() -> void:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Al acabar un ejercicio (o la lección), los botones van en la ventana del resultado, encima del tablero.
-	if ex_state in ["done", "fail", "end"]:
+	if ex_state in ["done", "fail", "end"] and not learn_why_open:
 		_popup_row = row
 		return
 	_popup_row = []
@@ -4130,7 +4429,7 @@ func _build_learn_actions() -> void:
 
 ## Ventana semitransparente con el resultado del ejercicio o de la lección y sus botones, encima del tablero.
 func _sync_learn_popup() -> void:
-	var want := mode == "learn" and ex_state in ["done", "fail", "end"] and not _popup_row.is_empty()
+	var want := mode == "learn" and ex_state in ["done", "fail", "end"] and not _popup_row.is_empty() and not learn_why_open
 	if learn_popup != null and is_instance_valid(learn_popup):
 		if want and str(learn_popup.get_meta("key", "")) == _actions_mode:
 			return
@@ -4235,6 +4534,9 @@ func _learn_hint() -> void:
 
 
 func _next_lesson_step() -> void:
+	learn_why_open = false
+	why_board = false
+	why_paras = []
 	lesson_ex += 1
 	_show_lesson_step()
 
@@ -4441,7 +4743,7 @@ func _open_train_hub() -> void:
 	frame.mouse_filter = Control.MOUSE_FILTER_PASS
 	frame.add_child(path)
 	body.add_child(frame)
-	_path_hint = _centered(_para("Toca un nivel superado para repasar sus problemas." if lv > 0 else "Los niveles se desbloquean a medida que avanzas.", F_FOOT, _c("quiet"), font_regular))
+	_path_hint = _centered(_para("Toca un nivel para ver sus problemas, numerados.", F_FOOT, _c("quiet"), font_regular))
 	body.add_child(_path_hint)
 	body.add_child(_spacer(10.0))
 	var seen := {}
@@ -4505,14 +4807,67 @@ func _train_family(fam: String) -> void:
 
 ## Un disco del camino de niveles: uno superado se repasa; el actual, entrenamiento normal; los demás, bloqueados.
 func _on_level_pressed(i: int, current: int) -> void:
-	if i < current:
-		train_family = ""
-		train_level = i
-		_start_training()
-	elif i == current:
-		_train_family("")
+	if i <= current:
+		_open_level_list(i)
 	elif _path_hint != null and is_instance_valid(_path_hint):
 		_path_hint.text = "El nivel %d se desbloquea cuando llegues a él." % i
+
+
+## Los problemas de un nivel, numerados del más fácil al más difícil, con una marca en los resueltos. Se toca uno
+## para jugarlo.
+func _open_level_list(lv: int) -> void:
+	var list: Array = _level_lists().get(lv, [])
+	var page := _page("levels")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Nivel %d · %s" % [lv, str(_rank(lv)[1])], F_TITLE + 6, _c("ink"), font_display)))
+	var solved := 0
+	for item: Dictionary in list:
+		if _puzzle_state(str(item["id"])) == 2:
+			solved += 1
+	body.add_child(_centered(_para("%d problemas · %d resueltos" % [list.size(), solved], F_BODY, _c("quiet"), font_medium)))
+	body.add_child(_spacer(30.0))
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 18)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(grid)
+	for k in list.size():
+		var item: Dictionary = list[k]
+		var st := _puzzle_state(str(item["id"]))
+		var tint := _tint("mint") if st == 2 else (_tint("butter") if st == 1 else [_c("surface"), _c("ink")])
+		var b := _button("", "", _start_level_puzzle.bind(str(item["id"]), lv), tint[0], _c("ink"), {"height": 150.0, "radius": 40, "glow": _c("shadow")})
+		b.custom_minimum_size = Vector2(160.0, 150.0)
+		var num := _text(str(k + 1), F_HEAD, _c("ink"), font_display)
+		num.set_anchors_preset(Control.PRESET_FULL_RECT)
+		num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(num)
+		if st == 2:
+			var tick := _icon("check", 40.0, _c("good"))
+			tick.position = Vector2(112.0, 8.0)
+			tick.size = Vector2(40.0, 40.0)
+			tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(tick)
+		grid.add_child(b)
+	body.add_child(_spacer(26.0))
+	body.add_child(_centered(_para("Verde, con marca: resuelto. Amarillo: intentado. Toca uno para jugarlo.", F_FOOT, _c("quiet"), font_regular)))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("back", "Volver", _open_train_hub, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+## Juega un problema concreto de la lista de un nivel; después, el entrenamiento sigue con ese nivel.
+func _start_level_puzzle(id: String, lv: int) -> void:
+	if not _index_of.has(id):
+		return
+	mode = "train"
+	train_family = ""
+	train_level = lv
+	_close_progress()
+	_start(int(_index_of[id]))
 
 
 func _home_test() -> void:

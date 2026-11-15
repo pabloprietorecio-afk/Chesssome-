@@ -30,6 +30,14 @@ func _ready() -> void:
 	demo._on_level_pressed(8, 5)
 	await _frames(4)
 	await _shot("p3_entrenar_bloqueado")
+	# Lista numerada de un nivel, con resueltos (verde) e intentados (amarillo).
+	var lists: Dictionary = demo._level_lists()
+	var four: Array = lists.get(4, [])
+	for k in mini(5, four.size()):
+		demo.player = Assessment.record_try(demo.player, four[k], {"correct": k != 3}, "train")
+	demo._open_level_list(4)
+	await _frames(8)
+	await _shot("p3b_nivel_4")
 	demo._open_online_home()
 	await _frames(8)
 	await _shot("p4_online")
@@ -53,8 +61,57 @@ func _ready() -> void:
 	await _shot("p7_online_lamina_asienta")
 	demo.online_busy = false
 	demo._close_progress()
+	await _por_que(demo)
 	print("PANTALLAS DONE")
 	get_tree().quit()
+
+
+## «¿Por qué?» de un problema real (IBanZ): Tb1+, Rf2 (la única: el caballo controla e2 y g2) y Cd3+ (ataque
+## doble). Las explicaciones van párrafo a párrafo, con flechas en el tablero.
+func _por_que(demo: Control) -> void:
+	var idx := -1
+	for i in demo.puzzles.size():
+		if str(demo.puzzles[i]["id"]) == "IBanZ":
+			idx = i
+	if idx < 0:
+		print("POR QUE: no está IBanZ")
+		return
+	demo.view.board.anim_mode = Board3D.Anim.NONE
+	demo._start(idx)
+	await get_tree().create_timer(2.5).timeout
+	demo._on_step()
+	await get_tree().create_timer(1.0).timeout
+	demo._on_right()
+	await get_tree().create_timer(2.0).timeout
+	print("POR QUE fase=%d paso=%d" % [demo.phase, demo.ask_step])
+	demo._toggle_move_why()
+	await _frames(6)
+	await _shot("p8_rival_1")
+	demo._why_go(1)
+	await _frames(4)
+	await _shot("p9_rival_2")
+	demo._why_go(1)
+	await _frames(4)
+	await _shot("p10_rival_3")
+	demo._why_go(2)
+	await _frames(4)
+	await _shot("p11_rival_5")
+	for p: Dictionary in demo.why_paras:
+		print("POR QUE · ", p["text"])
+	demo._toggle_move_why()
+	await _frames(4)
+	demo._on_step()
+	await get_tree().create_timer(1.5).timeout
+	await _frames(4)
+	await _shot("p12_resuelto")
+	demo._toggle_story()
+	var k := 0
+	for i in demo.why_paras.size():
+		if str(demo.why_paras[i]["text"]).contains("ataque doble") and str(demo.why_paras[i].get("san", "")) == "Cd3+":
+			k = i
+	demo._why_go(k)
+	await _frames(4)
+	await _shot("p13_jugada_a_jugada")
 
 
 func _find_clock(n: Node) -> FlipClock:
