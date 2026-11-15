@@ -216,6 +216,9 @@ var game_log := {}
 var game_recorded := false
 ## Adónde vuelve «Mis partidas»: "online" o "setup" (la página de jugar contra el ordenador).
 var my_games_back := "online"
+## Filtros de «Mis partidas»: resultado ("", "ganadas", "tablas", "perdidas") y cómo terminó (GameLog.reason).
+var my_games_result := ""
+var my_games_why := ""
 ## Fotos de rivales ya decodificadas, por identificador.
 var _photo_cache := {}
 ## Lo que enseña el rival y su foto ya decodificada.
@@ -255,6 +258,13 @@ var game_clocked := false
 var game_clock := [0.0, 0.0]
 var game_inc_ms := 0.0
 var _clock_labels: Array = []
+## El reloj «de verdad» de la tarjeta (se rehace con la tarjeta) y la altura de tu pulsador (1 arriba, 0 abajo),
+## que baja o sube poco a poco cuando cambia el lado que corre.
+var chess_clock: ChessClock
+var clock_up := 1.0
+var _digits_font: FontVariation
+## Ventana de confirmación abierta (rendirse, salir).
+var confirm_node: Control
 ## Pulsar el reloj tras cada jugada, como en una partida de verdad (ajuste; por defecto, sí), y avisar si no se
 ## pulsa en PRESS_REMINDER segundos (ajuste; por defecto, sí). Bando cuyo reloj corre ahora.
 var press_clock := true
@@ -982,6 +992,10 @@ func _ready() -> void:
 	font_medium = _load_font("Inter-Medium.woff2")
 	font_semibold = _load_font("Inter-SemiBold.woff2")
 	font_display = _load_font("InterDisplay-Bold.woff2")
+	if font_display != null:
+		_digits_font = FontVariation.new()
+		_digits_font.base_font = font_display
+		_digits_font.opentype_features = {"tnum": 1}
 	_load_puzzles()
 	_load_course()
 	_load_version()
@@ -1015,6 +1029,7 @@ func _ready() -> void:
 	# El tablero 3D pinta su propio fondo con el color de esta pantalla (ver BoardView3D.set_board_theme).
 	view = BoardView3D.new()
 	view.move_played.connect(_on_move_played)
+	view.tapped.connect(_on_view_tapped)
 	view.view_gesture.connect(_on_view_gesture)
 	add_child(view)
 	view.set_piece_set(_shown_set())
@@ -1047,7 +1062,9 @@ func _notification(what: int) -> void:
 		_aviso_refresh()
 	# El botón «atrás» de Android cierra lo que haya abierto encima de la pantalla.
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		if welcome != null and is_instance_valid(welcome):
+		if confirm_node != null and is_instance_valid(confirm_node):
+			_close_confirm()
+		elif welcome != null and is_instance_valid(welcome):
 			_close_welcome()
 		elif progress != null and is_instance_valid(progress):
 			_leave_progress()
@@ -1058,7 +1075,7 @@ func _notification(what: int) -> void:
 		elif mode == "learn":
 			_open_course()
 		elif mode == "game":
-			_leave_game()
+			_ask_leave()
 		elif use_settings:
 			_open_home()
 
@@ -1547,10 +1564,16 @@ func _insets() -> Vector2:
 
 ## Construye todo menos el tablero. Se rehace entero al cambiar de tema: es barato y no deja estilos a medias.
 func _build_chrome() -> void:
+	# Al rehacerla (p. ej., al cambiar de tema) va al mismo sitio: debajo de las páginas, ventanas y avisos que
+	# estuvieran abiertos. Si no, la tarjeta y los botones del problema quedaban por encima del inicio.
+	var chrome_at := -1
+	var tip_at := -1
 	if chrome != null:
+		chrome_at = chrome.get_index()
 		chrome.visible = false
 		chrome.queue_free()
 	if gesture_tip != null and is_instance_valid(gesture_tip):
+		tip_at = gesture_tip.get_index()
 		gesture_tip.queue_free()
 	var th := Theme.new()
 	if font_regular != null:
@@ -1571,6 +1594,8 @@ func _build_chrome() -> void:
 	chrome.add_theme_constant_override("separation", 0)
 	chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chrome)
+	if chrome_at >= 0:
+		move_child(chrome, chrome_at)
 
 	# Barra superior: contador y botones redondos (chincheta del giro, vista y opciones).
 	# En pantalla completa la zona de la barra de estado sigue teniendo la cámara y los avisos del sistema:
@@ -1696,9 +1721,18 @@ func _build_chrome() -> void:
 	gesture_tip.visible = false
 	gesture_tip.fit()
 	add_child(gesture_tip)
+	if tip_at >= 0:
+		move_child(gesture_tip, tip_at)
 
 	_refresh(false)
 	_place_board.call_deferred()
+	# La página abierta, con los colores nuevos (sin cerrar la hoja de opciones desde la que se cambió el tema).
+	var keep_sheet := sheet_kind
+	var keep_open := options_open
+	if progress_kind == "home" and progress != null and is_instance_valid(progress):
+		_open_home()
+		sheet_kind = keep_sheet
+		options_open = keep_open
 	if sheet_kind == "options":
 		_build_sheet()
 	elif sheet_kind == "ai":
@@ -2156,7 +2190,7 @@ func _build_card() -> void:
 				var lv0 := Assessment.level_of(float(_rating_shown[0]))
 				var lv1 := Assessment.level_of(float(_rating_shown[1]))
 				if lv1 > lv0:
-					chips.add_child(_chip("¡Subes al nivel %d!" % lv1, chip_tint[0], chip_tint[1], "trend"))
+					chips.add_child(_chip(("¡Subes al nivel %d!" if kids else "¡Táctica: nivel %d!") % lv1, chip_tint[0], chip_tint[1], "trend"))
 				chips.add_child(_chip("Puntuación %d → %d" % [int(round(float(_rating_shown[0]))), int(round(float(_rating_shown[1])))], chip_tint[0], chip_tint[1]))
 			chips.add_child(_chip("Nivel %d · %d" % [Assessment.level_of(float(rating)), rating], _c("field"), _c("ink")))
 			chips.add_child(_chip("Problema real de Lichess", _c("field"), _c("quiet"), "open"))
@@ -2363,6 +2397,12 @@ func _close_result_popup() -> void:
 ## sigue funcionando.
 func _sync_result_popup() -> void:
 	var want := result_popup and phase == Phase.SOLVED and mode != "learn" and mode != "game"
+	if want and (result_popup_node == null or not is_instance_valid(result_popup_node)) and view.board.is_animating():
+		var my_run0 := run_id
+		_when_board_still(func() -> void:
+			if my_run0 == run_id and result_popup:
+				_sync_result_popup())
+		return
 	if want and Time.get_ticks_msec() < result_popup_at:
 		# Un instante para ver la última jugada.
 		var my_run := run_id
@@ -2734,10 +2774,26 @@ func _solver_color() -> int:
 
 ## Explicación de la jugada `i` de la línea del problema, con su veredicto: la primera del rival es el error que
 ## abre el problema; las demás del rival, su defensa (o su única jugada); las de quien resuelve, las mejores.
+## Explicaciones ya calculadas (las del rival usan una búsqueda corta del motor): por problema y jugada.
+var _why_cache := {}
+
+
 func _puzzle_move_why(i: int) -> Dictionary:
 	var moves: Array = puzzle.get("moves", [])
 	if i < 0 or i >= moves.size():
 		return {}
+	var key := "%s|%s|%d" % [str(puzzle.get("id", "")), str(puzzle.get("fen", "")), i]
+	if _why_cache.has(key):
+		return _why_cache[key]
+	if _why_cache.size() > 200:
+		_why_cache.clear()
+	var e := _puzzle_move_why_now(i)
+	_why_cache[key] = e
+	return e
+
+
+func _puzzle_move_why_now(i: int) -> Dictionary:
+	var moves: Array = puzzle.get("moves", [])
 	var before := _puzzle_pos(i)
 	var m := before.find_uci(str(moves[i]))
 	if m < 0:
@@ -2828,6 +2884,16 @@ func _why_apply() -> void:
 		view.board.mark_last_move(int(mv[0]), int(mv[1]))
 	view.board.set_arrows(p.get("arrows", []))
 	view.interactive = false
+	# El rey «intenta» ir a cada casilla, una detrás de otra.
+	var tries: Array = p.get("tries", [])
+	if not tries.is_empty():
+		var my_idx := why_idx
+		var my_paras := why_paras
+		for i in tries.size():
+			var tr: Array = tries[i]
+			get_tree().create_timer(0.35 + 1.0 * float(i)).timeout.connect(func() -> void:
+				if why_board and why_idx == my_idx and why_paras == my_paras:
+					view.board.try_square(int(tr[0]), int(tr[1])))
 
 
 func _why_go(delta: int) -> void:
@@ -2938,14 +3004,19 @@ func _kid_wrong_arrows(e: Dictionary) -> Array:
 
 ## Chapa con la valoración de la jugada en su casilla de destino, con los signos de anotación de siempre:
 ## «!» buena jugada (aquí, la de la solución), «?» error, «??» error grave (pierde material o permite mate).
-const BADGES := {"best": ["!", Color("2f9e63")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
+## Signo (o «@icono») y color de cada chapa.
+const BADGES := {"best": ["!", Color("2f9e63")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
 
 
 func _move_badge(uci: String, kind: String) -> void:
 	if kids or uci.length() < 4 or not BADGES.has(kind):
 		return
 	var def: Array = BADGES[kind]
-	view.board.set_badge(Chess.sq_index(uci.substr(2, 2)), str(def[0]), def[1])
+	var glyph := str(def[0])
+	if glyph.begins_with("@"):
+		view.board.set_badge(Chess.sq_index(uci.substr(2, 2)), "", def[1], UiIcons.texture(glyph.substr(1)))
+	else:
+		view.board.set_badge(Chess.sq_index(uci.substr(2, 2)), glyph, def[1])
 
 
 func _toggle_move_why() -> void:
@@ -3252,14 +3323,7 @@ func _build_sheet() -> void:
 		if kids:
 			box.add_child(_switch_row("sound", "sky", "Voz", "Lee en voz alta las lecciones y lo que pasa en cada jugada.", voice_on, _set_voice))
 			box.add_child(_switch_row("party", "rose", "Música", "Una melodía infantil de fondo, en bucle. Baja sola cuando habla la voz.", music_on, _set_music))
-	if _has_player() and not kids:
-		var mine_tint := _tint("lilac")
-		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
-	var play_tint := _tint("mint")
-	box.add_child(_button("piece_knight", "Jugar una partida", _open_game_setup, play_tint[0], play_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
-	if not course.is_empty():
-		var learn_tint := _tint("butter")
-		box.add_child(_button("chick", "Aprende desde cero", _open_course, learn_tint[0], learn_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 64.0}))
+	# «Mi nivel y mi plan», «Jugar una partida» y «Aprende desde cero» están en el inicio: aquí solo opciones.
 	if not kids:
 		box.add_child(_caption("Partidas con reloj"))
 		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
@@ -4354,11 +4418,11 @@ func _open_course() -> void:
 			n += 1
 	body.add_child(_spacer(10.0, true))
 	if not kids and not _has_player():
-		footer.add_child(_button("cap", "Ya sé mover las piezas: test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("cap", "Ya sé mover las piezas: test de nivel", _open_experience, _tint("mint")[0], _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if use_settings:
-		footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("home", "Inicio", _open_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if mode == "learn" and not lesson.is_empty():
-		footer.add_child(_button("back", "Volver a la lección", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("back", "Volver a la lección", _close_progress, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
 
 func _start_lesson(id: String) -> void:
@@ -4562,6 +4626,12 @@ func _build_learn_card() -> void:
 	var step := _chip("Ejercicio %d de %d" % [lesson_ex + 1, exercises.size()], _c("field"), _c("quiet"))
 	step.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	card_body.add_child(step)
+	if learn_why_open:
+		# Con el «¿Por qué?» abierto, solo él: así no se sale de la tarjeta.
+		var e0 := _learn_why()
+		if not e0.is_empty():
+			card_body.add_child(_why_block(e0, "Por qué"))
+			return
 	card_body.add_child(_para(_ex_text(ex), F_BODY, _c("ink"), font_regular if ex_state != "play" else font_medium))
 	if str(ex.get("kind", "")) == "collect" and ex_state == "play":
 		var stars_total: int = (ex.get("stars", []) as Array).size()
@@ -4571,18 +4641,43 @@ func _build_learn_card() -> void:
 		card_body.add_child(_para(line, F_SUB, _c("quiet"), font_medium))
 	if ex_text != "":
 		card_body.add_child(_para(ex_text, F_BODY, _c("good") if ex_good else _c("bad"), font_medium))
-	if learn_why_open and ex_state == "done":
+	if learn_why_open and ex_state in ["done", "fail", "info"]:
 		var e := _learn_why()
 		if not e.is_empty():
 			card_body.add_child(_why_block(e, "Por qué"))
 
 
-## ¿Tiene el ejercicio un «¿Por qué?» sacado del tablero? Solo en los de jugada y fuera del nivel Kids.
+## ¿Tiene el ejercicio un «¿Por qué?» sacado del tablero? En los de jugada (fuera de Kids) y, también en Kids, cuando
+## hay mate o ahogado (en un ejemplo o tras tu jugada).
 func _learn_why_ok() -> bool:
+	if not _learn_box().is_empty():
+		return true
 	return not kids and str(ex.get("kind", "")) == "move" and ex_last_uci != "" and Chess.from_fen(str(ex.get("fen", ""))).find_uci(ex_last_uci) >= 0
 
 
+## Mate o ahogado en la lección (la posición de un ejemplo, o la que deja tu jugada): por qué el rey no tiene salida,
+## paso a paso y con el rey intentando escapar. [] si no hay ni mate ni ahogado.
+func _learn_box() -> Array:
+	var kind := str(ex.get("kind", ""))
+	var pos := Chess.from_fen(str(ex.get("fen", "")))
+	if kind == "move":
+		if ex_last_uci == "" or not ex_state in ["done", "fail"]:
+			return []
+		var m := pos.find_uci(ex_last_uci)
+		if m < 0:
+			return []
+		var me := pos.turn
+		pos.apply(m)
+		return MoveWhy.king_box(pos, me, kids)
+	if kind == "info":
+		return MoveWhy.king_box(pos, 1 - pos.turn, kids)
+	return []
+
+
 func _learn_why() -> Dictionary:
+	var box := _learn_box()
+	if not box.is_empty():
+		return {"paras": box}
 	var before := Chess.from_fen(str(ex.get("fen", "")))
 	var m := before.find_uci(ex_last_uci)
 	if m < 0:
@@ -4626,6 +4721,14 @@ func _build_learn_actions() -> void:
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Empezar", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"info":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if _learn_why_ok():
+				if learn_why_open:
+					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+				else:
+					var tint0 := _tint("lilac")
+					var why0 := wide.duplicate()
+					why0["icon_color"] = tint0[1]
+					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint0[0], _c("ink"), why0))
 		"play":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet)]
 			if str(ex.get("kind", "")) == "move":
@@ -4636,6 +4739,14 @@ func _build_learn_actions() -> void:
 			row.append(_button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide))
 		"fail":
 			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if _learn_why_ok():
+				if learn_why_open:
+					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
+				else:
+					var tint1 := _tint("lilac")
+					var why1 := wide.duplicate()
+					why1["icon_color"] = tint1[1]
+					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint1[0], _c("ink"), why1))
 		"done":
 			row = [_button("retry", "Repetir", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 			if _learn_why_ok():
@@ -4670,9 +4781,29 @@ func _build_learn_actions() -> void:
 		actions.add_child(b)
 
 
+## Llama a `cb` cuando el tablero termina de moverse (la jugada, el rey que cae…), con una pausa para verlo.
+func _when_board_still(cb: Callable) -> void:
+	if not view.board.is_animating():
+		cb.call()
+		return
+	view.board.animations_finished.connect(func() -> void:
+		get_tree().create_timer(0.35).timeout.connect(cb), CONNECT_ONE_SHOT)
+
+
+var _learn_popup_wait := false
+
+
 ## Ventana semitransparente con el resultado del ejercicio o de la lección y sus botones, encima del tablero.
 func _sync_learn_popup() -> void:
 	var want := mode == "learn" and ex_state in ["done", "fail", "end"] and not _popup_row.is_empty() and not learn_why_open
+	# Primero se ve la jugada entera (y el rey que cae); después, la ventana.
+	if want and (learn_popup == null or not is_instance_valid(learn_popup)) and view.board.is_animating():
+		if not _learn_popup_wait:
+			_learn_popup_wait = true
+			_when_board_still(func() -> void:
+				_learn_popup_wait = false
+				_sync_learn_popup())
+		return
 	if learn_popup != null and is_instance_valid(learn_popup):
 		if want and str(learn_popup.get_meta("key", "")) == _actions_mode:
 			return
@@ -4847,11 +4978,16 @@ func _open_home() -> void:
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
-		words.add_child(_line("Nivel %d de %d · %s" % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
+		# El nivel que sale de los problemas mide la táctica, no la fuerza en partidas (eso es el nivel de juego).
+		words.add_child(_line(("Nivel %d de %d · %s" if kids else "Táctica: nivel %d de %d · %s") % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
 		words.add_child(_line(left_text, F_SUB + 2, _c("quiet"), font_medium))
+		if not kids:
+			var gr := GameLog.game_rating(_log())
+			if int(gr["n"]) > 0:
+				words.add_child(_line("Juego: %d%s" % [roundi(float(gr["r"])), " (provisional)" if bool(gr["provisional"]) else ""], F_SUB + 2, _c("quiet"), font_medium))
 		rank_row.add_child(words)
 		body.add_child(_spacer(22.0))
 		body.add_child(rank_row)
@@ -4892,8 +5028,8 @@ func _open_home() -> void:
 	body.add_child(_spacer(8.0, true))
 	if kids:
 		# Salida a la vista (pide la multiplicación para mayores).
-		footer.add_child(_button("close", "Salir del modo Kids (para mayores)", _set_kids.bind(false), Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
-	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 52.0, "font": font_medium}))
+		footer.add_child(_button("close", "Salir del modo Kids (para mayores)", _set_kids.bind(false), _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
+	footer.add_child(_button("sliders", "Opciones", _open_options, _tint("sky")[0], _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 52.0, "font": font_medium}))
 
 
 ## Iconos de la barra al entrar o salir del nivel Kids (a color o los normales).
@@ -4919,6 +5055,13 @@ func _sync_bar_icons() -> void:
 
 ## Botón de inicio de la barra: deja lo que se esté haciendo (una partida en curso se abandona) y abre el inicio.
 func _go_home() -> void:
+	if _game_live():
+		_ask_leave(_go_home_now)
+		return
+	_go_home_now()
+
+
+func _go_home_now() -> void:
 	if online.phase != "idle":
 		online.leave()
 	online_busy = false
@@ -4997,7 +5140,7 @@ func _open_train_hub() -> void:
 		seen[str(t["id"])] = str(t.get("family", "otros"))
 		if bool(t["correct"]):
 			solved[str(t["id"])] = true
-	var where := "Nivel %d de %d · %s" % [lv, top, str(rank[1])]
+	var where := ("Nivel %d de %d · %s" if kids else "Táctica: nivel %d de %d · %s") % [lv, top, str(rank[1])]
 	body.add_child(_centered(_para(where, F_HEAD, _c("ink"), font_display)))
 	var left_text := "¡Nivel máximo!"
 	if lv < top:
@@ -5041,7 +5184,7 @@ func _open_train_hub() -> void:
 		var fam_name := str(FAMILY_KIDS[fam]) if kids else str(Assessment.FAMILY_NAME[fam])
 		body.add_child(_option_button(str(look[0]), str(look[1]), fam_name, text, _train_family.bind(fam)))
 		body.add_child(_spacer(14.0))
-	footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+	footer.add_child(_button("home", "Inicio", _open_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 func _train_family(fam: String) -> void:
@@ -5101,7 +5244,7 @@ func _open_level_list(lv: int) -> void:
 	body.add_child(_spacer(26.0))
 	body.add_child(_centered(_para("Verde, con marca: resuelto. Amarillo: intentado. Toca uno para jugarlo.", F_FOOT, _c("quiet"), font_regular)))
 	body.add_child(_spacer(10.0, true))
-	footer.add_child(_button("back", "Volver", _open_train_hub, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+	footer.add_child(_button("back", "Volver", _open_train_hub, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
 
 
 ## Juega un problema concreto de la lista de un nivel; después, el entrenamiento sigue con ese nivel.
@@ -5200,9 +5343,14 @@ func _open_game_setup() -> void:
 		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
 		body.add_child(_spacer(14.0))
 	body.add_child(_spacer(10.0, true))
+	var frow := HBoxContainer.new()
+	frow.add_theme_constant_override("separation", 16)
+	footer.add_child(frow)
 	if not kids:
-		footer.add_child(_button("trend", "Mis partidas", _open_my_games_from.bind("setup"), Color(0, 0, 0, 0), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
-	footer.add_child(_button("close", "Cancelar", _close_game_setup, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
+		frow.add_child(_button("trend", "Mis partidas", _open_my_games_from.bind("setup"), _tint("lilac")[0], _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	frow.add_child(_button("close", "Cancelar", _close_game_setup, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
+	for c: Node in frow.get_children():
+		(c as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 func _set_game_color(i: int) -> void:
@@ -5329,14 +5477,14 @@ func _open_online() -> void:
 		body.add_child(_spacer(16.0))
 		body.add_child(_option_button("trend", "mint", "Mis partidas", "Rivales, resultados y estadísticas.", _open_my_games_from.bind("online"), true))
 		body.add_child(_spacer(16.0))
-		var lv_text := "Tu rival verá tu nombre, tu nivel y tu icono."
+		var lv_text := "Tu rival verá tu nombre, tu nivel de táctica y tu icono."
 		body.add_child(_centered(_para(lv_text, F_SUB, _c("quiet"), font_regular)))
 		body.add_child(_card_button("Cambiar mi nombre", _change_online_name, _c("field"), _c("ink"), F_SUB, "sliders"))
 		if avatar == "foto" and _avatar_photo() != null:
 			body.add_child(_spacer(10.0))
 			body.add_child(_card_button("Enseñar mi foto al rival: %s" % ("sí" if online_photo else "no"), _toggle_online_photo, _c("field"), _c("ink"), F_SUB, "check" if online_photo else "eye"))
 	body.add_child(_spacer(10.0, true))
-	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
 
 
 func _online_search() -> void:
@@ -5346,6 +5494,8 @@ func _online_search() -> void:
 	online_rival = {}
 	_rival_tex = null
 	online.my_profile = _online_profile()
+	var gr := GameLog.game_rating(_log())
+	online.my_game_rating = {} if kids or int(gr["n"]) == 0 else {"r": roundi(float(gr["r"])), "rd": clampi(roundi(float(gr["rd"])), 30, 350), "n": int(gr["n"])}
 	_open_online()
 	online.start()
 
@@ -5367,10 +5517,9 @@ func _online_move(uci: String) -> void:
 	if mode != "game" or not bool(game.get("online", false)) or game_state != "think":
 		return
 	if game_back > 0:
-		# Mirando jugadas anteriores: se guarda y se aplica al volver al directo.
+		# Mirando jugadas anteriores: vuelve al directo y se ve la jugada del rival.
 		_online_pending.append(uci)
-		_actions_mode = ""
-		_refresh()
+		_game_browse(-99)
 		return
 	var pos := view.board.chess.copy()
 	var m := pos.find_uci(uci)
@@ -5596,6 +5745,7 @@ func _record_game() -> void:
 		"color": game_color,
 		"resultado": game_won,
 		"motivo": game_result,
+		"rival_juego": (rival_info.get("juego", {}) as Dictionary).duplicate() if rival_info.get("juego", {}) is Dictionary else {},
 		"inicio": str(game_history[0]) if not game_history.is_empty() else Board3D.START_FEN,
 		"jugadas": game_moves.duplicate(),
 	}
@@ -5692,29 +5842,60 @@ func _open_my_games() -> void:
 	body.add_child(_spacer(16.0))
 	body.add_child(_centered(_para("Mis partidas", F_LARGE, _c("ink"), font_display)))
 	body.add_child(_spacer(20.0))
+	if not kids:
+		body.add_child(_levels_row(log))
+		body.add_child(_spacer(18.0))
 	if int(st["total"]) == 0:
 		body.add_child(_centered(_para("Todavía no has terminado ninguna partida. Aquí verás contra quién has jugado, tus resultados y tus estadísticas.", F_BODY, _c("quiet"), font_regular)))
 	else:
-		# Cuatro teselas con los números grandes.
+		# Cuatro teselas con los números grandes; se tocan para ver solo esas partidas.
 		var tiles := HBoxContainer.new()
 		tiles.add_theme_constant_override("separation", 14)
-		for def: Array in [["Jugadas", "total", "lilac"], ["Ganadas", "ganadas", "mint"], ["Tablas", "tablas", "sky"], ["Perdidas", "perdidas", "rose"]]:
+		for def: Array in [["Jugadas", "total", "lilac", ""], ["Ganadas", "ganadas", "mint", "ganadas"], ["Tablas", "tablas", "sky", "tablas"], ["Perdidas", "perdidas", "rose", "perdidas"]]:
 			var t := _tint(str(def[2]))
-			var panel := PanelContainer.new()
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = t[0]
-			sb.set_corner_radius_all(40)
-			sb.content_margin_top = 18
-			sb.content_margin_bottom = 18
-			panel.add_theme_stylebox_override("panel", sb)
-			panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var key := str(def[3])
+			var on := my_games_result == key
+			var btn := Button.new()
+			btn.focus_mode = Control.FOCUS_NONE
+			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+				var sb := StyleBoxFlat.new()
+				sb.bg_color = t[0]
+				sb.set_corner_radius_all(40)
+				if on and key != "":
+					sb.set_border_width_all(6)
+					sb.border_color = t[1]
+				btn.add_theme_stylebox_override(state, sb)
+			btn.modulate.a = 1.0 if on or my_games_result == "" else 0.6
+			btn.pressed.connect(_filter_my_games.bind(key, my_games_why if key != "" else ""))
 			var col := VBoxContainer.new()
 			col.add_theme_constant_override("separation", 0)
+			col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			col.set_anchors_preset(Control.PRESET_FULL_RECT)
+			col.alignment = BoxContainer.ALIGNMENT_CENTER
 			col.add_child(_centered(_para(str(int(st[str(def[1])])), F_TITLE + 8, t[1], font_display)))
 			col.add_child(_centered(_para(str(def[0]), F_FOOT, _c("ink"), font_medium)))
-			panel.add_child(col)
-			tiles.add_child(panel)
+			for c: Node in col.get_children():
+				(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.custom_minimum_size = Vector2(0.0, 180.0)
+			btn.add_child(col)
+			tiles.add_child(btn)
 		body.add_child(tiles)
+		body.add_child(_spacer(14.0))
+		# Cómo terminaron: chips que filtran (con cuántas hay de cada).
+		var counts := {}
+		for g0: Dictionary in log["partidas"]:
+			var k := GameLog.reason(g0)
+			counts[k] = int(counts.get(k, 0)) + 1
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 12)
+		flow.add_theme_constant_override("v_separation", 12)
+		for def2: Array in [["mate", "Jaque mate", "target"], ["tiempo", "Por tiempo", "clock"], ["abandono", "Abandono", "close"], ["rendicion", "Rendición", "flag"], ["tablas", "Tablas", "info"], ["otros", "Otros", "spark"]]:
+			var k2 := str(def2[0])
+			if int(counts.get(k2, 0)) == 0:
+				continue
+			flow.add_child(_filter_chip("%s · %d" % [str(def2[1]), int(counts[k2])], str(def2[2]), my_games_why == k2, _filter_my_games.bind(my_games_result, "" if my_games_why == k2 else k2)))
+		body.add_child(flow)
 		body.add_child(_spacer(18.0))
 		var total := maxi(int(st["total"]), 1)
 		var lines: Array = []
@@ -5730,6 +5911,7 @@ func _open_my_games() -> void:
 			lines.append("Tu mejor racha: %d victorias seguidas." % int(st["mejor_racha"]))
 		for t2: String in lines:
 			body.add_child(_para(t2, F_SUB, _c("quiet"), font_medium))
+		_add_evolution(body, log)
 		# Rivales.
 		body.add_child(_section("Rivales"))
 		for pair: Array in GameLog.rivals_by_date(log).slice(0, 20):
@@ -5746,7 +5928,7 @@ func _open_my_games() -> void:
 			var lv := int(r.get("nivel", -1))
 			var who := str(r.get("nombre", "Rival"))
 			if lv >= 0 and not id.begins_with("bot:"):
-				who += " · nivel %d" % lv
+				who += " · táctica %d" % lv
 			texts.add_child(_para(who, F_BODY, _c("ink"), font_semibold))
 			var n := int(r.get("partidas", 0))
 			var g := int(r.get("ganadas", 0))
@@ -5758,10 +5940,16 @@ func _open_my_games() -> void:
 			rows.add_child(row)
 			body.add_child(panel_rows[0])
 			body.add_child(_spacer(12.0))
-		# Últimas partidas.
-		body.add_child(_section("Últimas partidas"))
+		# Últimas partidas (con el filtro que esté puesto).
 		var games: Array = log["partidas"]
-		for i in mini(games.size(), 30):
+		var shown := GameLog.filtered(log, my_games_result, my_games_why)
+		var head := "Últimas partidas"
+		if my_games_result != "" or my_games_why != "":
+			head = "Partidas filtradas · %d" % shown.size()
+		body.add_child(_section(head))
+		if shown.is_empty():
+			body.add_child(_para("Ninguna partida con ese filtro.", F_BODY, _c("quiet"), font_regular))
+		for i: int in shown.slice(0, 30):
 			var g: Dictionary = games[i]
 			var res := int(g.get("resultado", 0))
 			var word: Array = RESULT_WORDS.get(res, RESULT_WORDS[0])
@@ -5771,7 +5959,133 @@ func _open_my_games() -> void:
 			body.add_child(btn)
 			body.add_child(_spacer(10.0))
 	body.add_child(_spacer(10.0, true))
-	footer.add_child(_button("back", "Volver", _close_my_games, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+	footer.add_child(_button("back", "Volver", _close_my_games, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+## Los dos niveles, uno al lado del otro: táctica (problemas) y juego (partidas contra el ordenador).
+func _levels_row(log: Dictionary) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var defs: Array = []
+	if _has_player():
+		var r := float(player["rating"]["r"])
+		defs.append(["target", "peach", "Táctica", "Nivel %d · %d" % [Assessment.level_of(r), roundi(r)], "Sale de los problemas"])
+	else:
+		defs.append(["target", "peach", "Táctica", "Sin medir", "Haz el test de nivel"])
+	var gr := GameLog.game_rating(log)
+	if int(gr["n"]) == 0:
+		defs.append(["piece_knight", "sky", "Juego", "Sin medir", "Juega contra el ordenador"])
+	elif bool(gr["provisional"]):
+		defs.append(["piece_knight", "sky", "Juego", "%d (provisional)" % roundi(float(gr["r"])), "%d de %d partidas" % [int(gr["n"]), GameLog.RATED_MIN]])
+	else:
+		defs.append(["piece_knight", "sky", "Juego", "%d" % roundi(float(gr["r"])), "Sale de tus partidas"])
+	for d: Array in defs:
+		var t := _tint(str(d[1]))
+		var panel := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = t[0]
+		sb.set_corner_radius_all(40)
+		sb.content_margin_left = 26.0
+		sb.content_margin_right = 20.0
+		sb.content_margin_top = 18.0
+		sb.content_margin_bottom = 18.0
+		panel.add_theme_stylebox_override("panel", sb)
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var inner := HBoxContainer.new()
+		inner.add_theme_constant_override("separation", 16)
+		inner.add_child(_icon(str(d[0]), 64.0, t[1]))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_child(_para(str(d[2]), F_FOOT, _c("quiet"), font_medium))
+		col.add_child(_para(str(d[3]), F_BODY, t[1], font_display))
+		col.add_child(_para(str(d[4]), F_FOOT, _c("quiet"), font_regular))
+		inner.add_child(col)
+		panel.add_child(inner)
+		row.add_child(panel)
+	return row
+
+
+## Pone un filtro en «Mis partidas» y la vuelve a dibujar.
+func _filter_my_games(result: String, why: String) -> void:
+	my_games_result = result
+	my_games_why = why
+	_open_my_games()
+
+
+func _filter_chip(text: String, icon_name: String, on: bool, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	var fill := _c("accent") if on else _c("field")
+	var fg := _c("accent_ink") if on else _c("ink")
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.set_corner_radius_all(40)
+		sb.content_margin_left = 26.0
+		sb.content_margin_right = 26.0
+		sb.content_margin_top = 14.0
+		sb.content_margin_bottom = 14.0
+		b.add_theme_stylebox_override(state, sb)
+	b.text = text
+	b.add_theme_font_size_override("font_size", F_SUB)
+	if font_medium != null:
+		b.add_theme_font_override("font", font_medium)
+	for k: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(k, fg)
+	if UiIcons.has(icon_name):
+		b.icon = UiIcons.texture(icon_name)
+		b.expand_icon = false
+		b.add_theme_constant_override("icon_max_width", F_SUB + 8)
+		for k: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
+			b.add_theme_color_override(k, fg)
+	b.pressed.connect(on_press)
+	return b
+
+
+## «Tu evolución»: la puntuación tras cada problema (con las bandas de nivel) y la forma en las últimas partidas.
+func _add_evolution(body: VBoxContainer, log: Dictionary) -> void:
+	body.add_child(_section("Tu evolución"))
+	var tries: Array = player.get("tries", []) if not player.is_empty() else []
+	var hist := Assessment.history(experience, tries)
+	if hist.size() >= 2:
+		var chart := EvolutionChart.new()
+		chart.values = hist
+		chart.small_font = font_medium
+		chart.ink = _c("ink")
+		chart.quiet = _c("quiet")
+		chart.line = _c("accent")
+		chart.custom_minimum_size = Vector2(0.0, 420.0)
+		chart.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var pr := _panel()
+		(pr[1] as VBoxContainer).add_child(_para("Tu puntuación, problema a problema", F_SUB, _c("ink"), font_semibold))
+		(pr[1] as VBoxContainer).add_child(chart)
+		body.add_child(pr[0])
+	else:
+		body.add_child(_para("Resuelve unos cuantos problemas y aquí verás cómo sube tu puntuación.", F_SUB, _c("quiet"), font_regular))
+	# Forma: las últimas partidas, de la más antigua a la más reciente.
+	var games: Array = log["partidas"]
+	if games.size() >= 2:
+		body.add_child(_spacer(12.0))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.add_child(_para("Forma", F_SUB, _c("quiet"), font_medium))
+		var last := games.slice(0, 15)
+		last.reverse()
+		for g: Dictionary in last:
+			var res := int(g.get("resultado", 0))
+			var t := _tint("mint" if res > 0 else ("sky" if res == 0 else "rose"))
+			var dot := PanelContainer.new()
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = t[1]
+			sb.set_corner_radius_all(16)
+			dot.add_theme_stylebox_override("panel", sb)
+			dot.custom_minimum_size = Vector2(34.0, 34.0)
+			dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			dot.tooltip_text = str(RESULT_WORDS.get(res, RESULT_WORDS[0])[0])
+			row.add_child(dot)
+		body.add_child(row)
+	body.add_child(_spacer(8.0))
 
 
 func _back_to_my_games() -> void:
@@ -5868,7 +6182,10 @@ func _rival_row() -> HBoxContainer:
 	var text := "Rival · …"
 	if not online_rival.is_empty():
 		var who := str(online_rival.get("nombre", "Rival"))
-		text = ("%s · Nivel %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
+		text = ("%s · Táctica %d · %s" % [who, lv, str(_rank(lv)[1])]) if lv >= 0 else "%s · todavía sin nivel" % who
+		var rj: Variant = online_rival.get("juego", {})
+		if rj is Dictionary and (rj as Dictionary).has("r"):
+			text += " · Juego %d" % int((rj as Dictionary)["r"])
 	var l := _para(text, F_BODY, _c("ink"), font_semibold)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -5952,6 +6269,12 @@ func _online_gesture(mine: bool, kind: String) -> void:
 
 
 ## Partida online: mirar jugadas anteriores sin perder la partida. delta −99 vuelve al directo.
+## Un toque en el tablero cuando no se puede mover: si se miraban jugadas anteriores y te toca, vuelve al directo.
+func _on_view_tapped(kind: String) -> void:
+	if kind == "locked" and mode == "game" and game_back > 0 and game_state in ["play", "think", "press"]:
+		_game_browse(-99)
+
+
 func _game_browse(delta: int) -> void:
 	if mode != "game" or game_history.is_empty():
 		return
@@ -5997,6 +6320,7 @@ func _start_unit_game(unit_id: String) -> void:
 
 ## Empieza una partida. color: 0 blancas, 1 negras, −1 lo elegido en la página (con «Al azar»).
 func _start_game(cfg: Dictionary, color: int) -> void:
+	detail_from_over = false
 	_close_progress()
 	_stop_game_thread()
 	run_id += 1
@@ -6016,6 +6340,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	game_clocked = clock.size() == 2 and int(clock[0]) > 0
 	game_clock = [float(clock[0]) * 60000.0, float(clock[0]) * 60000.0] if game_clocked else [0.0, 0.0]
 	game_inc_ms = float(clock[1]) * 1000.0 if game_clocked else 0.0
+	clock_up = 1.0 if game_color == 0 else 0.0
 	game_bot = Bot.new(int(cfg.get("level", 0)), str(cfg.get("variant", "")))
 	var fen := str(cfg.get("fen", ""))
 	if fen == "":
@@ -6176,6 +6501,7 @@ func _process(delta: float) -> void:
 	if mode != "game" or not game_clocked or not (game_state in ["play", "think", "press"]):
 		return
 	var side := game_clock_side
+	clock_up = move_toward(clock_up, 1.0 if side == game_color else 0.0, delta / 0.12)
 	game_clock[side] = maxf(0.0, float(game_clock[side]) - delta * 1000.0)
 	if float(game_clock[side]) <= 0.0:
 		_game_flag(side)
@@ -6189,6 +6515,13 @@ func _process(delta: float) -> void:
 
 
 func _show_clocks() -> void:
+	if chess_clock != null and is_instance_valid(chess_clock):
+		chess_clock.times = [float(game_clock[game_color]), float(game_clock[1 - game_color])]
+		chess_clock.running = -1 if game_state == "over" else (0 if game_clock_side == game_color else 1)
+		chess_clock.up_mine = clock_up
+		chess_clock.call_press = game_state == "press"
+		chess_clock.can_press = game_state == "press"
+		chess_clock.queue_redraw()
 	if _clock_labels.size() != 2:
 		return
 	var side := game_clock_side
@@ -6258,6 +6591,11 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	if m < 0:
 		_game_check_end(null, -1)
 		return
+	if game_back > 0:
+		# Mirando jugadas anteriores: al directo, para ver la jugada del rival.
+		game_back = 0
+		view.set_fen(pos.fen())
+		_actions_mode = ""
 	var san := SanEs.san(pos, m)
 	view.show_move(Chess.uci(m))
 	game_history.append(view.board.chess.fen())
@@ -6414,6 +6752,121 @@ func _game_hint() -> void:
 	_refresh()
 
 
+## Tu pulsador del reloj.
+func _on_clock_pressed() -> void:
+	if game_state != "press":
+		return
+	Input.vibrate_handheld(25)
+	_press_game_clock()
+
+
+## Has tocado tu pulsador antes de mover.
+func _on_clock_early() -> void:
+	if game_state == "play" and game_note == "":
+		game_note = "Primero haz tu jugada; después pulsa el reloj."
+		_refresh()
+
+
+## ¿Hay una partida en marcha (que se perdería al salir)?
+func _game_live() -> bool:
+	return mode == "game" and game_state in ["play", "think", "press"]
+
+
+func _ask_resign() -> void:
+	if not _game_live():
+		_game_resign()
+		return
+	_confirm("¿Te rindes?", "La partida termina y la gana el rival.", "flag", "Rendirme", _game_resign)
+
+
+func _ask_leave(then: Callable = _leave_game) -> void:
+	if not _game_live():
+		then.call()
+		return
+	var online_game := bool(game.get("online", false))
+	var go := then
+	if online_game:
+		go = func() -> void:
+			# Se guarda como perdida por abandono (si ya se había jugado algo).
+			game_won = -1
+			game_result = "Has abandonado la partida."
+			_record_game()
+			then.call()
+	_confirm("¿Salir de la partida?", "Abandonas la partida y la gana el rival." if online_game else "La partida se termina y no se guarda.", "close", "Salir", go)
+
+
+## Ventana de confirmación semitransparente sobre el tablero: el aviso, «Cancelar» y la acción. Tocar fuera la
+## cierra (como «Cancelar»).
+func _confirm(head: String, text: String, ok_icon: String, ok_label: String, on_ok: Callable) -> void:
+	_close_confirm()
+	confirm_node = Control.new()
+	confirm_node.set_anchors_preset(Control.PRESET_FULL_RECT)
+	confirm_node.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(confirm_node)
+	var scrim := ColorRect.new()
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.03, 0.05, 0.14, 0.32 if dark else 0.2)
+	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	scrim.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+			_close_confirm())
+	confirm_node.add_child(scrim)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	var paper := _c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.86)
+	sb.set_corner_radius_all(60)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 30
+	sb.shadow_offset = Vector2(0.0, 12.0)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	confirm_node.add_child(panel)
+	var pad := _pad(50, 44, 50, 40)
+	panel.add_child(pad)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 18)
+	pad.add_child(column)
+	column.add_child(_para(head, F_TITLE, _c("ink"), font_display))
+	column.add_child(_para(text, F_BODY, _c("quiet"), font_regular))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	column.add_child(row)
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	var cancel := _button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), opts)
+	var tint := _tint("rose")
+	var ok := _button(ok_icon, ok_label, func() -> void:
+		_close_confirm()
+		on_ok.call(), tint[0], tint[1], opts)
+	for b: Button in [cancel, ok]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	var place := func() -> void:
+		if not is_instance_valid(panel) or board_slot == null or not is_instance_valid(board_slot):
+			return
+		var w := minf(size.x - 120.0, 860.0)
+		panel.size = Vector2(w, 0.0)
+		panel.reset_size()
+		panel.size.x = w
+		var h := panel.get_combined_minimum_size().y
+		var rect := board_slot.get_global_rect()
+		panel.position = Vector2((size.x - w) * 0.5, clampf(rect.get_center().y - h * 0.5, 40.0, size.y - h - 40.0))
+		panel.pivot_offset = panel.size * 0.5
+	panel.minimum_size_changed.connect(place)
+	place.call_deferred()
+	panel.scale = Vector2(0.9, 0.9)
+	confirm_node.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(confirm_node, "modulate:a", 1.0, 0.15)
+
+
+func _close_confirm() -> void:
+	if confirm_node != null and is_instance_valid(confirm_node):
+		confirm_node.queue_free()
+	confirm_node = null
+
+
 func _game_resign() -> void:
 	if game_state == "over":
 		return
@@ -6499,7 +6952,10 @@ func _build_game_card() -> void:
 			head = "¡Has ganado!" if game_won > 0 else ("Tablas" if game_won == 0 else ("Ha ganado el rival" if kids else "Has perdido"))
 			tone = _c("good") if game_won > 0 else (_c("ink") if game_won == 0 else _c("bad"))
 	title = _para(head, F_TITLE, tone, font_display)
-	if kids and voice_on and _has_voice(_voice_last):
+	if game_clocked and game_state != "over":
+		# Con reloj, el reloj ya dice a quién le toca: sin título.
+		pass
+	elif kids and voice_on and _has_voice(_voice_last):
 		var top := HBoxContainer.new()
 		top.add_theme_constant_override("separation", 16)
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -6516,28 +6972,38 @@ func _build_game_card() -> void:
 		var clock: Array = game.get("clock", [0, 0])
 		chips.add_child(_chip("%d+%d" % [int(clock[0]), int(clock[1])], _c("field"), _c("quiet"), "clock"))
 	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet"), "sun" if game_color == 0 else "moon"))
+	var where := ""
+	if game_back > 0 and game_state != "over":
+		where = "Viendo la jugada %d de %d · toca el tablero para volver" % [game_history.size() - 1 - game_back, game_history.size() - 1]
+	if game_clocked and where != "":
+		# Con reloj no cabe una línea más: el aviso va en lugar de las etiquetas.
+		chips = HFlowContainer.new()
+		chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var t := _tint("peach")
+		chips.add_child(_chip("Jugada %d de %d · toca el tablero para volver" % [game_history.size() - 1 - game_back, game_history.size() - 1], t[0], t[1], "back"))
 	card_body.add_child(chips)
 	if bool(game.get("online", false)):
 		card_body.add_child(_rival_row())
 		card_body.add_child(_gesture_row())
-		if game_back > 0:
-			var where := "Viendo la jugada %d de %d" % [game_history.size() - 1 - game_back, game_history.size() - 1]
-			if not _online_pending.is_empty():
-				where += " · ¡el rival ya ha jugado!"
-			card_body.add_child(_para(where, F_SUB, _c("accent_text"), font_semibold))
+	if where != "" and not game_clocked:
+		card_body.add_child(_para(where, F_SUB, _c("accent_text"), font_semibold))
 	_clock_labels = []
+	chess_clock = null
 	if game_clocked:
-		var clocks := HBoxContainer.new()
-		clocks.add_theme_constant_override("separation", 14)
-		clocks.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for who: String in ["Tú", "Rival"]:
-			var l := _para("", F_HEAD, _c("ink"), font_display)
-			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			l.set_meta("who", who)
-			clocks.add_child(l)
-			_clock_labels.append(l)
-		card_body.add_child(clocks)
+		chess_clock = ChessClock.new()
+		chess_clock.digits_font = _digits_font if _digits_font != null else font_display
+		chess_clock.label_font = font_semibold
+		chess_clock.dark = dark
+		chess_clock.accent = _c("accent")
+		chess_clock.custom_minimum_size = Vector2(0.0, 260.0 if game_state == "over" else 360.0)
+		chess_clock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		chess_clock.pressed_mine.connect(_on_clock_pressed)
+		chess_clock.pressed_early.connect(_on_clock_early)
+		card_body.add_child(chess_clock)
 		_show_clocks()
+		if game_state != "over":
+			# Con el reloj, la tarjeta no crece: lo demás lo dicen el tablero y el reloj.
+			return
 	if game_state == "over":
 		card_body.add_child(_para(game_result, F_BODY, _c("ink"), font_medium))
 		return
@@ -6555,7 +7021,7 @@ func _build_game_actions() -> void:
 		_build_detail_actions()
 		return
 	var is_online := bool(game.get("online", false))
-	var key := "game:%s:%s:%s:%s:%d:%d" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked), str(is_online), mini(game_back, 1), _online_pending.size()]
+	var key := "game:%s:%s:%s:%s:%d:%d:%d" % [game_state if game_state != "think" else "play", str(game.get("unit", "")), str(game_clocked), str(is_online), game_back, _online_pending.size(), game_history.size()]
 	if game_state == "press":
 		key += ":" + str(_press_warned)
 	if key == _actions_mode:
@@ -6576,12 +7042,11 @@ func _build_game_actions() -> void:
 	go["trailing"] = true
 	var row: Array[Button] = []
 	if game_state == "over" and bool(game.get("saved", false)):
-		# Una partida guardada: su análisis y volver a la lista.
-		var tool0 := wide.duplicate()
-		tool0["font_size"] = F_SUB
-		left_button = _button("why", "Análisis", _open_review, _c("field"), _c("ink"), tool0)
+		# Una partida guardada: su análisis (resumen o jugada a jugada) y volver a la lista.
+		left_button = _tool_button("chart", "Análisis", _open_review, "lilac")
+		var det0 := _tool_button("line", "Jugada a jugada", _open_detail_from_over, "sky")
 		right_button = _button("trend", "Mis partidas", _back_to_my_games, _c("accent"), _c("accent_ink"), go)
-		row = [left_button, right_button]
+		row = [left_button, det0, right_button]
 	elif game_state == "over":
 		_record_game()
 		var next: Button
@@ -6589,25 +7054,33 @@ func _build_game_actions() -> void:
 			next = _button("next", "Seguir", _game_next_lesson, _c("accent"), _c("accent_ink"), go)
 		else:
 			next = _button("next", "Salir", _leave_game, _c("accent"), _c("accent_ink"), go)
-		var tool := wide.duplicate()
-		tool["font_size"] = F_SUB
-		row = [_button("retry", "Otra", _game_again, _c("accent_soft"), _c("accent_text"), tool)]
+		row = [_tool_button("retry", "Otra", _game_again, "peach")]
 		if str(game.get("variant", "")) == "" and game_moves.size() >= 2:
-			row.append(_button("why", "Análisis", _open_review, _c("field"), _c("ink"), tool))
+			# Resumen de la partida y, aparte y bien a la vista, el análisis jugada a jugada.
+			row.append(_tool_button("chart", "Análisis", _open_review, "lilac"))
+			if not kids:
+				row.append(_tool_button("line", "Jugada a jugada", _open_detail_from_over, "sky"))
 		row.append(next)
 		left_button = row[0]
 		right_button = next
 	else:
-		left_button = _tool_button("back", "Deshacer", _game_undo, "sky")
 		hint_button = _tool_button("bulb", "Pista", _game_hint, "butter")
-		right_button = _tool_button("flag", "Rendirse", _game_resign, "rose")
-		var out := _tool_button("close", "Salir", _leave_game, "lilac")
-		row = [out, left_button, hint_button, right_button]
+		right_button = _tool_button("flag", "Rendirse", _ask_resign, "rose")
+		var out := _tool_button("close", "Salir", _ask_leave, "lilac")
+		# Mirar jugadas anteriores sin parar la partida; al mover el rival (o tocar el tablero) se vuelve al directo.
+		var back0 := _tool_button("back", "Atrás", _game_browse.bind(1), "peach")
+		var fwd0 := _tool_button("next", "Adelante", _game_browse.bind(-1), "mint")
+		back0.disabled = game_history.size() <= 1 or game_back >= game_history.size() - 1
+		back0.modulate.a = 0.42 if back0.disabled else 1.0
+		fwd0.disabled = game_back == 0
+		fwd0.modulate.a = 0.42 if game_back == 0 else 1.0
+		left_button = _tool_button("retry", "Deshacer", _game_undo, "sky")
+		row = [out, back0, fwd0, left_button, hint_button, right_button]
 		if game_clocked or is_online:
 			# Con reloj o contra una persona, como en una partida oficial: ni deshacer ni pistas.
 			left_button = null
 			hint_button = null
-			row = [out, right_button]
+			row = [out, back0, fwd0, right_button]
 			if is_online:
 				# Mirar jugadas anteriores y volver al directo.
 				var back := _tool_button("back", "Atrás", _game_browse.bind(1), "peach")
@@ -6618,15 +7091,12 @@ func _build_game_actions() -> void:
 				live.disabled = game_back == 0
 				live.modulate.a = 0.42 if game_back == 0 else 1.0
 				row = [out, back, fwd, live, right_button]
-			if game_state == "press":
-				var press := _button("clock", "Pulsar reloj", _press_game_clock, _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": BAR_HEIGHT, "icon": 56.0, "radius": 60, "glow": _c("glow")})
-				row.append(press)
-				# El botón grande ocupa el doble que los otros dos.
-				press.size_flags_stretch_ratio = 2.0
+				back.disabled = game_history.size() <= 1 or game_back >= game_history.size() - 1
+				back.modulate.a = 0.42 if back.disabled else 1.0
 		for b in [left_button, hint_button]:
 			if b != null:
-				b.disabled = game_state != "play"
-				b.modulate.a = 1.0 if game_state == "play" else 0.42
+				b.disabled = game_state != "play" or game_back > 0
+				b.modulate.a = 1.0 if not b.disabled else 0.42
 	for b: Button in row:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -7368,7 +7838,7 @@ func _level_up(level_now: int, before: float, now: float) -> void:
 	trophy.pivot_offset = Vector2(150.0, 150.0)
 	column.add_child(trophy)
 	column.add_child(_centered(_para("¡Enhorabuena!", F_LARGE, _c("ink"), font_display)))
-	column.add_child(_centered(_para("Has subido al nivel %d" % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
+	column.add_child(_centered(_para(("Has subido al nivel %d" if kids else "Nivel %d de táctica") % level_now, F_TITLE + 6, _tint("lilac")[1], font_display)))
 	var badge := _level_badge(now, 170.0)
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(badge)
@@ -7421,6 +7891,7 @@ func _confetti_colors() -> Array:
 
 ## Abre el análisis: se calcula en otro hilo la primera vez (puede tardar unos segundos en el móvil).
 func _open_review() -> void:
+	detail_from_over = false
 	if review_done:
 		if review.is_empty():
 			_show_review_page()
@@ -7524,9 +7995,9 @@ func _show_review_page() -> void:
 	if not kids:
 		footer.add_child(_para("Solo se señala lo que se puede comprobar con seguridad: piezas que quedan a tiro, capturas gratis y mates en una jugada. Otras ideas de la partida (planes, estructura) no se analizan todavía.", F_FOOT + 2, _c("quiet"), font_regular))
 		footer.add_child(_spacer(10.0))
-	footer.add_child(_button("back", "Volver a la partida", _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	footer.add_child(_button("back", "Volver a la partida", _close_progress, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	if use_settings:
-		footer.add_child(_button("home", "Inicio", _go_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("home", "Inicio", _go_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## Lleva el tablero a la posición del momento i, con la jugada hecha (roja) y la otra (verde).
@@ -7680,21 +8151,55 @@ func _detail_ready(found: Array, my_run: int) -> void:
 const DETAIL_TONES := {"only": "info", "best": "good", "good": "good", "inaccuracy": "mid", "mistake": "bad", "blunder": "bad"}
 
 
+## Una jugada del análisis, con movimiento: si venimos de la anterior, primero se juega la respuesta del rival;
+## después, tu jugada, y al caer la pieza aparecen su chapa (buena, la mejor, imprecisión…) y las flechas.
 func _detail_show(i: int) -> void:
 	if i < 0 or i >= detail.size():
 		return
 	_close_progress()
 	run_id += 1
+	var my_run := run_id
+	var prev := detail_at
 	detail_at = i
 	game_state = "detail"
+	detail_line = []
+	detail_line_san = []
+	detail_line_ply = -1
 	var e: Dictionary = detail[i]
 	view.interactive = false
-	view.set_fen(str(e["fen"]))
 	view.set_orientation(game_color)
-	view.board.set_arrows(e.get("arrows", []))
+	view.board.set_arrows([])
 	view.board.set_badge(-1, "")
-	_move_badge(str(e["uci"]), str(e.get("badge", "")))
+	var ply := int(e.get("ply", -1))
+	var replies: Array = []
+	if prev >= 0 and prev == i - 1 and ply > 0:
+		var pply := int((detail[prev] as Dictionary).get("ply", -1))
+		# ¿Está el tablero justo después de tu jugada anterior? Entonces se siguen jugando las de en medio.
+		if pply >= 0 and pply + 1 < game_history.size() and view.board.chess.fen() == str(game_history[pply + 1]):
+			for k in range(pply + 1, ply):
+				replies.append(str(game_moves[k]))
+	if replies.is_empty():
+		view.set_fen(str(e["fen"]))
 	_refresh()
+	var still := func() -> bool:
+		return my_run == run_id and game_state == "detail" and detail_at == i
+	for u: String in replies:
+		await _wait(0.3)
+		if not still.call():
+			return
+		view.show_move(u)
+		await _wait(0.45)
+		if not still.call():
+			return
+	await _wait(0.35)
+	if not still.call():
+		return
+	view.show_move(str(e["uci"]))
+	await _wait(0.5)
+	if not still.call():
+		return
+	view.board.set_arrows(e.get("arrows", []))
+	_move_badge(str(e["uci"]), str(e.get("badge", "")))
 
 
 func _build_detail_card() -> void:
@@ -7709,11 +8214,119 @@ func _build_detail_card() -> void:
 	chips.add_child(_chip("Jugada %d" % int(e.get("n", 0)), _c("field"), _c("ink")))
 	chips.add_child(_chip("%d de %d" % [detail_at + 1, detail.size()], _c("field"), _c("quiet")))
 	card_body.add_child(chips)
+	if not detail_line.is_empty():
+		_add_detail_line(e)
+		return
 	for t: Variant in e.get("paras", []):
-		card_body.add_child(_para(str(t), F_BODY, _c("ink"), font_regular))
+		var text := str(t)
+		card_body.add_child(_para(text, F_BODY, _c("ink"), font_regular))
+		if (text.begins_with("La mejor era") or text.begins_with("También estaba")) and e.has("best_uci"):
+			# Debajo, un botón: la mejor jugada en el tablero y cómo seguiría la partida.
+			var tint := _tint("mint")
+			var see := _card_button("Ver la mejor y cómo seguiría", _detail_line_open, tint[0], tint[1], F_SUB, "play")
+			see.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			card_body.add_child(see)
 	var bad := str(e.get("verdict", "")) in ["inaccuracy", "mistake", "blunder"]
 	if bad:
 		card_body.add_child(_para("Flecha roja: tu jugada. Violeta: la respuesta del rival. Verde: la mejor.", F_FOOT + 2, _c("quiet"), font_regular))
+
+
+## «La mejor era…»: la mejor jugada y cómo seguiría la partida (el motor de la app, sin errores adrede, unas
+## pocas jugadas), para verla paso a paso en el tablero.
+var detail_line: Array = []
+var detail_line_san: Array = []
+var detail_line_fen := ""
+var detail_line_ply := -1
+
+
+func _detail_line_open() -> void:
+	if detail_at < 0 or detail_at >= detail.size():
+		return
+	var e: Dictionary = detail[detail_at]
+	var pos := Chess.from_fen(str(e.get("fen", "")))
+	var m := pos.find_uci(str(e.get("best_uci", "")))
+	if m < 0:
+		return
+	run_id += 1
+	detail_line = [Chess.uci(m)]
+	detail_line_san = [SanEs.san(pos, m)]
+	detail_line_fen = pos.fen()
+	var p := pos.after(m)
+	var bot := Bot.new(4)
+	bot.exact = true
+	bot.time_cap = 0.2
+	for k in 5:
+		if p.legal_moves().is_empty():
+			break
+		var r := bot.choose(p)
+		if r < 0:
+			break
+		detail_line.append(Chess.uci(r))
+		detail_line_san.append(SanEs.san(p, r))
+		p.apply(r)
+	view.board.set_arrows([])
+	view.board.set_badge(-1, "")
+	_actions_mode = ""
+	_detail_line_step(0)
+
+
+func _detail_line_step(ply: int) -> void:
+	if detail_line.is_empty():
+		return
+	detail_line_ply = clampi(ply, -1, detail_line.size() - 1)
+	var pos := Chess.from_fen(detail_line_fen)
+	for k in maxi(detail_line_ply, 0):
+		pos.apply(pos.find_uci(str(detail_line[k])))
+	view.set_fen(pos.fen())
+	if detail_line_ply >= 0:
+		view.show_move(str(detail_line[detail_line_ply]))
+	_keep_scroll = true
+	_refresh()
+
+
+func _detail_line_close() -> void:
+	detail_line = []
+	detail_line_san = []
+	detail_line_ply = -1
+	_actions_mode = ""
+	var i := detail_at
+	detail_at = -1
+	_detail_show(i)
+
+
+## La variante en la tarjeta: las jugadas (la que se ve, resaltada) y sus botones.
+func _add_detail_line(e: Dictionary) -> void:
+	var pos := Chess.from_fen(detail_line_fen)
+	var n := pos.full
+	var parts: Array = []
+	for k in detail_line_san.size():
+		var side := pos.turn if k % 2 == 0 else 1 - pos.turn
+		var num := ""
+		if side == 0:
+			num = "%d. " % (n + (k + (1 if pos.turn == 1 else 0)) / 2)
+		elif k == 0:
+			num = "%d… " % n
+		var san := str(detail_line_san[k])
+		parts.append(num + ("[%s]" % san if k == detail_line_ply else san))
+	card_body.add_child(_para("La mejor era %s. Así podía seguir la partida:" % str(detail_line_san[0]), F_SUB, _c("good"), font_semibold))
+	card_body.add_child(_para(" ".join(parts), F_BODY, _c("ink"), font_medium))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	for def: Array in [["first", -1], ["prev", detail_line_ply - 1], ["play", detail_line_ply + 1]]:
+		var b := _round_button("play" if str(def[0]) == "prev" else str(def[0]), _detail_line_step.bind(int(def[1])), 96.0, _c("field"), _c("ink"), false)
+		if str(def[0]) == "prev":
+			for child in b.get_child(0).get_children():
+				if child is TextureRect:
+					(child as TextureRect).flip_h = true
+		row.add_child(b)
+	var mark := _text("inicio" if detail_line_ply < 0 else "%d de %d" % [detail_line_ply + 1, detail_line.size()], F_FOOT, _c("quiet"), font_medium)
+	mark.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(mark)
+	row.add_child(_button("back", "Volver", _detail_line_close, _c("accent_soft"), _c("accent_text"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0}))
+	card_body.add_child(row)
+	card_body.add_child(_para("Jugadas del motor de la app: una idea de cómo seguiría, no la única.", F_FOOT, _c("quiet"), font_regular))
 
 
 ## Siguiente jugada con imprecisión o error (−1 si no hay más).
@@ -7735,7 +8348,7 @@ func _build_detail_actions() -> void:
 	hint_button = null
 	step_button = null
 	left_button = _tool_button("back", "Anterior", _detail_show.bind(detail_at - 1), "sky")
-	var summary := _tool_button("why", "Resumen", _detail_back, "lilac")
+	var summary := _tool_button("back" if detail_from_over else "why", "Volver" if detail_from_over else "Resumen", _detail_back, "lilac")
 	right_button = _tool_button("next", "Siguiente", _detail_show.bind(detail_at + 1), "mint")
 	var fault := _next_detail_fault()
 	var jump := _tool_button("wrong", "Sig. fallo", _detail_show.bind(fault), "rose")
@@ -7752,7 +8365,29 @@ func _build_detail_actions() -> void:
 
 
 ## Del detalle al resumen; la partida se queda como acabó.
+## «Jugada a jugada» desde el final de la partida (sin pasar por el resumen): al volver, se vuelve al final.
+var detail_from_over := false
+
+
+func _open_detail_from_over() -> void:
+	detail_from_over = true
+	_open_detail()
+
+
 func _detail_back() -> void:
+	if detail_from_over:
+		detail_from_over = false
+		run_id += 1
+		view.board.set_arrows([])
+		view.board.set_badge(-1, "")
+		view.set_fen(str(game_history[game_history.size() - 1]))
+		game_state = "over"
+		detail_at = -1
+		_close_progress()
+		_actions_mode = ""
+		_refresh()
+		return
+	run_id += 1
 	view.board.set_arrows([])
 	view.board.set_badge(-1, "")
 	view.set_fen(str(game_history[game_history.size() - 1]))
@@ -8019,7 +8654,7 @@ func _open_gate(then: Callable) -> void:
 		row.add_child(b2)
 	body.add_child(row)
 	body.add_child(_spacer(8.0, true))
-	footer.add_child(_button("party", "Seguir en modo Kids", _close_gate, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	footer.add_child(_button("party", "Seguir en modo Kids", _close_gate, _tint("peach")[0], _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	_say([_kid_line("gate")])
 
 
@@ -8089,7 +8724,7 @@ func _page(kind: String) -> Dictionary:
 	scroll.add_child(body)
 	column.add_child(_spacer(20.0))
 	var footer := VBoxContainer.new()
-	footer.add_theme_constant_override("separation", 0)
+	footer.add_theme_constant_override("separation", 14)
 	column.add_child(footer)
 	_place_tip()
 	return {"body": body, "footer": footer}
@@ -8165,11 +8800,11 @@ func _open_experience() -> void:
 	footer.add_child(_spacer(14.0))
 	if _has_player():
 		# Se llega aquí desde «Repetir el test»: se puede dejar todo como estaba.
-		footer.add_child(_button("close", "Cancelar", _open_home if use_settings else _close_progress, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
+		footer.add_child(_button("close", "Cancelar", _open_home if use_settings else _close_progress, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
 	else:
-		footer.add_child(_button("skip", "Saltar el test", _skip_test, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("skip", "Saltar el test", _skip_test, _tint("butter")[0], _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 		if use_settings and welcome_seen:
-			footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+			footer.add_child(_button("home", "Inicio", _open_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## Opción grande: tesela con dibujo, titular, una línea de texto y una flecha.
@@ -8441,9 +9076,9 @@ func _open_progress(kind: String = "progress") -> void:
 		keep.mouse_filter = Control.MOUSE_FILTER_STOP
 		footer.add_child(keep)
 		footer.add_child(_spacer(8.0))
-		footer.add_child(_button("retry", "Repetir el test de nivel", _open_experience, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("retry", "Repetir el test de nivel", _open_experience, _tint("sky")[0], _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 	if use_settings:
-		footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+		footer.add_child(_button("home", "Inicio", _open_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 ## La frase, con su primera letra en mayúscula.

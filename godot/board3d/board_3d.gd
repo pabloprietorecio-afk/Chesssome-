@@ -917,6 +917,10 @@ func _dress_figure(node: Node3D, piece: int) -> void:
 		if fig != null:
 			node.remove_child(fig)
 			fig.queue_free()
+		var mark := node.get_node_or_null("Marca")
+		if mark != null:
+			node.remove_child(mark)
+			mark.queue_free()
 		return
 	if fig != null and int(fig.get_meta("piece", -1)) == piece:
 		return
@@ -953,11 +957,72 @@ func _dress_figure(node: Node3D, piece: int) -> void:
 					_rig_dark[base] = dark
 				mi.set_surface_override_material(i, _rig_dark[base])
 	node.add_child(fig)
+	_mark_figure(node, fig, piece)
 	_face(node, _forward_yaw(side))
 	var ap := _fig_player(node)
 	if ap != null:
 		ap.play("Idle")
 		ap.seek(randf() * 1.2, true)
+
+
+## Sobre la cabeza de cada personaje, una chapita con el dibujo de su pieza: así se sabe enseguida qué es cada
+## figura. Blanca con el dibujo oscuro para las blancas; oscura con el dibujo claro para las negras. Siempre se ve
+## (sin prueba de profundidad) y mira a la cámara.
+func _mark_figure(node: Node3D, fig: Node3D, piece: int) -> void:
+	var old := node.get_node_or_null("Marca")
+	if old != null:
+		node.remove_child(old)
+		old.queue_free()
+	var icon := UiIcons.texture(["", "piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen", "piece_king"][Chess.type_of(piece)])
+	if icon == null:
+		return
+	# Altura de la cabeza (o del sombrero): la parte más alta de lo que se ve del personaje.
+	var top := 0.0
+	for mi: MeshInstance3D in fig.find_children("*", "MeshInstance3D", true, false):
+		if mi.visible and mi.mesh != null:
+			var box := mi.mesh.get_aabb()
+			top = maxf(top, (fig.transform * mi.transform * box.end).y)
+	if top <= 0.0:
+		top = 1.0
+	var side := Chess.color_of(piece)
+	var mark := Node3D.new()
+	mark.name = "Marca"
+	mark.position = Vector3(0.0, top + 0.16, 0.0)
+	var disc := Sprite3D.new()
+	disc.texture = _round_texture()
+	disc.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	disc.no_depth_test = true
+	disc.shaded = false
+	disc.pixel_size = 0.0027
+	disc.modulate = Color("fdfdff") if side == 0 else Color("1b2540")
+	disc.render_priority = 3
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mark.add_child(disc)
+	var pic := Sprite3D.new()
+	pic.texture = icon
+	pic.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	pic.no_depth_test = true
+	pic.shaded = false
+	pic.pixel_size = 0.17 / maxf(1.0, float(icon.get_width()))
+	pic.modulate = Color("1b2540") if side == 0 else Color("f5c542")
+	pic.render_priority = 4
+	pic.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mark.add_child(pic)
+	node.add_child(mark)
+
+
+## Disco blanco con el borde suave (para las chapas): se dibuja una vez.
+func _round_texture() -> Texture2D:
+	if _badge_tex == null:
+		var img := Image.create(96, 96, false, Image.FORMAT_RGBA8)
+		for y in 96:
+			for x in 96:
+				var d := Vector2(float(x) - 47.5, float(y) - 47.5).length()
+				var a := clampf(46.0 - d, 0.0, 1.0)
+				var rim := clampf(d - 39.0, 0.0, 1.0)
+				img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a).lerp(Color(0.92, 0.92, 0.92, a), rim))
+		_badge_tex = ImageTexture.create_from_image(img)
+	return _badge_tex
 
 
 func _exit_tree() -> void:
@@ -1203,11 +1268,13 @@ func mark_last_move(from: int, to: int) -> void:
 ## Flechas de las explicaciones: lista de diccionarios {from: int, to: int, tone: "good" | "bad" | "info"}.
 ## Valoración de una jugada, a la manera de las anotaciones de ajedrez («!», «?», «??»…): una chapa redonda en la
 ## esquina de la casilla de destino. Con texto vacío se quita.
-func set_badge(sq: int, glyph: String, color: Color = Color.WHITE) -> void:
+## Chapa de anotación sobre una casilla: un disco de color con un signo («!», «?!»…) o, con `icon`, un icono
+## (la marca de «buena», la de «única»).
+func set_badge(sq: int, glyph: String, color: Color = Color.WHITE, icon: Texture2D = null) -> void:
 	if _badge != null and is_instance_valid(_badge):
 		_badge.queue_free()
 	_badge = null
-	if glyph == "" or sq < 0:
+	if (glyph == "" and icon == null) or sq < 0:
 		return
 	if _badge_tex == null:
 		var img := Image.create(96, 96, false, Image.FORMAT_RGBA8)
@@ -1228,6 +1295,19 @@ func set_badge(sq: int, glyph: String, color: Color = Color.WHITE) -> void:
 	disc.modulate = color
 	disc.render_priority = 3
 	_badge.add_child(disc)
+	if icon != null:
+		var pic := Sprite3D.new()
+		pic.texture = icon
+		pic.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pic.no_depth_test = true
+		pic.shaded = false
+		pic.pixel_size = 0.27 / maxf(1.0, float(icon.get_width()))
+		pic.modulate = Color.WHITE
+		pic.render_priority = 4
+		_badge.add_child(pic)
+		_badge.position = sq_pos(sq) + (_cam_right + _cam_up) * 0.36 + Vector3(0.0, 0.06, 0.0)
+		add_child(_badge)
+		return
 	var mark := Label3D.new()
 	mark.text = glyph
 	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -1257,6 +1337,9 @@ func set_arrows(arrows: Array) -> void:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 		mat.albedo_color = Color(color.r, color.g, color.b, 0.86)
+		# Por encima de las piezas: si no, una flecha corta (a la casilla de al lado) queda tapada por ellas.
+		mat.no_depth_test = true
+		mat.render_priority = 2
 		mi.material_override = mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position = Vector3(0.0, 0.014, 0.0)
@@ -1267,8 +1350,10 @@ func set_arrows(arrows: Array) -> void:
 func _arrow_mesh(a: Vector3, b: Vector3, occupied: bool) -> ArrayMesh:
 	var dir := (b - a).normalized()
 	var side := Vector3(-dir.z, 0.0, dir.x)
-	var start := a + dir * 0.4
-	var tip := b - dir * 0.36 if occupied else b + dir * 0.12
+	# En las flechas cortas, el hueco de las piezas se reduce para que se vean (se dibujan por encima de ellas).
+	var d := a.distance_to(b)
+	var start := a + dir * minf(0.4, d * 0.16)
+	var tip := b - dir * minf(0.36, d * 0.2) if occupied else b + dir * 0.12
 	var neck := tip - dir * 0.42
 	var w := 0.085
 	var hw := 0.24
@@ -1755,6 +1840,22 @@ func cancel_drag() -> void:
 
 
 ## «Así no»: la pieza niega con un temblor corto.
+## Una pieza «intenta» ir a `to` y no puede: da un salto hacia allí, tiembla a medio camino y vuelve a su casilla.
+## Para explicar por qué el rey no puede escapar. No cambia la posición.
+func try_square(from: int, to: int) -> void:
+	if anim_mode == Anim.NONE or not _pieces.has(from):
+		return
+	var node: Node3D = _pieces[from]
+	var a := sq_pos(from)
+	var b := a.lerp(sq_pos(to), 0.55)
+	var tw := _tw()
+	tw.tween_method(func(t: float) -> void:
+		_pose(node, a.lerp(b, t) + Vector3(0.0, sin(t * PI) * 0.3, 0.0), Vector3.UP, 0.0), 0.0, 1.0, 0.3)
+	tw.tween_method(_pose_shake.bind(node, b), 0.0, 1.0, 0.3)
+	tw.tween_method(func(t: float) -> void:
+		_pose(node, b.lerp(a, t) + Vector3(0.0, sin(t * PI) * 0.12, 0.0), Vector3.UP, 0.0), 0.0, 1.0, 0.26)
+
+
 func shake(s: int) -> void:
 	if anim_mode == Anim.NONE or anim_mode == Anim.MINIMAL or not _pieces.has(s):
 		return

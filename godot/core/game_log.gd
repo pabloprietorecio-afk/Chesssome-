@@ -51,6 +51,74 @@ static func add(log: Dictionary, game: Dictionary, rival: Dictionary) -> Diction
 	return log
 
 
+## Partidas para que el nivel de juego deje de ser provisional.
+const RATED_MIN := 10
+
+
+## Nivel de juego: Glicko-2 con las partidas, de la más antigua a la más reciente. Contra el ordenador, cada nivel
+## cuenta con su fuerza medida (Bot.LEVELS: «elo» y «rd»; tools/calibrar), y los que no la tienen no cuentan; online,
+## con el nivel de juego que enseñó el rival (su desviación, como poco 60, para que un número dudoso pese menos). `levels` es para las pruebas. Devuelve {r, rd, n (partidas que cuentan), provisional}.
+static func game_rating(log: Dictionary, levels: Array = []) -> Dictionary:
+	if levels.is_empty():
+		levels = Bot.LEVELS
+	var rating := {"r": 1500.0, "rd": 350.0, "vol": 0.06}
+	var n := 0
+	var games: Array = log.get("partidas", [])
+	for i in range(games.size() - 1, -1, -1):
+		var g: Dictionary = games[i]
+		var id := str(g.get("rival_id", ""))
+		var opp := {}
+		if id.begins_with("bot:"):
+			var lv := int(id.substr(4))
+			if lv >= 0 and lv < levels.size() and (levels[lv] as Dictionary).has("elo"):
+				opp = {"r": float(levels[lv]["elo"]), "rd": float(levels[lv].get("rd", 60.0))}
+		else:
+			# Online: el nivel de juego que enseñó el rival (lo calcula su app; no se puede comprobar).
+			var rj: Variant = g.get("rival_juego", {})
+			if rj is Dictionary and (rj as Dictionary).has("r") and (rj as Dictionary).has("rd"):
+				opp = {"r": clampf(float(rj["r"]), 100.0, 3500.0), "rd": clampf(float(rj["rd"]), 60.0, 350.0)}
+		if opp.is_empty():
+			continue
+		var res := int(g.get("resultado", 0))
+		var score := 1.0 if res > 0 else (0.5 if res == 0 else 0.0)
+		rating = Glicko2.update(rating, [{"opponent": opp, "score": score}])
+		n += 1
+	return {"r": float(rating["r"]), "rd": float(rating["rd"]), "n": n, "provisional": n < RATED_MIN}
+
+
+## Cómo terminó una partida, para filtrar: mate, tiempo, abandono, rendicion, tablas u otros. Sale del texto
+## guardado (vale también para las partidas antiguas).
+static func reason(g: Dictionary) -> String:
+	var text := str(g.get("motivo", "")).to_lower()
+	if text.contains("abandon"):
+		return "abandono"
+	if text.contains("tiempo"):
+		return "tiempo"
+	if text.contains("rendido"):
+		return "rendicion"
+	if int(g.get("resultado", 0)) == 0:
+		return "tablas"
+	if text.contains("mate"):
+		return "mate"
+	return "otros"
+
+
+## Partidas que pasan un filtro: resultado ("", "ganadas", "tablas", "perdidas") y final ("" o uno de reason).
+## Devuelve los índices en la lista (la más reciente, primero).
+static func filtered(log: Dictionary, result: String, why: String) -> Array:
+	var out: Array = []
+	var games: Array = log["partidas"]
+	for i in games.size():
+		var g: Dictionary = games[i]
+		var res := int(g.get("resultado", 0))
+		if result == "ganadas" and res <= 0 or result == "perdidas" and res >= 0 or result == "tablas" and res != 0:
+			continue
+		if why != "" and reason(g) != why:
+			continue
+		out.append(i)
+	return out
+
+
 ## {total, ganadas, tablas, perdidas, online, ordenador, blancas: [g, t, p], negras: [g, t, p], racha (actual:
 ## positiva de victorias, negativa de derrotas), mejor_racha}.
 static func stats(log: Dictionary) -> Dictionary:

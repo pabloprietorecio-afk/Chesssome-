@@ -275,6 +275,8 @@ export const COURSE: Unit[] = [
         icon: 'info',
         intro: ['Si el bando que mueve no está en jaque pero no tiene ninguna jugada posible, es ahogado: la partida acaba en tablas, empate.', 'Cuando vas ganando, cuidado con ahogar al rival.'],
         exercises: [
+          { kind: 'info', at: at({ K: ['f5'], Q: ['g6'], k: ['h8'] }, { turn: 'b' }), text: 'Juegan negras. El rey negro no está en jaque, pero no tiene ninguna jugada: g8, g7 y h7 las controla la dama blanca. Es ahogado: tablas. Pulsa «¿Por qué?» para verlo casilla a casilla.' },
+          { kind: 'info', at: at({ K: ['b6'], P: ['a7'], k: ['a8'] }, { turn: 'b' }), text: 'Otro ahogado, muy típico con rey y peón: el rey negro no está en jaque, b8 la ataca el peón, b7 el rey blanco, y no puede comer el peón porque lo defiende el rey. Tablas.' },
           { kind: 'move', at: at({ K: ['g6'], Q: ['f1'], k: ['h8'] }), accept: { kind: 'mate' }, text: 'Da jaque mate. Ojo: alguna jugada deja al rey negro sin movimientos y sin jaque.' },
           { kind: 'move', at: at({ K: ['c6'], Q: ['b1'], k: ['a8'] }), accept: { kind: 'mate' }, text: 'Otra vez: jaque mate, no ahogado.' },
         ],

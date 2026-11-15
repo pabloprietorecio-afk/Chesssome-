@@ -34,7 +34,7 @@ const ICONS = {
   eye: 'eyes_flat',
   why: 'red_question_mark_flat',
   target: 'star_flat',
-  flag: 'white_flag_flat',
+  flag: 'triangular_flag_flat',
   piece_knight: 'carousel_horse_flat',
   clock: 'alarm_clock_flat',
   trend: 'chart_increasing_flat',

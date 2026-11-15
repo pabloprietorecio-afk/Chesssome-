@@ -23,6 +23,18 @@ func _ready() -> void:
 	demo._open_home()
 	await _frames(10)
 	await _shot("p1_inicio")
+	# Cambiar a oscuro desde Opciones, con el inicio abierto: el inicio sigue encima de la tarjeta del problema.
+	demo._open_options()
+	await _frames(4)
+	demo._set_dark(true)
+	await _frames(8)
+	await _shot("p1b_oscuro_opciones")
+	print("OSCURO chrome=%d inicio=%d hoja=%s" % [demo.chrome.get_index(), demo.progress.get_index(), demo.sheet_kind])
+	demo._close_options()
+	await _frames(4)
+	await _shot("p1c_inicio_oscuro")
+	demo._set_dark(false)
+	await _frames(8)
 	await _reto_del_dia(demo)
 	demo._open_train_hub()
 	await _frames(10)
@@ -96,10 +108,44 @@ func _ready() -> void:
 	await _shot("p23_comidas")
 	demo._leave_game()
 	await _frames(4)
+	demo._open_game_setup()
+	await _frames(6)
+	await _shot("p32_configurar_partida")
+	demo._close_progress()
+	await _frames(2)
+	await _reloj(demo)
 	await _detalle(demo)
 	await _mis_partidas(demo)
 	await _por_que(demo)
 	print("PROG FINAL ", demo.prog.get("dias", {}))
+	# Ahogado: un ejemplo del curso y su «¿Por qué?» (el rey intenta escapar).
+	demo._start_lesson("ahogado")
+	await _frames(4)
+	demo._next_lesson_step()
+	await get_tree().create_timer(0.8).timeout
+	await _shot("p30_ahogado_ejemplo")
+	print("AHOGADO estado=%s porque=%s" % [demo.ex_state, str(demo._learn_why_ok())])
+	demo._learn_why_toggle()
+	await _frames(4)
+	demo._why_go(1)
+	await get_tree().create_timer(0.75).timeout
+	await _shot("p31_ahogado_porque")
+	for wp: Dictionary in demo.why_paras:
+		print("PORQUE ", wp["text"])
+	demo._learn_why_toggle()
+	await _frames(2)
+	# Flechas cortas (a la casilla de al lado) por encima de las piezas: Txf2 en verde, Cxd1 en violeta.
+	demo.view.set_fen("r1b1k2r/ppppn1pp/2n5/2p1N3/2P5/8/P4nPP/2RQ1RK1 b - - 0 16")
+	demo.view.board.set_arrows([{"from": 5, "to": 13, "tone": "good"}, {"from": 13, "to": 3, "tone": "info"}, {"from": 53, "to": 36, "tone": "bad"}])
+	await _frames(6)
+	await _shot("p33_flechas_cortas")
+	demo.view.board.set_arrows([])
+	# Personajes con la chapita de su pieza sobre la cabeza.
+	demo.view.board.set_piece_set("aventura")
+	demo.view.set_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+	await get_tree().create_timer(1.5).timeout
+	await _shot("p29_aventura_chapas")
+	demo.view.board.set_piece_set("clasico")
 	print("PANTALLAS DONE")
 	get_tree().quit()
 
@@ -123,13 +169,13 @@ func _reto_del_dia(demo: Control) -> void:
 	demo.prog = st
 	demo._open_home()
 	await _frames(10)
-	await _shot("p1b_inicio_reto")
+	await _shot("p1d_inicio_reto")
 	demo._open_day()
 	await _frames(10)
-	await _shot("p1c_tu_dia")
+	await _shot("p1e_tu_dia")
 	demo._prog_toast("¡Reto del día cumplido!", "Racha de 4 días", true)
 	await get_tree().create_timer(0.7).timeout
-	await _shot("p1d_aviso_reto")
+	await _shot("p1f_aviso_reto")
 	print("RETO racha=%d objetivos=%s semana=%s insignias=%s" % [Progress.streak_now(st, today), str(Progress.goals(st, today).map(func(g): return str(g["tipo"]) + ":" + str(g["actual"]) + "/" + str(g["meta"]))), str(st["semana"]), str(st["insignias"])])
 	# Los enganches del juego llegan al núcleo: un problema, una lección y una partida (de 20 jugadas, con blancas).
 	demo.prog = {}
@@ -240,6 +286,22 @@ func _detalle(demo: Control) -> void:
 	demo.view.set_fen(pos.fen())
 	demo.review = []
 	demo.review_done = true
+	demo.game["online"] = false
+	demo._actions_mode = ""
+	demo._refresh()
+	await _frames(6)
+	await _shot("p16a_final_partida")
+	demo._open_detail_from_over()
+	var g0 := 0
+	while not demo.detail_done and g0 < 600:
+		g0 += 1
+		await get_tree().process_frame
+	await get_tree().create_timer(1.2).timeout
+	await _shot("p16b_jugada_a_jugada_desde_final")
+	demo._detail_back()
+	await _frames(4)
+	print("VUELTA estado=%s" % demo.game_state)
+	demo.game["online"] = true
 	demo._show_review_page()
 	await _frames(6)
 	await _shot("p16_analisis_resumen")
@@ -251,9 +313,23 @@ func _detalle(demo: Control) -> void:
 	await _frames(4)
 	for e: Dictionary in demo.detail:
 		print("DETALLE %s · %s · %s" % [e["san"], e["label"], " / ".join(e["paras"])])
+	demo._detail_show(1)
+	await get_tree().create_timer(1.4).timeout
+	await _shot("p17a_detalle_buena")
 	demo._detail_show(2)
-	await _frames(6)
+	await get_tree().create_timer(0.55).timeout
+	await _shot("p17b_detalle_respuesta")
+	await get_tree().create_timer(1.6).timeout
 	await _shot("p17_detalle_error")
+	demo._detail_line_open()
+	await get_tree().create_timer(1.0).timeout
+	await _shot("p17c_la_mejor_era")
+	demo._detail_line_step(2)
+	await get_tree().create_timer(1.0).timeout
+	await _shot("p17d_la_mejor_sigue")
+	print("LINEA %s" % " ".join(PackedStringArray(demo.detail_line_san)))
+	demo._detail_line_close()
+	await get_tree().create_timer(1.2).timeout
 	demo._detail_back()
 	await _frames(4)
 	await _shot("p18_analisis_con_recuento")
@@ -276,14 +352,25 @@ func _mis_partidas(demo: Control) -> void:
 	var t := int(Time.get_unix_time_from_system()) - 4000
 	for def: Array in [["u1", "Ana", 1, 0, 5], ["bot:2", "Ordenador · Medio", -1, 1, -1], ["u1", "Ana", 0, 1, 5], ["u2", "Luis", 1, 0, 2], ["u3", "Marta", -1, 1, 7]]:
 		t += 600
-		GameLog.add(log, {"fecha": t, "tipo": "ordenador" if str(def[0]).begins_with("bot:") else "online", "rival_id": def[0], "rival_nombre": def[1], "color": def[3], "resultado": def[2], "motivo": "", "inicio": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "jugadas": ["e2e4", "e7e5", "g1f3", "b8c6"]}, {"nivel": def[4], "icono": "piece_rook" if def[0] == "u1" else "piece_knight"} if not str(def[0]).begins_with("bot:") else {})
+		var why := "Se te ha acabado el tiempo." if int(def[2]) < 0 else ("¡Jaque mate! Has ganado." if int(def[2]) > 0 else "La misma posición tres veces: tablas.")
+		GameLog.add(log, {"fecha": t, "tipo": "ordenador" if str(def[0]).begins_with("bot:") else "online", "rival_id": def[0], "rival_nombre": def[1], "color": def[3], "resultado": def[2], "motivo": why, "inicio": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "jugadas": ["e2e4", "e7e5", "g1f3", "b8c6"]}, {"nivel": def[4], "icono": "piece_rook" if def[0] == "u1" else "piece_knight"} if not str(def[0]).begins_with("bot:") else {})
 	demo.game_log = log
+	# Una evolución de prueba: intentos con su dificultad (la gráfica recalcula la puntuación).
+	demo.experience = "casual"
+	var tries: Array = []
+	for k in 24:
+		tries.append({"id": "t%d" % k, "rating": 1050.0 + 18.0 * k, "rd": 60.0, "correct": k % 4 != 1, "phase": "train"})
+	demo.player = {"rating": {"r": 1300.0, "rd": 80.0, "vol": 0.06}, "tries": tries, "done": true}
 	demo._open_my_games_from("online")
 	await _frames(8)
 	await _shot("p21_mis_partidas")
+	demo._filter_my_games("perdidas", "tiempo")
+	await _frames(8)
+	await _shot("p21b_mis_partidas_filtro")
 	demo.progress_scroll.scroll_vertical = 100000
 	await _frames(3)
 	await _shot("p22_mis_partidas_lista")
+	demo._filter_my_games("", "")
 	demo._close_progress()
 
 
@@ -307,3 +394,40 @@ func _shot(shot_name: String) -> void:
 	var image := get_viewport().get_texture().get_image()
 	image.save_png(out_dir.path_join(shot_name + ".png"))
 	print("SHOT ", shot_name)
+
+
+## Partida con reloj contra el ordenador: el reloj de verdad (pulsadores y pantallas) y la confirmación de rendirse.
+func _reloj(demo: Control) -> void:
+	demo.press_clock = true
+	demo._start_game({"variant": "", "level": 1, "title": "Partida · Medio", "text": "", "kids": "", "unit": "", "clock": [20, 0]}, 0)
+	await get_tree().create_timer(0.6).timeout
+	await _shot("p24_reloj_te_toca")
+	demo.view.show_move("e2e4")
+	demo._game_move("e2e4")
+	await get_tree().create_timer(0.5).timeout
+	await _shot("p25_reloj_pulsa")
+	print("RELOJ estado=%s" % demo.game_state)
+	demo._on_clock_pressed()
+	await get_tree().create_timer(0.05).timeout
+	await _shot("p26_reloj_bajando")
+	var guard := 0
+	while demo.game_state != "play" and guard < 400:
+		guard += 1
+		await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
+	await _shot("p27_reloj_rival_pulso")
+	demo._game_browse(1)
+	await _frames(6)
+	await _shot("p27b_reloj_atras")
+	print("ATRAS back=%d" % demo.game_back)
+	demo._on_view_tapped("locked")
+	await _frames(4)
+	print("DIRECTO back=%d" % demo.game_back)
+	demo._ask_resign()
+	await get_tree().create_timer(0.4).timeout
+	await _shot("p28_confirmar_rendirse")
+	print("CONFIRMAR abierta=%s" % str(demo.confirm_node != null))
+	demo._close_confirm()
+	await _frames(2)
+	demo._leave_game()
+	await _frames(4)

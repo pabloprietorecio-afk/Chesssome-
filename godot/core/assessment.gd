@@ -129,6 +129,18 @@ static func next_test_item(state: Dictionary, pool: Array, rand: float) -> Dicti
 	return best
 
 
+## Puntuación después de cada intento, recalculada desde la de partida con la misma cuenta que record_try (los
+## intentos no guardan la puntuación, pero sí todo lo necesario para repetirla).
+static func history(experience: String, tries: Array) -> Array:
+	var rating: Dictionary = (PRIOR.get(experience, PRIOR["casual"]) as Dictionary).duplicate()
+	var out: Array = []
+	for t: Dictionary in tries:
+		var result := {"opponent": {"r": float(t["rating"]), "rd": float(t["rd"])}, "score": 1.0 if bool(t["correct"]) else 0.0}
+		rating = Glicko2.update(rating, [result])
+		out.append(float(rating["r"]))
+	return out
+
+
 ## Anota un intento: mueve el rating (Glicko-2) y, en el test, decide si ya hay datos suficientes.
 ## phase: "test" o "train".
 static func record_try(state: Dictionary, item: Dictionary, outcome: Dictionary, phase: String) -> Dictionary:

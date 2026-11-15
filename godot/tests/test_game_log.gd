@@ -27,6 +27,29 @@ func _init() -> void:
 	var back := GameLog.load_log("user://_test_log.json")
 	_ok((back["partidas"] as Array).size() == 5, "se guarda y se lee")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://_test_log.json"))
+	# Cómo terminó y filtros
+	_ok(GameLog.reason({"motivo": "Se te ha acabado el tiempo.", "resultado": -1}) == "tiempo", "por tiempo")
+	_ok(GameLog.reason({"motivo": "Tu rival ha abandonado la partida: ¡has ganado!", "resultado": 1}) == "abandono", "abandono")
+	_ok(GameLog.reason({"motivo": "Te has rendido.", "resultado": -1}) == "rendicion", "rendición")
+	_ok(GameLog.reason({"motivo": "No queda material para dar mate: tablas.", "resultado": 0}) == "tablas", "tablas (no mate)")
+	_ok(GameLog.reason({"motivo": "Jaque mate: gana el rival.", "resultado": -1}) == "mate", "mate")
+	var flog := {"partidas": [{"resultado": -1, "motivo": "Se te ha acabado el tiempo."}, {"resultado": 1, "motivo": "¡Jaque mate! Has ganado."}, {"resultado": -1, "motivo": "Jaque mate: gana el rival."}], "rivales": {}}
+	_ok(GameLog.filtered(flog, "perdidas", "") == [0, 2], "solo perdidas")
+	_ok(GameLog.filtered(flog, "perdidas", "tiempo") == [0], "perdidas por tiempo")
+	_ok(GameLog.filtered(flog, "", "mate") == [1, 2], "todas por mate")
+	# Nivel de juego: solo cuentan los niveles con fuerza medida.
+	var levels := [{"name": "A"}, {"name": "B", "elo": 1400.0, "rd": 40.0}]
+	var glog := {"partidas": [], "rivales": {}}
+	_ok(int(GameLog.game_rating(glog, levels)["n"]) == 0, "sin partidas, sin nivel de juego")
+	for k in 6:
+		GameLog.add(glog, {"fecha": 1000 + k, "tipo": "ordenador", "rival_id": "bot:1", "rival_nombre": "B", "color": 0, "resultado": 1, "motivo": "", "inicio": "", "jugadas": ["e2e4"]}, {})
+	GameLog.add(glog, {"fecha": 2000, "tipo": "ordenador", "rival_id": "bot:0", "rival_nombre": "A", "color": 0, "resultado": -1, "motivo": "", "inicio": "", "jugadas": ["e2e4"]}, {})
+	var gr := GameLog.game_rating(glog, levels)
+	_ok(int(gr["n"]) == 6 and bool(gr["provisional"]), "cuentan 6 partidas (el nivel sin medir no)")
+	_ok(float(gr["r"]) > 1500.0, "ganar siempre a un 1400 sube el nivel de juego")
+	GameLog.add(glog, {"fecha": 3000, "tipo": "online", "rival_id": "u9", "rival_nombre": "Eva", "color": 1, "resultado": 0, "motivo": "", "inicio": "", "jugadas": ["e2e4"], "rival_juego": {"r": 1700, "rd": 90, "n": 12}}, {})
+	GameLog.add(glog, {"fecha": 3100, "tipo": "online", "rival_id": "u8", "rival_nombre": "Leo", "color": 1, "resultado": 1, "motivo": "", "inicio": "", "jugadas": ["e2e4"]}, {})
+	_ok(int(GameLog.game_rating(glog, levels)["n"]) == 7, "online cuenta si el rival enseñó su nivel de juego")
 	# Nombres
 	_ok(GameLog.name_problem("Penélope") == "", "Penélope vale")
 	_ok(GameLog.name_problem("Pablo_88") == "", "con números y guion bajo")

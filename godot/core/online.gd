@@ -37,6 +37,9 @@ const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡
 var phase := "idle"
 ## Lo que se enseña al rival: {"nivel": −1…10, "icono": "piece_…", "foto": base64 (solo si se quiere)}.
 var my_profile := {"nivel": -1}
+## Nivel de juego propio ({r, rd, n}; vacío si no hay). Va aparte del perfil: si las reglas de Firebase todavía no
+## lo admiten, falla solo esa escritura y el perfil (nombre, nivel, icono) llega igual.
+var my_game_rating := {}
 var rival := {}
 ## Identificador anónimo del rival (el mismo en cada partida desde su móvil): sirve para reconocerlo después.
 var rival_uid := ""
@@ -399,6 +402,8 @@ func _try_join(id: String) -> bool:
 ## El perfil propio, dentro de la partida (se borra con ella). Si no se puede escribir, la partida sigue igual.
 func _send_profile(id: String) -> void:
 	await request(HTTPClient.METHOD_PUT, "partidas/%s/perfiles/%s" % [id, uid], my_profile)
+	if not my_game_rating.is_empty():
+		await request(HTTPClient.METHOD_PUT, "partidas/%s/perfiles/%s/juego" % [id, uid], my_game_rating)
 
 
 ## Gesto del chat. Uno cada segundo y medio como mucho.

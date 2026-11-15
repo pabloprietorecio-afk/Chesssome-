@@ -661,7 +661,11 @@ static func explain(before: Chess, m: int, me: int, role: String, rest: Array = 
 			paras = escape_paras(before, m, me)
 		else:
 			paras = move_paras(before, m, me)
-		paras.append(_par("De todas sus jugadas, es la que más resiste.", [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+		var why_def := defense_paras(before, m, me)
+		if why_def.is_empty():
+			paras.append(_par("De todas sus jugadas, es la que más resiste.", [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+		else:
+			paras.append_array(why_def)
 	else:
 		if before.in_check():
 			paras = escape_paras(before, m, me)
@@ -707,3 +711,197 @@ static func _plan(after: Chess, rest: Array, me: int) -> String:
 	var text := "La idea: tras %s, llega %s" % [_san(after, r), _san(next_pos, n)]
 	text += (": %s." % tag) if tag != "" else "."
 	return text
+
+
+## Por qué el rey del bando que mueve no tiene salida (jaque mate) o no tiene jugadas (ahogado), paso a paso y
+## con animación: en cada paso, `tries` son las casillas a las que el rey «intenta» ir (y no puede). `kids`: frases
+## muy cortas, sin coordenadas. Devuelve [] si la posición no es mate ni ahogado.
+static func king_box(pos: Chess, me: int, kids: bool) -> Array:
+	if not pos.legal_moves().is_empty():
+		return []
+	var out: Array = []
+	var f := check_facts(pos)
+	var k: int = f["king"]
+	var checkers: Array = f["checkers"]
+	var mate := not checkers.is_empty()
+	var ws := not kids
+	var king := _who(kids, pos, k, me, false)
+	# 1. ¿Está en jaque?
+	if mate:
+		var c: int = checkers[0]
+		var arrows: Array = []
+		for x: int in checkers:
+			arrows.append(_arrow(x, k, "bad"))
+		if kids:
+			out.append(_par(("¡Jaque! %s ataca a %s." % [cap(_who(kids, pos, c, me, false)), king]).replace(" a el ", " al "), arrows, pos))
+		else:
+			out.append(_par("%s está en jaque: %s lo ataca%s." % [cap(king), _who(kids, pos, c, me), line_word(c, k)], arrows, pos))
+	else:
+		if kids:
+			out.append(_par("Mira: %s no está en jaque. Nadie le ataca." % king, [], pos))
+		else:
+			out.append(_par("%s no está en jaque: ninguna pieza lo ataca ahora mismo." % cap(king), [], pos))
+	# 2. Cada casilla de alrededor: por qué no puede ir.
+	var by_attacker: Dictionary = f["by_attacker"]
+	for a: int in by_attacker:
+		var squares: Array = by_attacker[a]
+		var arrows2: Array = []
+		var tries: Array = []
+		for n: int in squares:
+			arrows2.append(_arrow(a, n, "bad"))
+			tries.append([k, n])
+		var p: Dictionary
+		if kids:
+			p = _par("Si el rey se escapa por %s, %s le atacaría." % ["aquí" if squares.size() == 1 else "estas casillas", _who(kids, pos, a, me, false)], arrows2, pos)
+		else:
+			var names: Array = []
+			for n: int in squares:
+				names.append(Chess.sq_name(n))
+			p = _par("Las casillas %s las controla %s." % [join(names), _who(kids, pos, a, me)] if squares.size() > 1 else "La casilla %s la controla %s." % [join(names), _who(kids, pos, a, me)], arrows2, pos)
+		p["tries"] = tries
+		out.append(p)
+	var on_line: Array = f["on_line"]
+	if not on_line.is_empty() and mate:
+		var c2: int = checkers[0]
+		var arrows3: Array = []
+		var tries3: Array = []
+		var names3: Array = []
+		for n: int in on_line:
+			arrows3.append(_arrow(c2, n, "bad"))
+			tries3.append([k, n])
+			names3.append(Chess.sq_name(n))
+		var p3 := _par("Si se aparta por la misma línea, %s le sigue atacando." % _who(kids, pos, c2, me, false) if kids else "En %s seguiría en la línea de %s." % [join(names3), _who(kids, pos, c2, me)], arrows3, pos)
+		p3["tries"] = tries3
+		out.append(p3)
+	var own: Array = f["own"]
+	if not own.is_empty():
+		var tries4: Array = []
+		var names4: Array = []
+		for n: int in own:
+			tries4.append([k, n])
+			names4.append(Chess.sq_name(n))
+		var who := _who(kids, pos, own[0], me, false)
+		var kid_own := ("Y por ahí no puede pasar: está %s, de su mismo color." % who) if own.size() == 1 else "Y por ahí no puede pasar: están sus propias piezas."
+		var p4 := _par(kid_own if kids else ("Las casillas %s están ocupadas por sus propias piezas." % join(names4) if own.size() > 1 else "La casilla %s la ocupa %s." % [join(names4), _who(kids, pos, own[0], me, false)]), [], pos)
+		p4["tries"] = tries4
+		out.append(p4)
+	var defended: Dictionary = f["defended"]
+	for n: int in defended:
+		var defs: Array = defended[n]
+		var arrows5: Array = []
+		for d: int in defs:
+			arrows5.append(_arrow(d, n, "bad"))
+		var p5 := _par(("No se puede comer %s: %s lo protege." % [_who(kids, pos, n, me, false), _who(kids, pos, defs[0], me, false)]) if kids else ("No puede comer %s: lo defiende %s." % [_who(kids, pos, n, me), _who(kids, pos, defs[0], me)]), arrows5, pos)
+		p5["tries"] = [[k, n]]
+		out.append(p5)
+	# 3. Comer la pieza que da jaque o tapar (en el mate), u otras piezas que muevan (en el ahogado).
+	if mate and checkers.size() == 1:
+		var c3: int = checkers[0]
+		var between := _between(c3, k)
+		var t3 := Chess.type_of(pos.b[c3])
+		var gap := not between.is_empty() and (t3 == Chess.ROOK or t3 == Chess.BISHOP or t3 == Chess.QUEEN)
+		if kids:
+			out.append(_par("Y nadie puede comerse %s%s." % [_who(kids, pos, c3, me, false), " ni ponerse en medio" if gap else ""], [_arrow(c3, k, "bad")], pos))
+		else:
+			out.append(_par("Ninguna pieza puede comer %s%s." % [_who(kids, pos, c3, me), " ni interponerse" if gap else ""], [_arrow(c3, k, "bad")], pos))
+	elif not mate:
+		var others := 0
+		for s in 64:
+			var q: int = pos.b[s]
+			if q != 0 and Chess.color_of(q) == pos.turn and Chess.type_of(q) != Chess.KING:
+				others += 1
+		if others > 0:
+			out.append(_par("Sus otras piezas tampoco se pueden mover." if kids else "Y ninguna otra pieza suya tiene jugada.", [], pos))
+	# 4. Conclusión.
+	if mate:
+		out.append(_par("No tiene salida: ¡jaque mate!" if kids else "No hay forma de salir del jaque: jaque mate.", [], pos))
+	else:
+		out.append(_par("No está en jaque, pero no puede mover nada: es ahogado. ¡Y el ahogado es empate!" if kids else "Sin jaque y sin ninguna jugada legal: ahogado. La partida acaba en tablas.", [], pos))
+	return out
+
+
+## Nombre de una pieza: para niños, «tu torre» o «el rey negro» (sin casilla); si no, como name_at.
+static func _who(kids: bool, pos: Chess, s: int, me: int, with_square: bool = true) -> String:
+	if not kids:
+		return name_at(pos, s, me, with_square)
+	var p: int = pos.b[s]
+	if p == 0:
+		return Chess.sq_name(s)
+	var t := Chess.type_of(p)
+	var c := Chess.color_of(p)
+	if c == me:
+		return "tu %s" % NOUN[t]
+	var adj := ("blanca" if c == 0 else "negra") if _fem(t) else ("blanco" if c == 0 else "negro")
+	return "%s %s %s" % [_art(t), NOUN[t], adj]
+
+
+## Por qué el rival se defiende así: su pieza amenazada (la de más valor) no tiene casilla buena. Para cada huida,
+## la respuesta más fuerte (con una búsqueda corta del motor) y lo que se pierde: «Si Dе2, Txe2 se la come». Al
+## final, por qué la jugada hecha es lo que menos pierde. [] si no hay una pieza amenazada clara.
+static func defense_paras(before: Chess, m: int, me: int) -> Array:
+	var side := before.turn
+	var opp := 1 - side
+	# La pieza amenazada: atacada por otra de menos valor, o sin defensa.
+	var target := -1
+	for sq in 64:
+		var p: int = before.b[sq]
+		if p == 0 or Chess.color_of(p) != side or Chess.type_of(p) == Chess.KING:
+			continue
+		var t := Chess.type_of(p)
+		var hit := false
+		for a: int in attackers(before, sq, opp):
+			if int(VALUE[Chess.type_of(before.b[a])]) < int(VALUE[t]) or not before.attacked(sq, side):
+				hit = true
+		if hit and (target < 0 or int(VALUE[t]) > int(VALUE[Chess.type_of(before.b[target])])):
+			target = sq
+	if target < 0:
+		return []
+	var who := name_at(before, target, me, false)
+	var tt := Chess.type_of(before.b[target])
+	var bot := Bot.new(4)
+	var out: Array = []
+	var lost: Array = []  # «si va a e3, Dxe3 se la come»
+	var chased_sq: Array = []
+	var chased_mv: Array = []
+	var arrows: Array = []
+	var others := 0
+	for alt in before.legal_moves():
+		if Chess.move_from(alt) != target or alt == m:
+			continue
+		if lost.size() + chased_sq.size() >= 4:
+			others += 1
+			continue
+		var after := before.after(alt)
+		var r := bot.analyse(after, -1, 3, 0.08)
+		if r.is_empty():
+			continue
+		var reply: int = r["best"]
+		var score := int(r["best_score"])
+		var at := Chess.move_to(alt)
+		var rsan := _san(after, reply)
+		if Chess.move_to(reply) == at:
+			lost.append("si va a %s, %s se %s come" % [Chess.sq_name(at), rsan, _pron(tt)])
+		elif score >= Bot.MATE - 300:
+			lost.append("si va a %s, %s y llega el mate" % [Chess.sq_name(at), rsan])
+		else:
+			# La sigue acosando (o gana otra cosa): el problema es de Lichess, sacado con Stockfish, y su
+			# defensa es la mejor, así que esta pierde aún más.
+			chased_sq.append(Chess.sq_name(at))
+			chased_mv.append(rsan)
+		arrows.append(_arrow(Chess.move_from(alt), at, "info"))
+		arrows.append(_arrow(Chess.move_from(reply), Chess.move_to(reply), "bad"))
+	if lost.is_empty() and chased_sq.is_empty():
+		return []
+	var parts: Array = lost.duplicate()
+	if not chased_sq.is_empty():
+		parts.append("en %s tampoco se salva (%s): pierde aún más" % [join(chased_sq), ", ".join(chased_mv)])
+	var text := "¿Y por qué no pone a salvo %s? No tiene casilla segura: %s" % [who, "; ".join(parts)]
+	if others > 0:
+		text += ". En las demás casillas, lo mismo"
+	out.append(_par(text + ".", arrows, before))
+	var taken: int = before.b[Chess.move_to(m)]
+	if taken != 0:
+		out.append(_par("Así que %s: al menos se lleva %s a cambio. Es lo que menos pierde." % [_san(before, m), name_at(before, Chess.move_to(m), me, false)], [_arrow(Chess.move_from(m), Chess.move_to(m), "info")], before, [Chess.move_from(m), Chess.move_to(m)]))
+	else:
+		out.append(_par("Así que %s: de todas sus jugadas, es la que menos pierde." % _san(before, m), [_arrow(Chess.move_from(m), Chess.move_to(m), "info")], before, [Chess.move_from(m), Chess.move_to(m)]))
+	return out

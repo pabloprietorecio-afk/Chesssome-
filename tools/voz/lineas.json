@@ -604,6 +604,14 @@
   "text": "Ahogado es empate. ¡Cuidado!"
  },
  {
+  "id": "a4dfb79c29c3",
+  "text": "Mira: le toca al rey negro. No está en jaque, pero no puede moverse a ningún sitio. ¡Eso es ahogado, y es empate! Pulsa «¿Por qué?»."
+ },
+ {
+  "id": "3518bec8a803",
+  "text": "Otro ahogado: el rey negro no está en jaque, pero tu peón y tu rey le quitan todas las casillas."
+ },
+ {
   "id": "9ef11a09fb00",
   "text": "Da jaque mate. ¡Pero no lo ahogues!"
  },
