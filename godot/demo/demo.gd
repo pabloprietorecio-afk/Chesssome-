@@ -7243,10 +7243,13 @@ func _prog_notify(avisos: Array, delay: float) -> void:
 var _prog_toast_node: Control
 
 
-func _prog_toast(title: String, sub: String, party: bool, wait_left: int = 6) -> void:
-	# Con la enhorabuena de subir de nivel abierta, se espera a que se cierre.
-	if _celebration != null and is_instance_valid(_celebration) and _celebration.mouse_filter == Control.MOUSE_FILTER_STOP and wait_left > 0:
-		get_tree().create_timer(1.5).timeout.connect(_prog_toast.bind(title, sub, party, wait_left - 1))
+func _prog_toast(title: String, sub: String, party: bool, wait_left: int = 150) -> void:
+	# Con la enhorabuena de subir de nivel o la ventana «¡Resuelto!» abiertas (o a punto de salir), se espera a que
+	# se cierren (como mucho un minuto): un aviso de premio encima de otro tapa los dos.
+	var celebrating := _celebration != null and is_instance_valid(_celebration) and _celebration.mouse_filter == Control.MOUSE_FILTER_STOP
+	var solved_popup := result_popup and phase == Phase.SOLVED and mode != "learn" and mode != "game"
+	if (celebrating or solved_popup) and wait_left > 0:
+		get_tree().create_timer(0.4).timeout.connect(_prog_toast.bind(title, sub, party, wait_left - 1))
 		return
 	if _prog_toast_node != null and is_instance_valid(_prog_toast_node):
 		_prog_toast_node.queue_free()
@@ -7282,13 +7285,7 @@ func _prog_toast(title: String, sub: String, party: bool, wait_left: int = 6) ->
 		words.add_child(_line(sub, F_SUB, tint[1], font_semibold))
 	row.add_child(words)
 	toast.add_child(pill)
-	var place := func() -> void:
-		if not is_instance_valid(pill):
-			return
-		pill.reset_size()
-		var top := board_slot.get_global_rect().position.y + 20.0 if board_slot != null and progress == null else 260.0
-		pill.position = Vector2((size.x - pill.get_combined_minimum_size().x) * 0.5, top)
-	place.call_deferred()
+	_prog_toast_place.call_deferred()
 	if party:
 		var bits := Confetti.new()
 		bits.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -7305,6 +7302,16 @@ func _prog_toast(title: String, sub: String, party: bool, wait_left: int = 6) ->
 	tw.chain().tween_interval(2.4)
 	tw.chain().tween_property(pill, "modulate:a", 0.0, 0.4)
 	tw.chain().tween_callback(toast.queue_free)
+
+
+## Coloca el aviso de premio (el último: si ha llegado otro antes de colocarlo, el anterior ya no está).
+func _prog_toast_place() -> void:
+	if _prog_toast_node == null or not is_instance_valid(_prog_toast_node) or _prog_toast_node.is_queued_for_deletion():
+		return
+	var pill := _prog_toast_node.get_child(0) as Control
+	pill.reset_size()
+	var top := board_slot.get_global_rect().position.y + 20.0 if board_slot != null and progress == null else 260.0
+	pill.position = Vector2((size.x - pill.get_combined_minimum_size().x) * 0.5, top)
 
 
 ## Frase de la tarjeta del inicio: objetivos de hoy cumplidos y racha.
@@ -7437,7 +7444,7 @@ func _open_day() -> void:
 	train.mouse_filter = Control.MOUSE_FILTER_STOP
 	footer.add_child(train)
 	footer.add_child(_spacer(8.0))
-	footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+	footer.add_child(_button("home", "Inicio", _open_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 # ---------------------------------------------------------------- aviso diario
