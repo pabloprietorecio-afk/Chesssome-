@@ -4534,7 +4534,7 @@ func _open_course() -> void:
 	var n := 0
 	for unit: Dictionary in course:
 		body.add_child(_spacer(34.0))
-		body.add_child(_text(str(unit["title"]).to_upper(), F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_text(Loc.t(str(unit["title"])).to_upper(), F_CAP, _c("quiet"), font_semibold))
 		body.add_child(_spacer(12.0))
 		for l: Dictionary in unit["lessons"]:
 			var id := str(l["id"])
@@ -5107,7 +5107,7 @@ func _open_home() -> void:
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
 		# El nivel que sale de los problemas mide la táctica, no la fuerza en partidas (eso es el nivel de juego).
-		words.add_child(_line((Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, Assessment.LEVEL_FLOORS.size() - 1, Loc.t(str(_rank(lv)[1]))], F_TITLE2, _c("ink"), font_display))
+		words.add_child(_para((Loc.t("Nivel %d de %d · %s") if kids else Loc.t("Táctica: nivel %d de %d · %s")) % [lv, Assessment.LEVEL_FLOORS.size() - 1, Loc.t(str(_rank(lv)[1]))], F_TITLE2, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = Loc.f("Te faltan %d puntos para el nivel %d", [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1])

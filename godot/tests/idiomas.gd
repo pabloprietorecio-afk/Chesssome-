@@ -34,6 +34,30 @@ func _ready() -> void:
 		await _frames(6)
 		await _shot("%s_3_opciones" % code)
 		demo._close_options()
+		if OS.get_environment("MAS") != "":
+			demo._open_course()
+			await _frames(8)
+			await _shot("%s_4_curso" % code)
+			demo._open_game_setup()
+			await _frames(8)
+			await _shot("%s_5_partida" % code)
+			demo._go_home_now()
+			demo._open_train_hub()
+			await _frames(4)
+			var idx := 0
+			for i in demo.puzzles.size():
+				if str(demo.puzzles[i]["id"]) == "IBanZ":
+					idx = i
+			demo.view.board.anim_mode = Board3D.Anim.NONE
+			demo._start(idx)
+			await _frames(12)
+			await _shot("%s_6_problema" % code)
+			demo._show_solution()
+			await get_tree().create_timer(1.5).timeout
+			await _frames(6)
+			await _shot("%s_7_solucion" % code)
+			demo._go_home_now()
+			await _frames(4)
 	print("HECHO")
 	get_tree().quit()
 
