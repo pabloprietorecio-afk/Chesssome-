@@ -1071,3 +1071,141 @@ a {
     box-shadow: inset 0 0 0 1px rgba(42, 53, 88, 0.9), 0 12px 32px -6px rgba(0, 0, 0, 0.6);
   }
 }
+
+/* Reloj de láminas de la espera online (src/ui/FlipClock.tsx). */
+.cm-flipclock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 28px auto 6px;
+}
+.cm-flip {
+  position: relative;
+  width: 62px;
+  height: 86px;
+  border-radius: 13px;
+  box-shadow: 0 8px 20px rgba(41, 56, 115, 0.16), 0 1px 2px rgba(41, 56, 115, 0.1);
+  perspective: 320px;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 60px;
+  line-height: 86px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.cm-flip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  height: 2px;
+  background: rgba(26, 36, 77, 0.12);
+  z-index: 5;
+}
+.cm-flip-half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+.cm-flip-half > span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 200%;
+  text-align: center;
+}
+.cm-flip-top {
+  top: 0;
+  border-radius: 13px 13px 0 0;
+  background: #ffffff;
+  transform-origin: 50% 100%;
+}
+.cm-flip-top > span {
+  top: 0;
+}
+.cm-flip-bottom {
+  bottom: 0;
+  border-radius: 0 0 13px 13px;
+  background: #f3f5fa;
+  transform-origin: 50% 0;
+}
+.cm-flip-bottom > span {
+  bottom: 0;
+}
+.cm-flip-fall {
+  z-index: 3;
+  animation: cm-flip-fall 0.25s ease-in forwards;
+}
+.cm-flip-rise {
+  z-index: 4;
+  transform: rotateX(90deg);
+  animation: cm-flip-rise 0.3s 0.24s cubic-bezier(0.2, 1.4, 0.5, 1) forwards;
+}
+@keyframes cm-flip-fall {
+  to {
+    transform: rotateX(-90deg);
+    filter: brightness(0.8);
+  }
+}
+@keyframes cm-flip-rise {
+  from {
+    transform: rotateX(90deg);
+    filter: brightness(0.8);
+  }
+  to {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+}
+.cm-flip-colon {
+  position: relative;
+  width: 22px;
+  height: 86px;
+}
+.cm-flip-colon::before,
+.cm-flip-colon::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--quiet);
+}
+.cm-flip-colon::before {
+  top: 30px;
+}
+.cm-flip-colon::after {
+  top: 50px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-flip-fall,
+  .cm-flip-rise {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+}
+.cm-online-wait {
+  text-align: center;
+}
+.cm-flip-caption {
+  margin: 4px 0 22px;
+  font-size: 0.95rem;
+}
+:root[data-theme='dark'] .cm-flip-top {
+  background: #2b3350;
+}
+:root[data-theme='dark'] .cm-flip-bottom {
+  background: #252c47;
+}
+:root[data-theme='dark'] .cm-flip {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+:root[data-theme='dark'] .cm-flip::after {
+  background: rgba(0, 0, 0, 0.45);
+}

@@ -182,6 +182,8 @@ var game_bot: Bot
 ## Partida online (core/online.gd): el cliente de Firebase, si se está buscando rival, y el aviso de la pantalla.
 var online: Online
 var online_busy := false
+## Cuándo empezó la búsqueda de rival (Time.get_ticks_msec), para el reloj de espera.
+var online_wait_ms := 0
 var online_status := ""
 var game_history: Array = []
 ## Jugadas de la partida (UCI), una menos que game_history.
@@ -4693,12 +4695,26 @@ func _open_online() -> void:
 	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	body.add_child(tile)
 	body.add_child(_spacer(24.0))
-	body.add_child(_centered(_para("Partida online", F_LARGE, _c("ink"), font_display)))
+	body.add_child(_centered(_para("Buscando rival" if online_busy else "Partida online", F_LARGE, _c("ink"), font_display)))
 	var about := "Te emparejamos con el siguiente jugador que entre. Si no hay nadie esperando, abres una partida y esperas a tu rival."
 	if online_busy:
-		about = "Buscando rival… En cuanto entre otro jugador, empieza la partida. Puedes dejar esta pantalla abierta."
+		about = "La partida empieza en cuanto entre otro jugador."
 	body.add_child(_spacer(10.0))
 	body.add_child(_centered(_para(about, F_BODY + 2, _c("quiet"), font_medium)))
+	if online_busy:
+		# Reloj de láminas con el tiempo de espera.
+		body.add_child(_spacer(56.0))
+		var clock := FlipClock.new()
+		clock.start_ms = online_wait_ms
+		clock.font = font_display
+		clock.ink = _c("ink")
+		clock.dots = _c("quiet")
+		if dark:
+			clock.set_dark(true)
+		clock.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		body.add_child(clock)
+		body.add_child(_spacer(10.0))
+		body.add_child(_centered(_para("Tiempo de espera", F_SUB, _c("quiet"), font_medium)))
 	if online_status != "":
 		body.add_child(_spacer(20.0))
 		body.add_child(_centered(_para(online_status, F_BODY, _c("bad"), font_medium)))
@@ -4712,6 +4728,7 @@ func _open_online() -> void:
 func _online_search() -> void:
 	online_status = ""
 	online_busy = true
+	online_wait_ms = Time.get_ticks_msec()
 	_open_online()
 	online.start()
 

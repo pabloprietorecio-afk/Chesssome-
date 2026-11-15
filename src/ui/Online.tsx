@@ -8,6 +8,7 @@ import { OnlineMatch, type MatchState } from '../online/match';
 import { Rtdb } from '../online/rtdb';
 import { useAppState } from '../app/store';
 import { BoardView } from './BoardView';
+import { FlipClock } from './FlipClock';
 
 function localStore() {
   try {
@@ -24,6 +25,11 @@ export function OnlineScreen(): JSX.Element {
   const s = useAppState();
   const match = useMemo(() => new OnlineMatch(new Rtdb(FIREBASE, { store: localStore() })), []);
   const [st, setSt] = useState<MatchState>(match.current);
+  const [since, setSince] = useState(() => Date.now());
+  const search = () => {
+    setSince(Date.now());
+    void match.start();
+  };
 
   useEffect(() => {
     const off = match.subscribe(setSt);
@@ -45,7 +51,7 @@ export function OnlineScreen(): JSX.Element {
         <h2>Partida online</h2>
         <p>Te emparejamos con el siguiente jugador que entre. Si no hay nadie esperando, abres una partida y esperas a tu rival.</p>
         {st.phase === 'error' && <p className="cm-insight cm-bad">{st.message}</p>}
-        <button className="cm-primary cm-big" onClick={() => void match.start()}>
+        <button className="cm-primary cm-big" onClick={search}>
           Buscar rival
         </button>
         <p className="cm-quiet">Sin cuenta: tu jugador es anónimo y se recuerda en este navegador.</p>
@@ -55,9 +61,11 @@ export function OnlineScreen(): JSX.Element {
 
   if (st.phase === 'searching' || st.phase === 'waiting') {
     return (
-      <section className="cm-card" data-online-phase={st.phase}>
-        <h2>{st.phase === 'searching' ? 'Buscando rival…' : 'Esperando a tu rival…'}</h2>
-        <p className="cm-quiet">En cuanto entre otro jugador, empieza la partida. Puedes dejar esta pantalla abierta.</p>
+      <section className="cm-card cm-online-wait" data-online-phase={st.phase}>
+        <h2>Buscando rival</h2>
+        <p className="cm-quiet">La partida empieza en cuanto entre otro jugador.</p>
+        <FlipClock since={since} />
+        <p className="cm-quiet cm-flip-caption">Tiempo de espera</p>
         <button className="cm-primary" onClick={() => void match.leave()}>
           Cancelar
         </button>

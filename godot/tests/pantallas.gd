@@ -34,13 +34,37 @@ func _ready() -> void:
 	await _frames(8)
 	await _shot("p4_online")
 	demo.online_busy = true
+	# 1:23 de espera, a punto de pasar a 1:24: una captura quieta y otra con la lámina cayendo.
+	demo.online_wait_ms = Time.get_ticks_msec() - 83000 + 600
 	demo._open_online()
 	await _frames(8)
 	await _shot("p5_online_buscando")
+	var clock := _find_clock(demo)
+	clock.set_process(false)
+	var last: FlipClock.FlipCard = clock._cards[3]
+	last.set_digit(str((int(last.digit) + 1) % 10), true)
+	last.t = 0.24
+	last._pose()
+	await _frames(2)
+	await _shot("p6_online_lamina_cae")
+	last.t = 0.72
+	last._pose()
+	await _frames(2)
+	await _shot("p7_online_lamina_asienta")
 	demo.online_busy = false
 	demo._close_progress()
 	print("PANTALLAS DONE")
 	get_tree().quit()
+
+
+func _find_clock(n: Node) -> FlipClock:
+	if n is FlipClock:
+		return n
+	for c in n.get_children():
+		var f := _find_clock(c)
+		if f != null:
+			return f
+	return null
 
 
 func _frames(n: int) -> void:
