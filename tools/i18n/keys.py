@@ -13,7 +13,7 @@ WORDS = ['alfil', 'caballo', 'dama', 'peón', 'rey', 'torre', 'sí', 'no', 'ene'
          'jul', 'ago', 'sep', 'oct', 'nov', 'dic', 'blancas', 'negras', 'inicio']
 # Lo que no se ve o no se traduce (cabeceras HTTP, rutas de Firebase, la marca, mensajes para desarrolladores…).
 EXCLUDE = re.compile(r'^(Content-Type|Accept|grant_type|auth=|orderBy|partidas/|abiertas/|AIza|\^\[|A CHESS$|WAY$|'
-                     r'Falta el índice|No se puede cargar|Icono desconocido|Jan$|Feb$|Mar$|Apr$|May$|Jun$|Jul$|Aug$|'
+                     r'Falta el índice|.*\\x\{|No se puede cargar|Icono desconocido|Jan$|Feb$|Mar$|Apr$|May$|Jun$|Jul$|Aug$|'
                      r'Sep$|Oct$|Nov$|Dec$|coño$|Lichess$|OK$|A Chess Way$)')
 def wanted(s):
     if EXCLUDE.search(s):
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 def course_keys():
     """Textos del curso (godot/data/curso.json): lecciones, ejercicios, partidas y frases del nivel Kids."""
     c = json.load(open(os.path.join(ROOT, 'data', 'curso.json'), encoding='utf8'))
-    skip = {'id', 'icon', 'fen', 'variant', 'generatedBy', 'moves', 'key', 'family', 'solution', 'san', 'uci', 'goal',
+    skip = {'id', 'icon', 'fen', 'variant', 'generatedBy', 'key', 'family', 'solution', 'san', 'uci', 'goal',
             'piece', 'targets', 'type', 'kind', 'arrows', 'squares', 'from', 'to'}
     out = []
     def walk(x, k=''):
@@ -73,7 +73,9 @@ def course_keys():
                 walk(v, k)
     walk(c)
     ui = set(collect())
-    return [s for s in dict.fromkeys(out) if s not in ui]
+    # Las frases con jugadas dentro («Ta2 no da jaque…») se traducen por plantilla (Loc.explain), no una a una.
+    san = re.compile(r'(?<![\wÁ-ú])(?:[RDTAC]?[a-h]?x?[a-h][1-8]|O-O)')
+    return [s for s in dict.fromkeys(out) if s not in ui and not san.search(s)]
 
 
 if __name__ == '__main__':

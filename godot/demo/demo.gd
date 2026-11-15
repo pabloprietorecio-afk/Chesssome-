@@ -178,6 +178,9 @@ var kids := false
 var voice_on := true
 ## Voz del nivel Kids: texto exacto → id del audio (data/voz.json; los OGG en res://voz/, de Kokoro).
 var voice_index := {}
+## Índice de voces del idioma que no es el español (se carga al pedir la primera frase).
+var _voice_lang := ""
+var _voice_lang_index := {}
 var voice_player: AudioStreamPlayer
 var _voice_queue: Array = []
 var _voice_last: Array = []
@@ -8211,12 +8214,12 @@ func _say(lines: Array) -> void:
 	_voice_queue = []
 	for t: Variant in lines:
 		if str(t) == BRAVO:
-			if ResourceLoader.exists(BRAVO_PATH):
+			# El «¡Muy bien!» grabado por una persona es en español: en otros idiomas no se dice.
+			if language == "es" and ResourceLoader.exists(BRAVO_PATH):
 				_voice_queue.append(BRAVO_PATH)
 			continue
-		var id := str(voice_index.get(str(t), ""))
-		var path := "res://voz/%s.ogg" % id
-		if id != "" and ResourceLoader.exists(path):
+		var path := _voice_path(str(t))
+		if path != "":
 			_voice_queue.append(path)
 	voice_player.stop()
 	_voice_next()
@@ -8254,11 +8257,30 @@ func _stop_voice() -> void:
 func _has_voice(lines: Array) -> bool:
 	for t: Variant in lines:
 		if str(t) == BRAVO:
-			return true
-		var id := str(voice_index.get(str(t), ""))
-		if id != "" and ResourceLoader.exists("res://voz/%s.ogg" % id):
+			if language == "es":
+				return true
+			continue
+		if _voice_path(str(t)) != "":
 			return true
 	return false
+
+
+## Audio de una frase del nivel Kids en el idioma de la app ("" si no hay). En español, data/voz.json y res://voz/;
+## en los demás, data/voz_<idioma>.json y res://voz_<idioma>/ (frase en español → audio de su traducción). Sin el
+## audio del idioma no suena nada: mejor callar que leer en español un texto que se ve en otro idioma.
+func _voice_path(text: String) -> String:
+	if language == "es":
+		var id := str(voice_index.get(text, ""))
+		var path := "res://voz/%s.ogg" % id
+		return path if id != "" and ResourceLoader.exists(path) else ""
+	if _voice_lang != language:
+		_voice_lang = language
+		var file := "res://data/voz_%s.json" % language
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(file)) if FileAccess.file_exists(file) else null
+		_voice_lang_index = parsed if typeof(parsed) == TYPE_DICTIONARY else {}
+	var lid := str(_voice_lang_index.get(text, ""))
+	var lpath := "res://voz_%s/%s.ogg" % [language, lid]
+	return lpath if lid != "" and ResourceLoader.exists(lpath) else ""
 
 
 ## «Modo Kids» desde la bienvenida: directo al curso, sin pregunta de experiencia ni test.

@@ -1,0 +1,754 @@
+[
+ {
+  "id": "811c5e1956cf",
+  "text": "Parfait !"
+ },
+ {
+  "id": "9d176f30dc82",
+  "text": "Très bien !"
+ },
+ {
+  "id": "9de0fa1c58ed",
+  "text": "Très bien ! On peut le faire en moins de coups. Tu réessaies ?"
+ },
+ {
+  "id": "7b9bb539a9e1",
+  "text": "Presque. Essaie encore !"
+ },
+ {
+  "id": "fdbdbf2dca9d",
+  "text": "Oups ! Sur cette case, tu serais pris. Essaie encore."
+ },
+ {
+  "id": "2de99b1a6e5e",
+  "text": "Leçon terminée !"
+ },
+ {
+  "id": "da29ab1f1e30",
+  "text": "Tu as fini le cours ! Maintenant, tu sais jouer aux échecs."
+ },
+ {
+  "id": "7d015772a624",
+  "text": "Indice : regarde cette pièce."
+ },
+ {
+  "id": "3159ead0cca1",
+  "text": "C'est pour les grands. Demande de l'aide à un adulte."
+ },
+ {
+  "id": "b7ace36989c1",
+  "text": "Salut ! Je suis ton entraîneur d'échecs. On commence ?"
+ },
+ {
+  "id": "da5d34973a3c",
+  "text": "Très bien ! Maintenant, on joue une partie avec ce que tu as appris."
+ },
+ {
+  "id": "a6a0a04262c5",
+  "text": "On joue ! Tu as les Blancs."
+ },
+ {
+  "id": "190d7cad9dfe",
+  "text": "On joue ! Tu as les Noirs."
+ },
+ {
+  "id": "da2e7814d575",
+  "text": "Bataille de pions ! Celui qui arrive le premier au bout de l'échiquier gagne."
+ },
+ {
+  "id": "779fbeeb22c6",
+  "text": "Pions et cavaliers. Celui qui fait dame avec un pion ou prend toutes les pièces adverses gagne."
+ },
+ {
+  "id": "0f982ebecafb",
+  "text": "Attention ! Ton roi est en échec."
+ },
+ {
+  "id": "a8a7eb45bccf",
+  "text": "Échec et mat ! Tu as gagné !"
+ },
+ {
+  "id": "5cce461f5e34",
+  "text": "Cette fois, l'adversaire a gagné. Joue une autre partie !"
+ },
+ {
+  "id": "3a54eb3ce3ef",
+  "text": "Nulle ! Personne ne gagne."
+ },
+ {
+  "id": "b4cb61896e27",
+  "text": "Tu as gagné !"
+ },
+ {
+  "id": "a102e595f3f1",
+  "text": "L'adversaire a gagné. Encore une fois !"
+ },
+ {
+  "id": "dfa71c7bc6f6",
+  "text": "Indice : essaie avec cette pièce."
+ },
+ {
+  "id": "d58f94df4d58",
+  "text": "On revoit la partie ! Je te montre les moments importants."
+ },
+ {
+  "id": "3ca1642d1d55",
+  "text": "Très bien ! Tu n'as laissé aucune pièce sans défense et tu n'as raté aucun mat."
+ },
+ {
+  "id": "c7b508bcfe3b",
+  "text": "Ici, tu as laissé une pièce sans défense. Regarde d'abord si on peut te la prendre !"
+ },
+ {
+  "id": "84ddde210e1d",
+  "text": "Ici, tu pouvais prendre une pièce gratuitement. Regarde toujours quelles pièces tu peux prendre !"
+ },
+ {
+  "id": "4cd477cccbd6",
+  "text": "Ici, tu avais un échec et mat ! Cherche toujours si tu peux mater."
+ },
+ {
+  "id": "ea622cbe798f",
+  "text": "Après ce coup, l'adversaire pouvait te mater. Attention à ton roi !"
+ },
+ {
+  "id": "9076e61ec031",
+  "text": "Tu as bougé le roi et tu ne peux plus roquer. Il vaut mieux roquer pour le protéger."
+ },
+ {
+  "id": "c4b7b7ff80cb",
+  "text": "Tu as joué la même pièce plusieurs fois. Il vaut mieux sortir d'abord toutes les pièces."
+ },
+ {
+  "id": "bd0fd9c6595c",
+  "text": "Cherche le meilleur coup."
+ },
+ {
+  "id": "f1c1472253a3",
+  "text": "Attention ! Avec ce coup, l'adversaire peut te mater. Regarde la flèche et essaie un autre coup."
+ },
+ {
+  "id": "b24432c4e01d",
+  "text": "La pièce que tu as jouée reste seule, et l'adversaire peut la prendre. Regarde la flèche et essaie un autre coup."
+ },
+ {
+  "id": "c909354dd79d",
+  "text": "Avec ce coup, tu laisses une pièce sans défense, et l'adversaire peut la prendre. Regarde la flèche et essaie un autre coup."
+ },
+ {
+  "id": "3e6aaaee1ae7",
+  "text": "Avec ce coup, tu finis par perdre des pièces. Regarde ce que fait l'adversaire et essaie un autre coup."
+ },
+ {
+  "id": "a282026871c3",
+  "text": "Ce coup n'est pas le meilleur. Il y en a un bien plus fort. Trouve-le !"
+ },
+ {
+  "id": "e1cc78e0e2eb",
+  "text": "Il y avait mieux ! Cherche un coup qui gagne une pièce ou qui fait échec et mat."
+ },
+ {
+  "id": "628ae68d5b4a",
+  "text": "Ce coup est bon aussi, mais il y a un chemin plus rapide. Trouve-le !"
+ },
+ {
+  "id": "28460fb5bb9b",
+  "text": "Regarde : c'était le bon coup. Suis la flèche verte."
+ },
+ {
+  "id": "39898beec8d3",
+  "text": "Échec et mat ! Le roi ne peut pas s'échapper, et personne ne peut le sauver."
+ },
+ {
+  "id": "ca6028bc8b21",
+  "text": "Attaque double ! Une seule pièce attaque deux choses à la fois, et l'adversaire ne peut en sauver qu'une."
+ },
+ {
+  "id": "3e8d0f4a9ee3",
+  "text": "Pièces alignées ! En attaquant celle de devant, celle de derrière se retrouve en danger."
+ },
+ {
+  "id": "3c132366e644",
+  "text": "Très bien ! Tu as éliminé la pièce qui défendait, et ce qu'elle défendait est resté seul."
+ },
+ {
+  "id": "8b881c004a6f",
+  "text": "Très bien ! Un pion qui arrive au bout de l'échiquier devient une dame."
+ },
+ {
+  "id": "81d0d3ebaef4",
+  "text": "Très bien ! Cette pièce était seule, sans personne pour la défendre, et tu l'as prise."
+ },
+ {
+  "id": "ea6ccf1f02f5",
+  "text": "Très bien ! Tu as trouvé le coup le plus fort."
+ },
+ {
+  "id": "9b445c7167c7",
+  "text": "L'échiquier"
+ },
+ {
+  "id": "6c634e4b2467",
+  "text": "Salut ! On va apprendre les échecs."
+ },
+ {
+  "id": "76cfb159e24e",
+  "text": "On joue sur un échiquier de 64 cases, claires et foncées. On joue à deux : les Blancs et les Noirs. Les Blancs commencent toujours."
+ },
+ {
+  "id": "7485c4c439c9",
+  "text": "Tu connais l'échiquier !"
+ },
+ {
+  "id": "344074d6f904",
+  "text": "Voici comment commence une partie. Chaque joueur a 16 pièces. Tu as les Blancs, ceux qui sont près de toi."
+ },
+ {
+  "id": "08cd1c87ba4e",
+  "text": "Chaque case a un nom : une lettre et un chiffre, comme à la bataille navale."
+ },
+ {
+  "id": "02e4ebc4afa7",
+  "text": "La tour"
+ },
+ {
+  "id": "9df920142e84",
+  "text": "La tour va en ligne droite : en avant, en arrière et sur les côtés. Aussi loin qu'elle veut."
+ },
+ {
+  "id": "8e9d45a3d2e1",
+  "text": "Mais elle ne peut pas sauter par-dessus d'autres pièces."
+ },
+ {
+  "id": "6d11646ef4cf",
+  "text": "La tour va en ligne droite."
+ },
+ {
+  "id": "45fdedbda205",
+  "text": "Emmène la tour jusqu'à l'étoile."
+ },
+ {
+  "id": "ca15fffe225f",
+  "text": "Maintenant, ramasse les deux étoiles."
+ },
+ {
+  "id": "892abbe75f05",
+  "text": "Ramasse les trois étoiles."
+ },
+ {
+  "id": "f2e15b806121",
+  "text": "Tes pions sont au milieu. La tour ne peut pas sauter par-dessus. Cherche un autre chemin !"
+ },
+ {
+  "id": "43fbac23d23f",
+  "text": "Le fou"
+ },
+ {
+  "id": "2d74d879d0f3",
+  "text": "Le fou va en diagonale, comme s'il coupait les cases par les coins. Aussi loin qu'il veut."
+ },
+ {
+  "id": "231c635b1862",
+  "text": "C'est pourquoi il marche toujours sur des cases de la même couleur."
+ },
+ {
+  "id": "51fc9154dcde",
+  "text": "Le fou va en diagonale."
+ },
+ {
+  "id": "942c064250bd",
+  "text": "Emmène le fou jusqu'à l'étoile."
+ },
+ {
+  "id": "66bf7af4cc6f",
+  "text": "Ramasse les deux étoiles."
+ },
+ {
+  "id": "759a70daffe2",
+  "text": "Ce fou ne marche que sur des cases claires. Ramasse les trois étoiles."
+ },
+ {
+  "id": "67558dbb070d",
+  "text": "Un pion bloque le chemin. Cherches-en un autre !"
+ },
+ {
+  "id": "955665b83c6b",
+  "text": "La dame"
+ },
+ {
+  "id": "82c86629357f",
+  "text": "La dame est la pièce la plus forte de toutes."
+ },
+ {
+  "id": "499e067832a7",
+  "text": "Elle peut aller en ligne droite, comme la tour, et en diagonale, comme le fou."
+ },
+ {
+  "id": "241b6cab31ed",
+  "text": "La dame va tout droit et en diagonale."
+ },
+ {
+  "id": "4ba7339066ff",
+  "text": "Ramasse les quatre étoiles en le moins de coups possible."
+ },
+ {
+  "id": "f4001cbb8603",
+  "text": "Le roi"
+ },
+ {
+  "id": "c92cbe729412",
+  "text": "Le roi est la pièce la plus importante. Il faut bien le protéger !"
+ },
+ {
+  "id": "0613461ed325",
+  "text": "Mais il avance lentement : une seule case à la fois, dans n'importe quel sens."
+ },
+ {
+  "id": "60b2bd335dac",
+  "text": "Le roi avance case par case."
+ },
+ {
+  "id": "1c3f16cffb7c",
+  "text": "Emmène le roi jusqu'à l'étoile."
+ },
+ {
+  "id": "bc6ea8a27bd7",
+  "text": "Ramasse les deux étoiles, pas à pas."
+ },
+ {
+  "id": "c960884b38b1",
+  "text": "Ramasse les deux étoiles. Le roi peut aussi aller en diagonale."
+ },
+ {
+  "id": "4f1728e97a32",
+  "text": "Le cavalier"
+ },
+ {
+  "id": "2218302b83cf",
+  "text": "Le cavalier saute en faisant un L : deux cases d'un côté et une de plus de l'autre."
+ },
+ {
+  "id": "fbcfef5de6f5",
+  "text": "C'est la seule pièce qui peut sauter par-dessus les autres."
+ },
+ {
+  "id": "b6f95d521767",
+  "text": "Le cavalier saute en faisant un L."
+ },
+ {
+  "id": "81a71edfcbd7",
+  "text": "Emmène le cavalier jusqu'à l'étoile."
+ },
+ {
+  "id": "83eda3d246ee",
+  "text": "Le cavalier saute par-dessus tes pions !"
+ },
+ {
+  "id": "5690b6aed61b",
+  "text": "Le pion"
+ },
+ {
+  "id": "0f6ac2bd3379",
+  "text": "Le pion avance d'une case. La première fois qu'il bouge, il peut avancer de deux."
+ },
+ {
+  "id": "7872e5740678",
+  "text": "Il ne recule jamais. Et pour prendre, il va en diagonale."
+ },
+ {
+  "id": "a9ed2113b589",
+  "text": "Le pion va tout droit et prend en diagonale."
+ },
+ {
+  "id": "5ab1f272774c",
+  "text": "La première fois, le pion peut avancer de deux cases. Fais-le d'un coup !"
+ },
+ {
+  "id": "bfa9bd7983cc",
+  "text": "Prends les deux pièces noires. Rappelle-toi : le pion prend en diagonale."
+ },
+ {
+  "id": "4944092ba855",
+  "text": "Prends les trois pièces. Regarde bien dans quel sens prend le pion."
+ },
+ {
+  "id": "6fa01db0f0e5",
+  "text": "Prendre"
+ },
+ {
+  "id": "041edb53cdef",
+  "text": "Prendre, c'est amener ta pièce sur la case d'une pièce adverse. Tu l'enlèves de l'échiquier et tu te mets à sa place."
+ },
+ {
+  "id": "f93a3f1f1187",
+  "text": "Prendre, c'est enlever une pièce adverse."
+ },
+ {
+  "id": "98f16d695b66",
+  "text": "Prends les deux pièces noires avec la tour."
+ },
+ {
+  "id": "5e536c747a19",
+  "text": "Prends les trois pièces avec le fou."
+ },
+ {
+  "id": "90d82a2b2716",
+  "text": "Prends les trois pièces avec le cavalier."
+ },
+ {
+  "id": "0725000eb0ef",
+  "text": "Prends les quatre pièces avec la dame, en le moins de coups possible."
+ },
+ {
+  "id": "e29290d9b2dc",
+  "text": "Ne te fais pas prendre !"
+ },
+ {
+  "id": "cd1108de64a0",
+  "text": "Les pièces noires peuvent aussi prendre."
+ },
+ {
+  "id": "c9d21ceb60c3",
+  "text": "Avant de jouer, regarde si la case où tu vas est attaquée."
+ },
+ {
+  "id": "825eee6b281c",
+  "text": "Avant de jouer, regarde ce qu'attaque l'adversaire."
+ },
+ {
+  "id": "f177a6e02720",
+  "text": "Prends les deux pièces sans te faire prendre. Par laquelle commences-tu ?"
+ },
+ {
+  "id": "e74cbf8fe355",
+  "text": "Le pion noir protège le cavalier. Prends les deux sans perdre ta dame."
+ },
+ {
+  "id": "476928258390",
+  "text": "Prends les trois pièces. Attention aux pions noirs !"
+ },
+ {
+  "id": "b5d93f799eaa",
+  "text": "Ce que vaut chaque pièce"
+ },
+ {
+  "id": "5bb8d3255bf6",
+  "text": "Certaines pièces valent plus que d'autres. Le pion vaut 1. Le cavalier et le fou, 3. La tour, 5. Et la dame, 9."
+ },
+ {
+  "id": "1a2bf2a00475",
+  "text": "Le roi ne peut jamais être pris."
+ },
+ {
+  "id": "0d7b17e176e2",
+  "text": "La dame vaut plus que toutes les autres."
+ },
+ {
+  "id": "e610f3d83083",
+  "text": "Tu peux prendre trois pièces. Prends celle qui vaut le plus !"
+ },
+ {
+  "id": "3f9ed78e2c4a",
+  "text": "Ce coup ne prend rien. Essaie un autre !"
+ },
+ {
+  "id": "c1cffc93ed38",
+  "text": "Le cavalier vaut 3. Il y en a une qui vaut plus."
+ },
+ {
+  "id": "97c59d52b2e9",
+  "text": "Le pion vaut 1. Il y en a une qui vaut plus."
+ },
+ {
+  "id": "9a5d0e9460ee",
+  "text": "Bien ! La tour vaut 5 : c'est celle qui vaut le plus."
+ },
+ {
+  "id": "732cffd977b9",
+  "text": "Le cavalier peut prendre trois pièces. Laquelle choisis-tu ?"
+ },
+ {
+  "id": "1f40c7ee7c8b",
+  "text": "Bien ! La dame vaut 9 : c'est celle qui vaut le plus."
+ },
+ {
+  "id": "2793da101ae5",
+  "text": "Le pion peut prendre des deux côtés. Choisis bien !"
+ },
+ {
+  "id": "429b8c09543e",
+  "text": "L'échec"
+ },
+ {
+  "id": "14fe90253819",
+  "text": "Faire échec, c'est attaquer le roi de l'adversaire. Quand son roi est en échec, il doit le sauver tout de suite."
+ },
+ {
+  "id": "08b68dd91a1e",
+  "text": "L'échec, c'est attaquer le roi."
+ },
+ {
+  "id": "c8e2eebd6b96",
+  "text": "Fais échec au roi noir avec la tour."
+ },
+ {
+  "id": "c0e78ef07fe5",
+  "text": "Ce coup n'attaque pas le roi noir. Essaie un autre !"
+ },
+ {
+  "id": "38b852445cd0",
+  "text": "Échec ! Avec ta tour, tu attaques le roi noir."
+ },
+ {
+  "id": "296cac60a61a",
+  "text": "Fais échec avec le fou."
+ },
+ {
+  "id": "c507059a8b90",
+  "text": "Échec ! Avec ton fou, tu attaques le roi noir."
+ },
+ {
+  "id": "2df0d09eb41a",
+  "text": "Fais échec avec le cavalier."
+ },
+ {
+  "id": "0c4e78db95e0",
+  "text": "Échec ! Avec ton cavalier, tu attaques le roi noir."
+ },
+ {
+  "id": "ee64b28af5ab",
+  "text": "Sortir de l'échec"
+ },
+ {
+  "id": "8615e91ef720",
+  "text": "Il y a trois façons de sauver le roi de l'échec : le bouger, prendre la pièce qui attaque, ou mettre une autre pièce entre les deux."
+ },
+ {
+  "id": "9be7ce7f9b65",
+  "text": "Le roi se sauve en bougeant, en prenant ou en s'interposant."
+ },
+ {
+  "id": "783e1b59e0ff",
+  "text": "Ton roi est en échec ! Ici, tu ne peux le sauver qu'en le bougeant."
+ },
+ {
+  "id": "257dad32463f",
+  "text": "Bien ! Tu as sauvé ton roi en le déplaçant."
+ },
+ {
+  "id": "ef1759857f45",
+  "text": "Encore échec ! Maintenant, prends la pièce qui attaque."
+ },
+ {
+  "id": "47ff74362da0",
+  "text": "Bien ! Tu as sauvé ton roi en prenant la pièce qui attaquait."
+ },
+ {
+  "id": "61a14e0acd08",
+  "text": "Et maintenant, mets une pièce entre les deux."
+ },
+ {
+  "id": "ef7176f99928",
+  "text": "Bien ! Tu as sauvé ton roi en t'interposant."
+ },
+ {
+  "id": "257372158b92",
+  "text": "L'échec et mat"
+ },
+ {
+  "id": "95afc49d2566",
+  "text": "L'échec et mat est un échec dont le roi ne peut pas se sauver. Celui qui fait échec et mat gagne la partie !"
+ },
+ {
+  "id": "2dbd19ca98f7",
+  "text": "Échec et mat, c'est gagner !"
+ },
+ {
+  "id": "1c5667bfde75",
+  "text": "Fais échec et mat. Les pions noirs empêchent leur roi de s'échapper."
+ },
+ {
+  "id": "327e37deef6b",
+  "text": "Ce coup ne fait pas échec. Essaie un autre !"
+ },
+ {
+  "id": "a48f7985f619",
+  "text": "Échec et mat ! Le roi noir ne peut pas être sauvé."
+ },
+ {
+  "id": "d53c4a65106b",
+  "text": "Fais échec et mat avec la dame. Ton roi l'aide."
+ },
+ {
+  "id": "4c67272f63a9",
+  "text": "C'est échec, mais le roi noir peut s'échapper. Essaie un autre !"
+ },
+ {
+  "id": "77327dbcbd76",
+  "text": "Fais échec et mat avec le cavalier."
+ },
+ {
+  "id": "b102a8b4ee0f",
+  "text": "Fais échec et mat avec la tour."
+ },
+ {
+  "id": "3708bbb25e3b",
+  "text": "Le pat"
+ },
+ {
+  "id": "d7f1b5a3806b",
+  "text": "Attention : si le roi adverse n'est pas en échec mais ne peut aller nulle part, c'est pat. Et alors, c'est match nul."
+ },
+ {
+  "id": "32fcc5a0a9f7",
+  "text": "Le pat, c'est match nul. Attention !"
+ },
+ {
+  "id": "d02fcb38a76e",
+  "text": "Regarde : c'est au roi noir de jouer. Il n'est pas en échec, mais il ne peut aller nulle part. C'est pat, et c'est match nul ! Touche « Pourquoi ? »."
+ },
+ {
+  "id": "d0b6b50eb054",
+  "text": "Un autre pat : le roi noir n'est pas en échec, mais ton pion et ton roi lui prennent toutes les cases."
+ },
+ {
+  "id": "e5c4b9a551af",
+  "text": "Fais échec et mat. Mais ne le pate pas !"
+ },
+ {
+  "id": "a676e963e21e",
+  "text": "Pat ! Le roi noir n'est pas en échec, mais il ne peut pas bouger. C'est match nul."
+ },
+ {
+  "id": "f0261c5ad0f1",
+  "text": "Encore : échec et mat, sans le pater."
+ },
+ {
+  "id": "86f4577b344a",
+  "text": "C'est échec, mais on peut te prendre cette pièce. Essaie un autre !"
+ },
+ {
+  "id": "1be8b0ebe2aa",
+  "text": "Le roque"
+ },
+ {
+  "id": "a935178e2733",
+  "text": "Le roque est un coup spécial : tu bouges le roi et la tour en même temps, pour cacher le roi."
+ },
+ {
+  "id": "b31353655e75",
+  "text": "Pour le faire, déplace le roi de deux cases vers la tour. La tour saute toute seule de l'autre côté."
+ },
+ {
+  "id": "dd2b14a549fb",
+  "text": "Avec le roque, le roi se cache."
+ },
+ {
+  "id": "47becfb5cbcd",
+  "text": "Fais le roque du côté de la tour la plus proche."
+ },
+ {
+  "id": "9651be513dc8",
+  "text": "Pour roquer, déplace le roi de deux cases vers la tour."
+ },
+ {
+  "id": "6809ef1d197f",
+  "text": "Roque ! Ton roi est maintenant caché."
+ },
+ {
+  "id": "c4688a342ac2",
+  "text": "Ce roque va de l'autre côté."
+ },
+ {
+  "id": "5f722122e7fe",
+  "text": "Maintenant, fais-le de l'autre côté."
+ },
+ {
+  "id": "9150cdf674b5",
+  "text": "Promouvoir"
+ },
+ {
+  "id": "ffd1959eab5e",
+  "text": "Si un pion arrive tout au bout de l'échiquier, il se transforme en une autre pièce ! Presque toujours en dame."
+ },
+ {
+  "id": "c327fcc69c4c",
+  "text": "Un pion qui arrive au bout devient une dame."
+ },
+ {
+  "id": "f1392e2ce87e",
+  "text": "Amène le pion jusqu'au bout et transforme-le en dame."
+ },
+ {
+  "id": "254123b64a31",
+  "text": "C'est possible, mais la dame est la plus forte. Choisis la dame !"
+ },
+ {
+  "id": "4a4af1bb5e05",
+  "text": "Promu ! Ton pion est maintenant une dame."
+ },
+ {
+  "id": "63b6f83df541",
+  "text": "Amène le pion jusqu'au bout de l'échiquier."
+ },
+ {
+  "id": "76c7d7d5ae6f",
+  "text": "Prends et fais dame en même temps."
+ },
+ {
+  "id": "df7f51ffaaf6",
+  "text": "La prise en passant"
+ },
+ {
+  "id": "341b6a05a99d",
+  "text": "Ce coup est un peu bizarre. Si un pion adverse avance de deux cases et se place à côté du tien, tu peux le prendre comme s'il n'avait avancé que d'une."
+ },
+ {
+  "id": "7c39751c1ad1",
+  "text": "Mais seulement à ce moment précis."
+ },
+ {
+  "id": "0870a8233874",
+  "text": "En passant : seulement juste après."
+ },
+ {
+  "id": "0df010848307",
+  "text": "Le pion noir vient d'avancer de deux cases. Prends-le en passant !"
+ },
+ {
+  "id": "30d3889551bb",
+  "text": "Déplace ton pion en diagonale, juste derrière le pion noir."
+ },
+ {
+  "id": "3c7eaa1c4af5",
+  "text": "En passant ! Tu as pris le pion noir."
+ },
+ {
+  "id": "2b575f377dbb",
+  "text": "Encore : le pion noir vient d'arriver. Profites-en !"
+ },
+ {
+  "id": "f23a2b8e1e3b",
+  "text": "Mats de vraies parties 1"
+ },
+ {
+  "id": "24907bb337ce",
+  "text": "Ces positions viennent de vraies parties. Dans toutes, tu peux faire échec et mat en un seul coup."
+ },
+ {
+  "id": "5ff8489a301b",
+  "text": "Regarde bien tout l'échiquier."
+ },
+ {
+  "id": "10e66311d9be",
+  "text": "Tu es un chasseur de rois !"
+ },
+ {
+  "id": "82a27d9ddf80",
+  "text": "Cherche l'échec et mat."
+ },
+ {
+  "id": "caffbb5e37f9",
+  "text": "Mats de vraies parties 2"
+ }
+]

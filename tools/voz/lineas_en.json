@@ -1,0 +1,754 @@
+[
+ {
+  "id": "7a97934e1322",
+  "text": "Perfect!"
+ },
+ {
+  "id": "12532d83ae47",
+  "text": "Well done!"
+ },
+ {
+  "id": "d6b578182ba2",
+  "text": "Well done! It can be done in fewer moves. Want to try again?"
+ },
+ {
+  "id": "f988ec7d4207",
+  "text": "Almost. Try again!"
+ },
+ {
+  "id": "782faf56d8bf",
+  "text": "Oops! On that square you'd be captured. Try again."
+ },
+ {
+  "id": "2236fe8ca5fe",
+  "text": "Lesson complete!"
+ },
+ {
+  "id": "44324a4c05e5",
+  "text": "You've finished the course! Now you know how to play chess."
+ },
+ {
+  "id": "2c087c5a825a",
+  "text": "Hint: look at this piece."
+ },
+ {
+  "id": "8030924e3192",
+  "text": "This is for grown-ups. Ask an adult for help."
+ },
+ {
+  "id": "4b6c346b8ad2",
+  "text": "Hi! I'm your chess coach. Shall we start?"
+ },
+ {
+  "id": "52109e2411e6",
+  "text": "Well done! Now let's play a game with what you've learned."
+ },
+ {
+  "id": "9e6efdb2d0a0",
+  "text": "Let's play! You have White."
+ },
+ {
+  "id": "47f2bf15e913",
+  "text": "Let's play! You have Black."
+ },
+ {
+  "id": "27ed6b561957",
+  "text": "Pawn war! Whoever reaches the end of the board first wins."
+ },
+ {
+  "id": "d177d4d74732",
+  "text": "Pawns and knights. Whoever promotes a pawn or captures all the opponent's pieces wins."
+ },
+ {
+  "id": "22229e1412a6",
+  "text": "Careful! Your king is in check."
+ },
+ {
+  "id": "920d138db4ea",
+  "text": "Checkmate! You win!"
+ },
+ {
+  "id": "77fa57b269aa",
+  "text": "This time your opponent won. Play another!"
+ },
+ {
+  "id": "b2065e3b218d",
+  "text": "It's a draw! Nobody wins."
+ },
+ {
+  "id": "e45b55994913",
+  "text": "You win!"
+ },
+ {
+  "id": "3154a7fd5ce0",
+  "text": "Your opponent won. Again!"
+ },
+ {
+  "id": "99a6f057ab24",
+  "text": "Hint: try this piece."
+ },
+ {
+  "id": "b4b146571e34",
+  "text": "Let's go over the game! I'll show you the important moments."
+ },
+ {
+  "id": "221f1834e700",
+  "text": "Well done! You didn't leave any pieces undefended and didn't miss any mate."
+ },
+ {
+  "id": "a0282a92b3d0",
+  "text": "Here you left a piece undefended. Check first if it can be captured!"
+ },
+ {
+  "id": "554350c73476",
+  "text": "Here you could capture a piece for free. Always look at which pieces you can capture!"
+ },
+ {
+  "id": "b5cf3a53a134",
+  "text": "Here you had checkmate! Always look for a mate."
+ },
+ {
+  "id": "b08e99c6ee16",
+  "text": "After this move, your opponent could checkmate you. Look after your king!"
+ },
+ {
+  "id": "3f62df161ca9",
+  "text": "You moved the king and now you can't castle. It's better to castle to protect it."
+ },
+ {
+  "id": "242d97ae7936",
+  "text": "You moved the same piece many times. It's better to bring out all the pieces first."
+ },
+ {
+  "id": "507c2be00c87",
+  "text": "Find the best move."
+ },
+ {
+  "id": "efc894aa3dc2",
+  "text": "Careful! With that move, your opponent can checkmate you. Look at the arrow and try another."
+ },
+ {
+  "id": "9195760b5aad",
+  "text": "The piece you moved is left alone, and your opponent can capture it. Look at the arrow and try another."
+ },
+ {
+  "id": "3349b5416977",
+  "text": "With that move you leave a piece undefended, and your opponent can capture it. Look at the arrow and try another."
+ },
+ {
+  "id": "341c1f6fe046",
+  "text": "With that move you end up losing pieces. Look at what your opponent does and try another."
+ },
+ {
+  "id": "9fbbeb5c830d",
+  "text": "That move isn't the best. There's a much stronger one. Find it!"
+ },
+ {
+  "id": "70f11feb2721",
+  "text": "There was something better! Look for a move that wins a piece or gives checkmate."
+ },
+ {
+  "id": "5e4c5024ebe8",
+  "text": "That move is good too, but there's a quicker way. Find it!"
+ },
+ {
+  "id": "f30451b428d2",
+  "text": "Look: this was the good move. Follow the green arrow."
+ },
+ {
+  "id": "19e9b6b494f9",
+  "text": "Checkmate! The king can't escape, and nobody can save it."
+ },
+ {
+  "id": "c68127b4a9ce",
+  "text": "Double attack! A single piece attacks two things at once, and your opponent can only save one."
+ },
+ {
+  "id": "c1150ad6a74e",
+  "text": "Pieces in a line! When you attack the one in front, the one behind is in danger."
+ },
+ {
+  "id": "77a5638ebc19",
+  "text": "Well done! You removed the piece that was defending, and what it defended is now alone."
+ },
+ {
+  "id": "79bdc83b16f6",
+  "text": "Well done! A pawn that reaches the end of the board becomes a queen."
+ },
+ {
+  "id": "85efade18941",
+  "text": "Well done! That piece was alone, with nobody defending it, and you captured it."
+ },
+ {
+  "id": "ff8e4837de96",
+  "text": "Well done! You found the strongest move."
+ },
+ {
+  "id": "291bb2b98329",
+  "text": "The board"
+ },
+ {
+  "id": "da2e2015edcf",
+  "text": "Hi! Let's learn chess."
+ },
+ {
+  "id": "eeda99b908ba",
+  "text": "It's played on a board with 64 squares, light and dark. Two players: White and Black. White always starts."
+ },
+ {
+  "id": "b9f614982576",
+  "text": "Now you know the board!"
+ },
+ {
+  "id": "51e3720fe559",
+  "text": "This is how a game starts. Each player has 16 pieces. You have White, the ones near you."
+ },
+ {
+  "id": "e96db1fad3cf",
+  "text": "Every square has a name: a letter and a number, like in Battleship."
+ },
+ {
+  "id": "3ccf2ea65c6d",
+  "text": "The rook"
+ },
+ {
+  "id": "3c10bc544c3b",
+  "text": "The rook goes in a straight line: forwards, backwards and sideways. As far as it likes."
+ },
+ {
+  "id": "5e6f75ec375b",
+  "text": "But it can't jump over other pieces."
+ },
+ {
+  "id": "3b4f6ef5c315",
+  "text": "The rook goes in a straight line."
+ },
+ {
+  "id": "4a3277b404bc",
+  "text": "Take the rook to the star."
+ },
+ {
+  "id": "6ca1007e1165",
+  "text": "Now collect the two stars."
+ },
+ {
+  "id": "2dc483ebd7bf",
+  "text": "Collect the three stars."
+ },
+ {
+  "id": "942298426277",
+  "text": "Your pawns are in the way. The rook can't jump them. Find another way!"
+ },
+ {
+  "id": "beb6a477b894",
+  "text": "The bishop"
+ },
+ {
+  "id": "1050852bb275",
+  "text": "The bishop goes diagonally, as if it were cutting the squares through the corners. As far as it likes."
+ },
+ {
+  "id": "2117a5f15de5",
+  "text": "That's why it always steps on squares of the same colour."
+ },
+ {
+  "id": "2bb6b474d160",
+  "text": "The bishop goes diagonally."
+ },
+ {
+  "id": "3ddb23b542b6",
+  "text": "Take the bishop to the star."
+ },
+ {
+  "id": "5272f7cd2f01",
+  "text": "Collect the two stars."
+ },
+ {
+  "id": "06cb0fce813f",
+  "text": "This bishop only steps on light squares. Collect the three stars."
+ },
+ {
+  "id": "11bc619a2b8c",
+  "text": "A pawn is in the way. Find another!"
+ },
+ {
+  "id": "50e5a969de42",
+  "text": "The queen"
+ },
+ {
+  "id": "7499eacb1e7d",
+  "text": "The queen is the strongest piece of all."
+ },
+ {
+  "id": "a96c6126d76b",
+  "text": "She can go in a straight line, like the rook, and diagonally, like the bishop."
+ },
+ {
+  "id": "f016fb60c6bb",
+  "text": "The queen goes straight and diagonally."
+ },
+ {
+  "id": "e7d1c1b67ba0",
+  "text": "Collect the four stars in as few moves as you can."
+ },
+ {
+  "id": "655efaba6934",
+  "text": "The king"
+ },
+ {
+  "id": "446ee5bbebc9",
+  "text": "The king is the most important piece. You must take good care of it!"
+ },
+ {
+  "id": "f529ef60e399",
+  "text": "But it walks slowly: just one square at a time, in any direction."
+ },
+ {
+  "id": "d74fbaa116b0",
+  "text": "The king walks one square at a time."
+ },
+ {
+  "id": "c113b1752072",
+  "text": "Take the king to the star."
+ },
+ {
+  "id": "f36b0123d44c",
+  "text": "Collect the two stars, step by step."
+ },
+ {
+  "id": "aca4277c0773",
+  "text": "Collect the two stars. The king can also go diagonally."
+ },
+ {
+  "id": "9fcc5da57b4d",
+  "text": "The knight"
+ },
+ {
+  "id": "f9c6ce727ddd",
+  "text": "The knight jumps making an L: two squares one way and one more the other way."
+ },
+ {
+  "id": "d58fdb7ea9e2",
+  "text": "It's the only piece that can jump over the others."
+ },
+ {
+  "id": "3868852023de",
+  "text": "The knight jumps making an L."
+ },
+ {
+  "id": "5feb404f4068",
+  "text": "Take the knight to the star."
+ },
+ {
+  "id": "0ef923b638cd",
+  "text": "The knight jumps over your pawns!"
+ },
+ {
+  "id": "0c139fc95375",
+  "text": "The pawn"
+ },
+ {
+  "id": "32b31e57038e",
+  "text": "The pawn walks forward, one square. The first time it moves, it can go two."
+ },
+ {
+  "id": "7e3fca7870b1",
+  "text": "It never goes backwards. And to capture, it goes diagonally."
+ },
+ {
+  "id": "68fc746fe979",
+  "text": "The pawn walks straight and captures diagonally."
+ },
+ {
+  "id": "b5288f61380f",
+  "text": "The first time, the pawn can move two squares. Do it in one go!"
+ },
+ {
+  "id": "4cdd125ded5a",
+  "text": "Capture the two black pieces. Remember: the pawn captures diagonally."
+ },
+ {
+  "id": "e4e341b3a96c",
+  "text": "Capture the three pieces. Look carefully at which way the pawn captures."
+ },
+ {
+  "id": "e94b07d5b351",
+  "text": "Capturing"
+ },
+ {
+  "id": "a1c11a0fe06f",
+  "text": "Capturing is taking your piece to the square of an opponent's piece. You remove it from the board and stand in its place."
+ },
+ {
+  "id": "1dc867d74e84",
+  "text": "Capturing is taking away an opponent's piece."
+ },
+ {
+  "id": "be0a787e7bd6",
+  "text": "Capture the two black pieces with the rook."
+ },
+ {
+  "id": "38819f2a2de7",
+  "text": "Capture the three pieces with the bishop."
+ },
+ {
+  "id": "1b1f3a84e7e5",
+  "text": "Capture the three pieces with the knight."
+ },
+ {
+  "id": "21b249b6f9fb",
+  "text": "Capture the four pieces with the queen, in as few moves as you can."
+ },
+ {
+  "id": "a3c2df6800f6",
+  "text": "Don't get captured!"
+ },
+ {
+  "id": "36dc48988c9d",
+  "text": "The black pieces can capture too."
+ },
+ {
+  "id": "79c2da2d9077",
+  "text": "Before moving, check whether the square you're going to is attacked."
+ },
+ {
+  "id": "00846dc095fb",
+  "text": "Before moving, look at what your opponent attacks."
+ },
+ {
+  "id": "cbab093853b3",
+  "text": "Capture the two pieces without getting captured. Which one do you start with?"
+ },
+ {
+  "id": "bc137c46e3a8",
+  "text": "The black pawn protects the knight. Capture both without losing your queen."
+ },
+ {
+  "id": "96bd0b998982",
+  "text": "Capture the three pieces. Watch out for the black pawns!"
+ },
+ {
+  "id": "3ab30cf20a7d",
+  "text": "What each piece is worth"
+ },
+ {
+  "id": "c9389add5aae",
+  "text": "Some pieces are worth more than others. The pawn is worth 1. The knight and bishop, 3. The rook, 5. And the queen, 9."
+ },
+ {
+  "id": "5efbfe71f3b9",
+  "text": "The king can never be captured."
+ },
+ {
+  "id": "ed464efb638f",
+  "text": "The queen is worth more than all the others."
+ },
+ {
+  "id": "f599056db9af",
+  "text": "You can capture three pieces. Take the most valuable one!"
+ },
+ {
+  "id": "c17054dcf207",
+  "text": "That move doesn't capture anything. Try another!"
+ },
+ {
+  "id": "639016481fe5",
+  "text": "The knight is worth 3. Another one is worth more."
+ },
+ {
+  "id": "f4eae84ce935",
+  "text": "The pawn is worth 1. Another one is worth more."
+ },
+ {
+  "id": "0ac3aa4251f5",
+  "text": "Good! The rook is worth 5: it's the most valuable."
+ },
+ {
+  "id": "e279f0740f4b",
+  "text": "The knight can capture three pieces. Which one do you take?"
+ },
+ {
+  "id": "e0d7e9148e82",
+  "text": "Good! The queen is worth 9: it's the most valuable."
+ },
+ {
+  "id": "44ea84bc97b8",
+  "text": "The pawn can capture on both sides. Choose well!"
+ },
+ {
+  "id": "4b5e84be0e45",
+  "text": "Check"
+ },
+ {
+  "id": "c734bc9283bb",
+  "text": "Giving check is attacking your opponent's king. When their king is in check, they have to save it right away."
+ },
+ {
+  "id": "e45611a2b6da",
+  "text": "Check is attacking the king."
+ },
+ {
+  "id": "e91a639fcdfa",
+  "text": "Give check to the black king with the rook."
+ },
+ {
+  "id": "50181fba56d9",
+  "text": "That move doesn't attack the black king. Try another!"
+ },
+ {
+  "id": "1a9091d2a50a",
+  "text": "Check! With your rook you attack the black king."
+ },
+ {
+  "id": "b1505c47e152",
+  "text": "Give check with the bishop."
+ },
+ {
+  "id": "ea1221ad09d1",
+  "text": "Check! With your bishop you attack the black king."
+ },
+ {
+  "id": "6e9cb009f67e",
+  "text": "Give check with the knight."
+ },
+ {
+  "id": "bbe3264fa854",
+  "text": "Check! With your knight you attack the black king."
+ },
+ {
+  "id": "d11d13f6e66d",
+  "text": "Getting out of check"
+ },
+ {
+  "id": "58acc58b61c3",
+  "text": "There are three ways to save the king from check: move it, capture the attacking piece, or put another piece in between."
+ },
+ {
+  "id": "b413a8c6023e",
+  "text": "The king is saved by moving, capturing or blocking."
+ },
+ {
+  "id": "4174a6169c74",
+  "text": "Your king is in check! Here you can only save it by moving it."
+ },
+ {
+  "id": "32fd9ff4c815",
+  "text": "Good! You saved your king by moving it."
+ },
+ {
+  "id": "91df3b99ba40",
+  "text": "Check again! Now capture the attacking piece."
+ },
+ {
+  "id": "ce3e24a5208f",
+  "text": "Good! You saved your king by capturing the attacking piece."
+ },
+ {
+  "id": "74a14b186bce",
+  "text": "And now, put a piece in between."
+ },
+ {
+  "id": "9a45964f6c50",
+  "text": "Good! You saved your king by blocking the check."
+ },
+ {
+  "id": "933b750898fd",
+  "text": "Checkmate"
+ },
+ {
+  "id": "f2d32143fed4",
+  "text": "Checkmate is a check the king can't be saved from. Whoever gives checkmate wins the game!"
+ },
+ {
+  "id": "ba6d2324c255",
+  "text": "Checkmate means winning!"
+ },
+ {
+  "id": "6c58bedba150",
+  "text": "Give checkmate. The black pawns don't let their king escape."
+ },
+ {
+  "id": "12f3a637ea62",
+  "text": "That move doesn't give check. Try another!"
+ },
+ {
+  "id": "61eec1ca8f20",
+  "text": "Checkmate! The black king can't be saved."
+ },
+ {
+  "id": "bf8743ae3e90",
+  "text": "Give checkmate with the queen. Your king helps her."
+ },
+ {
+  "id": "44ef9a120465",
+  "text": "It's check, but the black king can escape. Try another!"
+ },
+ {
+  "id": "ae87a252664f",
+  "text": "Give checkmate with the knight."
+ },
+ {
+  "id": "09f141ece3a3",
+  "text": "Give checkmate with the rook."
+ },
+ {
+  "id": "6ec7aee86c8b",
+  "text": "Stalemate"
+ },
+ {
+  "id": "769dfcd706c1",
+  "text": "Careful: if the opponent's king isn't in check but can't move anywhere, it's stalemate. And then it's a draw."
+ },
+ {
+  "id": "da7792b409c9",
+  "text": "Stalemate is a draw. Careful!"
+ },
+ {
+  "id": "b9c4f02b6454",
+  "text": "Look: it's the black king's turn. It isn't in check, but it can't move anywhere. That's stalemate, and it's a draw! Tap «Why?»."
+ },
+ {
+  "id": "5223a6309cca",
+  "text": "Another stalemate: the black king isn't in check, but your pawn and your king take away all its squares."
+ },
+ {
+  "id": "9856365bb882",
+  "text": "Give checkmate. But don't stalemate it!"
+ },
+ {
+  "id": "1289f4fbef87",
+  "text": "Stalemate! The black king isn't in check, but it can't move. That's a draw."
+ },
+ {
+  "id": "cb88dffbdacc",
+  "text": "Again: checkmate, without stalemating it."
+ },
+ {
+  "id": "d2f1468eaa7f",
+  "text": "It's check, but that piece can be captured. Try another!"
+ },
+ {
+  "id": "7194a1569046",
+  "text": "Castling"
+ },
+ {
+  "id": "b799c7bd1275",
+  "text": "Castling is a special move: you move the king and the rook at the same time, to hide the king."
+ },
+ {
+  "id": "dc33a6478fb8",
+  "text": "To do it, move the king two squares towards the rook. The rook jumps to the other side by itself."
+ },
+ {
+  "id": "8fef88fdf44c",
+  "text": "With castling, the king hides."
+ },
+ {
+  "id": "2d2c64340c96",
+  "text": "Castle towards the nearest rook."
+ },
+ {
+  "id": "092e2de1f9a8",
+  "text": "To castle, move the king two squares towards the rook."
+ },
+ {
+  "id": "a3c42c432e40",
+  "text": "Castled! Your king is now hidden."
+ },
+ {
+  "id": "dd52f1955764",
+  "text": "That castling goes to the other side."
+ },
+ {
+  "id": "1ab5cef1681d",
+  "text": "Now do it to the other side."
+ },
+ {
+  "id": "550ae25c2eee",
+  "text": "Promotion"
+ },
+ {
+  "id": "c9e74c4e9891",
+  "text": "If a pawn gets all the way to the end of the board, it turns into another piece! Almost always a queen."
+ },
+ {
+  "id": "c69068c419d6",
+  "text": "A pawn that reaches the end becomes a queen."
+ },
+ {
+  "id": "0acdf07373f9",
+  "text": "Take the pawn all the way to the end and turn it into a queen."
+ },
+ {
+  "id": "9bdf6ed883d2",
+  "text": "You can, but the queen is the strongest. Choose queen!"
+ },
+ {
+  "id": "d8244f3a9651",
+  "text": "Promoted! Your pawn is now a queen."
+ },
+ {
+  "id": "e4c330235b1a",
+  "text": "Take the pawn to the end of the board."
+ },
+ {
+  "id": "65e081af0dc9",
+  "text": "Capture and promote at the same time."
+ },
+ {
+  "id": "7d78252408d9",
+  "text": "En passant"
+ },
+ {
+  "id": "70242672f1a9",
+  "text": "This move is a bit unusual. If an opponent's pawn moves two squares and stops next to yours, you can capture it as if it had moved only one."
+ },
+ {
+  "id": "561cc38d3b85",
+  "text": "But only right at that moment."
+ },
+ {
+  "id": "e11eb9549875",
+  "text": "En passant: only right afterwards."
+ },
+ {
+  "id": "b570859e2b9f",
+  "text": "The black pawn has just moved two squares. Capture it en passant!"
+ },
+ {
+  "id": "5325754ba4d8",
+  "text": "Move your pawn diagonally, just behind the black pawn."
+ },
+ {
+  "id": "32274ffc3599",
+  "text": "En passant! You captured the black pawn."
+ },
+ {
+  "id": "cdf1d77683e2",
+  "text": "Again: the black pawn has just arrived. Take advantage!"
+ },
+ {
+  "id": "0ae861720121",
+  "text": "Mates from real games 1"
+ },
+ {
+  "id": "aa20a36d9ee0",
+  "text": "These positions are from real games. In all of them you can give checkmate with a single move."
+ },
+ {
+  "id": "dfe26fdc8682",
+  "text": "Look carefully at the whole board."
+ },
+ {
+  "id": "85917196de2d",
+  "text": "You're a king hunter!"
+ },
+ {
+  "id": "89bcd04b8b08",
+  "text": "Find the checkmate."
+ },
+ {
+  "id": "9fc4d5875294",
+  "text": "Mates from real games 2"
+ }
+]

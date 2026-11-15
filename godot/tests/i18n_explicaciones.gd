@@ -24,6 +24,9 @@ func _init() -> void:
 			_add(Loc.exp_template(text), templates, pieces)
 		for line: Dictionary in d.get("lines", []):
 			labels[str(line.get("label", ""))] = int(labels.get(str(line.get("label", "")), 0)) + 1
+	# Las frases de los ejercicios del curso que llevan jugadas dentro («Ta2 no da jaque…»).
+	var course: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/curso.json"))
+	_course_moves(course, templates, pieces)
 	var order := templates.keys()
 	order.sort_custom(func(a: String, b: String) -> bool: return int(templates[a]) > int(templates[b]))
 	var out := {"plantillas": order, "piezas": pieces.keys(), "etiquetas": labels.keys(), "usos": templates}
@@ -31,6 +34,24 @@ func _init() -> void:
 	file.store_string(JSON.stringify(out, " "))
 	print("HECHO plantillas=%d piezas=%d etiquetas=%d" % [order.size(), pieces.size(), labels.size()])
 	quit()
+
+
+func _course_moves(x: Variant, templates: Dictionary, pieces: Dictionary) -> void:
+	if x is Dictionary:
+		for k: Variant in x:
+			if str(k) == "moves" and x[k] is Dictionary:
+				for uci: Variant in x[k]:
+					var v: Dictionary = x[k][uci]
+					for key in ["t", "k"]:
+						var text := str(v.get(key, ""))
+						var tpl := Loc.exp_template(text)
+						if text != "" and (tpl[1] as Array).size() > 0:
+							_add(tpl, templates, pieces)
+			else:
+				_course_moves(x[k], templates, pieces)
+	elif x is Array:
+		for v: Variant in x:
+			_course_moves(v, templates, pieces)
 
 
 func _add(tpl: Array, templates: Dictionary, pieces: Dictionary) -> void:

@@ -86,7 +86,10 @@ static func apply(code: String) -> void:
 static func t(message: String) -> String:
 	if language == "es" or message.is_empty():
 		return message
-	return str(_table.get(message, message))
+	if _table.has(message):
+		return str(_table[message])
+	# Frases con jugadas dentro («Ta2 no da jaque…»): se traducen por plantilla, como las explicaciones.
+	return explain(message) if not _exp.is_empty() else message
 
 
 ## Traduce una plantilla con «%» y también los textos que se meten en ella (nombres de piezas, de niveles…):
@@ -210,7 +213,7 @@ static func explain(text: String) -> String:
 			"m":
 				v = san_text(v)
 			"p":
-				v = t(v)
+				v = str(_table.get(v, v))
 			"n":
 				if language in DECIMAL_POINT:
 					v = v.replace(",", ".")
