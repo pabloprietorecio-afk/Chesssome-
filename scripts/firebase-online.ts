@@ -17,7 +17,7 @@ const until = async (p: () => boolean, ms: number) => {
   }
   return true;
 };
-const mk = () => new OnlineMatch(new Rtdb(cfg), { cleanupMs: 1500 });
+const mk = (nivel = 3) => new OnlineMatch(new Rtdb(cfg), { cleanupMs: 1500, profile: { nivel, icono: 'piece_bishop' } });
 const ph = (m: OnlineMatch) => m.current.phase;
 
 const A = mk();
@@ -37,6 +37,15 @@ const sa = A.current as Live;
 const sb = B.current as Live;
 res('colores opuestos y misma partida', sa.color !== sb.color && sa.id === sb.id, `A=${sa.color} B=${sb.color}`);
 
+// Perfiles y gestos (reglas publicadas el 15 nov).
+const perfiles = await until(() => !!(A.current as Live).rival && !!(B.current as Live).rival, 8000);
+res('cada uno ve el perfil del rival', perfiles, JSON.stringify((A.current as Live).rival));
+const g1 = await A.gesture('aplauso');
+const llega = await until(() => ((B.current as Live).gestures ?? []).some((g) => g.g === 'aplauso' && !g.mine), 8000);
+res('un gesto llega al rival', g1 && llega);
+const db0 = new Rtdb(cfg);
+const malo = await db0.request('POST', `partidas/${sa.id}/gestos`, { de: 'otro', g: 'insulto' });
+res('un gesto que no está en la lista se rechaza', malo.status === 401, `HTTP ${malo.status}`);
 const white = sa.color === 'w' ? A : B;
 const black = white === A ? B : A;
 const lat: number[] = [];
