@@ -927,14 +927,19 @@ func _kids_wall() -> TextureRect:
 	return w
 
 
+## Iconos que solo existen a color (Fluent Emoji): el polluelo de «Aprende desde cero».
+const COLOR_ICONS := ["chick"]
+
+
 func _icon(icon_name: String, side: float, color: Color) -> TextureRect:
 	var t := TextureRect.new()
-	t.texture = UiIcons.texture(icon_name)
-	# Nivel Kids: el icono a color, si lo hay (y sin teñir).
-	var kid_tex := UiIcons.kids_texture(icon_name) if kids else null
+	# Nivel Kids: el icono a color, si lo hay (y sin teñir). Algunos iconos van siempre a color.
+	var kid_tex := UiIcons.kids_texture(icon_name) if kids or COLOR_ICONS.has(icon_name) else null
 	if kid_tex != null:
 		t.texture = kid_tex
 		color = Color(1.0, 1.0, 1.0, color.a)
+	else:
+		t.texture = UiIcons.texture(icon_name)
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.custom_minimum_size = Vector2(side, side)
@@ -1444,7 +1449,7 @@ func _refresh(animate: bool = true) -> void:
 	level_pill.visible = false
 	_sync_level_badge()
 	if mode == "learn":
-		counter.text = "Aprende a jugar"
+		counter.text = "Aprende desde cero"
 	elif mode == "game":
 		counter.text = "Partida"
 	elif mode == "train" and _has_player():
@@ -2295,7 +2300,7 @@ func _build_sheet() -> void:
 	box.add_child(_button("piece_knight", "Jugar una partida", _open_game_setup, play_tint[0], play_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	if not course.is_empty():
 		var learn_tint := _tint("butter")
-		box.add_child(_button("book", "Aprende a jugar", _open_course, learn_tint[0], learn_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
+		box.add_child(_button("chick", "Aprende desde cero", _open_course, learn_tint[0], learn_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 64.0}))
 	if not kids:
 		box.add_child(_caption("Partidas con reloj"))
 		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
@@ -3310,7 +3315,7 @@ func _open_course() -> void:
 	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	body.add_child(tile)
 	body.add_child(_spacer(20.0))
-	body.add_child(_centered(_para("Aprende a jugar", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_centered(_para("Aprende desde cero", F_TITLE + 12, _c("ink"), font_display)))
 	var lessons := _course_lessons()
 	var done := 0
 	for l: Dictionary in lessons:
@@ -3801,8 +3806,9 @@ func _open_home() -> void:
 			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel (nivel %d), con explicaciones." % lvl, _home_train])
 		else:
 			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
-	if not course.is_empty():
-		items.append(["book", "butter", "Aprende a jugar", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Desde cero: cómo se mueve cada pieza.", _open_course])
+	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
+	if kids and not course.is_empty():
+		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
 	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, en cinco niveles.", _open_game_setup])
 	if not kids and not _has_player():
 		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
@@ -3810,6 +3816,8 @@ func _open_home() -> void:
 		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué aciertas, en qué fallas y qué toca.", _open_progress.bind("progress")])
 	if not kids and not course.is_empty():
 		items.append(["party", "sky", "Modo Kids", "Desde 8 años: frases sencillas y voz.", _set_kids.bind(true)])
+	if not kids and not course.is_empty():
+		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
 	for def: Array in items:
 		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4]))
 		body.add_child(_spacer(16.0))

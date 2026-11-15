@@ -52,6 +52,8 @@ const ICONS = {
   outline: 'artist_palette_flat',
   open: 'link_flat',
   copy: 'clipboard_flat',
+  // A color también fuera del nivel Kids: «Aprende desde cero».
+  chick: 'hatching_chick_flat',
 };
 
 /** Juguetes y peluches del fondo. */
