@@ -291,6 +291,8 @@ var _celebration: Control
 var use_settings := true
 var welcome_seen := false
 var app_version := ""
+## Reto del día, racha, reto semanal e insignias (core/progress.gd), cargado la primera vez que hace falta.
+var prog := {}
 
 ## Explicaciones del problema actual y lo que se está enseñando de ellas.
 var explain: ExplainData
@@ -4250,6 +4252,7 @@ func _record(correct: bool) -> void:
 	player = Assessment.record_try(player, _try["item"], outcome, mode)
 	_rating_shown = [before, float(player["rating"]["r"])]
 	_save_player()
+	_prog_problem(correct)
 	if mode == "train":
 		_streak = _streak + 1 if correct else 0
 		var now := float(player["rating"]["r"])
@@ -4407,6 +4410,7 @@ func _show_lesson_step() -> void:
 		var id := str(lesson["id"])
 		course_done[id] = maxi(stars, int(course_done.get(id, 0)))
 		_save_course_progress()
+		_prog_lesson()
 		_sfx("leccion")
 		var said := [BRAVO, _kid_line("lessonDone"), str(_lesson_text("takeaway"))]
 		if _is_last_lesson():
@@ -4855,6 +4859,8 @@ func _open_home() -> void:
 		if course_done.has(str(l["id"])):
 			done += 1
 	var items: Array = []
+	if not kids and _has_player():
+		items.append(["flag", "butter", "Reto del día", _prog_home_text(), _open_day])
 	if not kids and _has_player():
 		var lvl := Assessment.level_of(float(player["rating"]["r"]))
 		if bool(player.get("done", false)):
@@ -5592,6 +5598,7 @@ func _record_game() -> void:
 	}
 	GameLog.add(_log(), g, rival_info)
 	GameLog.save_log(_log())
+	_prog_game()
 
 
 ## Insignia de un rival guardado (o del de ahora): su foto o su icono dentro del anillo del color de su nivel.
@@ -6623,6 +6630,328 @@ func _build_game_actions() -> void:
 		actions.add_child(b)
 
 
+
+
+# ---------------------------------------------------------------- reto del día, racha y reto semanal
+# La lógica está en core/progress.gd y sus valores en core/progress_config.gd; aquí solo se avisa de lo que
+# ocurre (un problema, una lección, una partida), se enseñan los avisos y se dibuja la página «Tu día».
+# Nada de esto se usa en el nivel Kids.
+
+## [segundos Unix, minutos de diferencia con UTC]: el día cambia a medianoche del jugador.
+func _prog_now() -> Array:
+	return [int(Time.get_unix_time_from_system()), int(Time.get_time_zone_from_system().get("bias", 0))]
+
+
+func _prog_day() -> int:
+	var n := _prog_now()
+	return Progress.day_number(int(n[0]), int(n[1]))
+
+
+func _prog() -> Dictionary:
+	if prog.is_empty():
+		prog = Progress.load_state() if use_settings else Progress.new_state()
+	return prog
+
+
+func _prog_save() -> void:
+	if use_settings:
+		Progress.save_state(_prog())
+
+
+## Lo que el núcleo necesita saber de hoy: si hay fallos que repasar, si quedan lecciones, qué categorías flojas
+## tiene el jugador y cuántos problemas hay de cada una.
+func _prog_ctx() -> Dictionary:
+	var tries: Array = player.get("tries", [])
+	var solved := {}
+	for t: Dictionary in tries:
+		if bool(t["correct"]):
+			solved[str(t["id"])] = true
+	var due := 0
+	for t: Dictionary in tries:
+		var id := str(t["id"])
+		if not bool(t["correct"]) and not solved.has(id) and not reviewed.has(id) and _index_of.has(id):
+			due += 1
+	var lessons_left := false
+	for l: Dictionary in _course_lessons():
+		if not course_done.has(str(l["id"])):
+			lessons_left = true
+			break
+	var families := {}
+	for p: Dictionary in pool:
+		var f := str(p.get("family", "otros"))
+		families[f] = int(families.get(f, 0)) + 1
+	var focus: Array = []
+	if _has_player():
+		var plan := Assessment.plan(player["rating"], Assessment.profile(tries))
+		for item: Dictionary in plan["focus"]:
+			if str(item["kind"]) == "family":
+				focus.append(str(item["family"]))
+	return {"can_review": due >= 2, "lessons_left": lessons_left, "kids": kids, "focus": focus, "families": families}
+
+
+func _prog_problem(correct: bool) -> void:
+	if kids:
+		return
+	var family := str((_try.get("item", {}) as Dictionary).get("family", "otros"))
+	var n := _prog_now()
+	var avisos := Progress.record_problem(_prog(), {"correct": correct, "review": is_review, "family": family}, int(n[0]), int(n[1]), _prog_ctx())
+	# Si ya sale el aviso de puntos ganados, el de objetivos espera a que termine.
+	var after_points := mode == "train" and correct and float(_rating_shown[1]) > float(_rating_shown[0]) + 0.5
+	_prog_done(avisos, 3.2 if after_points else 0.6)
+
+
+func _prog_lesson() -> void:
+	if kids:
+		return
+	var n := _prog_now()
+	_prog_done(Progress.record_lesson(_prog(), int(n[0]), int(n[1]), _prog_ctx()), 1.2)
+
+
+## Partida terminada y anotada en el historial (no cuentan las del curso, las variantes ni Kids).
+func _prog_game() -> void:
+	if kids:
+		return
+	var moves := game_moves.size()
+	var own := (moves + 1) / 2 if game_color == 0 else moves / 2
+	var n := _prog_now()
+	_prog_done(Progress.record_game(_prog(), {"own_moves": own, "result": game_won}, int(n[0]), int(n[1]), _prog_ctx()), 1.4)
+
+
+func _prog_done(avisos: Array, delay: float) -> void:
+	_prog_save()
+	_prog_notify(avisos, delay)
+
+
+const PROG_GOAL_DONE := {"problemas": "Problemas de hoy hechos", "repaso": "Repaso de hoy hecho", "leccion": "Lección de hoy hecha", "partida": "Partida de hoy jugada"}
+
+
+## Enseña el aviso más importante de los que ha habido (uno solo, para no saturar).
+func _prog_notify(avisos: Array, delay: float) -> void:
+	var order := {"racha": 1, "objetivo": 2, "reto_dia": 3, "reto_semana": 4, "insignia": 5}
+	var best := {}
+	for a: Dictionary in avisos:
+		if str(a["tipo"]) == "racha" and int(a["dias"]) < 2:
+			continue
+		if best.is_empty() or int(order[str(a["tipo"])]) > int(order[str(best["tipo"])]):
+			best = a
+	if best.is_empty():
+		return
+	var title := ""
+	var sub := ""
+	var party := true
+	match str(best["tipo"]):
+		"insignia":
+			title = "¡Nueva insignia!"
+			sub = str(Progress.badge_info(str(best["id"]))["nombre"])
+		"reto_semana":
+			title = "¡Reto de la semana cumplido!"
+			sub = _sentence(str(Assessment.FAMILY_NAME.get(str(best["familia"]), "")).to_lower())
+		"reto_dia":
+			title = "¡Reto del día cumplido!"
+			var streak := Progress.streak_now(_prog(), _prog_day())
+			sub = "Racha de %d días" % streak if streak >= 2 else "Hasta mañana"
+		"objetivo":
+			title = "¡Objetivo cumplido!"
+			sub = str(PROG_GOAL_DONE.get(str(best["meta"]), ""))
+			party = false
+		"racha":
+			title = "¡Racha de %d días!" % int(best["dias"])
+			sub = "Sigue mañana"
+			party = false
+	if title == "":
+		return
+	if delay <= 0.0:
+		_prog_toast(title, sub, party)
+	else:
+		get_tree().create_timer(delay).timeout.connect(_prog_toast.bind(title, sub, party))
+
+
+var _prog_toast_node: Control
+
+
+func _prog_toast(title: String, sub: String, party: bool, wait_left: int = 6) -> void:
+	# Con la enhorabuena de subir de nivel abierta, se espera a que se cierre.
+	if _celebration != null and is_instance_valid(_celebration) and _celebration.mouse_filter == Control.MOUSE_FILTER_STOP and wait_left > 0:
+		get_tree().create_timer(1.5).timeout.connect(_prog_toast.bind(title, sub, party, wait_left - 1))
+		return
+	if _prog_toast_node != null and is_instance_valid(_prog_toast_node):
+		_prog_toast_node.queue_free()
+	var toast := Control.new()
+	toast.set_anchors_preset(Control.PRESET_FULL_RECT)
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(toast)
+	_prog_toast_node = toast
+	var tint := _tint("butter")
+	var pill := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = tint[0]
+	sb.set_corner_radius_all(60)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 24
+	sb.shadow_offset = Vector2(0.0, 10.0)
+	sb.content_margin_left = 44
+	sb.content_margin_right = 44
+	sb.content_margin_top = 22
+	sb.content_margin_bottom = 22
+	pill.add_theme_stylebox_override("panel", sb)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(row)
+	row.add_child(_icon("flag", 64.0, tint[1]))
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 0)
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(_line(title, F_HEAD, _c("ink"), font_display))
+	if sub != "":
+		words.add_child(_line(sub, F_SUB, tint[1], font_semibold))
+	row.add_child(words)
+	toast.add_child(pill)
+	var place := func() -> void:
+		if not is_instance_valid(pill):
+			return
+		pill.reset_size()
+		var top := board_slot.get_global_rect().position.y + 20.0 if board_slot != null and progress == null else 260.0
+		pill.position = Vector2((size.x - pill.get_combined_minimum_size().x) * 0.5, top)
+	place.call_deferred()
+	if party:
+		var bits := Confetti.new()
+		bits.set_anchors_preset(Control.PRESET_FULL_RECT)
+		bits.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		toast.add_child(bits)
+		bits.burst(Vector2(size.x * 0.5, 340.0), 40, _confetti_colors(), 1400.0)
+	pill.pivot_offset = Vector2(240.0, 60.0)
+	pill.scale = Vector2(0.6, 0.6)
+	pill.modulate.a = 0.0
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(pill, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(pill, "modulate:a", 1.0, 0.2)
+	tw.chain().tween_interval(2.4)
+	tw.chain().tween_property(pill, "modulate:a", 0.0, 0.4)
+	tw.chain().tween_callback(toast.queue_free)
+
+
+## Frase de la tarjeta del inicio: objetivos de hoy cumplidos y racha.
+func _prog_home_text() -> String:
+	var s := _prog()
+	var day := _prog_day()
+	Progress.ensure_today(s, day, _prog_ctx())
+	var goals := Progress.goals(s, day)
+	var done := 0
+	for g: Dictionary in goals:
+		if bool(g["hecho"]):
+			done += 1
+	var streak := Progress.streak_now(s, day)
+	var text := "Hoy %d de %d" % [done, goals.size()] if not goals.is_empty() else "Tu objetivo de hoy"
+	if bool((s["reto"] as Dictionary)["completo"]):
+		text = "¡Cumplido hoy!"
+	if streak >= 2:
+		text += " · racha de %d días" % streak
+	return text
+
+
+const PROG_GOAL_ICON := {"problemas": ["target", "peach"], "repaso": ["retry", "lilac"], "leccion": ["book", "butter"], "partida": ["piece_knight", "sky"]}
+
+
+func _prog_goal_text(g: Dictionary) -> String:
+	var n := int(g["meta"])
+	match str(g["tipo"]):
+		"problemas":
+			return "Resuelve %d problemas" % n if n != 1 else "Resuelve un problema"
+		"repaso":
+			return "Repasa un fallo antiguo" if n == 1 else "Repasa %d fallos antiguos" % n
+		"leccion":
+			return "Haz una lección" if n == 1 else "Haz %d lecciones" % n
+		"partida":
+			return "Juega una partida" if n == 1 else "Juega %d partidas" % n
+	return ""
+
+
+## «Tu día»: racha, objetivos de hoy, reto de la semana, lo hecho hoy e insignias.
+func _open_day() -> void:
+	var s := _prog()
+	var day := _prog_day()
+	Progress.ensure_today(s, day, _prog_ctx())
+	_prog_save()
+	var page := _page("day")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(4.0))
+	body.add_child(_centered(_para("TU DÍA", F_CAP, _c("quiet"), font_semibold)))
+	var streak := Progress.streak_now(s, day)
+	if streak > 0:
+		var number := _centered(_para("%d" % streak, F_LARGE + 44, _c("ink"), font_display))
+		number.add_theme_constant_override("line_spacing", -8)
+		body.add_child(number)
+		body.add_child(_centered(_para("día de racha" if streak == 1 else "días de racha", F_HEAD, _c("quiet"), font_medium)))
+	else:
+		body.add_child(_spacer(10.0))
+		body.add_child(_centered(_para("Juega hoy para empezar una racha", F_HEAD, _c("ink"), font_display)))
+	var best := int((s["racha"] as Dictionary)["mejor"])
+	var small := PackedStringArray()
+	if best > streak:
+		small.append("Tu mejor racha: %d días." % best)
+	if ProgressConfig.GRACE_PER_WEEK > 0:
+		small.append("Si un día no puedes jugar no pasa nada: una vez por semana se te perdona.")
+	if not small.is_empty():
+		body.add_child(_spacer(8.0))
+		body.add_child(_centered(_para(" ".join(small), F_FOOT, _c("quiet"), font_regular)))
+
+	# Objetivos de hoy.
+	body.add_child(_spacer(36.0))
+	var complete := bool((s["reto"] as Dictionary)["completo"])
+	body.add_child(_text("RETO DE HOY · ¡CUMPLIDO!" if complete else "RETO DE HOY", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(12.0))
+	var made := _panel()
+	body.add_child(made[0])
+	for g: Dictionary in Progress.goals(s, day):
+		var def: Array = PROG_GOAL_ICON[str(g["tipo"])]
+		var done := bool(g["hecho"])
+		var progress_text := "¡Hecho!" if done else ("%d de %d" % [int(g["actual"]), int(g["meta"])] if int(g["meta"]) > 1 else "Todavía no")
+		(made[1] as VBoxContainer).add_child(_profile_row("check" if done else str(def[0]), "mint" if done else str(def[1]), _prog_goal_text(g), progress_text))
+
+	# Reto de la semana.
+	var w: Dictionary = s["semana"]
+	if str(w["familia"]) != "":
+		body.add_child(_spacer(36.0))
+		body.add_child(_text("RETO DE LA SEMANA", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(12.0))
+		var wmade := _panel()
+		body.add_child(wmade[0])
+		var fam := str(Assessment.FAMILY_NAME.get(str(w["familia"]), str(w["familia"])))
+		var wtext := "¡Cumplido!" if bool(w["completo"]) else "%d de %d problemas resueltos" % [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])]
+		(wmade[1] as VBoxContainer).add_child(_profile_row("check" if bool(w["completo"]) else "flag", "mint" if bool(w["completo"]) else "rose", fam, wtext))
+
+	# Lo hecho hoy.
+	var lines := Progress.summary_lines(s, day)
+	if not lines.is_empty():
+		body.add_child(_spacer(36.0))
+		body.add_child(_text("HOY HAS HECHO", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(10.0))
+		for line: String in lines:
+			body.add_child(_para(line, F_BODY, _c("ink"), font_medium))
+
+	# Insignias.
+	var badges: Array = s["insignias"]
+	if not badges.is_empty():
+		body.add_child(_spacer(36.0))
+		body.add_child(_text("INSIGNIAS", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(12.0))
+		var bmade := _panel()
+		body.add_child(bmade[0])
+		for i in range(badges.size() - 1, -1, -1):
+			var info := Progress.badge_info(str(badges[i]))
+			(bmade[1] as VBoxContainer).add_child(_profile_row("party", "butter", str(info["nombre"]), str(info["texto"])))
+	body.add_child(_spacer(20.0))
+
+	var go := {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")}
+	var train := _button("next", "Entrenar", _home_train, _c("accent"), _c("accent_ink"), go)
+	train.mouse_filter = Control.MOUSE_FILTER_STOP
+	footer.add_child(train)
+	footer.add_child(_spacer(8.0))
+	footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
 
 
 # ---------------------------------------------------------------- insignia del nivel
@@ -7673,6 +8002,8 @@ func _leave_progress() -> void:
 		_close_game_setup()
 	elif progress_kind == "review":
 		_close_progress()
+	elif progress_kind == "day":
+		_open_home()
 	elif progress_kind == "progress" or (progress_kind == "course" and mode == "learn" and not lesson.is_empty()):
 		_close_progress()
 	elif progress_kind in ["course", "experience"] and use_settings:

@@ -23,6 +23,7 @@ func _ready() -> void:
 	demo._open_home()
 	await _frames(10)
 	await _shot("p1_inicio")
+	await _reto_del_dia(demo)
 	demo._open_train_hub()
 	await _frames(10)
 	await _shot("p2_entrenar")
@@ -98,8 +99,63 @@ func _ready() -> void:
 	await _detalle(demo)
 	await _mis_partidas(demo)
 	await _por_que(demo)
+	print("PROG FINAL ", demo.prog.get("dias", {}))
 	print("PANTALLAS DONE")
 	get_tree().quit()
+
+
+## Reto del día: una racha de cuatro días, un objetivo cumplido, el reto de la semana a medias, una insignia y el aviso.
+func _reto_del_dia(demo: Control) -> void:
+	var now: Array = demo._prog_now()
+	var bias: int = int(now[1])
+	var today: int = demo._prog_day()
+	var st := Progress.new_state()
+	var ctx: Dictionary = demo._prog_ctx()
+	var week_family := ""
+	for d in range(today - 3, today + 1):
+		var at := d * 86400 + 43200 - bias * 60
+		Progress.ensure_today(st, d, ctx)
+		week_family = str(st["semana"]["familia"])
+		var n := 3 if d == today else 1
+		for i in n:
+			Progress.record_problem(st, {"correct": true, "family": week_family if d == today else "otros"}, at, bias, ctx)
+	demo.prog = st
+	demo._open_home()
+	await _frames(10)
+	await _shot("p1b_inicio_reto")
+	demo._open_day()
+	await _frames(10)
+	await _shot("p1c_tu_dia")
+	demo._prog_toast("¡Reto del día cumplido!", "Racha de 4 días", true)
+	await get_tree().create_timer(0.7).timeout
+	await _shot("p1d_aviso_reto")
+	print("RETO racha=%d objetivos=%s semana=%s insignias=%s" % [Progress.streak_now(st, today), str(Progress.goals(st, today).map(func(g): return str(g["tipo"]) + ":" + str(g["actual"]) + "/" + str(g["meta"]))), str(st["semana"]), str(st["insignias"])])
+	# Los enganches del juego llegan al núcleo: un problema, una lección y una partida (de 20 jugadas, con blancas).
+	demo.prog = {}
+	demo._try = {"item": demo.pool[0]}
+	demo._prog_problem(true)
+	demo._prog_lesson()
+	demo.game_moves = ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "d2d3", "f8c5", "c2c3", "d7d6", "b2b4", "c5b6", "a2a4", "a7a6", "a4a5", "b6a7", "c1g5", "h7h6", "g5h4", "g7g5"]
+	demo.game_color = 0
+	demo.game_won = 1
+	demo._prog_game()
+	var c: Dictionary = Progress.counts(demo.prog, demo._prog_day())
+	print("ENGANCHES problema=%d/%d lecciones=%d partidas=%d ganadas=%d" % [int(c["a"]), int(c["p"]), int(c["l"]), int(c["g"]), int(c["v"])])
+	# Y por los caminos reales: _record (problema resuelto) y _record_game (partida terminada y anotada).
+	demo.prog = {}
+	demo.mode = "train"
+	demo._try = {"item": demo.pool[0], "t0": 0, "fail_step": -1, "error": "", "help": "", "ms_first": 0.0, "recorded": false}
+	demo._record(true)
+	demo.game = {}
+	demo.game_recorded = false
+	demo.game_history = [Board3D.START_FEN]
+	demo.game_state = "over"
+	demo._record_game()
+	var c2: Dictionary = Progress.counts(demo.prog, demo._prog_day())
+	print("CAMINOS REALES problemas=%d partidas=%d ganadas=%d" % [int(c2["a"]), int(c2["g"]), int(c2["v"])])
+	demo.prog = {}
+	demo._try = {}
+	demo._close_progress()
 
 
 ## «¿Por qué?» de un problema real (IBanZ): Tb1+, Rf2 (la única: el caballo controla e2 y g2) y Cd3+ (ataque
