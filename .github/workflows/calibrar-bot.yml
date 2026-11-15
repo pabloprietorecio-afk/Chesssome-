@@ -7,6 +7,11 @@ name: Medir la fuerza del rival (calibración)
 # jugar algo peor en el teléfono.
 on:
   workflow_dispatch:
+    inputs:
+      tandas:
+        description: "Tandas (JSON): [{a, b, n}]. Vacío = todas. Las ya hechas están en tools/calibrar/resultados."
+        required: false
+        default: ""
 
 env:
   GODOT_VERSION: "4.7.2"
@@ -18,17 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { a: 4, b: "sf:1600", n: 24 }
-          - { a: 4, b: "sf:2000", n: 24 }
-          - { a: 3, b: "sf:1320", n: 24 }
-          - { a: 3, b: "sf:1600", n: 24 }
-          - { a: 3, b: "4", n: 24 }
-          - { a: 2, b: "sf:1320", n: 24 }
-          - { a: 2, b: "3", n: 24 }
-          - { a: 1, b: "sf:1320", n: 16 }
-          - { a: 1, b: "2", n: 24 }
-          - { a: 0, b: "1", n: 24 }
+        include: ${{ fromJSON(inputs.tandas != '' && inputs.tandas || '[{"a":4,"b":"sf:1600","n":24},{"a":4,"b":"sf:2000","n":24},{"a":3,"b":"sf:1320","n":24},{"a":3,"b":"sf:1600","n":24},{"a":3,"b":"4","n":24},{"a":2,"b":"sf:1320","n":24},{"a":2,"b":"3","n":24},{"a":1,"b":"sf:1320","n":16},{"a":1,"b":"2","n":24},{"a":0,"b":"1","n":24}]') }}
     steps:
       - uses: actions/checkout@v4
       - name: Godot y Stockfish
@@ -75,6 +70,8 @@ jobs:
           merge-multiple: true
       - name: Ajustar el Elo de cada nivel
         run: |
+          # Las tandas ya hechas (guardadas en el repositorio) que no se han repetido ahora.
+          for f in tools/calibrar/resultados/*.json; do [ -e "resultados/$(basename $f)" ] || cp "$f" resultados/; done
           ls resultados
           python3 tools/calibrar/ajustar.py resultados/*.json --salida calibracion.json --md calibracion.md
           cat calibracion.md >> $GITHUB_STEP_SUMMARY
