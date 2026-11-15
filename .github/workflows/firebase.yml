@@ -20,12 +20,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Prueba
+      - run: npm ci
+
+      - name: Prueba de reglas y retraso
         shell: bash
         run: |
           set -o pipefail
           node scripts/firebase-prueba.mjs 2>&1 | tee resultado.txt
+
+      - name: Prueba del módulo online (emparejamiento y partida)
+        shell: bash
+        run: |
+          set -o pipefail
+          echo "" >> resultado.txt
+          echo "=== Módulo src/online contra Firebase ===" >> resultado.txt
+          npx tsx scripts/firebase-online.ts 2>&1 | tee -a resultado.txt
 
       - name: Publicar el resultado
         if: always()
