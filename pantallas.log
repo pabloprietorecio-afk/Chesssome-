@@ -1,0 +1,52 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+
+SHOT p1_inicio
+SHOT p2_entrenar
+SHOT p3_entrenar_bloqueado
+SHOT p3b_nivel_4
+SHOT p4_online
+SHOT p5_online_buscando
+SHOT p6_online_lamina_cae
+SHOT p7_online_lamina_asienta
+SHOT p14_online_partida
+SHOT p15_online_atras
+ONLINE atrás=1 pendientes=0
+SHOT p16_analisis_resumen
+DETALLE e5 · Buena · e5 lleva tu peón a e5. / Ocupa el centro, donde las piezas tienen más casillas.
+DETALLE Cc6 · Buena · Cc6 lleva tu caballo a c6. / Desarrolla una pieza: sale de su casilla inicial y entra en juego.
+DETALLE Cf6 · Error grave · Cf6 lleva tu caballo a f6. / Permite jaque mate: Dxf7#. / La mejor era g6: ataca la dama.
+SHOT p17_detalle_error
+SHOT p18_analisis_con_recuento
+SHOT p19_online_nombre
+SHOT p20_online_con_nombre
+SHOT p21_mis_partidas
+SHOT p22_mis_partidas_lista
+SHOT p7b_comenzar
+POR QUE fase=1 paso=3
+SHOT p8_rival_1
+SHOT p9_rival_2
+SHOT p10_rival_3
+SHOT p11_rival_5
+POR QUE · El rey rival está en jaque: tu torre de b1 lo ataca por la fila 1.
+POR QUE · Mover el rey dentro de la fila 1 no sirve: e1 y g1 siguen en la línea de tu torre. Fuera de ella, tiene tres casillas: e2, f2 y g2.
+POR QUE · Pero tu caballo de f4 controla e2 y g2. Solo le queda f2.
+POR QUE · Nada puede comer tu torre de b1 ni ponerse en medio.
+POR QUE · Así que Rf2 era la única jugada posible.
+SHOT p12a_resuelto_ventana
+RESUELTO fase=4 ventana=true
+SHOT p12_resuelto
+SHOT p12b_resumen
+SHOT p13_jugada_a_jugada
+PANTALLAS DONE
+WARNING: 28 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2735)
+WARNING: 20 RIDs of type "Texture" were leaked.
+   at: finalize (servers/rendering/rendering_device.cpp:8900)
+WARNING: 157 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:822)
+ERROR: 17 RID allocations of type 'N10RendererRD14TextureStorage7TextureE' were leaked at exit.
+ERROR: 42 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 2 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
