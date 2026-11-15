@@ -4318,7 +4318,7 @@ func _open_home() -> void:
 	if not kids and _has_player():
 		var lvl := Assessment.level_of(float(player["rating"]["r"]))
 		if bool(player.get("done", false)):
-			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel, explicados.", _home_train])
+			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel.", _home_train])
 		else:
 			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
 	if kids and not pool.is_empty():
