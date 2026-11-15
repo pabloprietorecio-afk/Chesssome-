@@ -17,7 +17,7 @@ const until = async (p: () => boolean, ms: number) => {
   }
   return true;
 };
-const mk = (nivel = 3) => new OnlineMatch(new Rtdb(cfg), { cleanupMs: 1500, profile: { nivel, icono: 'piece_bishop' } });
+const mk = (nivel = 3) => new OnlineMatch(new Rtdb(cfg), { cleanupMs: 1500, profile: { nivel, icono: 'piece_bishop', nombre: 'Prueba', juego: { r: 1480, rd: 120, n: 4 } } as never });
 const ph = (m: OnlineMatch) => m.current.phase;
 
 const A = mk();
@@ -40,6 +40,8 @@ res('colores opuestos y misma partida', sa.color !== sb.color && sa.id === sb.id
 // Perfiles y gestos (reglas publicadas el 15 nov).
 const perfiles = await until(() => !!(A.current as Live).rival && !!(B.current as Live).rival, 8000);
 res('cada uno ve el perfil del rival', perfiles, JSON.stringify((A.current as Live).rival));
+const rj = ((A.current as Live).rival as unknown as { juego?: { r: number } })?.juego;
+res('el perfil lleva el nivel de juego (regla «juego», 15 nov)', !!rj && rj.r === 1480, JSON.stringify(rj));
 const g1 = await A.gesture('aplauso');
 const llega = await until(() => ((B.current as Live).gestures ?? []).some((g) => g.g === 'aplauso' && !g.mine), 8000);
 res('un gesto llega al rival', g1 && llega);
