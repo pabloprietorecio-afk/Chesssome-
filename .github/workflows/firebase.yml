@@ -1,0 +1,42 @@
+name: Prueba Firebase
+
+# Prueba de las reglas y del retraso de las partidas online. Se lanza al empujar la rama «firebase-prueba»
+# o a mano. El resultado se publica en la rama «firebase-resultado» (archivo resultado.txt).
+on:
+  push:
+    branches: [firebase-prueba]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prueba:
+    name: Reglas y retraso en directo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prueba
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/firebase-prueba.mjs 2>&1 | tee resultado.txt
+
+      - name: Publicar el resultado
+        if: always()
+        shell: bash
+        run: |
+          cp resultado.txt /tmp/resultado.txt
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan firebase-resultado
+          git rm -rf . -q
+          cp /tmp/resultado.txt resultado.txt
+          git add resultado.txt
+          git commit -qm "Resultado de la prueba de Firebase"
+          git push -f origin firebase-resultado
