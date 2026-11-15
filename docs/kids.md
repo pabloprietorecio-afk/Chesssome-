@@ -95,3 +95,14 @@ movimientos, fichas y explicaciones muy fáciles; voz con Kokoro.
   Con jaque, el rey se cubre; con mate, cae al suelo.
 - Pendiente de ver en un móvil: rendimiento con 32 personajes y la luz de las blancas (en la grabación sin tarjeta
   gráfica salen muy claras).
+
+## Entrenamiento en Kids y página «Entrenar» (15 nov 2026)
+
+- «Entrenar» abre primero una página (`_open_train_hub`): el camino de niveles sobre un tablero (`LevelPath`, del 0
+  al 10 con un salto entre casillas), cuántos problemas se han visto y las categorías (`Assessment.FAMILIES`) con
+  lo visto, lo resuelto, los niveles que cubren y cuántos nuevos hay cerca del nivel del jugador. Se puede entrenar
+  lo recomendado o una sola categoría (`train_family`).
+- Kids tiene ya «Entrenar»: los mismos problemas, a su nivel (sin test: empieza desde abajo y se afina solo), con
+  frases sencillas y voz («Casi. ¡Prueba otra vez!», «¡Muy bien!»), sin variantes, sin análisis y sin enlaces a
+  Lichess ni a la IA. Las categorías llevan nombres sencillos (`FAMILY_KIDS`).
+- Pendiente en Kids: «Mi nivel y mi plan» adaptado y explicaciones propias de cada problema para niños.

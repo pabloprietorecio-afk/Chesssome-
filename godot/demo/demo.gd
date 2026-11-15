@@ -97,6 +97,8 @@ const WORLD_NAMES := ["Normales", "Aventura 3D", "Reino", "Safari", "Espacio", "
 var kids_world := ""
 ## «Retroceder» en un problema: cuántas jugadas atrás se está mirando (0 = la posición de ahora).
 var browse_back := 0
+## Entrenamiento por categoría: familia de problemas elegida en «Entrenar» ("" = lo que recomiende el entrenador).
+var train_family := ""
 ## Explicación de la última jugada (la del rival, o la que se está repasando) a la vista.
 var move_why_open := false
 ## Icono del jugador dentro de su insignia: "" = la pieza de su rango, "piece_…" = una pieza fija, "foto" = su foto.
@@ -439,6 +441,62 @@ class LevelBadge extends Control:
 			var fs := int(br * 1.15)
 			var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 			draw_string(font, bc + Vector2(-tw * 0.5, fs * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, bubble_ink)
+
+
+## Camino de niveles sobre un tablero: doce casillas en dos filas (del 0 al 10 y la meta), con un salto entre cada
+## una y la siguiente. Las casillas ya alcanzadas van encendidas y una pieza marca dónde está el jugador.
+class LevelPath extends Control:
+	var level := 0
+	var progress := 0.0
+	var light := Color.WHITE
+	var dark := Color.GRAY
+	var done := Color.ORANGE
+	var ink := Color.BLACK
+	var quiet := Color.GRAY
+	var font: Font
+	var marker: Texture2D
+	var goal: Texture2D
+
+	func _center(i: int, sq: float, left: float) -> Vector2:
+		var col := i if i < 6 else 11 - i
+		return Vector2(left + (float(col) + 0.5) * sq, (0.5 if i < 6 else 1.5) * sq + sq * 0.25)
+
+	func _draw() -> void:
+		var sq := minf(size.x / 6.0, (size.y - 8.0) / 2.5)
+		var left := (size.x - sq * 6.0) * 0.5
+		var top := sq * 0.25
+		for i in 12:
+			var col := i if i < 6 else 11 - i
+			var row := 0 if i < 6 else 1
+			var rect := Rect2(left + float(col) * sq, top + float(row) * sq, sq, sq)
+			var base := light if (col + row) % 2 == 0 else dark
+			draw_rect(rect, base)
+			if i <= level:
+				draw_rect(rect, Color(done.r, done.g, done.b, 0.38 if i < level else 0.62))
+			if i < 11 and font != null:
+				var fs := int(sq * 0.24)
+				draw_string(font, rect.position + Vector2(sq * 0.08, sq * 0.3), str(i), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink if i <= level else quiet)
+		draw_rect(Rect2(left, top, sq * 6.0, sq * 2.0), ink, false, 3.0)
+		# Los saltos: un arco de casilla a casilla; los que faltan, más tenues.
+		for i in 11:
+			var a := _center(i, sq, left)
+			var b := _center(i + 1, sq, left)
+			var pts := PackedVector2Array()
+			for k in 13:
+				var t := float(k) / 12.0
+				var p := a.lerp(b, t)
+				var lift := sin(PI * t) * sq * 0.34
+				p += Vector2(0.0, -lift) if i != 5 else Vector2(lift, 0.0)
+				pts.append(p)
+			draw_polyline(pts, Color(done.r, done.g, done.b, 1.0) if i < level else Color(quiet.r, quiet.g, quiet.b, 0.45), 5.0 if i < level else 3.0, true)
+		if goal != null:
+			var g := _center(11, sq, left)
+			draw_texture_rect(goal, Rect2(g - Vector2(sq, sq) * 0.3, Vector2(sq, sq) * 0.6), false, quiet if level < 10 else done)
+		if marker != null:
+			var c := _center(clampi(level, 0, 10), sq, left)
+			draw_circle(c, sq * 0.36, Color(1, 1, 1, 0.92))
+			draw_arc(c, sq * 0.36, -PI * 0.5, -PI * 0.5 + TAU * clampf(progress, 0.02, 1.0), 40, done, 6.0, true)
+			draw_texture_rect(marker, Rect2(c - Vector2(sq, sq) * 0.28, Vector2(sq, sq) * 0.56), false, ink)
 
 
 ## Confeti: papelitos de colores que saltan desde un punto y caen girando. Se borra solo al acabar.
@@ -1459,6 +1517,8 @@ func _refresh(animate: bool = true) -> void:
 	elif mode == "train" and _has_player():
 		var lv := Assessment.level_of(float(player["rating"]["r"]))
 		counter.text = "Nivel %d · %s" % [lv, str(_rank(lv)[1])]
+		if train_family != "":
+			counter.text = "Nivel %d · %s" % [lv, str(FAMILY_KIDS[train_family]) if kids else str(Assessment.FAMILY_NAME[train_family])]
 	elif mode == "test":
 		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
 		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
@@ -1787,6 +1847,14 @@ func _add_explanation(e: Dictionary, level: int, partial: bool) -> void:
 		return
 	var first: Array = (levels[0] as Dictionary)["paragraphs"]
 	var count := first.size()
+	if kids:
+		# Nivel Kids: una frase sencilla y a seguir. Sin variantes, sin análisis y sin enlaces a fuera de la app.
+		if partial and not bool(e.get("correct", false)):
+			card_body.add_child(_para(_kid_line("tryAgain"), F_BODY, _c("ink"), font_regular))
+			card_body.add_child(_card_button("Probar otra vez", _retry_position, _c("accent_soft"), _c("accent_text"), F_SUB, "retry"))
+		else:
+			card_body.add_child(_para(_kid_line("good") if bool(e.get("correct", false)) else "Mira cuál era la jugada buena.", F_BODY, _c("ink"), font_regular))
+		return
 	if partial and not bool(e.get("correct", false)) and count > 1:
 		# La última frase dice cuál era la mejor jugada.
 		count -= 1
@@ -1891,7 +1959,7 @@ func _engine_row(row: PackedStringArray) -> VBoxContainer:
 ## Ayudas de después del problema: probar otra jugada, analizar en Lichess y preguntar a una IA.
 ## Tres teselas ilustradas, una al lado de otra.
 func _add_tools() -> void:
-	if explain == null or not explain.ok:
+	if explain == null or not explain.ok or kids:
 		return
 	card_body.add_child(_section("Más ayuda"))
 	card_body.add_child(_tool_tiles([
@@ -3192,6 +3260,7 @@ func _on_move_played(uci: String) -> void:
 			return
 		exp_partial = true
 		_set_phase(Phase.WRONG)
+		_say([_kid_line("tryAgain")])
 		await _wait(0.9)
 		if my_run != run_id:
 			return
@@ -3211,6 +3280,7 @@ func _on_move_played(uci: String) -> void:
 		_record(true)
 		_sfx("leccion")
 		_set_phase(Phase.SOLVED)
+		_say([BRAVO, _kid_line("good")])
 		return
 	_sfx("acierto")
 	last_wrong = {}
@@ -3369,7 +3439,14 @@ func _next_training() -> void:
 		_start(int(_index_of[due["id"]]), true)
 		return
 	_since_review += 1
-	var item := Assessment.pick_training_item(player["rating"], player["tries"], pool, _rng.randf())
+	var from: Array = pool
+	if train_family != "":
+		from = pool.filter(func(p: Dictionary) -> bool: return str(p.get("family", "")) == train_family)
+		if from.is_empty():
+			from = pool
+	var item := Assessment.pick_training_item(player["rating"], player["tries"], from, _rng.randf())
+	if item.is_empty():
+		item = Assessment.pick_review_item(player["tries"], from)
 	if item.is_empty():
 		item = Assessment.pick_review_item(player["tries"], pool)
 	_start(int(_index_of[item["id"]]))
@@ -3979,6 +4056,8 @@ func _open_home() -> void:
 			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel (nivel %d), con explicaciones." % lvl, _home_train])
 		else:
 			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
+	if kids and not pool.is_empty():
+		items.append(["target", "peach", "Entrenar", "Problemas para pensar, a tu nivel.", _home_train])
 	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
 	if kids and not course.is_empty():
 		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
@@ -4036,6 +4115,103 @@ func _go_home() -> void:
 
 
 func _home_train() -> void:
+	_open_train_hub()
+
+
+const FAMILY_ICONS := {"doble": ["whatif", "sky"], "linea": ["line", "lilac"], "defensor": ["pin", "peach"], "mate": ["target", "rose"], "peon": ["piece_pawn", "mint"], "caza": ["search", "butter"], "otros": ["spark", "sky"]}
+const FAMILY_KIDS := {"doble": "Atacar dos piezas a la vez", "linea": "Piezas en fila", "defensor": "Quitar al que defiende", "mate": "Jaque mate", "peon": "Peones que coronan", "caza": "Capturar piezas sueltas", "otros": "De todo un poco"}
+
+
+## «Entrenar»: primero se ve dónde está el jugador (el camino de niveles sobre un tablero) y los problemas por
+## categoría, con cuántos ha visto de cada una. Desde aquí elige el entrenamiento recomendado o una categoría.
+func _open_train_hub() -> void:
+	if sheet_kind != "":
+		_close_options()
+	if not _has_player():
+		# Sin test hecho (nivel Kids, o quien entra directo): se empieza desde abajo y el nivel se afina solo.
+		player = Assessment.start_test("never")
+		player["done"] = true
+		_save_player()
+	var page := _page("train_hub")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var r := float(player["rating"]["r"])
+	var lv := Assessment.level_of(r)
+	var top := Assessment.LEVEL_FLOORS.size() - 1
+	body.add_child(_centered(_para("Entrenar", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_centered(_para("Problemas de partidas de verdad, a tu nivel." if not kids else "¡Problemas para pensar!", F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_spacer(14.0))
+	var path := LevelPath.new()
+	var rank := _rank(lv)
+	var tint := _tint(str(rank[2]))
+	path.level = lv
+	path.progress = _level_progress(r)
+	path.light = _c("field")
+	path.dark = _c("track")
+	path.done = tint[1]
+	path.ink = _c("ink")
+	path.quiet = _c("quiet")
+	path.font = font_semibold
+	path.marker = UiIcons.texture(avatar if avatar.begins_with("piece_") and UiIcons.has(avatar) else str(rank[0]))
+	path.goal = UiIcons.texture("flag")
+	path.custom_minimum_size = Vector2(0.0, 400.0)
+	path.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(path)
+	var seen := {}
+	var solved := {}
+	for t: Dictionary in player["tries"]:
+		seen[str(t["id"])] = str(t.get("family", "otros"))
+		if bool(t["correct"]):
+			solved[str(t["id"])] = true
+	var where := "Nivel %d de %d · %s" % [lv, top, str(rank[1])]
+	body.add_child(_centered(_para(where, F_HEAD, _c("ink"), font_display)))
+	var left_text := "¡Nivel máximo!"
+	if lv < top:
+		left_text = "Te faltan %d puntos para el nivel %d." % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
+	body.add_child(_centered(_para("%s Has visto %d problemas de %d." % [left_text, seen.size(), pool.size()], F_SUB, _c("quiet"), font_medium)))
+	body.add_child(_spacer(18.0))
+	var go := _button("play", "Entrenamiento recomendado" if not kids else "¡A entrenar!", _train_family.bind(""), _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": 132.0, "icon": 56.0, "radius": 60, "glow": _c("glow")})
+	body.add_child(go)
+	body.add_child(_centered(_para("Mezcla las categorías y refuerza lo que más fallas." if not kids else "Problemas de todo tipo, a tu nivel.", F_FOOT, _c("quiet"), font_regular)))
+	body.add_child(_spacer(10.0))
+	body.add_child(_text("POR CATEGORÍA", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(8.0))
+	for fam: String in Assessment.FAMILIES:
+		var total := 0
+		var near := 0
+		var lo := 99
+		var hi := 0
+		for p: Dictionary in pool:
+			if str(p.get("family", "")) != fam:
+				continue
+			total += 1
+			var plv := Assessment.level_of(float(p["rating"]))
+			lo = mini(lo, plv)
+			hi = maxi(hi, plv)
+			if absi(plv - lv) <= 1 and not seen.has(str(p["id"])):
+				near += 1
+		if total == 0:
+			continue
+		var mine := 0
+		var right := 0
+		for id: String in seen:
+			if seen[id] == fam:
+				mine += 1
+				if solved.has(id):
+					right += 1
+		var text := "Vistos %d de %d" % [mine, total]
+		if mine > 0:
+			text += " · %d resueltos" % right
+		text += ". Niveles %d a %d; %s." % [lo, hi, ("%d nuevos cerca de tu nivel" % near) if near > 0 else "ninguno nuevo cerca de tu nivel"]
+		var look: Array = FAMILY_ICONS.get(fam, ["spark", "sky"])
+		var fam_name := str(FAMILY_KIDS[fam]) if kids else str(Assessment.FAMILY_NAME[fam])
+		body.add_child(_option_button(str(look[0]), str(look[1]), fam_name, text, _train_family.bind(fam)))
+		body.add_child(_spacer(14.0))
+	footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+
+
+func _train_family(fam: String) -> void:
+	train_family = fam
 	_start_training()
 
 

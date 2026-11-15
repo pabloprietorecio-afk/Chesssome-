@@ -618,6 +618,12 @@ func _level_shots(demo: Control) -> void:
 	demo.progress_scroll.scroll_vertical = 100000
 	await _frames(3)
 	await _shot("55c_resultado_plan")
+	# «Entrenar»: el camino de niveles sobre un tablero y las categorías con lo visto de cada una.
+	demo._open_train_hub()
+	await _frames(12)
+	await _shot("55d_entrenar")
+	demo._close_progress()
+	await _frames(4)
 	# Entrenamiento: el problema lo elige el nivel y el perfil; al terminar se ve cómo cambia el nivel.
 	demo._start_training()
 	await _frames(40)
