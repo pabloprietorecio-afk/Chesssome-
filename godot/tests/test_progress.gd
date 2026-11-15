@@ -192,6 +192,17 @@ func _guardado() -> void:
 	# Seguir donde se dejó.
 	var more := Progress.record_problem(back, {"correct": true, "family": "mate"}, _at(101), 0, CTX)
 	_ok(int(back["racha"]["actual"]) == 2 and _kinds(more).has("racha"), "la racha continúa tras recargar")
+	# El aviso diario se conserva y se normaliza.
+	back["aviso"] = {"activo": true, "hora": 8, "min": 30}
+	Progress.save_state(back, path)
+	var again := Progress.load_state(path)
+	_ok(bool(again["aviso"]["activo"]) and again["aviso"]["hora"] == 8 and typeof(again["aviso"]["hora"]) == TYPE_INT and again["aviso"]["min"] == 30, "el aviso diario se guarda y se lee")
+	_ok(not bool(Progress.new_state()["aviso"]["activo"]), "el aviso empieza apagado")
+	var g2 := FileAccess.open(path, FileAccess.WRITE)
+	g2.store_string(JSON.stringify({"aviso": {"activo": true, "hora": 99, "min": -5}}))
+	g2.close()
+	var odd2 := Progress.load_state(path)
+	_ok(odd2["aviso"]["hora"] == 23 and odd2["aviso"]["min"] == 0, "la hora del aviso se limita a valores posibles")
 	# Un archivo estropeado no rompe nada.
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	f.store_string("{esto no es json")

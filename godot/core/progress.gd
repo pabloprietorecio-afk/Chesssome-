@@ -11,6 +11,7 @@ extends RefCounted
 ##   semana   {idx, familia, meta, hecho, completo}
 ##   retos_dia, retos_semana: cuántos se han completado
 ##   insignias: [ids]
+##   aviso    {activo, hora, min}: el aviso diario (core/reminder.gd), apagado hasta que el jugador lo activa
 ## «Nº de día»: días desde el 1-1-1970 en la hora local, para que el día cambie a medianoche del jugador.
 ##
 ## Qué se avisa (cada aviso es un Diccionario con «tipo»):
@@ -46,6 +47,7 @@ static func new_state() -> Dictionary:
 		"retos_dia": 0,
 		"retos_semana": 0,
 		"insignias": [],
+		"aviso": {"activo": false, "hora": ReminderConfig.DEFAULT_HOUR, "min": 0},
 	}
 
 
@@ -82,6 +84,9 @@ static func load_state(path: String = PATH) -> Dictionary:
 		state["semana"] = {"idx": int(w.get("idx", -1)), "familia": str(w.get("familia", "")), "meta": maxi(1, int(w.get("meta", ProgressConfig.WEEKLY_PROBLEMS))), "hecho": int(w.get("hecho", 0)), "completo": bool(w.get("completo", false))}
 	state["retos_dia"] = int(d.get("retos_dia", 0))
 	state["retos_semana"] = int(d.get("retos_semana", 0))
+	if d.get("aviso") is Dictionary:
+		var a: Dictionary = d["aviso"]
+		state["aviso"] = {"activo": bool(a.get("activo", false)), "hora": clampi(int(a.get("hora", ReminderConfig.DEFAULT_HOUR)), 0, 23), "min": clampi(int(a.get("min", 0)), 0, 59)}
 	if d.get("insignias") is Array:
 		var ids: Array = []
 		for id: Variant in (d["insignias"] as Array):

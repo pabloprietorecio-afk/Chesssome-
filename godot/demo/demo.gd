@@ -1033,6 +1033,7 @@ func _ready() -> void:
 		_start(0)
 		return
 	_load_player()
+	_aviso_setup()
 	_idle()
 	if not welcome_seen:
 		_open_welcome()
@@ -1042,6 +1043,8 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED:
+		_aviso_refresh()
 	# El botón «atrás» de Android cierra lo que haya abierto encima de la pantalla.
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if welcome != null and is_instance_valid(welcome):
@@ -6719,6 +6722,7 @@ func _prog_game() -> void:
 
 func _prog_done(avisos: Array, delay: float) -> void:
 	_prog_save()
+	_aviso_refresh()
 	_prog_notify(avisos, delay)
 
 
@@ -6924,6 +6928,18 @@ func _open_day() -> void:
 		var wtext := "¡Cumplido!" if bool(w["completo"]) else "%d de %d problemas resueltos" % [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])]
 		(wmade[1] as VBoxContainer).add_child(_profile_row("check" if bool(w["completo"]) else "flag", "mint" if bool(w["completo"]) else "rose", fam, wtext))
 
+	# Aviso diario (solo si hay plugin de notificaciones).
+	if not kids and (_aviso_available() or not use_settings):
+		body.add_child(_spacer(36.0))
+		body.add_child(_text("AVISO DIARIO", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(12.0))
+		var amade := _panel()
+		body.add_child(amade[0])
+		var aviso_on := bool((s["aviso"] as Dictionary)["activo"])
+		(amade[1] as VBoxContainer).add_child(_switch_row("clock", "peach", "Avisarme cada día", "Un recordatorio para cumplir tu reto, sin agobios.", aviso_on, _aviso_set))
+		if aviso_on:
+			(amade[1] as VBoxContainer).add_child(_option_button("clock", "peach", "Hora del aviso", "%s · toca para cambiar" % _aviso_hour_text(), _aviso_next_hour))
+
 	# Lo hecho hoy.
 	var lines := Progress.summary_lines(s, day)
 	if not lines.is_empty():
@@ -6952,6 +6968,103 @@ func _open_day() -> void:
 	footer.add_child(train)
 	footer.add_child(_spacer(8.0))
 	footer.add_child(_button("home", "Inicio", _open_home, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+
+
+# ---------------------------------------------------------------- aviso diario
+# Qué decir y cuándo lo decide core/reminder.gd; aquí solo se habla con el plugin de notificaciones locales de
+# Android (Notification Scheduler, MIT), que se añade al compilar el APK con avisos. Sin el plugin (el
+# ordenador, la web o un APK normal) nada de esto hace nada y la fila de «Tu día» no sale.
+
+const AVISO_PLUGIN := "res://addons/NotificationSchedulerPlugin/"
+const AVISO_ID := 4201
+const AVISO_CHANNEL := "chessome_diario"
+## Horas entre las que se elige con un toque: mañana, mediodía, tarde y noche.
+const AVISO_HORAS := [8, 13, 19, 21]
+
+var _aviso_node: Node
+var _aviso_ready := false
+
+
+func _aviso_available() -> bool:
+	return OS.has_feature("android") and Engine.has_singleton("NotificationSchedulerPlugin") and ResourceLoader.exists(AVISO_PLUGIN + "NotificationScheduler.gd")
+
+
+## Conecta con el plugin una vez (si está y no es Kids).
+func _aviso_setup() -> void:
+	if _aviso_node != null or kids or not _aviso_available():
+		return
+	var script: GDScript = load(AVISO_PLUGIN + "NotificationScheduler.gd")
+	_aviso_node = script.new()
+	add_child(_aviso_node)
+	_aviso_node.initialization_completed.connect(_aviso_on_ready)
+	_aviso_node.post_notifications_permission_granted.connect(_aviso_on_permission.bind(true))
+	_aviso_node.post_notifications_permission_denied.connect(_aviso_on_permission.bind(false))
+	_aviso_node.initialize()
+
+
+func _aviso_on_ready() -> void:
+	var channel = (load(AVISO_PLUGIN + "model/NotificationChannel.gd") as GDScript).new()
+	channel.set_id(AVISO_CHANNEL).set_name("Aviso diario").set_description("Un recordatorio al día para entrenar").set_importance(3)
+	_aviso_node.create_notification_channel(channel)
+	_aviso_ready = true
+	_aviso_refresh()
+
+
+func _aviso_on_permission(_permission: String, granted: bool) -> void:
+	if not granted:
+		(_prog()["aviso"] as Dictionary)["activo"] = false
+		_prog_save()
+		_aviso_refresh()
+		if progress != null and is_instance_valid(progress) and progress_kind == "day":
+			_open_day()
+
+
+func _aviso_settings() -> Dictionary:
+	var a: Dictionary = _prog()["aviso"]
+	return {"enabled": bool(a["activo"]), "hour": int(a["hora"]), "minute": int(a["min"])}
+
+
+## Vuelve a programar el próximo aviso (se cancela el anterior): tras cada cosa que hace el jugador y al salir de la app.
+func _aviso_refresh() -> void:
+	if kids or _aviso_node == null or not _aviso_ready:
+		return
+	_aviso_node.cancel(AVISO_ID)
+	var settings := _aviso_settings()
+	if not bool(settings["enabled"]):
+		return
+	var n := _prog_now()
+	var plan := Reminder.plan(_prog(), settings, int(n[0]), int(n[1]))
+	if plan.is_empty():
+		return
+	var data = (load(AVISO_PLUGIN + "model/NotificationData.gd") as GDScript).new()
+	data.set_id(AVISO_ID).set_channel_id(AVISO_CHANNEL).set_title(str(plan["title"])).set_content(str(plan["body"]))
+	data.set_delay(maxi(1, int(plan["at"]) - int(n[0])))
+	_aviso_node.schedule(data)
+
+
+func _aviso_set(on: bool) -> void:
+	(_prog()["aviso"] as Dictionary)["activo"] = on
+	_prog_save()
+	if on and _aviso_node != null and not _aviso_node.has_post_notifications_permission():
+		_aviso_node.request_post_notifications_permission()
+	_aviso_refresh()
+	_open_day()
+
+
+## Cambia la hora del aviso a la siguiente de la lista.
+func _aviso_next_hour() -> void:
+	var a: Dictionary = _prog()["aviso"]
+	var i := AVISO_HORAS.find(int(a["hora"]))
+	a["hora"] = int(AVISO_HORAS[(i + 1) % AVISO_HORAS.size()])
+	a["min"] = 0
+	_prog_save()
+	_aviso_refresh()
+	_open_day()
+
+
+func _aviso_hour_text() -> String:
+	var a: Dictionary = _prog()["aviso"]
+	return "%d:%02d" % [int(a["hora"]), int(a["min"])]
 
 
 # ---------------------------------------------------------------- insignia del nivel

@@ -119,6 +119,7 @@ func _reto_del_dia(demo: Control) -> void:
 		var n := 3 if d == today else 1
 		for i in n:
 			Progress.record_problem(st, {"correct": true, "family": week_family if d == today else "otros"}, at, bias, ctx)
+	st["aviso"]["activo"] = true
 	demo.prog = st
 	demo._open_home()
 	await _frames(10)
