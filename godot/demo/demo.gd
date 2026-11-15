@@ -99,6 +99,9 @@ var kids_world := ""
 var browse_back := 0
 ## Entrenamiento por categoría: familia de problemas elegida en «Entrenar» ("" = lo que recomiende el entrenador).
 var train_family := ""
+## Repaso de un nivel ya superado (−1: entrenamiento normal) y el aviso bajo el camino de niveles.
+var train_level := -1
+var _path_hint: Label
 ## Explicación de la última jugada (la del rival, o la que se está repasando) a la vista.
 var move_why_open := false
 ## Icono del jugador dentro de su insignia: "" = la pieza de su rango, "piece_…" = una pieza fija, "foto" = su foto.
@@ -447,9 +450,13 @@ class LevelBadge extends Control:
 			draw_string(font, bc + Vector2(-tw * 0.5, fs * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, bubble_ink)
 
 
-## Camino de niveles sobre un tablero: doce casillas en dos filas (del 0 al 10 y la meta), con un salto entre cada
-## una y la siguiente. Las casillas ya alcanzadas van encendidas y una pieza marca dónde está el jugador.
+## Camino de niveles ilustrado: un sendero entre montañas con un disco por nivel (del 0 al 10), del «Inicio» a la
+## «Meta». Los niveles superados van en oro con una marca verde; el actual brilla, lleva la pieza del jugador y su
+## avance hacia el siguiente; los que faltan, en plata con candado. Se pulsa un disco: señal level_pressed.
 class LevelPath extends Control:
+	signal level_pressed(level: int)
+
+	const COUNT := 11
 	var level := 0
 	var progress := 0.0
 	var light := Color.WHITE
@@ -457,50 +464,231 @@ class LevelPath extends Control:
 	var done := Color.ORANGE
 	var ink := Color.BLACK
 	var quiet := Color.GRAY
+	var good := Color("1f7a44")
+	var night := false
 	var font: Font
 	var marker: Texture2D
 	var goal: Texture2D
+	var _press := Vector2(-1.0, -1.0)
 
-	func _center(i: int, sq: float, left: float) -> Vector2:
-		var col := i if i < 6 else 11 - i
-		return Vector2(left + (float(col) + 0.5) * sq, (0.5 if i < 6 else 1.5) * sq + sq * 0.25)
+	func _unit() -> float:
+		return minf(size.x / 7.0, size.y / 3.95)
+
+	func _left() -> float:
+		return (size.x - _unit() * 7.0) * 0.5
+
+	## Centro de cada punto del camino: −1 el inicio, 0…10 los niveles, 11 la meta.
+	func _spot(i: int) -> Vector2:
+		var u := _unit()
+		var x0 := _left()
+		if i < 0:
+			return Vector2(x0 + 0.55 * u, 1.38 * u)
+		if i <= 5:
+			return Vector2(x0 + (1.45 + float(i)) * u, (1.38 + 0.12 * sin(float(i) * 1.3)) * u)
+		if i <= 10:
+			return Vector2(x0 + (6.05 - float(i - 6) * 1.0) * u, (3.0 + 0.1 * sin(float(i) * 1.1)) * u)
+		return Vector2(x0 + 1.0 * u, 3.0 * u)
+
+	func _radius(i: int) -> float:
+		return _unit() * (0.36 if i <= 5 else 0.4)
+
+	## Puntos del sendero, suavizados (Catmull-Rom), con su recorrido acumulado.
+	func _road() -> Array:
+		var u := _unit()
+		var keys: Array[Vector2] = [_spot(-1)]
+		for i in 6:
+			keys.append(_spot(i))
+		keys.append(Vector2(_left() + 6.85 * u, 2.2 * u))
+		for i in range(6, 11):
+			keys.append(_spot(i))
+		keys.append(_spot(11))
+		var pts := PackedVector2Array()
+		for k in keys.size() - 1:
+			var p0: Vector2 = keys[maxi(k - 1, 0)]
+			var p1: Vector2 = keys[k]
+			var p2: Vector2 = keys[k + 1]
+			var p3: Vector2 = keys[mini(k + 2, keys.size() - 1)]
+			for s in 10:
+				var t := float(s) / 10.0
+				var t2 := t * t
+				var t3 := t2 * t
+				pts.append(0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3))
+		pts.append(keys[keys.size() - 1])
+		return [pts, keys]
+
+	func _ellipse(c: Vector2, r: float, squash: float, col: Color) -> void:
+		var pts := PackedVector2Array()
+		for k in 36:
+			var a := TAU * float(k) / 36.0
+			pts.append(c + Vector2(cos(a) * r, sin(a) * r * squash))
+		draw_colored_polygon(pts, col)
+
+	func _hills(base_y: float, amp: float, col: Color, phase: float, bottom: float) -> void:
+		var pts := PackedVector2Array()
+		var steps := 40
+		for k in steps + 1:
+			var x := size.x * float(k) / float(steps)
+			var y := base_y - amp * (0.55 + 0.45 * sin(x / size.x * TAU * 1.3 + phase)) - amp * 0.35 * sin(x / size.x * TAU * 3.1 + phase * 2.0)
+			pts.append(Vector2(x, y))
+		pts.append(Vector2(size.x, bottom))
+		pts.append(Vector2(0.0, bottom))
+		draw_colored_polygon(pts, col)
 
 	func _draw() -> void:
-		var sq := minf(size.x / 6.0, (size.y - 8.0) / 2.5)
-		var left := (size.x - sq * 6.0) * 0.5
-		var top := sq * 0.25
-		for i in 12:
-			var col := i if i < 6 else 11 - i
-			var row := 0 if i < 6 else 1
-			var rect := Rect2(left + float(col) * sq, top + float(row) * sq, sq, sq)
-			var base := light if (col + row) % 2 == 0 else dark
-			draw_rect(rect, base)
-			if i <= level:
-				draw_rect(rect, Color(done.r, done.g, done.b, 0.38 if i < level else 0.62))
-			if i < 11 and font != null:
-				var fs := int(sq * 0.24)
-				draw_string(font, rect.position + Vector2(sq * 0.08, sq * 0.3), str(i), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink if i <= level else quiet)
-		draw_rect(Rect2(left, top, sq * 6.0, sq * 2.0), ink, false, 3.0)
-		# Los saltos: un arco de casilla a casilla; los que faltan, más tenues.
-		for i in 11:
-			var a := _center(i, sq, left)
-			var b := _center(i + 1, sq, left)
-			var pts := PackedVector2Array()
-			for k in 13:
-				var t := float(k) / 12.0
-				var p := a.lerp(b, t)
-				var lift := sin(PI * t) * sq * 0.34
-				p += Vector2(0.0, -lift) if i != 5 else Vector2(lift, 0.0)
-				pts.append(p)
-			draw_polyline(pts, Color(done.r, done.g, done.b, 1.0) if i < level else Color(quiet.r, quiet.g, quiet.b, 0.45), 5.0 if i < level else 3.0, true)
+		var u := _unit()
+		var far := Color("c9d6ee") if not night else Color("26315a")
+		var mid := Color("d9ead3") if not night else Color("1f3a35")
+		var near := Color("c7dfbd") if not night else Color("1b332e")
+		var cliff := Color("b9c3cf") if not night else Color("2a3350")
+		var cloud := Color(1, 1, 1, 0.75) if not night else Color(0.75, 0.8, 1.0, 0.12)
+		# Paisaje: montañas al fondo, dos repisas con hierba (una por fila) y nubes abajo.
+		_hills(1.05 * u, 0.75 * u, Color(far.r, far.g, far.b, 0.9), 0.4, size.y)
+		_hills(1.95 * u, 0.32 * u, cliff, 1.7, size.y)
+		_hills(1.75 * u, 0.22 * u, mid, 2.3, 2.15 * u)
+		_hills(3.7 * u, 0.35 * u, cliff, 0.9, size.y)
+		_hills(3.4 * u, 0.3 * u, near, 3.1, 3.75 * u)
+		for c: Array in [[0.12, 3.75, 0.55], [0.5, 3.85, 0.7], [0.9, 3.72, 0.6]]:
+			_ellipse(Vector2(size.x * float(c[0]), u * float(c[1])), u * float(c[2]), 0.35, cloud)
+		# El sendero: sombra, tramo ya recorrido en oro y tramo que falta en blanco.
+		var road: Array = _road()
+		var pts: PackedVector2Array = road[0]
+		var reach := 10 * (1 + clampi(level, 0, 10)) # el inicio + un tramo por nivel alcanzado
+		if level >= 6:
+			reach += 10 # la curva del lado derecho
+		reach = mini(reach, pts.size() - 1)
+		var w := u * 0.2
+		draw_polyline(pts, Color(0, 0, 0, 0.12 if not night else 0.3), w + 10.0, true)
+		draw_polyline(pts, Color(1, 1, 1, 0.92) if not night else Color(0.8, 0.84, 0.95, 0.35), w, true)
+		if reach > 0:
+			var gold := pts.slice(0, reach + 1)
+			draw_polyline(gold, Color("f0b93a"), w, true)
+			draw_polyline(gold, Color(1.0, 0.93, 0.7, 0.8), w * 0.3, true)
+		# Inicio y meta.
+		_flag(_spot(-1), "Inicio", ink)
+		_flag(_spot(11), "Meta", done if level >= 10 else quiet)
+		# Los discos, de atrás adelante.
+		for i in COUNT:
+			_disc(i)
+		var top := clampi(level, 0, 10)
+		_marker(top)
+
+	func _flag(c: Vector2, label: String, col: Color) -> void:
+		var u := _unit()
+		_ellipse(c + Vector2(0.0, u * 0.18), u * 0.32, 0.35, Color(0, 0, 0, 0.12))
 		if goal != null:
-			var g := _center(11, sq, left)
-			draw_texture_rect(goal, Rect2(g - Vector2(sq, sq) * 0.3, Vector2(sq, sq) * 0.6), false, quiet if level < 10 else done)
+			draw_texture_rect(goal, Rect2(c - Vector2(u * 0.3, u * 0.5), Vector2(u * 0.6, u * 0.6)), false, col)
+		if font != null:
+			var fs := int(u * 0.2)
+			var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(font, c + Vector2(-tw * 0.5, u * 0.38), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+
+	func _disc(i: int) -> void:
+		var c := _spot(i)
+		var r := _radius(i)
+		var thick := r * 0.28
+		var top_col: Color
+		var side_col: Color
+		var num_col: Color
+		if i < level:
+			top_col = Color("f4c95d")
+			side_col = Color("c58b22")
+			num_col = Color("6b4810")
+		elif i == level:
+			top_col = Color("ffd75e")
+			side_col = Color("d39a1f")
+			num_col = Color("5e3d06")
+			for g in 3:
+				_ellipse(c, r * (1.55 - 0.18 * float(g)), 0.62, Color(1.0, 0.85, 0.3, 0.12 + 0.07 * float(g)))
+		else:
+			top_col = Color("eef1f6") if not night else Color("8a93a8")
+			side_col = Color("aab3c2") if not night else Color("596278")
+			num_col = Color("5b6476") if not night else Color("1c2236")
+		_ellipse(c + Vector2(0.0, thick + r * 0.22), r * 1.05, 0.5, Color(0, 0, 0, 0.16))
+		_ellipse(c + Vector2(0.0, thick), r, 0.62, side_col)
+		draw_rect(Rect2(c.x - r, c.y, r * 2.0, thick), side_col)
+		_ellipse(c, r, 0.62, top_col)
+		_ellipse(c + Vector2(-r * 0.18, -r * 0.14), r * 0.62, 0.45, Color(1, 1, 1, 0.28))
+		if i == level and i < 10:
+			# Avance hacia el siguiente nivel: un anillo sobre el disco.
+			var ring := PackedVector2Array()
+			var steps := maxi(2, int(40.0 * clampf(progress, 0.02, 1.0)))
+			for k in steps + 1:
+				var a := -PI * 0.5 + TAU * clampf(progress, 0.02, 1.0) * float(k) / float(steps)
+				ring.append(c + Vector2(cos(a) * r * 1.12, sin(a) * r * 1.12 * 0.62))
+			draw_polyline(ring, good, 5.0, true)
+		if font != null:
+			var t := str(i)
+			var fs := int(r * 0.78)
+			var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(font, c + Vector2(-tw * 0.5, fs * 0.33), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, num_col)
+		if i < level:
+			_badge_check(c + Vector2(r * 0.62, -r * 0.62))
+		elif i > level:
+			_badge_lock(c + Vector2(r * 0.62, -r * 0.62), r * 0.34)
+
+	func _badge_check(c: Vector2) -> void:
+		var r := _unit() * 0.13
+		draw_circle(c, r + 3.0, Color(1, 1, 1, 0.95))
+		draw_circle(c, r, good)
+		draw_polyline(PackedVector2Array([c + Vector2(-r * 0.48, 0.0), c + Vector2(-r * 0.1, r * 0.4), c + Vector2(r * 0.52, -r * 0.38)]), Color.WHITE, maxf(2.0, r * 0.26), true)
+
+	func _badge_lock(c: Vector2, r: float) -> void:
+		var bg := Color("5b6476") if not night else Color("2a3048")
+		draw_circle(c, r + 3.0, Color(1, 1, 1, 0.9) if not night else Color(0.6, 0.65, 0.8, 0.4))
+		draw_circle(c, r, bg)
+		var bw := r * 0.9
+		var bh := r * 0.7
+		draw_arc(c + Vector2(0.0, -r * 0.12), r * 0.32, PI, TAU, 12, Color.WHITE, maxf(2.0, r * 0.16), true)
+		draw_rect(Rect2(c + Vector2(-bw * 0.5, -r * 0.12), Vector2(bw, bh)), Color.WHITE)
+
+	func _marker(i: int) -> void:
+		var c := _spot(i)
+		var r := _radius(i)
+		var u := _unit()
+		var side := r * 1.5
+		var base := c.y - r * 0.3
 		if marker != null:
-			var c := _center(clampi(level, 0, 10), sq, left)
-			draw_circle(c, sq * 0.36, Color(1, 1, 1, 0.92))
-			draw_arc(c, sq * 0.36, -PI * 0.5, -PI * 0.5 + TAU * clampf(progress, 0.02, 1.0), 40, done, 6.0, true)
-			draw_texture_rect(marker, Rect2(c - Vector2(sq, sq) * 0.28, Vector2(sq, sq) * 0.56), false, ink)
+			# La pieza del jugador, de pie detrás del número del disco.
+			_ellipse(Vector2(c.x, base), side * 0.32, 0.4, Color(0, 0, 0, 0.18))
+			draw_texture_rect(marker, Rect2(Vector2(c.x - side * 0.5, base - side), Vector2(side, side)), false, ink)
+		if font != null:
+			var label := "Nivel actual"
+			var fs := int(u * 0.17)
+			var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var h := float(fs) * 1.5
+			var y := maxf(2.0, base - side - h - 6.0)
+			var pill := Rect2(c.x - tw * 0.5 - 14.0, y, tw + 28.0, h)
+			pill.position.x = clampf(pill.position.x, 2.0, size.x - pill.size.x - 2.0)
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color("fff4cf") if not night else Color("4a3b12")
+			sb.border_color = Color("e6b43c")
+			sb.set_border_width_all(2)
+			sb.set_corner_radius_all(int(h * 0.5))
+			draw_style_box(sb, pill)
+			draw_string(font, Vector2(pill.position.x + 14.0, y + h * 0.5 + fs * 0.36), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("5e3d06") if not night else Color("ffe6a3"))
+
+	## Disco bajo un punto (−1 si ninguno).
+	func level_at(p: Vector2) -> int:
+		var best := -1
+		var best_d := INF
+		for i in COUNT:
+			var d := p.distance_to(_spot(i))
+			if d < _radius(i) * 1.35 and d < best_d:
+				best = i
+				best_d = d
+		return best
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			var mb := event as InputEventMouseButton
+			if mb.pressed:
+				_press = mb.position
+			elif _press.x >= 0.0:
+				if mb.position.distance_to(_press) < 24.0:
+					var i := level_at(mb.position)
+					if i >= 0:
+						level_pressed.emit(i)
+				_press = Vector2(-1.0, -1.0)
 
 
 ## Confeti: papelitos de colores que saltan desde un punto y caen girando. Se borra solo al acabar.
@@ -1529,6 +1717,8 @@ func _refresh(animate: bool = true) -> void:
 		counter.text = "Nivel %d · %s" % [lv, str(_rank(lv)[1])]
 		if train_family != "":
 			counter.text = "Nivel %d · %s" % [lv, str(FAMILY_KIDS[train_family]) if kids else str(Assessment.FAMILY_NAME[train_family])]
+		if train_level >= 0:
+			counter.text = "Repaso del nivel %d · %s" % [train_level, str(_rank(train_level)[1])]
 	elif mode == "test":
 		var answered := not _try.is_empty() and bool(_try.get("recorded", false))
 		counter.text = "Test de nivel · problema %d" % (_test_count() + (0 if answered else 1))
@@ -1789,7 +1979,7 @@ func _section(text: String) -> MarginContainer:
 
 
 ## Fila con una tesela de icono a la izquierda y texto a la derecha.
-func _icon_row(icon_name: String, tint_name: String, heading: String, text: String, side: float = 92.0) -> HBoxContainer:
+func _icon_row(icon_name: String, tint_name: String, heading: String, text: String, side: float = 92.0, heading_size: int = F_BODY, text_size: int = F_SUB) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1802,9 +1992,9 @@ func _icon_row(icon_name: String, tint_name: String, heading: String, text: Stri
 	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if heading != "":
-		texts.add_child(_para(heading, F_BODY, _c("ink"), font_semibold))
+		texts.add_child(_para(heading, heading_size, _c("ink"), font_semibold))
 	if text != "":
-		texts.add_child(_para(text, F_SUB, _c("ink") if heading == "" else _c("quiet"), font_regular))
+		texts.add_child(_para(text, text_size, _c("ink") if heading == "" else _c("quiet"), font_regular))
 	row.add_child(texts)
 	return row
 
@@ -3486,6 +3676,21 @@ func _next_training() -> void:
 	if pool.is_empty() or not _has_player():
 		_start(index + 1)
 		return
+	# Repaso de un nivel superado: sus problemas, primero los que no ha visto.
+	if train_level >= 0:
+		var of_level: Array = pool.filter(func(p: Dictionary) -> bool: return Assessment.level_of(float(p["rating"])) == train_level)
+		if not of_level.is_empty():
+			var seen_ids := {}
+			for t: Dictionary in player["tries"]:
+				seen_ids[str(t["id"])] = true
+			var fresh: Array = of_level.filter(func(p: Dictionary) -> bool: return not seen_ids.has(str(p["id"])))
+			var from_level: Array = fresh if not fresh.is_empty() else of_level
+			if from_level.size() > 1 and index >= 0 and index < pool.size():
+				var now_id := str(pool[index]["id"])
+				from_level = from_level.filter(func(p: Dictionary) -> bool: return str(p["id"]) != now_id)
+			var picked: Dictionary = from_level[_rng.randi_range(0, from_level.size() - 1)]
+			_start(int(_index_of[picked["id"]]))
+			return
 	# Cada pocos problemas, un repaso de un fallo anterior; si no toca o no hay, un problema nuevo.
 	var due := _due_review()
 	if not due.is_empty():
@@ -4061,7 +4266,7 @@ func _open_home() -> void:
 	emblem.texture = UiIcons.emblem()
 	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	emblem.custom_minimum_size = Vector2(220.0, 220.0)
+	emblem.custom_minimum_size = Vector2(240.0, 240.0)
 	emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4079,21 +4284,21 @@ func _open_home() -> void:
 		var mine := Button.new()
 		mine.flat = true
 		mine.focus_mode = Control.FOCUS_NONE
-		mine.custom_minimum_size = Vector2(150.0, 150.0)
+		mine.custom_minimum_size = Vector2(168.0, 168.0)
 		mine.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mine.pressed.connect(_open_avatar)
-		var mine_badge := _level_badge(r, 150.0)
+		var mine_badge := _level_badge(r, 168.0)
 		mine_badge.set_anchors_preset(Control.PRESET_FULL_RECT)
 		mine.add_child(mine_badge)
 		rank_row.add_child(mine)
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", 0)
-		words.add_child(_line("Nivel %d de %d · %s" % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_HEAD + 4, _c("ink"), font_display))
+		words.add_child(_line("Nivel %d de %d · %s" % [lv, Assessment.LEVEL_FLOORS.size() - 1, str(_rank(lv)[1])], F_TITLE2, _c("ink"), font_display))
 		var left_text := "¡Nivel máximo!"
 		if lv + 1 < Assessment.LEVEL_FLOORS.size():
 			left_text = "Te faltan %d puntos para el nivel %d" % [maxi(1, int(ceil(float(Assessment.LEVEL_FLOORS[lv + 1]) - r))), lv + 1]
-		words.add_child(_line(left_text, F_SUB, _c("quiet"), font_medium))
+		words.add_child(_line(left_text, F_SUB + 2, _c("quiet"), font_medium))
 		rank_row.add_child(words)
 		body.add_child(_spacer(22.0))
 		body.add_child(rank_row)
@@ -4127,13 +4332,13 @@ func _open_home() -> void:
 	if not kids and not course.is_empty():
 		items.append(["chick", "butter", "Aprende desde cero", "%d de %d lecciones hechas." % [done, lessons.size()] if done > 0 else "Cómo se mueve cada pieza, paso a paso.", _open_course])
 	for def: Array in items:
-		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4]))
-		body.add_child(_spacer(16.0))
+		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4], true))
+		body.add_child(_spacer(20.0))
 	body.add_child(_spacer(8.0, true))
 	if kids:
 		# Salida a la vista (pide la multiplicación para mayores).
 		footer.add_child(_button("close", "Salir del modo Kids (para mayores)", _set_kids.bind(false), Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
-	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+	footer.add_child(_button("sliders", "Opciones", _open_options, Color(0, 0, 0, 0), _c("quiet"), {"font_size": F_BODY, "height": 104.0, "icon": 52.0, "font": font_medium}))
 
 
 ## Iconos de la barra al entrar o salir del nivel Kids (a color o los normales).
@@ -4210,12 +4415,18 @@ func _open_train_hub() -> void:
 	path.done = tint[1]
 	path.ink = _c("ink")
 	path.quiet = _c("quiet")
+	path.good = _c("good")
+	path.night = dark
 	path.font = font_semibold
 	path.marker = UiIcons.texture(avatar if avatar.begins_with("piece_") and UiIcons.has(avatar) else str(rank[0]))
 	path.goal = UiIcons.texture("flag")
-	path.custom_minimum_size = Vector2(0.0, 400.0)
-	path.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	path.custom_minimum_size = Vector2(0.0, 560.0)
+	path.mouse_filter = Control.MOUSE_FILTER_PASS
+	path.level_pressed.connect(_on_level_pressed.bind(lv))
 	body.add_child(path)
+	_path_hint = _centered(_para("Toca un nivel superado para repasar sus problemas." if lv > 0 else "Los niveles se desbloquean a medida que avanzas.", F_FOOT, _c("quiet"), font_regular))
+	body.add_child(_path_hint)
+	body.add_child(_spacer(10.0))
 	var seen := {}
 	var solved := {}
 	for t: Dictionary in player["tries"]:
@@ -4271,7 +4482,20 @@ func _open_train_hub() -> void:
 
 func _train_family(fam: String) -> void:
 	train_family = fam
+	train_level = -1
 	_start_training()
+
+
+## Un disco del camino de niveles: uno superado se repasa; el actual, entrenamiento normal; los demás, bloqueados.
+func _on_level_pressed(i: int, current: int) -> void:
+	if i < current:
+		train_family = ""
+		train_level = i
+		_start_training()
+	elif i == current:
+		_train_family("")
+	elif _path_hint != null and is_instance_valid(_path_hint):
+		_path_hint.text = "El nivel %d se desbloquea cuando llegues a él." % i
 
 
 func _home_test() -> void:
@@ -6059,18 +6283,19 @@ func _open_experience() -> void:
 
 
 ## Opción grande: tesela con dibujo, titular, una línea de texto y una flecha.
-func _option_button(icon_name: String, tint_name: String, heading: String, text: String, on_press: Callable) -> Button:
+## big: letra y tesela más grandes (el inicio, que tiene sitio de sobra).
+func _option_button(icon_name: String, tint_name: String, heading: String, text: String, on_press: Callable, big: bool = false) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.mouse_filter = Control.MOUSE_FILTER_PASS
 	b.pressed.connect(on_press)
 	_style_button(b, _c("surface"), _c("ink"), 48, F_BODY, font_semibold, _c("shadow"))
-	var pad := _pad(26, 24, 30, 24)
+	var pad := _pad(26, 30, 30, 30) if big else _pad(26, 24, 30, 24)
 	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
 	b.add_child(pad)
-	var row := _icon_row(icon_name, tint_name, heading, text, 120.0)
+	var row := _icon_row(icon_name, tint_name, heading, text, 148.0, F_HEAD + 6, F_BODY + 2) if big else _icon_row(icon_name, tint_name, heading, text, 120.0)
 	pad.add_child(row)
-	row.add_child(_icon("next", 46.0, _c("quiet")))
+	row.add_child(_icon("next", 56.0 if big else 46.0, _c("quiet")))
 	var fit := func() -> void:
 		if is_instance_valid(b) and is_instance_valid(pad):
 			b.custom_minimum_size = Vector2(0.0, pad.get_combined_minimum_size().y)

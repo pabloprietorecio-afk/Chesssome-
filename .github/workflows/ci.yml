@@ -185,6 +185,70 @@ jobs:
           files: build/android/Chessome-debug.apk
           overwrite_files: true
 
+  # Capturas rápidas de las pantallas 2D (inicio, Entrenar, partida online): unos minutos, en cada cambio de Godot.
+  pantallas:
+    name: Pantallas 2D (capturas rápidas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Caché de Godot y plantillas de Android
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-dl
+          key: godot-${{ env.GODOT_VERSION }}-android-v1
+
+      - name: Descargar Godot (comprobando la suma SHA-512 oficial)
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/godot-dl && cd ~/godot-dl
+          BASE=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          ED=Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          W="wget -nv --tries=6 --waitretry=15 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+          $W $BASE/SHA512-SUMS.txt
+          $W $BASE/$ED
+          grep -E "  $ED$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q $ED && rm $ED
+
+      - name: Renderizador por software (Vulkan) y pantalla virtual
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 libgl1-mesa-dri > /dev/null
+
+      - name: Importar el proyecto
+        run: |
+          ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --import 2>&1 | tail -5 || true
+
+      - name: Capturas de las pantallas
+        run: |
+          mkdir -p build/pantallas
+          export SHOTS_DIR=$GITHUB_WORKSPACE/build/pantallas
+          timeout 900 xvfb-run -a -s "-screen 0 1080x2400x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --resolution 1080x2400 res://tests/pantallas.tscn > pantallas.log 2>&1 || true
+          grep -E "^SHOT|SCRIPT ERROR|Parse Error|^ERROR|^   at:" pantallas.log | head -40 || true
+          cp pantallas.log build/pantallas/
+
+      - name: Publicar en la rama ci-pantallas
+        if: always()
+        run: |
+          B=ci-pantallas
+          if [ "$GITHUB_REF_NAME" != "main" ]; then B="ci-pantallas-${GITHUB_REF_NAME//\//-}"; fi
+          cd build/pantallas
+          git init -q
+          git checkout -q -b "$B"
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Pantallas de ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$B"
+
+      - name: Las pantallas terminaron sin errores
+        run: |
+          grep -q "PANTALLAS DONE" pantallas.log || { tail -40 pantallas.log; exit 1; }
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script" pantallas.log; then exit 1; fi
+
   # Las capturas del 3D tardan mucho (render por CPU), así que van en paralelo y no retrasan el APK.
   # Solo se hacen si el cambio toca algo que afecta al 3D, o si se lanzan a mano (Run workflow).
   capturas:
