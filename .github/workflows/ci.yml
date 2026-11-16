@@ -72,6 +72,31 @@ jobs:
           files: dist/chessome.html
           overwrite_files: true
 
+  reglas:
+    name: Reglas de Firebase (emulador)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/test/package-lock.json
+
+      - name: Java 21 (el emulador de la base de datos)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Probar las reglas contra el emulador
+        working-directory: firebase/test
+        run: |
+          npm ci
+          npx firebase emulators:exec --only database --project demo-chess "node --test"
+
   godot:
     name: Godot (reglas y APK de depuración)
     runs-on: ubuntu-latest
@@ -470,9 +495,21 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/godot/addons
           cp -r res/addons/* $GITHUB_WORKSPACE/godot/addons/
           cd $GITHUB_WORKSPACE
-          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg")\n' >> godot/project.godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg")\n' >> godot/project.godot
           tail -4 godot/project.godot
           ls godot/addons
+
+      # Esperar rival con la app minimizada (android_espera/LEEME.md): el código Java va dentro de la plantilla de
+      # Gradle, junto a GodotApp.java; el manifiesto lo completa res://addons/espera_online al exportar.
+      - name: Complemento EsperaOnline (Java en la plantilla de Gradle)
+        run: |
+          set -euo pipefail
+          APP=$(find godot/android/build -name GodotApp.java | head -1)
+          [ -n "$APP" ]
+          ROOT=${APP%/com/godot/game/GodotApp.java}
+          mkdir -p $ROOT/com/pabloprieto/espera
+          cp android_espera/*.java $ROOT/com/pabloprieto/espera/
+          ls -la $ROOT/com/pabloprieto/espera
 
       - name: Importar el proyecto
         run: |
@@ -512,6 +549,12 @@ jobs:
           [ -f $A ]
           unzip -l $A > build/avisos-log/apk-contenido.txt
           if unzip -p $A 'classes*.dex' | grep -a -q "org/godotengine/plugin/notification"; then echo "OK plugin dentro del APK"; else echo "FALTA el plugin en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/espera"; then echo "OK EsperaOnline dentro del APK"; else echo "FALTA EsperaOnline en el APK"; exit 1; fi
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
+          $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
+          for f in "org.godotengine.plugin.v2.EsperaOnline" "com.pabloprieto.espera.EsperaService" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS"; do
+            if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
+          done
           # El icono de la notificación: sin él Android puede descartar el aviso.
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           if $AAPT2 dump resources $A | grep -q "ic_default_notification"; then echo "OK icono de la notificación"; else echo "FALTA el icono ic_default_notification"; exit 1; fi

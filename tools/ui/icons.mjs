@@ -78,6 +78,15 @@ const ICONS = {
   g_abajo: ['thumbs-down', 'duotone'],
   g_buena: ['handshake', 'duotone'],
   bot: ['robot', 'duotone'],
+  // Partidas online: espacios por ritmo, jugadores esperando, normas, denunciar y bloquear.
+  infinity: ['infinity', 'duotone'],
+  users: ['users', 'duotone'],
+  fast: ['lightning', 'duotone'],
+  slow: ['hourglass-medium', 'duotone'],
+  rules: ['scroll', 'duotone'],
+  report: ['warning', 'duotone'],
+  block: ['prohibit', 'duotone'],
+  more: ['dots-three-outline', 'duotone'],
 };
 
 // ---------- PNG (mismo formato sencillo que tools/pieces/fichas.mjs: 8 bits RGBA, sin filtro) ----------

@@ -1,15 +1,29 @@
 class_name Online
 extends Node
 ## Partida online con Firebase Realtime Database (REST + escucha en directo SSE), sin complementos.
-## Lo mismo que src/online (TypeScript): emparejamiento automático, jugadas en directo y limpieza.
-##   abiertas/<id>   {creador, latido}                     partidas que esperan rival
-##   partidas/<id>   {creador, rival, unidoEn, jugadas/<n>}
-## Entrar = unirse a la partida abierta más antigua y viva (lo decide la base de datos, atómicamente) o abrir una.
-## Si dos abren a la vez, el de la partida más reciente se une a la más antigua.
+##   espera/<id>     {creador, latido, ritmo, no/<uid>}      partidas que esperan rival, por espacio (ritmo)
+##   partidas/<id>   {creador, ritmo, rival, unidoEn, listo, jugadas/<n>, pulsos/<n>, fin, perfiles, gestos}
+##   denuncias/<id>  {de, contra, nombre, partida, motivo, t}  solo se escriben (se leen en la consola)
+## Espacios: cada partida tiene un ritmo «minutos+segundos por jugada» («0+0», sin reloj). Entrar en un espacio =
+## unirse a la partida más antigua y viva de ese ritmo (lo decide la base de datos, atómicamente) o abrir una y
+## esperar. Si dos abren a la vez, el de la partida más reciente se une a la más antigua.
+## Reloj: cada pulsación (pulsos/<n>, tras la jugada n) lleva la hora del servidor; con ellas los dos calculan lo
+## mismo. Quien se pasa de tiempo pierde: lo apunta cualquiera de los dos en «fin» (el primero que llega vale).
+## «no/<uid>»: jugadores que el creador ha bloqueado (no se unen a su partida).
+## «listo»: quien esperaba ha visto entrar al rival (puede que tuviera la app minimizada y vuelva al tocar el aviso).
+## Hasta entonces no empieza la partida ni corre el reloj; si no vuelve en JOIN_WAIT_MS, el que entró se va y sigue
+## buscando.
+## La web (src/online) usaba «abiertas»: ya no se empareja con la app.
 ## Colores: 0 blancas, 1 negras (como en Chess).
 
 signal started(color: int)
+## Me he unido a una partida, pero quien esperaba aún no ha vuelto a la app (rival: su perfil, si ha llegado).
+signal matched
+## Quien esperaba no volvió a tiempo: sigo buscando en el mismo espacio.
+signal retry
 signal move_received(uci: String)
+## Cambió el reloj de la partida (una pulsación nueva).
+signal clock_changed
 signal ended(reason: String, winner: int)
 signal failed(message: String)
 ## Lo que enseña el rival (nivel, icono, foto en base64), cuando llega.
@@ -32,6 +46,16 @@ const MONTHS := {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Ju
 ## Gestos del chat: solo estos, sin texto libre.
 const GESTURES := ["saludo", "aplauso", "genial", "arriba", "abajo", "buena"]
 const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡Genial!", "arriba": "Bien", "abajo": "Vaya", "buena": "Buena partida"}
+## Espacios fijos (ritmos); además, cada uno puede abrir el suyo (personalizado).
+const SPACES := ["0+0", "5+3", "10+5", "15+10", "20+0", "30+0"]
+## Ritmo válido (igual que en las reglas de la base de datos): «0+0» o de 1 a 180 minutos y de 0 a 60 segundos.
+const RHYTHM_RE := "^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$"
+## Al rival que no pulsa a tiempo se le da por perdido este margen después (su pulsación puede venir de camino).
+const FLAG_GRACE_MS := 3000.0
+## Lo que se espera a que vuelva quien esperaba con la app minimizada.
+const JOIN_WAIT_MS := 60000.0
+## Motivos de denuncia (como en las reglas).
+const REPORT_REASONS := ["nombre", "trampas", "abandono", "conducta", "otro"]
 
 ## idle, searching, waiting, playing, ended
 var phase := "idle"
@@ -49,6 +73,24 @@ var _last_gesture := 0
 var uid := ""
 var game_id := ""
 var my_color := -1
+## Ritmo del espacio elegido y, en la partida, el reloj (ms) que sale de él.
+var rhythm := "0+0"
+var base_ms := 0.0
+var inc_ms := 0.0
+## Jugadores bloqueados (uid → nombre); los pone la app. No me uno a sus partidas ni ellos a las mías.
+var blocked := {}
+var _clock := {}
+var _my_press := {"n": -1, "at": 0.0}
+var _ended_sent := false
+var _offset_fine := false
+## Partidas de las que me fui porque quien esperaba no volvió (no me vuelvo a unir a ellas).
+var _skip := {}
+var _doc_seen := false
+var _listo_sent := false
+## Complemento de Android EsperaOnline (solo en el APK compilado con Gradle): mientras espero, un servicio en primer
+## plano mantiene viva la partida en espera y avisa si entra alguien con la app minimizada.
+var _bg: Object = null
+var _bg_on := false
 
 var _id_token := ""
 var _refresh_token := ""
@@ -77,6 +119,8 @@ var _sse_tree: Variant = null
 
 func _ready() -> void:
 	_rng.randomize()
+	if Engine.has_singleton("EsperaOnline"):
+		_bg = Engine.get_singleton("EsperaOnline")
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) == OK:
 		_refresh_token = str(cfg.get_value("sesion", "refresco", ""))
@@ -211,6 +255,88 @@ static func moves_of(doc: Variant) -> Array:
 	return out
 
 
+## Nombre de un ritmo para leer: «Sin reloj», «5+3», «20 min».
+static func rhythm_label(r: String) -> String:
+	var p := rhythm_parts(r)
+	if int(p[0]) == 0:
+		return Loc.t("Sin reloj")
+	if int(p[1]) == 0:
+		return Loc.f("%d min", int(p[0]))
+	return "%d+%d" % [int(p[0]), int(p[1])]
+
+
+## Si el ritmo es válido («5+3»; «0+0» = sin reloj).
+static func rhythm_ok(r: String) -> bool:
+	var re := RegEx.new()
+	re.compile(RHYTHM_RE)
+	return re.search(r) != null
+
+
+## [minutos, segundos por jugada] del ritmo («0+0» → [0, 0]).
+static func rhythm_parts(r: String) -> Array:
+	if not rhythm_ok(r):
+		return [0, 0]
+	var p := r.split("+")
+	return [int(p[0]), int(p[1])]
+
+
+## Reloj que sale de las pulsaciones (horas del servidor, ms): {left: [blancas, negras] al terminar la última
+## pulsación, side: a quién le corre, since: desde qué hora, presses: cuántas, flag: quién se pasó de tiempo al
+## pulsar (−1, nadie)}. Las blancas empiezan a contar cuando empieza la partida («listo»).
+static func clock_state(doc: Variant, base: float, inc: float) -> Dictionary:
+	var left := [base, base]
+	var since := 0.0
+	var n := 0
+	var flag := -1
+	if doc is Dictionary:
+		var d: Dictionary = doc
+		since = float(d.get("listo", d.get("unidoEn", 0)))
+		var p: Variant = d.get("pulsos")
+		while true:
+			var t: Variant = null
+			if p is Dictionary:
+				t = (p as Dictionary).get(str(n))
+			elif p is Array and n < (p as Array).size():
+				t = (p as Array)[n]
+			if not (t is float or t is int):
+				break
+			var side := n % 2
+			left[side] = float(left[side]) - (float(t) - since)
+			if float(left[side]) < 0.0 and flag < 0:
+				flag = side
+			left[side] = float(left[side]) + inc
+			since = float(t)
+			n += 1
+	return {"left": left, "side": n % 2, "since": since, "presses": n, "flag": flag}
+
+
+## Partidas en espera por espacio: {ritmo: [ids, el más antiguo primero]}; sin las mías, las viejas, las de
+## jugadores bloqueados y las de quien me ha bloqueado.
+static func spaces_of(rows: Variant, my_uid: String, server_now_ms: float, blocked_uids: Dictionary) -> Dictionary:
+	var out := {}
+	if not (rows is Dictionary):
+		return out
+	for k in (rows as Dictionary).keys():
+		var row: Variant = (rows as Dictionary)[k]
+		if not (row is Dictionary):
+			continue
+		var rd: Dictionary = row
+		var who := str(rd.get("creador", ""))
+		var r := str(rd.get("ritmo", ""))
+		if who == "" or who == my_uid or blocked_uids.has(who) or not rhythm_ok(r):
+			continue
+		if rd.get("no") is Dictionary and (rd["no"] as Dictionary).has(my_uid):
+			continue
+		if not is_fresh(rd.get("latido"), server_now_ms):
+			continue
+		if not out.has(r):
+			out[r] = []
+		(out[r] as Array).append(str(k))
+	for r in out.keys():
+		(out[r] as Array).sort()
+	return out
+
+
 ## Color de quien juega (0/1) si ya empezó la partida y participa; −1 si no.
 static func color_for(doc: Variant, my_uid: String) -> int:
 	if not (doc is Dictionary):
@@ -246,9 +372,22 @@ func _note_date(headers: PackedStringArray) -> float:
 		if str(h).to_lower().begins_with("date:"):
 			var ms := parse_http_date(str(h).substr(5))
 			if ms > 0.0:
-				_offset_ms = ms - Time.get_unix_time_from_system() * 1000.0
-				return ms
+				# La cabecera va en segundos enteros: la diferencia real está entre «coarse» y un segundo más. Si
+				# ya hay una medida fina (de una hora del servidor escrita por mí) y cuadra, se queda.
+				var coarse := ms - Time.get_unix_time_from_system() * 1000.0
+				if not (_offset_fine and _offset_ms >= coarse - 600.0 and _offset_ms <= coarse + 1600.0):
+					_offset_ms = coarse + 500.0
+					_offset_fine = false
+				return _server_now()
 	return _server_now()
+
+
+## Medida fina de la hora del servidor: una hora del servidor (ms) escrita por mí, entre el envío y la respuesta.
+func _calibrate(server_ms: Variant, sent_ms: float, recv_ms: float) -> void:
+	if not (server_ms is float or server_ms is int) or recv_ms - sent_ms > 4000.0:
+		return
+	_offset_ms = float(server_ms) - (sent_ms + recv_ms) * 0.5
+	_offset_fine = true
 
 
 func _server_now() -> float:
@@ -304,21 +443,43 @@ func request(method: HTTPClient.Method, path: String, body: Variant = null, quer
 		return {"status": 0, "json": null, "now": _server_now()}
 	var q := query + ("&" if query != "" else "") + "auth=" + _id_token
 	var data := "" if body == null else JSON.stringify(body)
+	var sent := Time.get_unix_time_from_system() * 1000.0
 	var r := await _http(method, "https://%s/%s.json?%s" % [DB_HOST, path, q], PackedStringArray(), data)
+	var recv := Time.get_unix_time_from_system() * 1000.0
 	var parsed: Variant = null
 	if str(r["body"]) != "":
 		parsed = JSON.parse_string(str(r["body"]))
 	var now := _note_date(r["headers"])
-	return {"status": int(r["code"]), "json": parsed, "now": now}
+	return {"status": int(r["code"]), "json": parsed, "now": now, "sent": sent, "recv": recv}
 
 
 # ---------------------------------------------------------------- emparejamiento
 
-## Busca rival: se une a una partida abierta o abre la suya. Las señales avisan del resto.
-func start() -> void:
+## Partidas en espera de cada espacio: {ok, status, spaces: {ritmo: [ids]}} (ver spaces_of).
+func lobby() -> Dictionary:
+	if not await _ensure_session():
+		return {"ok": false, "status": 0, "spaces": {}}
+	var r := await request(HTTPClient.METHOD_GET, "espera", null, "orderBy=%22%24key%22&limitToLast=100")
+	if int(r["status"]) != 200:
+		return {"ok": false, "status": int(r["status"]), "spaces": {}}
+	return {"ok": true, "status": 200, "spaces": spaces_of(r["json"], uid, float(r["now"]), blocked)}
+
+
+## Busca rival en el espacio `space` (ritmo): se une a una partida que espera o abre la suya. Las señales avisan
+## del resto.
+func start(space: String = "0+0") -> void:
 	if phase != "idle" and phase != "ended":
 		return
+	_skip = {}
+	await _search(space)
+
+
+func _search(space: String) -> void:
 	_reset()
+	rhythm = space if rhythm_ok(space) else "0+0"
+	var parts := rhythm_parts(rhythm)
+	base_ms = float(parts[0]) * 60000.0
+	inc_ms = float(parts[1]) * 1000.0
 	phase = "searching"
 	var gen := _gen
 	if not await _ensure_session():
@@ -347,6 +508,11 @@ func _reset() -> void:
 	_seen_gestures = {}
 	game_id = ""
 	my_color = -1
+	_clock = {}
+	_my_press = {"n": -1, "at": 0.0}
+	_ended_sent = false
+	_doc_seen = false
+	_listo_sent = false
 	_role = ""
 	_seen = false
 	_applied = 0
@@ -363,28 +529,17 @@ func _fail(message: String) -> void:
 	failed.emit(message)
 
 
-## Partidas abiertas y vivas de otros jugadores, la más antigua primero (con `before`, solo las anteriores).
+## Partidas que esperan en mi espacio, de otros jugadores y vivas, la más antigua primero (con `before`, solo las
+## anteriores).
 func _candidates(before: String) -> Dictionary:
-	var r := await request(HTTPClient.METHOD_GET, "abiertas", null, Loc.t("orderBy=%22%24key%22&limitToLast=20"))
-	if int(r["status"]) != 200:
-		return {"ok": false, "status": int(r["status"]), "ids": []}
+	var l := await lobby()
+	if not bool(l["ok"]):
+		return {"ok": false, "status": int(l["status"]), "ids": []}
 	var ids: Array = []
-	if r["json"] is Dictionary:
-		var rows: Dictionary = r["json"]
-		for k in rows.keys():
-			var id := str(k)
-			var row: Variant = rows[k]
-			if not (row is Dictionary):
-				continue
-			var rd: Dictionary = row
-			if str(rd.get("creador", "")) == uid:
-				continue
-			if not is_fresh(rd.get("latido"), float(r["now"])):
-				continue
-			if before != "" and id >= before:
-				continue
+	for idv in (l["spaces"] as Dictionary).get(rhythm, []):
+		var id := str(idv)
+		if (before == "" or id < before) and not _skip.has(id):
 			ids.append(id)
-	ids.sort()
 	return {"ok": true, "status": 200, "ids": ids}
 
 
@@ -392,10 +547,14 @@ func _try_join(id: String) -> bool:
 	var r := await request(HTTPClient.METHOD_PATCH, "partidas/" + id, {"rival": uid, "unidoEn": {".sv": "timestamp"}})
 	if int(r["status"]) != 200:
 		return false # otro jugador se adelantó, o la partida ya no existe
+	if r["json"] is Dictionary:
+		_calibrate((r["json"] as Dictionary).get("unidoEn"), float(r["sent"]), float(r["recv"]))
 	game_id = id
 	_role = "rival"
+	phase = "joining"
 	_listen("partidas/" + id)
 	_send_profile(id)
+	matched.emit()
 	return true
 
 
@@ -421,8 +580,18 @@ func send_gesture(kind: String) -> bool:
 func _open() -> void:
 	var gen := _gen
 	var id := new_game_id(int(_server_now() / 1000.0), _rng)
-	var a := await request(HTTPClient.METHOD_PUT, "partidas/%s/creador" % id, uid)
-	var b := await request(HTTPClient.METHOD_PATCH, "abiertas/" + id, {"creador": uid, "latido": {".sv": "timestamp"}})
+	var a := await request(HTTPClient.METHOD_PATCH, "partidas/" + id, {"creador": uid, "ritmo": rhythm})
+	var row := {"creador": uid, "latido": {".sv": "timestamp"}, "ritmo": rhythm}
+	if not blocked.is_empty():
+		# Los que he bloqueado no se unen a mi partida (los 50 últimos).
+		var no := {}
+		var keys: Array = blocked.keys()
+		for k in keys.slice(maxi(0, keys.size() - 50)):
+			no[str(k)] = true
+		row["no"] = no
+	var b := await request(HTTPClient.METHOD_PATCH, "espera/" + id, row)
+	if int(b["status"]) == 200 and b["json"] is Dictionary:
+		_calibrate((b["json"] as Dictionary).get("latido"), float(b["sent"]), float(b["recv"]))
 	if gen != _gen:
 		return
 	if int(a["status"]) != 200 or int(b["status"]) != 200:
@@ -436,6 +605,17 @@ func _open() -> void:
 
 
 func _process(delta: float) -> void:
+	if _bg != null and (phase == "waiting") != _bg_on:
+		_bg_on = phase == "waiting"
+		if _bg_on:
+			_bg_start()
+		else:
+			_bg.call("stop")
+	if phase == "joining" and _sse_tree is Dictionary:
+		# Quien esperaba no vuelve: me voy y sigo buscando en el mismo espacio.
+		var since := float((_sse_tree as Dictionary).get("unidoEn", 0))
+		if since > 0.0 and _server_now() - since > JOIN_WAIT_MS:
+			_give_up_join()
 	if phase == "waiting":
 		_hb_t += delta
 		_scan_t += delta
@@ -448,9 +628,39 @@ func _process(delta: float) -> void:
 	_sse_tick(delta)
 
 
+## Servicio de espera (Android): la sesión, la partida y los textos de sus avisos, en el idioma de la app.
+func _bg_start() -> void:
+	if _bg == null or game_id == "":
+		return
+	OS.request_permission("android.permission.POST_NOTIFICATIONS")
+	_bg.call("start", {
+		"host": DB_HOST, "game": game_id, "token": _id_token, "refresh": _refresh_token, "apiKey": API_KEY,
+		"expiresAt": int(_expires_at),
+		"title": Loc.f("Esperando rival · %s", rhythm_label(rhythm)),
+		"text": Loc.t("Te avisamos cuando entre alguien. Puedes salir de la app."),
+		"foundTitle": Loc.t("¡Rival encontrado!"),
+		"foundText": Loc.t("Vuelve a la app en menos de un minuto para empezar la partida."),
+		"stopLabel": Loc.t("Dejar de esperar"),
+	})
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED and _bg != null and str(_bg.call("state")) == "cancelled":
+		# Se tocó «Dejar de esperar» en el aviso: el servicio ya borró la partida en espera.
+		_bg.call("clearState")
+		_bg_on = false
+		_gen += 1
+		_stop_stream()
+		phase = "idle"
+		game_id = ""
+		failed.emit(Loc.t("Has dejado de esperar desde el aviso."))
+
+
 func _heartbeat() -> void:
 	_hb_busy = true
-	await request(HTTPClient.METHOD_PATCH, "abiertas/" + game_id, {"latido": {".sv": "timestamp"}})
+	var r := await request(HTTPClient.METHOD_PATCH, "espera/" + game_id, {"latido": {".sv": "timestamp"}})
+	if int(r["status"]) == 200 and r["json"] is Dictionary:
+		_calibrate((r["json"] as Dictionary).get("latido"), float(r["sent"]), float(r["recv"]))
 	_hb_busy = false
 
 
@@ -468,16 +678,53 @@ func _scan_older() -> void:
 				break
 			var r := await request(HTTPClient.METHOD_PATCH, "partidas/" + id, {"rival": uid, "unidoEn": {".sv": "timestamp"}})
 			if int(r["status"]) == 200:
+				if r["json"] is Dictionary:
+					_calibrate((r["json"] as Dictionary).get("unidoEn"), float(r["sent"]), float(r["recv"]))
 				_stop_stream()
-				await request(HTTPClient.METHOD_DELETE, "abiertas/" + mine)
+				await request(HTTPClient.METHOD_DELETE, "espera/" + mine)
 				await request(HTTPClient.METHOD_DELETE, "partidas/" + mine)
 				game_id = id
 				_role = "rival"
 				_seen = false
+				phase = "joining"
 				_listen("partidas/" + id)
 				_send_profile(id)
+				matched.emit()
 				break
 	_scan_busy = false
+
+
+func _give_up_join() -> void:
+	var id := game_id
+	_skip[id] = true
+	_gen += 1
+	_stop_stream()
+	game_id = ""
+	_role = ""
+	_seen = false
+	phase = "idle"
+	await request(HTTPClient.METHOD_DELETE, "partidas/" + id)
+	if phase == "idle":
+		retry.emit()
+		var keep := _skip.duplicate()
+		_reset()
+		_skip = keep
+		await _search(rhythm)
+
+
+## La partida en la que esperaba ha desaparecido (el que entró se cansó de esperar): abro otra en el mismo espacio.
+func _reopen() -> void:
+	var old := game_id
+	_gen += 1
+	_stop_stream()
+	game_id = ""
+	phase = "idle"
+	await request(HTTPClient.METHOD_DELETE, "espera/" + old)
+	if phase == "idle":
+		var keep := _skip.duplicate()
+		_reset()
+		_skip = keep
+		await _search(rhythm)
 
 
 # ---------------------------------------------------------------- partida en directo
@@ -490,7 +737,12 @@ func _on_tree() -> void:
 			phase = "ended"
 			ended.emit("abandoned", my_color)
 			_stop_stream()
+		elif _doc_seen and phase == "waiting":
+			_reopen()
+		elif _doc_seen and phase == "joining":
+			_give_up_join()
 		return
+	_doc_seen = true
 	var color := color_for(doc, uid)
 	if color < 0:
 		return
@@ -498,12 +750,18 @@ func _on_tree() -> void:
 	my_color = color
 	if _role == "creador" and not _lobby_cleaned:
 		_lobby_cleaned = true
-		_fire(HTTPClient.METHOD_DELETE, "abiertas/" + game_id)
-	if phase == "searching" or phase == "waiting":
+		_fire(HTTPClient.METHOD_DELETE, "espera/" + game_id)
+	_check_extras(doc)
+	if not (doc as Dictionary).has("listo"):
+		# Ha entrado el rival: si soy quien esperaba, aviso de que estoy (empieza la partida); si entré yo, espero.
+		if _role == "creador" and not _listo_sent:
+			_listo_sent = true
+			_send_listo()
+		return
+	if phase == "searching" or phase == "waiting" or phase == "joining":
 		phase = "playing"
 		_applied = 0
 		started.emit(color)
-	_check_extras(doc)
 	if phase != "playing":
 		return
 	var moves := moves_of(doc)
@@ -515,6 +773,73 @@ func _on_tree() -> void:
 			move_received.emit(str(moves[i]))
 		if phase != "playing":
 			return
+	if base_ms > 0.0:
+		_check_clock(doc)
+
+
+func _send_listo() -> void:
+	var id := game_id
+	var r := await request(HTTPClient.METHOD_PUT, "partidas/%s/listo" % id, {".sv": "timestamp"})
+	if int(r["status"]) == 200:
+		_calibrate(r["json"], float(r["sent"]), float(r["recv"]))
+	elif id == game_id and phase == "waiting":
+		# El que entró ya se había ido: a esperar otra vez.
+		_reopen()
+
+
+## Reloj: pulsaciones nuevas y quién se ha pasado de tiempo (al pulsar tarde, o apuntado en «fin»).
+func _check_clock(doc: Variant) -> void:
+	var c := clock_state(doc, base_ms, inc_ms)
+	var changed := _clock.is_empty() or int(c["presses"]) != int(_clock.get("presses", -1))
+	_clock = c
+	if int(_my_press["n"]) >= 0 and int(c["presses"]) > int(_my_press["n"]):
+		_my_press = {"n": -1, "at": 0.0}
+	if changed:
+		clock_changed.emit()
+	var loser := int(c["flag"])
+	var fin: Variant = (doc as Dictionary).get("fin")
+	if fin is Dictionary and str((fin as Dictionary).get("tipo", "")) == "tiempo":
+		loser = int((fin as Dictionary).get("pierde", -1))
+	if loser == 0 or loser == 1:
+		_end_on_time(loser)
+
+
+func _end_on_time(loser: int) -> void:
+	if _ended_sent or phase != "playing":
+		return
+	_ended_sent = true
+	phase = "ended"
+	ended.emit("tiempo", 1 - loser)
+	var id := game_id
+	var gen := _gen
+	await get_tree().create_timer(CLEANUP).timeout
+	if gen == _gen:
+		_stop_stream()
+		await request(HTTPClient.METHOD_DELETE, "partidas/" + id)
+
+
+## Reloj ahora mismo (ms): {left: [blancas, negras], side: a quién le corre}. Si mi pulsación va de camino, mi reloj
+## ya está parado.
+func clock_now() -> Dictionary:
+	if _clock.is_empty():
+		return {"left": [base_ms, base_ms], "side": 0}
+	var left: Array = (_clock["left"] as Array).duplicate()
+	var side := int(_clock["side"])
+	var since := float(_clock["since"])
+	if int(_my_press["n"]) == int(_clock["presses"]) and side == my_color:
+		var at := float(_my_press["at"])
+		left[side] = float(left[side]) - maxf(0.0, at - since) + inc_ms
+		side = 1 - side
+		since = at
+	left[side] = float(left[side]) - maxf(0.0, _server_now() - since)
+	return {"left": left, "side": side}
+
+
+## Si ya puedo mover: es mi turno en el tablero y, con reloj, el rival ha pulsado tras su jugada.
+func my_turn_open() -> bool:
+	if base_ms <= 0.0 or _clock.is_empty():
+		return true
+	return int(_clock["presses"]) >= _applied
 
 
 ## Perfil del rival y gestos nuevos (también con la partida terminada: «buena partida»).
@@ -547,16 +872,50 @@ func _fire(method: HTTPClient.Method, path: String) -> void:
 	await request(method, path)
 
 
-## Jugada propia (UCI). Devuelve true si se escribió.
-func play(uci: String) -> bool:
+## Jugada propia (UCI). Con reloj y `press`, pulsa el reloj a la vez (pulsado automático). Devuelve true si se
+## escribió.
+func play(uci: String, press: bool = false) -> bool:
 	if phase != "playing":
 		return false
 	var n := _applied
-	var r := await request(HTTPClient.METHOD_PUT, "partidas/%s/jugadas/%d" % [game_id, n], uci)
-	if int(r["status"]) != 200:
-		return false
 	_applied = maxi(_applied, n + 1)
-	return true
+	var r: Dictionary
+	if press and base_ms > 0.0:
+		_my_press = {"n": n, "at": _server_now()}
+		r = await request(HTTPClient.METHOD_PATCH, "partidas/" + game_id, {"jugadas/%d" % n: uci, "pulsos/%d" % n: {".sv": "timestamp"}})
+		if int(r["status"]) == 200 and r["json"] is Dictionary:
+			_calibrate((r["json"] as Dictionary).get("pulsos/%d" % n), float(r["sent"]), float(r["recv"]))
+	else:
+		r = await request(HTTPClient.METHOD_PUT, "partidas/%s/jugadas/%d" % [game_id, n], uci)
+	return int(r["status"]) == 200
+
+
+## Pulso mi reloj tras mi última jugada (pulsado a mano).
+func press() -> bool:
+	if phase != "playing" or base_ms <= 0.0 or _applied == 0 or (_applied - 1) % 2 != my_color:
+		return false
+	var n := _applied - 1
+	_my_press = {"n": n, "at": _server_now()}
+	var r := await request(HTTPClient.METHOD_PUT, "partidas/%s/pulsos/%d" % [game_id, n], {".sv": "timestamp"})
+	if int(r["status"]) == 200:
+		_calibrate(r["json"], float(r["sent"]), float(r["recv"]))
+	return int(r["status"]) == 200
+
+
+## Se le acabó el tiempo a `loser` (lo veo yo): se apunta en la partida; vale el primero que llega.
+func claim_time(loser: int) -> void:
+	if phase != "playing" or base_ms <= 0.0:
+		return
+	await request(HTTPClient.METHOD_PUT, "partidas/%s/fin" % game_id, {"tipo": "tiempo", "pierde": loser, "de": uid, "t": {".sv": "timestamp"}})
+	_end_on_time(loser)
+
+
+## Denuncia a un jugador (motivo de REPORT_REASONS). Devuelve true si se envió.
+func report(against: String, rival_name: String, reason: String, game: String) -> bool:
+	if against == "" or not REPORT_REASONS.has(reason) or not await _ensure_session():
+		return false
+	var r := await request(HTTPClient.METHOD_POST, "denuncias", {"de": uid, "contra": against.left(128), "nombre": rival_name.left(16), "partida": game.left(40), "motivo": reason, "t": {".sv": "timestamp"}})
+	return int(r["status"]) == 200
 
 
 ## La partida terminó en el tablero: se deja un momento para que el rival reciba la última jugada y se borra.
@@ -585,7 +944,7 @@ func leave() -> void:
 	game_id = ""
 	if id != "" and (was == "waiting" or was == "playing" or was == "ended"):
 		if role == "creador":
-			await request(HTTPClient.METHOD_DELETE, "abiertas/" + id)
+			await request(HTTPClient.METHOD_DELETE, "espera/" + id)
 		await request(HTTPClient.METHOD_DELETE, "partidas/" + id)
 
 
@@ -649,7 +1008,7 @@ func _sse_tick(delta: float) -> void:
 	match st:
 		HTTPClient.STATUS_CONNECTED:
 			if _sse_state == 1:
-				var err := _sse.request(HTTPClient.METHOD_GET, Loc.f("/%s.json?auth=%s", [_sse_path, _sse_token]), PackedStringArray(["Accept: text/event-stream"]))
+				var err := _sse.request(HTTPClient.METHOD_GET, "/%s.json?auth=%s" % [_sse_path, _sse_token], PackedStringArray(["Accept: text/event-stream"]))
 				if err != OK:
 					_sse_fail()
 				else:

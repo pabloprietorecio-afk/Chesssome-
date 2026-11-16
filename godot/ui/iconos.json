@@ -197,33 +197,65 @@
    0,
    6
   ],
-  "piece_pawn": [
+  "infinity": [
    1,
    6
   ],
-  "piece_knight": [
+  "users": [
    2,
    6
   ],
-  "piece_bishop": [
+  "fast": [
    3,
    6
   ],
-  "piece_rook": [
+  "slow": [
    4,
    6
   ],
-  "piece_queen": [
+  "rules": [
    5,
    6
   ],
-  "piece_king": [
+  "report": [
    6,
    6
   ],
-  "token_pawn": [
+  "block": [
    7,
    6
+  ],
+  "more": [
+   0,
+   7
+  ],
+  "piece_pawn": [
+   1,
+   7
+  ],
+  "piece_knight": [
+   2,
+   7
+  ],
+  "piece_bishop": [
+   3,
+   7
+  ],
+  "piece_rook": [
+   4,
+   7
+  ],
+  "piece_queen": [
+   5,
+   7
+  ],
+  "piece_king": [
+   6,
+   7
+  ],
+  "token_pawn": [
+   7,
+   7
   ]
  }
 }

@@ -50,6 +50,47 @@ func _init() -> void:
 	_ok(Online.color_for(doc, "a") == 1 and Online.color_for(doc, "b") == 0, "color de cada jugador")
 	_ok(Online.color_for(doc, "x") == -1, "un tercero no juega")
 	_ok(Online.color_for({"creador": "a"}, "a") == -1, "sin rival no hay color")
+
+	# Espacios (ritmos)
+	for r in ["0+0", "5+3", "10+5", "15+10", "20+0", "30+0", "1+0", "180+60", "7+2"]:
+		_ok(Online.rhythm_ok(r), "ritmo válido " + r)
+	for r in ["", "5", "0+3", "181+0", "5+61", "05+3", "-1+0", "5+3+1", "a+b", "5 +3"]:
+		_ok(not Online.rhythm_ok(r), "ritmo no válido «%s»" % r)
+	_ok(Online.rhythm_parts("15+10") == [15, 10] and Online.rhythm_parts("basura") == [0, 0], "partes del ritmo")
+	_ok(Online.SPACES.all(func(r: String) -> bool: return Online.rhythm_ok(r)), "los espacios fijos son válidos")
+
+	# Reloj por las pulsaciones (5+3: 300 000 ms y 3 000 por jugada); el rival entra en t = 1 000 000
+	var base := 300000.0
+	var inc := 3000.0
+	var c0 := Online.clock_state({"unidoEn": 1000000}, base, inc)
+	_ok(c0["left"] == [base, base] and int(c0["side"]) == 0 and float(c0["since"]) == 1000000.0 and int(c0["presses"]) == 0, "reloj al empezar: corre el de blancas")
+	var c1 := Online.clock_state({"unidoEn": 1000000, "pulsos": {"0": 1010000, "1": 1030000}}, base, inc)
+	_ok(c1["left"] == [base - 10000.0 + inc, base - 20000.0 + inc] and int(c1["side"]) == 0 and float(c1["since"]) == 1030000.0 and int(c1["flag"]) == -1, "dos pulsaciones: cada uno gasta lo suyo y suma el incremento")
+	var c2 := Online.clock_state({"unidoEn": 1000000, "pulsos": [1010000, 1030000, 1040000]}, base, inc)
+	_ok(int(c2["side"]) == 1 and int(c2["presses"]) == 3, "pulsaciones como array")
+	var c3 := Online.clock_state({"unidoEn": 0, "pulsos": {"0": 310000}}, base, inc)
+	_ok(int(c3["flag"]) == 0, "pulsar después de agotar el tiempo: pierde por tiempo")
+	var c4 := Online.clock_state({"unidoEn": 0, "pulsos": {"0": 10000, "2": 20000}}, base, inc)
+	_ok(int(c4["presses"]) == 1, "pulsaciones sin huecos")
+
+	# Quién espera en cada espacio
+	var rows := {
+		"20261116-100000-aaaaaa": {"creador": "u1", "latido": 990000, "ritmo": "5+3"},
+		"20261116-100001-bbbbbb": {"creador": "u2", "latido": 995000, "ritmo": "5+3"},
+		"20261116-100002-cccccc": {"creador": "u3", "latido": 995000, "ritmo": "7+2"},
+		"20261116-100003-dddddd": {"creador": "yo", "latido": 995000, "ritmo": "5+3"},
+		"20261116-100004-eeeeee": {"creador": "u4", "latido": 900000, "ritmo": "5+3"},
+		"20261116-100005-ffffff": {"creador": "malo", "latido": 995000, "ritmo": "0+0"},
+		"20261116-100006-gggggg": {"creador": "u5", "latido": 995000, "ritmo": "0+0", "no": {"yo": true}},
+		"20261116-100007-hhhhhh": {"creador": "u6", "latido": 995000, "ritmo": "99999+0"},
+		"20261116-100008-iiiiii": {"creador": "u7", "latido": 995000},
+	}
+	var sp := Online.spaces_of(rows, "yo", 1000000.0, {"malo": "Malo"})
+	_ok(sp.get("5+3", []) == ["20261116-100000-aaaaaa", "20261116-100001-bbbbbb"], "5+3: dos esperando, la más antigua primero")
+	_ok(sp.get("7+2", []) == ["20261116-100002-cccccc"], "espacio personalizado")
+	_ok(not sp.has("0+0"), "sin las de bloqueados ni las de quien me ha bloqueado")
+	_ok(sp.size() == 2, "sin la mía, las viejas ni las de ritmo raro (%s)" % str(sp))
+	_ok(Online.spaces_of(null, "yo", 0.0, {}).is_empty(), "sin partidas en espera")
 	print("%d comprobaciones, %d fallos" % [hechos, fallos])
 	if fallos == 0:
 		print("TODO OK")

@@ -177,6 +177,20 @@ func view_to_local(p: Vector2) -> Vector2:
 
 # ---------------------------------------------------------------- interfaz pública
 
+## Dónde acaba el tablero por abajo, en unidades de este control: la esquina más baja del marco en pantalla.
+## (Con la perspectiva, el tablero no siempre llena su hueco: lo que sobra debajo lo puede usar la tarjeta.)
+func board_bottom() -> float:
+	if board == null or board.camera == null or not board.camera.is_inside_tree():
+		return size.y
+	var low := 0.0
+	var h := Board3D.FRAME_HALF
+	for ix: int in [-1, 1]:
+		for iz: int in [-1, 1]:
+			for y: float in [0.0, -Board3D.FRAME_THICK]:
+				var p := board.camera.unproject_position(Vector3(float(ix) * h, y, float(iz) * h))
+				low = maxf(low, p.y)
+	return view_to_local(Vector2(0.0, low)).y
+
 func set_fen(fen: String) -> void:
 	_hide_promotion()
 	_reset_touch()

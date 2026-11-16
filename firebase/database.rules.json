@@ -12,24 +12,79 @@
         }
       }
     },
+    "espera": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && !newData.exists() && data.child('creador').val() === auth.uid",
+        "creador": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && !root.child('vetados').child(auth.uid).exists()"
+        },
+        "latido": {
+          ".write": "auth != null && newData.val() === now && (data.parent().child('creador').val() === auth.uid || newData.parent().child('creador').val() === auth.uid)"
+        },
+        "ritmo": {
+          ".write": "auth != null && !data.exists() && newData.parent().child('creador').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().matches(/^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
+        },
+        "no": {
+          "$uid": {
+            ".write": "auth != null && newData.parent().parent().child('creador').val() === auth.uid",
+            ".validate": "newData.val() === true"
+          }
+        }
+      }
+    },
     "partidas": {
       "$id": {
         ".read": "auth != null",
         ".write": "auth != null && !newData.exists() && (data.child('creador').val() === auth.uid || data.child('rival').val() === auth.uid)",
         "creador": {
-          ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && !root.child('vetados').child(auth.uid).exists()"
+        },
+        "ritmo": {
+          ".write": "auth != null && !data.exists() && newData.parent().child('creador').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().matches(/^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
         },
         "rival": {
-          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && root.child('partidas').child($id).child('creador').exists() && root.child('partidas').child($id).child('creador').val() !== auth.uid"
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && root.child('partidas').child($id).child('creador').exists() && root.child('partidas').child($id).child('creador').val() !== auth.uid && !root.child('vetados').child(auth.uid).exists()"
         },
         "unidoEn": {
           ".write": "auth != null && !data.exists() && newData.val() === now",
           ".validate": "newData.parent().child('rival').val() === auth.uid"
         },
+        "listo": {
+          ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('creador').val() === auth.uid && root.child('partidas').child($id).child('rival').exists()",
+          ".validate": "newData.val() === now"
+        },
         "jugadas": {
           "$n": {
-            ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('unidoEn').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
+            ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('listo').exists() && !root.child('partidas').child($id).child('fin').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
             ".validate": "newData.isString() && newData.val().length <= 8"
+          }
+        },
+        "pulsos": {
+          "$n": {
+            ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('listo').exists() && !root.child('partidas').child($id).child('fin').exists() && newData.parent().parent().child('jugadas').child($n).exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
+            ".validate": "newData.val() === now"
+          }
+        },
+        "fin": {
+          ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('listo').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['tipo', 'pierde', 'de', 't'])",
+          "tipo": {
+            ".validate": "newData.val() === 'tiempo'"
+          },
+          "pierde": {
+            ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+          },
+          "de": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "t": {
+            ".validate": "newData.val() === now"
+          },
+          "$otro": {
+            ".validate": false
           }
         },
         "perfiles": {
@@ -87,6 +142,37 @@
           }
         }
       }
+    },
+    "denuncias": {
+      "$id": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['de', 'contra', 'motivo', 't'])",
+        "de": {
+          ".validate": "newData.val() === auth.uid"
+        },
+        "contra": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+        },
+        "nombre": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "partida": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "motivo": {
+          ".validate": "newData.isString() && newData.val().matches(/^(nombre|trampas|abandono|conducta|otro)$/)"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "$otro": {
+          ".validate": false
+        }
+      }
+    },
+    "vetados": {
+      ".read": false,
+      ".write": false
     }
   }
 }

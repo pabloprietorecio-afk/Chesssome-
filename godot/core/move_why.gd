@@ -531,6 +531,39 @@ static func move_paras(before: Chess, m: int, me: int) -> Array:
 	elif checkers.is_empty() and targets.size() == 1:
 		var tgt2: int = targets[0]
 		out.append(_par(Loc.f("Ahora %s amenaza comer %s.", [name_at(after, to, me, false), name_at(after, tgt2, me)]), [_arrow(to, tgt2, "bad")], after, mv))
+		# La pieza amenazada no puede huir si está clavada contra su rey y no le queda ninguna jugada (por la línea
+		# de la clavada a veces sí puede moverse: entonces no se dice).
+		var stuck := true
+		for rm in replies:
+			if Chess.move_from(rm) == tgt2:
+				stuck = false
+				break
+		for lt: Dictionary in (line_tactics(after, side) if stuck else []):
+			if int(lt["front"]) == tgt2 and str(lt["kind"]) == "pin_king":
+				out.append(_par(Loc.f("Y %s no puede huir: si se mueve, su rey quedaría en jaque.", name_at(after, tgt2, me, false)), [_arrow(int(lt["slider"]), tgt2, "bad"), _arrow(tgt2, int(lt["back"]), "info")], after, mv))
+				break
+	# 3b. Clavada o enfilada nueva: una pieza deslizante propia ataca una rival con otra detrás.
+	var tactic := _new_line_tactic(before, after, side)
+	if not tactic.is_empty():
+		var sl: int = tactic["slider"]
+		var fr: int = tactic["front"]
+		var bk: int = tactic["back"]
+		var arr: Array = [_arrow(sl, fr, "bad"), _arrow(fr, bk, "info")]
+		match str(tactic["kind"]):
+			"pin_king":
+				out.append(_par(Loc.f("%s clava %s contra su rey: no se puede apartar de esa línea.", [cap(name_at(after, sl, me, false)), name_at(after, fr, me)]), arr, after, mv))
+			"pin":
+				out.append(_par(Loc.f("%s clava %s: si se aparta, %s queda a tiro.", [cap(name_at(after, sl, me, false)), name_at(after, fr, me), name_at(after, bk, me)]), arr, after, mv))
+			"skewer_king":
+				out.append(_par(Loc.f("Es una enfilada: el rey tiene que apartarse y entonces %s queda a tiro de %s.", [name_at(after, bk, me), name_at(after, sl, me, false)]), arr, after, mv))
+			"skewer":
+				out.append(_par(Loc.f("Es una enfilada: %s ataca %s y, si se aparta, %s queda a tiro.", [name_at(after, sl, me, false), name_at(after, fr, me), name_at(after, bk, me)]), arr, after, mv))
+	# 3c. Sobrecarga: una pieza rival es la única que defiende dos cosas atacadas (una, por la pieza que llega).
+	var over := overload(after, side, to)
+	if not over.is_empty():
+		var d: int = over["defender"]
+		var duties: Array = over["duties"]
+		out.append(_par(Loc.f("Sobrecarga: %s es la única pieza que defiende %s y %s, y no puede con las dos cosas.", [name_at(after, d, me), name_at(after, int(duties[0]), me), name_at(after, int(duties[1]), me)]), [_arrow(d, int(duties[0]), "info"), _arrow(d, int(duties[1]), "info"), _arrow(to, int(over["hit"]), "bad")], after, mv))
 	# 4. Ataque descubierto (sin jaque): una pieza propia que ahora ve una pieza rival valiosa.
 	if checkers.is_empty() and mover_t != Chess.KING:
 		for s in 64:
@@ -551,6 +584,7 @@ static func move_paras(before: Chess, m: int, me: int) -> Array:
 					out.append(_par(Loc.f("Al moverse, deja a %s atacando %s: un ataque descubierto.", [name_at(after, s, me), name_at(after, q, me)]), [_arrow(s, q, "bad")], after, mv))
 					break
 	# 5. Qué le queda al rival.
+	var quiet := out.size() == 1 and taken == 0 and checkers.is_empty() and Chess.move_promo(m) == 0 and flag != Chess.F_CASTLE_K and flag != Chess.F_CASTLE_Q
 	if replies.size() == 1:
 		var only := replies[0]
 		var reason := forced_reason(after, me) if after.in_check() else ""
@@ -564,7 +598,281 @@ static func move_paras(before: Chess, m: int, me: int) -> Array:
 			probe.turn = side
 			probe.ep = -1
 			out.append(_par(Loc.f("Y amenaza jaque mate con %s.", _san(probe, threat)), [_arrow(Chess.move_from(threat), Chess.move_to(threat), "bad")], after, mv))
+	# 6. Jugada de posición (sin táctica): lo que mejora, con hechos del tablero.
+	if quiet and out.size() == 1:
+		out.append_array(position_paras(before, m, me))
 	return out
+
+
+# ---------------------------------------------------------------- clavadas, enfiladas y sobrecargas
+
+## Clavadas y enfiladas del bando `side` en `pos`: una pieza deslizante suya ataca una pieza rival (front) y, detrás
+## en la misma línea, hay otra rival (back). Tipos: "pin_king" (detrás está el rey: no puede apartarse), "pin"
+## (detrás hay una que vale más), "skewer_king" (delante está el rey, en jaque: al apartarse, cae la de detrás) y
+## "skewer" (delante vale más que detrás, y la de detrás no tiene defensa o vale más que la atacante).
+static func line_tactics(pos: Chess, side: int) -> Array:
+	var out: Array = []
+	var opp := 1 - side
+	for s in 64:
+		var p: int = pos.b[s]
+		if p == 0 or Chess.color_of(p) != side:
+			continue
+		var t := Chess.type_of(p)
+		if t != Chess.ROOK and t != Chess.BISHOP and t != Chess.QUEEN:
+			continue
+		var dirs: Array = []
+		if t == Chess.BISHOP or t == Chess.QUEEN:
+			dirs.append_array(DIAG)
+		if t == Chess.ROOK or t == Chess.QUEEN:
+			dirs.append_array(ORTHO)
+		for d: Vector2i in dirs:
+			var found: Array = []
+			var f: int = (s & 7) + d.x
+			var r: int = (s >> 3) + d.y
+			while f >= 0 and f < 8 and r >= 0 and r < 8 and found.size() < 2:
+				var q: int = f + 8 * r
+				if pos.b[q] != 0:
+					found.append(q)
+				f += d.x
+				r += d.y
+			if found.size() < 2:
+				continue
+			var fr: int = found[0]
+			var bk: int = found[1]
+			if Chess.color_of(pos.b[fr]) != opp or Chess.color_of(pos.b[bk]) != opp:
+				continue
+			var ft := Chess.type_of(pos.b[fr])
+			var bt := Chess.type_of(pos.b[bk])
+			var kind := ""
+			if bt == Chess.KING:
+				kind = "pin_king"
+			elif ft == Chess.KING:
+				# La de detrás cae si, cuando se aparte el rey, nadie más la defiende (o vale más que la atacante).
+				var guards := attackers(pos, bk, opp)
+				guards.erase(fr)
+				if guards.is_empty() or int(VALUE[bt]) > int(VALUE[t]):
+					kind = "skewer_king"
+			elif int(VALUE[bt]) > int(VALUE[ft]):
+				kind = "pin"
+			elif int(VALUE[ft]) > int(VALUE[bt]) and (not pos.attacked(bk, opp) or int(VALUE[bt]) > int(VALUE[t])):
+				kind = "skewer"
+			if kind != "":
+				out.append({"kind": kind, "slider": s, "front": fr, "back": bk})
+	return out
+
+
+## La clavada o enfilada que aparece con la jugada (no estaba antes), la más fuerte. {} si no hay.
+static func _new_line_tactic(before: Chess, after: Chess, side: int) -> Dictionary:
+	var old := {}
+	for lt: Dictionary in line_tactics(before, side):
+		old["%s:%d:%d" % [lt["kind"], lt["front"], lt["back"]]] = true
+	var rank := {"skewer_king": 0, "pin_king": 1, "pin": 2, "skewer": 3}
+	var best := {}
+	for lt: Dictionary in line_tactics(after, side):
+		if old.has("%s:%d:%d" % [lt["kind"], lt["front"], lt["back"]]):
+			continue
+		if best.is_empty() or int(rank[lt["kind"]]) < int(rank[best["kind"]]):
+			best = lt
+	return best
+
+
+## Sobrecarga en `pos` (le toca al rival de `side`): una pieza rival es la única que defiende dos piezas suyas que
+## están atacadas, y una de ellas la ataca la pieza de `hit_from`. {defender, duties: [2 casillas], hit} o {}.
+static func overload(pos: Chess, side: int, hit_from: int) -> Dictionary:
+	var opp := 1 - side
+	var hits := attacks_from(pos, hit_from)
+	var duties_of := {}
+	for t in 64:
+		var p: int = pos.b[t]
+		if p == 0 or Chess.color_of(p) != opp or Chess.type_of(p) == Chess.KING:
+			continue
+		if attackers(pos, t, side).is_empty():
+			continue
+		var defs := attackers(pos, t, opp)
+		if defs.size() != 1:
+			continue
+		var d: int = defs[0]
+		if Chess.type_of(pos.b[d]) == Chess.KING:
+			continue
+		if not duties_of.has(d):
+			duties_of[d] = []
+		(duties_of[d] as Array).append(t)
+	for d: int in duties_of:
+		var duties: Array = duties_of[d]
+		if duties.size() < 2:
+			continue
+		for t: int in duties:
+			if hits.has(t):
+				var other: int = duties[0] if duties[0] != t else duties[1]
+				return {"defender": d, "duties": [t, other], "hit": t}
+	return {}
+
+
+## Desviación en la línea de la solución: tras la jugada `m`, la respuesta del rival aparta a la pieza que era la
+## única que vigilaba la casilla de la jugada siguiente, que da mate, come o corona. Párrafo o {}.
+static func deflection(before: Chess, m: int, rest: Array, me: int) -> Dictionary:
+	if rest.size() < 2:
+		return {}
+	var after := before.after(m)
+	var r := after.find_uci(str(rest[0]))
+	if r < 0:
+		return {}
+	var x := Chess.move_from(r)
+	var z := Chess.move_to(r)
+	var nxt := after.after(r)
+	var n := nxt.find_uci(str(rest[1]))
+	if n < 0:
+		return {}
+	var y := Chess.move_to(n)
+	var opp := after.turn
+	if y == z or not attacks_from(after, x).has(y) or attackers(after, y, opp) != [x]:
+		return {}
+	# Si la pieza que acaba de mover ya ataca esa casilla, es un ataque directo (doble), no una desviación.
+	if attacks_from(after, Chess.move_to(m)).has(y):
+		return {}
+	if not attackers(nxt, y, opp).is_empty():
+		return {}
+	var matters := nxt.after(n).is_checkmate() or (nxt.b[y] != 0 and Chess.color_of(nxt.b[y]) == opp) or Chess.move_promo(n) > 0
+	if not matters:
+		return {}
+	var forced := Chess.move_to(r) == Chess.move_to(m) or after.in_check() or after.legal_moves().size() == 1
+	if not forced:
+		return {}
+	var who := name_at(after, x, me)
+	var nsan := _san(nxt, n)
+	var text := ""
+	if Chess.move_to(r) == Chess.move_to(m):
+		text = Loc.f("Es una desviación: al comer en %s, %s deja de vigilar %s, y llega %s.", [Chess.sq_name(z), who, Chess.sq_name(y), nsan])
+	else:
+		text = Loc.f("Es una desviación: %s tiene que apartarse y deja de vigilar %s; entonces llega %s.", [who, Chess.sq_name(y), nsan])
+	return _par(text, [_arrow(x, y, "info"), _arrow(x, z, "bad"), _arrow(Chess.move_from(n), y, "good")], after, [Chess.move_from(m), Chess.move_to(m)])
+
+
+# ---------------------------------------------------------------- jugadas de posición
+
+## Lo que mejora una jugada tranquila, con hechos del tablero (hasta dos): peón pasado, desarrollo, centro, columna
+## abierta, rey activo en el final y movilidad de la pieza.
+static func position_paras(before: Chess, m: int, me: int) -> Array:
+	var out: Array = []
+	var from := Chess.move_from(m)
+	var to := Chess.move_to(m)
+	var side := before.turn
+	var after := before.after(m)
+	var t := Chess.type_of(before.b[from])
+	var mv := [from, to]
+	var home_rank := 0 if side == 0 else 7
+	# Peón pasado.
+	if t == Chess.PAWN and _passed(after, to, side):
+		var left := (7 - (to >> 3)) if side == 0 else (to >> 3)
+		var text := Loc.f("El peón de %s es pasado: ningún peón rival puede pararlo.", Chess.sq_name(to))
+		text += Loc.t(" Le queda 1 casilla para coronar.") if left == 1 else Loc.f(" Le quedan %d casillas para coronar.", left)
+		out.append(_par(text, [_arrow(to, (to & 7) + 8 * (7 if side == 0 else 0), "info")], after, mv))
+	# Desarrollo: un caballo o un alfil que sale de su casilla inicial.
+	if (t == Chess.KNIGHT or t == Chess.BISHOP) and (from >> 3) == home_rank and (to >> 3) != home_rank and before.full <= 15:
+		var still := 0
+		for f in [1, 2, 5, 6]:
+			var q: int = f + 8 * home_rank
+			var pq: int = after.b[q]
+			if pq != 0 and Chess.color_of(pq) == side and Chess.type_of(pq) == (Chess.KNIGHT if f == 1 or f == 6 else Chess.BISHOP):
+				still += 1
+		var text2 := Loc.f("Desarrolla %s: sale de su casilla inicial y entra en juego.", name_at(before, from, me, false))
+		if still == 0:
+			text2 += Loc.t(" Ya no queda ninguna pieza menor sin desarrollar.")
+		elif still == 1:
+			text2 += Loc.t(" Queda 1 pieza menor sin desarrollar.")
+		else:
+			text2 += Loc.f(" Quedan %d piezas menores sin desarrollar.", still)
+		out.append(_par(text2, [_arrow(from, to, "good")], after, mv))
+	# Centro: un peón que llega a d4, e4, d5 o e5.
+	if t == Chess.PAWN and [27, 28, 35, 36].has(to) and out.size() < 2 and not _endgame(after):
+		var ctrl: Array = []
+		for q: int in attacks_from(after, to):
+			if [26, 27, 28, 29, 34, 35, 36, 37].has(q):
+				ctrl.append(q)
+		if not ctrl.is_empty():
+			var arrows: Array = []
+			for q: int in ctrl:
+				arrows.append(_arrow(to, q, "info"))
+			out.append(_par(Loc.f("Gana espacio en el centro: desde %s, el peón controla %s.", [Chess.sq_name(to), squares(ctrl)]), arrows, after, mv))
+	# Columna abierta o semiabierta para una torre o la dama.
+	if (t == Chess.ROOK or t == Chess.QUEEN) and (from & 7) != (to & 7) and out.size() < 2:
+		var file := to & 7
+		var mine := 0
+		var theirs := 0
+		var first := -1
+		for rr in 8:
+			var q: int = file + 8 * rr
+			var pq: int = after.b[q]
+			if pq != 0 and Chess.type_of(pq) == Chess.PAWN:
+				if Chess.color_of(pq) == side:
+					mine += 1
+				else:
+					theirs += 1
+		var step := 8 if side == 0 else -8
+		var q2 := to + step
+		while q2 >= 0 and q2 < 64:
+			if after.b[q2] != 0:
+				first = q2
+				break
+			q2 += step
+		var letter := "abcdefgh"[file]
+		if mine == 0 and theirs == 0:
+			out.append(_par(Loc.f("%s ocupa la columna %s, abierta: sin peones que la tapen.", [cap(name_at(after, to, me, false)), letter]), [_arrow(to, file + 8 * (7 if side == 0 else 0), "info")], after, mv))
+		elif mine == 0 and first >= 0 and Chess.color_of(after.b[first]) != side:
+			out.append(_par(Loc.f("%s ocupa la columna %s, sin peones propios delante: presiona %s.", [cap(name_at(after, to, me, false)), letter, name_at(after, first, me)]), [_arrow(to, first, "info")], after, mv))
+	# El rey en el final: sin damas y con poco material, se acerca al centro.
+	if t == Chess.KING and out.size() < 2 and _endgame(after):
+		if _center_dist(to) < _center_dist(from):
+			out.append(_par("En el final, el rey también ataca y defiende: se acerca al centro.", [_arrow(from, to, "good")], after, mv))
+	# Movilidad: la pieza pasa a ver muchas más casillas.
+	if t != Chess.PAWN and t != Chess.KING and out.size() < 2:
+		var was := _mobility(before, from, side)
+		var now := _mobility(after, to, side)
+		if now - was >= 3:
+			out.append(_par(Loc.f("%s gana movilidad: pasa de %d a %d casillas.", [cap(name_at(after, to, me, false)), was, now]), [_arrow(from, to, "good")], after, mv))
+	return out.slice(0, 2)
+
+
+static func _passed(pos: Chess, s: int, side: int) -> bool:
+	var f := s & 7
+	var r := s >> 3
+	for ff in range(maxi(0, f - 1), mini(7, f + 1) + 1):
+		var rr := r + (1 if side == 0 else -1)
+		while rr >= 0 and rr < 8:
+			var p: int = pos.b[ff + 8 * rr]
+			if p != 0 and Chess.type_of(p) == Chess.PAWN and Chess.color_of(p) != side:
+				return false
+			rr += 1 if side == 0 else -1
+	return true
+
+
+## Final: sin damas y con poco material de piezas (cada bando, como mucho una torre y una pieza menor).
+static func _endgame(pos: Chess) -> bool:
+	var mat := [0, 0]
+	for s in 64:
+		var p: int = pos.b[s]
+		if p == 0:
+			continue
+		var t := Chess.type_of(p)
+		if t == Chess.QUEEN:
+			return false
+		if t != Chess.PAWN and t != Chess.KING:
+			mat[Chess.color_of(p)] += int(VALUE[t])
+	return int(mat[0]) <= 8 and int(mat[1]) <= 8
+
+
+static func _center_dist(s: int) -> float:
+	return absf(float(s & 7) - 3.5) + absf(float(s >> 3) - 3.5)
+
+
+## Casillas que ve una pieza (sin contar las ocupadas por las suyas).
+static func _mobility(pos: Chess, s: int, side: int) -> int:
+	var n := 0
+	for q: int in attacks_from(pos, s):
+		var p: int = pos.b[q]
+		if p == 0 or Chess.color_of(p) != side:
+			n += 1
+	return n
 
 
 ## ¿Tras cualquier respuesta, la pieza de `at` puede comer la de `target`?
@@ -669,6 +977,9 @@ static func explain(before: Chess, m: int, me: int, role: String, rest: Array = 
 	elif role == "solution":
 		verdict = BEST
 		paras = move_paras(before, m, me)
+		var defl := deflection(before, m, rest, me)
+		if not defl.is_empty():
+			paras.append(defl)
 		var plan := _plan(before.after(m), rest, me)
 		if plan != "":
 			paras.append(_par(plan, [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))

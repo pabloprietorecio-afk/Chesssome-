@@ -305,7 +305,7 @@ func _draw_screen(side: int) -> void:
 	# Etiqueta grabada debajo; se ilumina la del lado que corre.
 	if label_font != null:
 		var lab_ink := accent if on else Color("9aa3b5")
-		_draw_on_front(str(labels[side]), label_font, u0, 0.72, u1, 0.9, lab_ink, 0.95)
+		_draw_on_front(Loc.t(str(labels[side])), label_font, u0, 0.72, u1, 0.9, lab_ink, 0.95)
 
 
 ## Texto centrado en un recuadro de la cara de delante, con la deformación de la perspectiva (aproximada con una

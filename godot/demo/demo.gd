@@ -211,6 +211,16 @@ var online_wait_ms := 0
 var online_photo := false
 ## Nombre con el que se juega online (se pide la primera vez).
 var online_name := ""
+## Espacios online (ritmos): el último elegido, el personalizado [minutos, segundos], los que esperan en cada uno
+## (última consulta: {ritmo: n}) y si ya se ha consultado. Normas aceptadas (versión) y bloqueados (uid → nombre).
+var online_space := "0+0"
+var online_custom := [7, 2]
+var online_spaces := {}
+var online_spaces_ok := false
+var _lobby_polling := false
+const ONLINE_RULES_VERSION := 1
+var online_rules_ok := 0
+var online_blocked := {}
 var _name_edit: LineEdit
 var _name_error := ""
 ## Historial de partidas (core/game_log.gd), cargado la primera vez que hace falta; y si la partida de ahora ya se
@@ -231,6 +241,8 @@ var _rival_tex: Texture2D
 var game_back := 0
 var _online_pending: Array = []
 var online_status := ""
+## Aviso (no de error) de la búsqueda: «Has entrado en su partida; esperando a que vuelva…».
+var online_note := ""
 var game_history: Array = []
 ## Jugadas de la partida (UCI), una menos que game_history.
 var game_moves: Array = []
@@ -1015,6 +1027,9 @@ func _ready() -> void:
 	online.failed.connect(_online_failed)
 	online.rival_profile.connect(_online_rival_profile)
 	online.gesture.connect(_online_gesture)
+	online.clock_changed.connect(_online_clock_changed)
+	online.matched.connect(_online_matched)
+	online.retry.connect(_online_retry)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
@@ -1200,6 +1215,16 @@ func _load_settings() -> void:
 	avatar = str(cfg.get_value("app", "icono", ""))
 	online_photo = bool(cfg.get_value("online", "foto", false))
 	online_name = str(cfg.get_value("online", "nombre", ""))
+	online_space = str(cfg.get_value("online", "ritmo", "0+0"))
+	if not Online.rhythm_ok(online_space):
+		online_space = "0+0"
+	var oc: Variant = cfg.get_value("online", "personalizado", [7, 2])
+	if oc is Array and (oc as Array).size() == 2:
+		online_custom = [int(oc[0]), int(oc[1])]
+	online_rules_ok = int(cfg.get_value("online", "normas", 0))
+	var ob: Variant = cfg.get_value("online", "bloqueados", {})
+	if ob is Dictionary:
+		online_blocked = ob
 	var world := str(cfg.get_value("app", "mundo", ""))
 	if WORLDS.has(world):
 		kids_world = world
@@ -1226,6 +1251,10 @@ func _save_settings() -> void:
 	cfg.set_value("pantalla", "oscuro", dark)
 	cfg.set_value("online", "foto", online_photo)
 	cfg.set_value("online", "nombre", online_name)
+	cfg.set_value("online", "ritmo", online_space)
+	cfg.set_value("online", "personalizado", online_custom)
+	cfg.set_value("online", "normas", online_rules_ok)
+	cfg.set_value("online", "bloqueados", online_blocked)
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
@@ -1874,16 +1903,39 @@ func _fit_card() -> void:
 	# menos el margen de la tarjeta y su relleno.
 	var room := get_viewport_rect().size.y - _fixed_height - board_slot.custom_minimum_size.y - top_gap.custom_minimum_size.y - 20.0 - 64.0
 	var need := card_body.get_combined_minimum_size().y
+	# Con reloj, el reloj se encoge (hasta 170) para que la tarjeta quepa sin desplazarse.
+	if chess_clock != null and is_instance_valid(chess_clock) and chess_clock.is_inside_tree():
+		var base: float = chess_clock.get_meta("base_h", chess_clock.custom_minimum_size.y)
+		chess_clock.set_meta("base_h", base)
+		var other := need - chess_clock.custom_minimum_size.y
+		var h := clampf(room - other - 24.0, 170.0, base)
+		if absf(h - chess_clock.custom_minimum_size.y) > 0.5:
+			chess_clock.custom_minimum_size = Vector2(0.0, h)
+			need = other + h
 	# Si no cabe (una explicación larga en los problemas), la tarjeta sube por encima del tablero como una ventana
 	# semitransparente, hasta dejar a la vista la parte de arriba del tablero; lo que siga sin caber, se desplaza.
 	var lift := 0.0
 	if need > room and mode != "learn" and (mode != "game" or game_state == "review" or game_state == "detail"):
 		lift = minf(need - room, board_slot.custom_minimum_size.y * 0.7 + top_gap.custom_minimum_size.y)
+	elif mode == "game" and game_clocked and game_state in ["play", "think", "press"] and view != null and view.is_inside_tree():
+		# Con reloj: la tarjeta sube hasta justo debajo del tablero (con la perspectiva, el tablero no llena su
+		# hueco) y el reloj gana ese sitio.
+		var spare := board_slot.get_global_rect().end.y - (view.get_global_rect().position.y + view.board_bottom()) - 24.0
+		if spare > 0.0:
+			lift = spare
+			room += spare
+			if chess_clock != null and is_instance_valid(chess_clock):
+				var base2: float = chess_clock.get_meta("base_h", chess_clock.custom_minimum_size.y)
+				var other2 := need - chess_clock.custom_minimum_size.y
+				var h2 := clampf(room - other2 - 24.0, 170.0, base2)
+				if absf(h2 - chess_clock.custom_minimum_size.y) > 0.5:
+					chess_clock.custom_minimum_size = Vector2(0.0, h2)
+					need = other2 + h2
 	if absf(lift - _card_float) > 0.5:
 		_card_float = lift
 		card_pad.add_theme_constant_override("margin_top", int(20.0 - lift))
 		var paper := _c("surface")
-		card_style.bg_color = Color(paper.r, paper.g, paper.b, 0.9 if lift > 0.0 else 1.0)
+		card_style.bg_color = Color(paper.r, paper.g, paper.b, 0.9 if lift > 0.0 and not game_clocked else 1.0)
 	var want := clampf(need, 60.0, maxf(room + lift, 60.0))
 	if absf(card_scroll.custom_minimum_size.y - want) > 0.5:
 		card_scroll.custom_minimum_size = Vector2(0.0, want)
@@ -5572,20 +5624,23 @@ func _open_online_home() -> void:
 func _open_online() -> void:
 	if sheet_kind != "":
 		_close_options()
+	var scroll := progress_scroll.scroll_vertical if progress_kind == "online" and progress_scroll != null and is_instance_valid(progress_scroll) else 0
 	var page := _page("online")
 	var body: VBoxContainer = page["body"]
 	var footer: VBoxContainer = page["footer"]
 	body.add_child(_spacer(10.0, true))
-	var tile := _icon_tile("piece_queen", "sky", 200.0, 124.0)
-	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	body.add_child(tile)
-	body.add_child(_spacer(24.0))
-	body.add_child(_centered(_para("Buscando rival" if online_busy else "Partida online", F_LARGE, _c("ink"), font_display)))
-	var about := "Te emparejamos con el siguiente jugador que entre. Si no hay nadie esperando, abres una partida y esperas a tu rival."
 	if online_busy:
-		about = "La partida empieza en cuanto entre otro jugador."
-	body.add_child(_spacer(10.0))
-	body.add_child(_centered(_para(about, F_BODY + 2, _c("quiet"), font_medium)))
+		var tile := _icon_tile("piece_queen", "sky", 200.0, 124.0)
+		tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		body.add_child(tile)
+		body.add_child(_spacer(24.0))
+	body.add_child(_centered(_para("Buscando rival" if online_busy else "Partida online", F_LARGE, _c("ink"), font_display)))
+	var about := "Elige un ritmo. Si alguien espera en ese espacio, jugáis ya; si no, esperas tú a que entre un rival." if online_name != "" else ""
+	if online_busy:
+		about = Loc.f("Espacio %s. La partida empieza en cuanto entre otro jugador.", _rhythm_name(online_space))
+	if about != "":
+		body.add_child(_spacer(10.0))
+		body.add_child(_centered(_para(about, F_BODY + 2, _c("quiet"), font_medium)))
 	if online_busy:
 		# Reloj de láminas con el tiempo de espera.
 		body.add_child(_spacer(56.0))
@@ -5600,6 +5655,9 @@ func _open_online() -> void:
 		body.add_child(clock)
 		body.add_child(_spacer(10.0))
 		body.add_child(_centered(_para("Tiempo de espera", F_SUB, _c("quiet"), font_medium)))
+	if online_busy and online_note != "":
+		body.add_child(_spacer(20.0))
+		body.add_child(_centered(_para(online_note, F_BODY, _c("accent_text"), font_semibold)))
 	if online_status != "":
 		body.add_child(_spacer(20.0))
 		body.add_child(_centered(_para(online_status, F_BODY, _c("bad"), font_medium)))
@@ -5608,31 +5666,275 @@ func _open_online() -> void:
 		# La primera vez: el nombre con el que te verán tus rivales.
 		body.add_child(_name_block())
 	elif not online_busy:
-		body.add_child(_option_button("piece_queen", "sky", "Buscar rival", Loc.f("Juegas como «%s».", online_name), _online_search, true))
+		body.add_child(_caption("Espacios"))
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 22)
+		grid.add_theme_constant_override("v_separation", 22)
+		var shown: Array = Online.SPACES.duplicate()
+		# Los personalizados donde alguien espera, y el mío.
+		var extra: Array = []
+		for r in online_spaces.keys():
+			if not shown.has(str(r)):
+				extra.append(str(r))
+		var mine := "%d+%d" % [int(online_custom[0]), int(online_custom[1])]
+		if online_space == mine and not shown.has(mine) and not extra.has(mine):
+			extra.append(mine)
+		extra.sort_custom(func(a: String, b: String) -> bool: return _rhythm_secs(a) < _rhythm_secs(b))
+		shown.append_array(extra)
+		for r: String in shown:
+			grid.add_child(_space_tile(r, int(online_spaces.get(r, 0))))
+		grid.add_child(_space_tile("", 0))
+		body.add_child(grid)
+		body.add_child(_spacer(20.0))
+		body.add_child(_centered(_para(Loc.f("Juegas como «%s». Tu rival verá tu nombre, tu nivel de táctica y tu icono.", online_name), F_SUB, _c("quiet"), font_regular)))
+		body.add_child(_spacer(20.0))
+		body.add_child(_option_button("trend", "mint", "Mis partidas", "Rivales, resultados y estadísticas.", _open_my_games_from.bind("online")))
 		body.add_child(_spacer(16.0))
-		body.add_child(_option_button("trend", "mint", "Mis partidas", "Rivales, resultados y estadísticas.", _open_my_games_from.bind("online"), true))
-		body.add_child(_spacer(16.0))
-		var lv_text := "Tu rival verá tu nombre, tu nivel de táctica y tu icono."
-		body.add_child(_centered(_para(lv_text, F_SUB, _c("quiet"), font_regular)))
 		body.add_child(_card_button("Cambiar mi nombre", _change_online_name, _c("field"), _c("ink"), F_SUB, "sliders"))
 		if avatar == "foto" and _avatar_photo() != null:
 			body.add_child(_spacer(10.0))
 			body.add_child(_card_button(Loc.f("Enseñar mi foto al rival: %s", ("sí" if online_photo else "no")), _toggle_online_photo, _c("field"), _c("ink"), F_SUB, "check" if online_photo else "eye"))
+		body.add_child(_spacer(10.0))
+		body.add_child(_card_button("Normas de las partidas online", _open_online_rules.bind(""), _c("field"), _c("ink"), F_SUB, "rules"))
+		if not online_blocked.is_empty():
+			body.add_child(_spacer(10.0))
+			body.add_child(_card_button(Loc.f("Jugadores bloqueados: %d", online_blocked.size()), _open_blocked, _c("field"), _c("ink"), F_SUB, "block"))
+		_poll_lobby()
 	body.add_child(_spacer(10.0, true))
 	footer.add_child(_button("close", "Cancelar" if online_busy else "Volver", _close_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+	if scroll > 0 and progress_scroll != null:
+		progress_scroll.set_deferred("scroll_vertical", scroll)
 
 
-func _online_search() -> void:
+## Nombre de un ritmo: «Sin reloj», «5+3», «20 min».
+func _rhythm_name(r: String) -> String:
+	return Online.rhythm_label(r)
+
+
+## Duración estimada (segundos): minutos más 40 veces el incremento, como en Lichess.
+func _rhythm_secs(r: String) -> int:
+	var p := Online.rhythm_parts(r)
+	return int(p[0]) * 60 + 40 * int(p[1])
+
+
+## Tipo de partida por su duración estimada (los cortes de Lichess): [nombre, icono].
+func _rhythm_kind(r: String) -> Array:
+	var secs := _rhythm_secs(r)
+	if secs == 0:
+		return ["Sin prisa", "infinity"]
+	if secs < 180:
+		return ["Bala", "fast"]
+	if secs < 480:
+		return ["Blitz", "fast"]
+	if secs < 1500:
+		return ["Rápida", "clock"]
+	return ["Clásica", "slow"]
+
+
+## Un espacio: el ritmo en grande, su tipo y si hay alguien esperando (en verde: juegas ya). "" = otro ritmo.
+func _space_tile(r: String, waiting: int) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var mint := _tint("mint")
+	var live := waiting > 0
+	_style_button(b, mint[0] if live else _c("surface"), _c("ink"), 44, F_BODY, font_semibold, _c("shadow"), mint[1] if live else Color(0, 0, 0, 0))
+	b.pressed.connect(_online_enter.bind(r) if r != "" else _open_online_custom)
+	var pad := _pad(26, 24, 26, 24)
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(pad)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_child(col)
+	var kind := _rhythm_kind(r) if r != "" else ["Elige minutos y segundos", "sliders"]
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 14)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(_icon(str(kind[1]), 54.0, mint[1] if live else _c("quiet")))
+	var big := _para(_rhythm_name(r) if r != "" else "Otro ritmo", F_TITLE2 if r != "" else F_HEAD, _c("ink"), font_display)
+	big.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	big.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	top.add_child(big)
+	col.add_child(top)
+	col.add_child(_para(str(kind[0]), F_SUB, _c("quiet"), font_medium))
+	var state := ""
+	if r == "":
+		state = "Personalizado"
+	elif not online_spaces_ok:
+		state = "Mirando…"
+	elif waiting == 1:
+		state = "1 esperando · juegas ya"
+	elif waiting > 1:
+		state = Loc.f("%d esperando · juegas ya", waiting)
+	else:
+		state = "Nadie: esperas tú"
+	col.add_child(_para(state, F_SUB, mint[1] if live else _c("quiet"), font_semibold if live else font_regular))
+	var fit := func() -> void:
+		if is_instance_valid(b) and is_instance_valid(pad):
+			b.custom_minimum_size = Vector2(0.0, pad.get_combined_minimum_size().y)
+	pad.minimum_size_changed.connect(fit)
+	fit.call()
+	b.set_meta("label", r if r != "" else "otro")
+	return b
+
+
+## Mientras se ve la lista de espacios, se mira cada 3 s quién espera en cada uno.
+func _poll_lobby() -> void:
+	if _lobby_polling:
+		return
+	_lobby_polling = true
+	while progress_kind == "online" and not online_busy and progress != null and is_instance_valid(progress) and online_name != "":
+		var l: Dictionary = await online.lobby()
+		if not (progress_kind == "online" and not online_busy and progress != null and is_instance_valid(progress)):
+			break
+		var counts := {}
+		var spaces: Dictionary = l.get("spaces", {})
+		for r in spaces.keys():
+			counts[str(r)] = (spaces[r] as Array).size()
+		var was_ok := online_spaces_ok
+		if bool(l.get("ok", false)) and (counts != online_spaces or not was_ok):
+			online_spaces = counts
+			online_spaces_ok = true
+			_open_online()
+		await get_tree().create_timer(3.0).timeout
+	_lobby_polling = false
+
+
+## Entrar en un espacio: la primera vez, antes, las normas.
+func _online_enter(space: String) -> void:
+	if online_rules_ok < ONLINE_RULES_VERSION:
+		_open_online_rules(space)
+		return
+	_online_search(space)
+
+
+## Normas de las partidas online. Con `space`, para aceptarlas y entrar en ese espacio.
+func _open_online_rules(space: String) -> void:
+	var page := _page("online_rules")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(10.0))
+	var tile := _icon_tile("rules", "lilac", 180.0, 112.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Normas de las partidas online", F_TITLE, _c("ink"), font_display)))
+	body.add_child(_spacer(24.0))
+	var rules := [
+		["g_buena", "mint", "Respeto", "Juega con deportividad. Los gestos son para animar, no para molestar."],
+		["sliders", "sky", "Tu nombre", "Sin insultos, sin datos personales y sin hacerte pasar por otra persona."],
+		["bot", "peach", "Sin ayudas", "Nada de programas, motores ni otra persona que te diga las jugadas."],
+		["clock", "butter", "No hagas perder el tiempo", "Si no puedes seguir, ríndete en lugar de dejar al rival esperando."],
+		["report", "rose", "Denuncias", "Puedes denunciar o bloquear a un rival desde su nombre, en la partida. Revisamos las denuncias y podemos impedir jugar online a quien no cumpla."],
+		["eye", "lilac", "Lo que se comparte", "Tu rival ve tu nombre, tu nivel, tu icono y tu foto si la enseñas. Las partidas se borran del servidor al terminar."],
+	]
+	for r: Array in rules:
+		body.add_child(_icon_row(str(r[0]), str(r[1]), str(r[2]), str(r[3])))
+		body.add_child(_spacer(18.0))
+	body.add_child(_spacer(10.0, true))
+	if space != "":
+		var tint := _tint("mint")
+		footer.add_child(_button("check", "Acepto, a jugar", _accept_online_rules.bind(space), tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0}))
+		footer.add_child(_spacer(14.0))
+	footer.add_child(_button("back", "Volver", _open_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+func _accept_online_rules(space: String) -> void:
+	online_rules_ok = ONLINE_RULES_VERSION
+	_save_settings()
+	_online_search(space)
+
+
+## Otro ritmo: minutos y segundos por jugada.
+const ONLINE_MINUTES := [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 40, 45, 60, 90, 120, 180]
+const ONLINE_SECONDS := [0, 1, 2, 3, 5, 8, 10, 15, 20, 30, 45, 60]
+
+
+func _open_online_custom() -> void:
+	var page := _page("online_custom")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(10.0, true))
+	body.add_child(_centered(_para("Otro ritmo", F_LARGE, _c("ink"), font_display)))
+	body.add_child(_spacer(10.0))
+	body.add_child(_centered(_para("Tu propio espacio: entrará quien elija el mismo ritmo.", F_BODY + 2, _c("quiet"), font_medium)))
+	body.add_child(_spacer(40.0))
+	body.add_child(_stepper("Minutos por jugador", int(online_custom[0]), _step_online_custom.bind(0)))
+	body.add_child(_spacer(20.0))
+	body.add_child(_stepper("Segundos más por jugada", int(online_custom[1]), _step_online_custom.bind(1)))
+	body.add_child(_spacer(30.0))
+	var r := "%d+%d" % [int(online_custom[0]), int(online_custom[1])]
+	body.add_child(_centered(_para(Loc.f("%s · %s", [_rhythm_name(r), str(_rhythm_kind(r)[0])]), F_HEAD, _c("ink"), font_semibold)))
+	body.add_child(_spacer(10.0, true))
+	var tint := _tint("sky")
+	footer.add_child(_button("piece_queen", Loc.f("Buscar rival · %s", _rhythm_name(r)), _online_enter.bind(r), tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0}))
+	footer.add_child(_spacer(14.0))
+	footer.add_child(_button("back", "Volver", _open_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+func _step_online_custom(d: int, which: int) -> void:
+	var steps: Array = ONLINE_MINUTES if which == 0 else ONLINE_SECONDS
+	var at := steps.find(int(online_custom[which]))
+	online_custom[which] = int(steps[clampi((at if at >= 0 else 0) + d, 0, steps.size() - 1)])
+	_save_settings()
+	_open_online_custom()
+
+
+## Jugadores bloqueados, para desbloquearlos.
+func _open_blocked() -> void:
+	var page := _page("online_blocked")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	body.add_child(_spacer(10.0))
+	body.add_child(_centered(_para("Jugadores bloqueados", F_TITLE, _c("ink"), font_display)))
+	body.add_child(_spacer(10.0))
+	body.add_child(_centered(_para("No te emparejamos con ellos. Si desbloqueas a alguien, podréis volver a jugar.", F_SUB, _c("quiet"), font_regular)))
+	body.add_child(_spacer(24.0))
+	if online_blocked.is_empty():
+		body.add_child(_centered(_para("No has bloqueado a nadie.", F_BODY, _c("quiet"), font_medium)))
+	for id in online_blocked.keys():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		var l := _para(str(online_blocked[id]), F_BODY, _c("ink"), font_semibold)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(l)
+		row.add_child(_button("close", "Desbloquear", _unblock.bind(str(id)), _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+		body.add_child(row)
+		body.add_child(_spacer(14.0))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("back", "Volver", _open_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+func _unblock(id: String) -> void:
+	online_blocked.erase(id)
+	_save_settings()
+	if online_blocked.is_empty():
+		_open_online()
+	else:
+		_open_blocked()
+
+
+func _online_search(space: String = "") -> void:
+	if space != "":
+		online_space = space
+		_save_settings()
 	online_status = ""
+	online_note = ""
 	online_busy = true
 	online_wait_ms = Time.get_ticks_msec()
 	online_rival = {}
 	_rival_tex = null
 	online.my_profile = _online_profile()
+	online.blocked = online_blocked
 	var gr := GameLog.game_rating(_log())
 	online.my_game_rating = {} if kids or int(gr["n"]) == 0 else {"r": roundi(float(gr["r"])), "rd": clampi(roundi(float(gr["rd"])), 30, 350), "n": int(gr["n"])}
 	_open_online()
-	online.start()
+	online.start(online_space)
 
 
 func _close_online() -> void:
@@ -5642,9 +5944,26 @@ func _close_online() -> void:
 	_open_home()
 
 
+## Me he unido a una partida: si quien esperaba tarda en volver a la app (la tenía minimizada), se dice.
+func _online_matched() -> void:
+	await get_tree().create_timer(1.5).timeout
+	if online.phase == "joining" and online_busy and progress_kind == "online":
+		var who := str(online.rival.get("nombre", ""))
+		online_note = Loc.f("Has entrado en la partida de %s. Esperando a que vuelva a la app (como mucho, un minuto)…", who) if who != "" else Loc.t("Has entrado en una partida. Esperando a que tu rival vuelva a la app (como mucho, un minuto)…")
+		_open_online()
+
+
+func _online_retry() -> void:
+	if online_busy and progress_kind == "online":
+		online_note = Loc.t("Tu rival no volvió a tiempo. Seguimos buscando…")
+		_open_online()
+
+
 func _online_started(color: int) -> void:
 	online_busy = false
-	_start_game({"variant": "", "level": 0, "title": "Partida online", "text": "", "kids": "", "unit": "", "clock": [], "online": true}, color)
+	online_note = ""
+	var clock: Array = Online.rhythm_parts(online.rhythm)
+	_start_game({"variant": "", "level": 0, "title": "Partida online", "text": "", "kids": "", "unit": "", "clock": clock if int(clock[0]) > 0 else [], "online": true}, color)
 
 
 ## Jugada del rival, que llega por la red.
@@ -5667,21 +5986,43 @@ func _online_move(uci: String) -> void:
 	game_note = Loc.f("El rival ha jugado %s.", san)
 	if _game_check_end(pos, m):
 		return
+	if view.board.chess.in_check():
+		game_note = Loc.f("El rival ha jugado %s: tu rey está en jaque.", san)
+	if game_clocked and not online.my_turn_open():
+		# Con reloj: ves su jugada, pero tu turno empieza cuando él pulsa su reloj.
+		game_state = "think"
+		view.interactive = false
+		_refresh()
+		return
 	game_state = "play"
 	game_clock_side = game_color
 	view.interactive = true
-	if view.board.chess.in_check():
-		game_note = Loc.f("El rival ha jugado %s: tu rey está en jaque.", san)
 	_refresh()
 
 
-func _online_ended(_reason: String, _winner: int) -> void:
+## Ha cambiado el reloj online (una pulsación): si el rival ya ha pulsado tras su jugada, me toca.
+func _online_clock_changed() -> void:
+	if mode != "game" or not bool(game.get("online", false)) or not game_clocked:
+		return
+	if game_state == "think" and game_back == 0 and view.board.chess.turn == game_color and online.my_turn_open():
+		game_state = "play"
+		game_clock_side = game_color
+		view.interactive = true
+	_refresh()
+
+
+func _online_ended(reason: String, winner: int) -> void:
 	if mode != "game" or not bool(game.get("online", false)) or game_state == "over":
 		return
 	if game_back > 0:
 		game_back = 0
 		_online_pending = []
 		view.set_fen(str(game_history[game_history.size() - 1]))
+	if reason == "tiempo":
+		# Se le acabó el tiempo a uno (lo calculan los dos con las horas del servidor).
+		_game_flag(1 - winner)
+		_sfx("leccion" if winner == game_color else "error")
+		return
 	game_state = "over"
 	game_won = 1
 	game_result = "Tu rival ha abandonado la partida: ¡has ganado!"
@@ -6309,26 +6650,107 @@ func _open_saved_game(i: int) -> void:
 	_open_review()
 
 
-## Fila del rival en la tarjeta de la partida online.
-func _rival_row() -> HBoxContainer:
+## Fila del rival en la tarjeta de la partida online. `compact`: con reloj no caben los gestos en su fila; van en
+## un botón que los abre.
+func _rival_row(compact: bool = false) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	row.add_theme_constant_override("separation", 16 if compact else 20)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_rival_badge(104.0))
-	var lv := int(online_rival.get("nivel", -1))
-	var text := "Rival · …"
-	if not online_rival.is_empty():
-		var who := str(online_rival.get("nombre", "Rival"))
-		text = (Loc.f("%s · Táctica %d · %s", [who, lv, str(_rank(lv)[1])])) if lv >= 0 else Loc.f("%s · todavía sin nivel", who)
-		var rj: Variant = online_rival.get("juego", {})
-		if rj is Dictionary and (rj as Dictionary).has("r"):
-			text += Loc.f(" · Juego %d", int((rj as Dictionary)["r"]))
-	var l := _para(text, F_BODY, _c("ink"), font_semibold)
+	row.add_child(_rival_badge(88.0 if compact else 104.0))
+	var text := _rival_line() if not online_rival.is_empty() else "Rival · …"
+	var l := _para(text, F_SUB if compact else F_BODY, _c("ink"), font_semibold)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if compact:
+		# Una sola línea: si no cabe, con puntos suspensivos.
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.clip_text = true
 	row.add_child(l)
+	if compact:
+		var tint := _tint("sky")
+		var g := _round_button("g_saludo", _gesture_menu, 88.0, tint[0], tint[1], false)
+		g.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(g)
+	if online.rival_uid != "":
+		# Denunciar o bloquear al rival.
+		var more := _round_button("more", _rival_menu, 88.0 if compact else 96.0, _c("field"), _c("ink"), false)
+		more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(more)
 	return row
+
+
+## «Lucía · Táctica 4 · Alfil · Juego 1240».
+func _rival_line() -> String:
+	if online_rival.is_empty():
+		return ""
+	var lv := int(online_rival.get("nivel", -1))
+	var who := str(online_rival.get("nombre", "Rival"))
+	var text := (Loc.f("%s · Táctica %d · %s", [who, lv, str(_rank(lv)[1])])) if lv >= 0 else Loc.f("%s · todavía sin nivel", who)
+	var rj: Variant = online_rival.get("juego", {})
+	if rj is Dictionary and (rj as Dictionary).has("r"):
+		text += Loc.f(" · Juego %d", int((rj as Dictionary)["r"]))
+	return text
+
+
+## Los gestos, en una ventana (en las partidas con reloj, que no tienen sitio para su fila).
+func _gesture_menu() -> void:
+	var column := _popup("Gestos", "")
+	column.add_child(_gesture_row())
+	column.add_child(_button("back", "Cerrar", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "radius": 52}))
+
+
+## Opciones con el rival: denunciarlo o bloquearlo.
+func _rival_menu() -> void:
+	var who := str(online_rival.get("nombre", "Rival"))
+	var column := _popup(who, "¿Ha hecho algo que no está bien? Puedes denunciarlo, bloquearlo o las dos cosas.")
+	var info := _rival_line()
+	if info != "":
+		column.add_child(_para(info, F_SUB, _c("ink"), font_semibold))
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	var rose := _tint("rose")
+	column.add_child(_button("report", "Denunciar", _report_menu, rose[0], rose[1], opts))
+	if online_blocked.has(online.rival_uid):
+		column.add_child(_para(Loc.f("Has bloqueado a %s: no volveréis a jugar juntos.", who), F_SUB, _c("quiet"), font_medium))
+	else:
+		column.add_child(_button("block", "Bloquear", _block_rival, _c("field"), _c("ink"), opts))
+	column.add_child(_button("back", "Cerrar", _close_confirm, _c("field"), _c("ink"), opts))
+
+
+## Motivos de la denuncia.
+func _report_menu() -> void:
+	var column := _popup("Denunciar", "¿Qué ha pasado? La denuncia es anónima para tu rival.")
+	var opts := {"font_size": F_SUB, "height": 104.0, "icon": 48.0, "radius": 52, "font": font_medium}
+	var reasons := [["nombre", "sliders", "Nombre ofensivo"], ["trampas", "bot", "Usa ayudas o un programa"], ["abandono", "clock", "Me hace perder el tiempo"], ["conducta", "g_abajo", "Gestos molestos"], ["otro", "info", "Otra cosa"]]
+	for r: Array in reasons:
+		column.add_child(_button(str(r[1]), str(r[2]), _send_report.bind(str(r[0])), _c("field"), _c("ink"), opts))
+	column.add_child(_button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), opts))
+
+
+func _send_report(reason: String) -> void:
+	var who := str(online_rival.get("nombre", ""))
+	var against := online.rival_uid
+	var game_id := online.game_id
+	var column := _popup("Enviando…", "")
+	var ok: bool = await online.report(against, who, reason, game_id)
+	if confirm_node == null or not is_instance_valid(confirm_node) or not is_instance_valid(column):
+		return
+	column = _popup("Denuncia enviada" if ok else "No se pudo enviar", "Gracias. La revisaremos. Si no quieres volver a jugar con este jugador, bloquéalo." if ok else "Revisa tu conexión a Internet y vuelve a intentarlo.")
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	if ok and not online_blocked.has(against):
+		column.add_child(_button("block", "Bloquear también", _block_rival, _c("field"), _c("ink"), opts))
+	column.add_child(_button("check", "Vale", _close_confirm, _c("field"), _c("ink"), opts))
+
+
+func _block_rival() -> void:
+	var who := str(online_rival.get("nombre", "Rival"))
+	if online.rival_uid == "":
+		return
+	online_blocked[online.rival_uid] = who
+	_save_settings()
+	var column := _popup("Bloqueado", Loc.f("No volverás a jugar con %s. Puedes desbloquearlo en «Partida online».", who))
+	column.add_child(_button("check", "Vale", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
 
 
 ## Los gestos del chat: una fila de botones redondos con su dibujo.
@@ -6347,6 +6769,7 @@ func _gesture_row() -> HBoxContainer:
 
 
 func _send_gesture(kind: String) -> void:
+	_close_confirm()
 	online.send_gesture(kind)
 
 
@@ -6475,6 +6898,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	var clock: Array = cfg.get("clock", [])
 	game = cfg
 	game_clocked = clock.size() == 2 and int(clock[0]) > 0
+	_flag_claimed = false
 	game_clock = [float(clock[0]) * 60000.0, float(clock[0]) * 60000.0] if game_clocked else [0.0, 0.0]
 	game_inc_ms = float(clock[1]) * 1000.0 if game_clocked else 0.0
 	clock_up = 1.0 if game_color == 0 else 0.0
@@ -6536,10 +6960,11 @@ func _game_move(uci: String) -> void:
 	game_note = ""
 	var is_online := bool(game.get("online", false))
 	if is_online:
-		online.play(uci)
+		# Con reloj y pulsado automático, la jugada y la pulsación van juntas; a mano, la pulsación va después.
+		online.play(uci, game_clocked and not press_clock)
 	if _game_check_end(before, m):
 		return
-	if is_online:
+	if is_online and not (game_clocked and press_clock):
 		game_clock_side = 1 - game_color
 		game_state = "think"
 		view.interactive = false
@@ -6563,10 +6988,17 @@ func _game_move(uci: String) -> void:
 func _press_game_clock() -> void:
 	if mode != "game" or game_state != "press":
 		return
-	game_clock[game_color] += game_inc_ms
 	game_note = ""
 	if sound_on:
 		view.board.sound.emit("place", 0.5)
+	if bool(game.get("online", false)):
+		online.press()
+		game_clock_side = 1 - game_color
+		game_state = "think"
+		view.interactive = false
+		_refresh()
+		return
+	game_clock[game_color] += game_inc_ms
 	_game_bot_turn()
 
 
@@ -6637,12 +7069,43 @@ func _process(delta: float) -> void:
 	_sync_captures()
 	if mode != "game" or not game_clocked or not (game_state in ["play", "think", "press"]):
 		return
+	if bool(game.get("online", false)):
+		_online_clock_tick(delta)
+		return
 	var side := game_clock_side
 	clock_up = move_toward(clock_up, 1.0 if side == game_color else 0.0, delta / 0.12)
 	game_clock[side] = maxf(0.0, float(game_clock[side]) - delta * 1000.0)
 	if float(game_clock[side]) <= 0.0:
 		_game_flag(side)
 		return
+	if game_state == "press" and press_reminder and not _press_warned and Time.get_ticks_msec() - _press_since > int(PRESS_REMINDER * 1000.0):
+		_press_warned = true
+		game_note = "¡Pulsa el reloj! Tu tiempo sigue corriendo."
+		Input.vibrate_handheld(300)
+		_refresh()
+	_show_clocks()
+
+
+## Reloj online: lo que dicen las horas del servidor. Si se me acaba el tiempo, pierdo; si se le acaba al rival,
+## se espera un margen por si su pulsación viene de camino y se apunta.
+var _flag_claimed := false
+
+
+func _online_clock_tick(delta: float) -> void:
+	var now: Dictionary = online.clock_now()
+	var left: Array = now["left"]
+	var side := int(now["side"])
+	game_clock = [maxf(0.0, float(left[0])), maxf(0.0, float(left[1]))]
+	game_clock_side = side
+	clock_up = move_toward(clock_up, 1.0 if side == game_color else 0.0, delta / 0.12)
+	if float(left[side]) <= 0.0 and side == game_color:
+		online.claim_time(game_color)
+		_game_flag(game_color)
+		_sfx("error")
+		return
+	if float(left[side]) <= -Online.FLAG_GRACE_MS and side != game_color and not _flag_claimed:
+		_flag_claimed = true
+		online.claim_time(side)
 	if game_state == "press" and press_reminder and not _press_warned and Time.get_ticks_msec() - _press_since > int(PRESS_REMINDER * 1000.0):
 		_press_warned = true
 		game_note = "¡Pulsa el reloj! Tu tiempo sigue corriendo."
@@ -6935,6 +7398,23 @@ func _ask_leave(then: Callable = _leave_game) -> void:
 ## Ventana de confirmación semitransparente sobre el tablero: el aviso, «Cancelar» y la acción. Tocar fuera la
 ## cierra (como «Cancelar»).
 func _confirm(head: String, text: String, ok_icon: String, ok_label: String, on_ok: Callable) -> void:
+	var column := _popup(head, text)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	column.add_child(row)
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	var cancel := _button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), opts)
+	var tint := _tint("rose")
+	var ok := _button(ok_icon, ok_label, func() -> void:
+		_close_confirm()
+		on_ok.call(), tint[0], tint[1], opts)
+	for b: Button in [cancel, ok]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+
+
+## Ventana semitransparente sobre el tablero (se cierra tocando fuera): título, texto y una columna para lo demás.
+func _popup(head: String, text: String) -> VBoxContainer:
 	_close_confirm()
 	confirm_node = Control.new()
 	confirm_node.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -6965,19 +7445,8 @@ func _confirm(head: String, text: String, ok_icon: String, ok_label: String, on_
 	column.add_theme_constant_override("separation", 18)
 	pad.add_child(column)
 	column.add_child(_para(head, F_TITLE, _c("ink"), font_display))
-	column.add_child(_para(text, F_BODY, _c("quiet"), font_regular))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
-	column.add_child(row)
-	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
-	var cancel := _button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), opts)
-	var tint := _tint("rose")
-	var ok := _button(ok_icon, ok_label, func() -> void:
-		_close_confirm()
-		on_ok.call(), tint[0], tint[1], opts)
-	for b: Button in [cancel, ok]:
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(b)
+	if text != "":
+		column.add_child(_para(text, F_BODY, _c("quiet"), font_regular))
 	var place := func() -> void:
 		if not is_instance_valid(panel) or board_slot == null or not is_instance_valid(board_slot):
 			return
@@ -6996,6 +7465,7 @@ func _confirm(head: String, text: String, ok_icon: String, ok_label: String, on_
 	var tw := create_tween()
 	tw.tween_property(panel, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(confirm_node, "modulate:a", 1.0, 0.15)
+	return column
 
 
 func _close_confirm() -> void:
@@ -7089,6 +7559,51 @@ func _build_game_card() -> void:
 			head = "¡Has ganado!" if game_won > 0 else ("Tablas" if game_won == 0 else ("Ha ganado el rival" if kids else "Has perdido"))
 			tone = _c("good") if game_won > 0 else (_c("ink") if game_won == 0 else _c("bad"))
 	title = _para(head, F_TITLE, tone, font_display)
+	if game_clocked and game_state != "over":
+		# Con reloj, el reloj ocupa la tarjeta (el nombre del rival va en el reloj) y, en las online, a su lado, la
+		# insignia del rival, sus gestos y sus opciones. Nada más, para que no haya scroll y el reloj se vea grande.
+		if game_back > 0:
+			var t0 := _tint("peach")
+			var back_chips := HFlowContainer.new()
+			back_chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			back_chips.add_child(_chip(Loc.f("Jugada %d de %d · toca el tablero para volver", [game_history.size() - 1 - game_back, game_history.size() - 1]), t0[0], t0[1], "back"))
+			card_body.add_child(back_chips)
+		_clock_labels = []
+		chess_clock = ChessClock.new()
+		chess_clock.digits_font = _digits_font if _digits_font != null else font_display
+		chess_clock.label_font = font_semibold
+		chess_clock.dark = dark
+		chess_clock.accent = _c("accent")
+		chess_clock.custom_minimum_size = Vector2(0.0, 360.0)
+		chess_clock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		chess_clock.pressed_mine.connect(_on_clock_pressed)
+		chess_clock.pressed_early.connect(_on_clock_early)
+		var is_online := bool(game.get("online", false))
+		var who := str(online_rival.get("nombre", "")) if is_online else Loc.t(str(Bot.LEVELS[clampi(int(game.get("level", 0)), 0, Bot.LEVELS.size() - 1)]["name"]))
+		chess_clock.labels = ["TÚ", who.to_upper().left(14) if who != "" else "RIVAL"]
+		if not is_online:
+			card_body.add_child(chess_clock)
+			_show_clocks()
+			return
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(chess_clock)
+		var side := VBoxContainer.new()
+		side.add_theme_constant_override("separation", 12)
+		side.alignment = BoxContainer.ALIGNMENT_CENTER
+		side.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var badge := _rival_badge(84.0)
+		badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		side.add_child(badge)
+		var sky := _tint("sky")
+		side.add_child(_round_button("g_saludo", _gesture_menu, 84.0, sky[0], sky[1], false))
+		if online.rival_uid != "":
+			side.add_child(_round_button("more", _rival_menu, 84.0, _c("field"), _c("ink"), false))
+		row.add_child(side)
+		card_body.add_child(row)
+		_show_clocks()
+		return
 	if game_clocked and game_state != "over":
 		# Con reloj, el reloj ya dice a quién le toca: sin título.
 		pass
