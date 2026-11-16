@@ -179,6 +179,11 @@ var kids := false
 var ads := Ads.new()
 ## Pantalla de inicio que ha elegido el jugador: «lista» o «rejilla» (ui/home_screens.gd). Kids tiene la suya.
 var home_style := "lista"
+## Intro animada del arranque (ui/intro.gd): «always», «once» o «never» (Opciones → Intro).
+var intro_mode := "always"
+var intro_seen := false
+const INTRO_MODES: Array[String] = ["always", "once", "never"]
+const INTRO_NAMES: Array[String] = ["Siempre", "Una vez", "Nunca"]
 var voice_on := true
 ## Voz del nivel Kids: texto exacto → id del audio (data/voz.json; los OGG en res://voz/, de Kokoro).
 var voice_index := {}
@@ -1087,6 +1092,7 @@ func _ready() -> void:
 	else:
 		# Cada vez que se abre la app: la pantalla de inicio, con todo lo que se puede hacer.
 		_open_home()
+	_play_intro()
 
 
 func _notification(what: int) -> void:
@@ -1221,6 +1227,10 @@ func _load_settings() -> void:
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	kids = bool(cfg.get_value("app", "kids", false))
 	home_style = str(cfg.get_value("app", "inicio", home_style))
+	intro_mode = str(cfg.get_value("app", "intro", intro_mode))
+	if not intro_mode in INTRO_MODES:
+		intro_mode = INTRO_MODES[0]
+	intro_seen = bool(cfg.get_value("app", "intro_vista", false))
 	if not home_style in HomeScreens.STYLES:
 		home_style = HomeScreens.STYLES[0]
 	avatar = str(cfg.get_value("app", "icono", ""))
@@ -1273,6 +1283,8 @@ func _save_settings() -> void:
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
 	cfg.set_value("app", "inicio", home_style)
+	cfg.set_value("app", "intro", intro_mode)
+	cfg.set_value("app", "intro_vista", intro_seen)
 	cfg.set_value("app", "idioma", language)
 	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("app", "icono", avatar)
@@ -3436,6 +3448,8 @@ func _build_sheet() -> void:
 		box.add_child(_switch_row("phone", "butter", "Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
 	box.add_child(_caption("Tema"))
 	box.add_child(_segments(["Claro", "Oscuro"], 1 if dark else 0, _set_theme_index, ["sun", "moon"]))
+	box.add_child(_caption("Intro"))
+	box.add_child(_segments(INTRO_NAMES, INTRO_MODES.find(intro_mode), _set_intro_mode))
 	if not kids:
 		box.add_child(_caption("Pantalla de inicio"))
 		box.add_child(_segments(HomeScreens.NAMES, maxi(HomeScreens.STYLES.find(home_style), 0), _set_home_style, ["rows", "tiles"]))
@@ -5266,6 +5280,23 @@ func _home_items() -> Array:
 	if not kids and not course.is_empty():
 		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
 	return items
+
+
+## Opciones → «Intro».
+func _set_intro_mode(i: int) -> void:
+	intro_mode = INTRO_MODES[clampi(i, 0, INTRO_MODES.size() - 1)]
+	_save_settings()
+	_sync_sheet()
+
+
+## Intro del arranque: encima de todo, una sola vez por arranque y según la opción (nunca en las pruebas).
+func _play_intro() -> void:
+	if not use_settings or intro_mode == "never" or (intro_mode == "once" and intro_seen) or not Intro.available():
+		return
+	intro_seen = true
+	_save_settings()
+	var intro := Intro.new()
+	add_child(intro)
 
 
 ## Opciones → «Pantalla de inicio».

@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
