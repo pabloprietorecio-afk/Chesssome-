@@ -5391,7 +5391,7 @@ func _open_home() -> void:
 			HomeScreens.build_list(self, _home_items())
 		_place_tip()
 		# Entre actividades y solo aquí (core/ads.gd): nunca en Kids, online ni en mitad de nada.
-		ads.maybe_show(kids or online.phase != "idle" or online_busy)
+		ads.maybe_show(kids or (online != null and online.phase != "idle") or online_busy)
 		return
 	var page := _page("home")
 	var body: VBoxContainer = page["body"]

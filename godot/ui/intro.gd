@@ -1,30 +1,45 @@
 class_name Intro
 extends Control
-## Intro animada del arranque: el maestro pensando su jugada (vídeo de 4 s, sin sonido) sobre papel crema y, al
-## final, «A Chess Way» escrito a mano (Caveat, OFL). Un toque la salta. Opciones → «Intro»: siempre, una vez, nunca.
-## El vídeo es Ogg Theora (lo único que lee Godot); se mide y se prueba en tests/test_intro.gd. Tiene que estar en el
-## filtro de exportación (intro/*.ogv): Godot no lo importa y, si falta, la intro no sale. La CI lo comprueba.
+## Intro animada del arranque: el caballo de marfil salta por el tablero y vuelve a su tesela naranja, el icono de la
+## app (vídeo de Pablo hecho con PixVerse a partir del fotograma final que le preparamos; sin texto ni sonido). Al
+## final, «A Chess Way» se escribe a mano (Caveat, OFL) en el suelo crema del vídeo y debajo se traza el subrayado
+## naranja del inicio. Un toque la salta. Opciones → «Intro»: siempre, una vez, nunca.
+##
+## El vídeo es Ogg Theora (lo único que lee Godot), recortado sin las franjas negras (864 × 1520) y sin el corte del
+## principio. Tiene que estar en el filtro de exportación (intro/*.ogv): Godot no lo importa y, si falta, la intro no
+## sale. La CI lo comprueba. Pruebas: tests/test_intro.gd.
 
 signal finished
 
 const VIDEO := "res://intro/intro.ogv"
 const FONT := "res://fonts/Caveat-Bold.woff2"
 const TITLE := "A Chess Way"
-const PAPER := Color(0.957, 0.937, 0.886)
-const INK := Color(0.2, 0.18, 0.16)
-## Proporción del vídeo recortado (756 × 720).
-const ASPECT := 720.0 / 756.0
-const WRITE_FROM := 2.3
-const WRITE_TIME := 1.5
-const FREEZE_AT := 3.95
-const HOLD := 1.0
+## Proporción del vídeo (alto / ancho).
+const ASPECT := 1520.0 / 864.0
+## Colores de los bordes del vídeo (medidos en sus fotogramas): el fondo de la pantalla los continúa.
+const TOP := Color8(226, 225, 235)
+const BOTTOM := Color8(246, 223, 199)
+## Tinta del título y naranja del subrayado: los de la cabecera del inicio (ui/home_screens.gd).
+const INK := Color("1b2540")
+const RULE := Color("f26a1e")
+## Alto del título dentro del vídeo (fracción): en el suelo crema, bajo el tablero y la tesela.
+const TITLE_AT := 0.77
+## Tiempos, en segundos desde que arranca el vídeo (dura 3,9 s).
+const WRITE_FROM := 2.95
+const WRITE_TIME := 1.15
+const RULE_TIME := 0.35
+const FREEZE_AT := 3.85
+const HOLD := 0.75
 const FADE := 0.4
 
 var _player: VideoStreamPlayer
-var _veil: ColorRect
-var _veil_top: ColorRect
+var _wash: Control
+var _fade_top: ColorRect
+var _fade_bottom: ColorRect
 var _clip: Control
 var _label: Label
+var _rule: Line2D
+var _rule_full := PackedVector2Array()
 var _done := false
 
 
@@ -37,19 +52,17 @@ func _ready() -> void:
 	# márgenes. Fue el fallo de la primera versión en el móvil.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	var paper := ColorRect.new()
-	paper.color = PAPER
-	paper.set_anchors_preset(Control.PRESET_FULL_RECT)
-	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(paper)
+	_wash = Wash.new()
+	_wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_wash)
 	_player = VideoStreamPlayer.new()
 	_player.stream = load(VIDEO)
 	_player.expand = true
 	_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_player)
-	# El pie y la cabeza del vídeo se funden con el papel.
-	_veil = _fade_strip(false)
-	_veil_top = _fade_strip(true)
+	# Los bordes del vídeo se funden con el fondo (en pantallas más altas que el vídeo).
+	_fade_top = _fade_strip(TOP, true)
+	_fade_bottom = _fade_strip(BOTTOM, false)
 	_clip = Control.new()
 	_clip.clip_contents = true
 	_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -60,33 +73,39 @@ func _ready() -> void:
 	var font := load(FONT) as Font
 	if font != null:
 		_label.add_theme_font_override("font", font)
-	_label.add_theme_font_size_override("font_size", 190)
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_clip.add_child(_label)
+	_rule = Line2D.new()
+	_rule.default_color = RULE
+	_rule.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	_rule.end_cap_mode = Line2D.LINE_CAP_ROUND
+	_rule.joint_mode = Line2D.LINE_JOINT_ROUND
+	_rule.antialiased = true
+	add_child(_rule)
 	resized.connect(_layout)
 	_layout()
 	_player.play()
-	# Del arranque de Android (caballo en tinta sobre este mismo papel) a la intro, sin salto.
+	# Del arranque de Android (mismo papel) al vídeo, sin salto.
 	_player.modulate.a = 0.0
-	create_tween().tween_property(_player, "modulate:a", 1.0, 0.35)
+	create_tween().tween_property(_player, "modulate:a", 1.0, 0.3)
 	var tw := create_tween()
 	tw.tween_interval(WRITE_FROM)
 	tw.tween_callback(_write)
 	tw.tween_interval(FREEZE_AT - WRITE_FROM)
-	# Congela el último fotograma: así no queda en blanco hasta que acaba el texto.
+	# Congela el último fotograma: así no queda en blanco mientras se acaba de escribir.
 	tw.tween_callback(func() -> void: _player.paused = true)
-	tw.tween_interval(WRITE_FROM + WRITE_TIME + HOLD - FREEZE_AT)
+	tw.tween_interval(maxf(WRITE_FROM + WRITE_TIME + RULE_TIME + HOLD - FREEZE_AT, 0.1))
 	tw.tween_callback(_leave)
 
 
-func _fade_strip(top: bool) -> ColorRect:
+func _fade_strip(color: Color, top: bool) -> ColorRect:
 	var strip := ColorRect.new()
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shader := Shader.new()
-	shader.code = "shader_type canvas_item; uniform vec4 paper : source_color; uniform bool top; void fragment() { float a = top ? 1.0 - UV.y : UV.y; COLOR = vec4(paper.rgb, smoothstep(0.0, 1.0, a)); }"
+	shader.code = "shader_type canvas_item; uniform vec4 tint : source_color; uniform bool top; void fragment() { float a = top ? 1.0 - UV.y : UV.y; COLOR = vec4(tint.rgb, smoothstep(0.0, 1.0, a)); }"
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	mat.set_shader_parameter("paper", PAPER)
+	mat.set_shader_parameter("tint", color)
 	mat.set_shader_parameter("top", top)
 	strip.material = mat
 	add_child(strip)
@@ -97,34 +116,72 @@ func _layout() -> void:
 	var w := size.x
 	if w < 1.0:
 		return
+	# El vídeo, a todo el ancho; si la pantalla es más baja que el vídeo, a todo el alto (se recortan los lados).
+	var vw := w
 	var vh := roundf(w * ASPECT)
+	if vh > size.y:
+		vh = size.y
+		vw = roundf(vh / ASPECT)
+	var y0 := roundf((size.y - vh) * 0.5)
+	var x0 := roundf((w - vw) * 0.5)
+	_wash.position = Vector2.ZERO
+	_wash.size = size
+	_player.position = Vector2(x0, y0)
+	_player.size = Vector2(vw, vh)
+	var band := vh * 0.06
+	_fade_top.position = Vector2(0.0, y0 - 1.0)
+	_fade_top.size = Vector2(w, band)
+	_fade_bottom.position = Vector2(0.0, y0 + vh - band + 1.0)
+	_fade_bottom.size = Vector2(w, band)
+	# Título: a la medida del ancho (como el nombre en la cabecera del inicio, algo más grande).
+	_label.add_theme_font_size_override("font_size", int(roundf(w * 0.17)))
 	var text_size := _label.get_minimum_size()
 	_label.size = text_size
-	# Vídeo y título juntos, algo por encima del centro.
-	var group := vh + text_size.y * 0.8
-	var y0 := maxf((size.y - group) * 0.38, 0.0)
-	_player.position = Vector2(0.0, y0)
-	_player.size = Vector2(w, vh)
-	_veil.position = Vector2(0.0, y0 + vh * 0.78)
-	_veil.size = Vector2(w, vh * 0.22 + 2.0)
-	_veil_top.position = Vector2(0.0, y0 - 2.0)
-	_veil_top.size = Vector2(w, vh * 0.12 + 2.0)
-	var top := y0 + vh - text_size.y * 0.1
-	_clip.position = Vector2((w - text_size.x) * 0.5, top)
+	var cy := y0 + vh * TITLE_AT
+	_clip.position = Vector2(roundf((w - text_size.x) * 0.5), roundf(cy - text_size.y * 0.5))
 	if _clip.size.x < 1.0 and not _clip.has_meta("writing"):
 		_clip.size = Vector2(0.0, text_size.y)
+	_clip.size.y = text_size.y
+	# Subrayado: un trazo a mano alzada, algo curvo, bajo la palabra «Way» y un poco más allá.
+	var left := _clip.position.x + text_size.x * 0.52
+	var right := _clip.position.x + text_size.x * 1.02
+	var base := _clip.position.y + text_size.y * 0.93
+	_rule_full = PackedVector2Array()
+	for i in 13:
+		var t := float(i) / 12.0
+		_rule_full.append(Vector2(lerpf(left, right, t), base + sin(t * PI) * -w * 0.012 + t * w * 0.006))
+	_rule.width = maxf(w * 0.011, 3.0)
+	if not _clip.has_meta("ruled"):
+		_rule.points = PackedVector2Array()
 
 
-## Escribe el título de izquierda a derecha, con un ritmo algo irregular, como a mano.
+## Escribe el título de izquierda a derecha, con un ritmo algo irregular, como a mano; después, el subrayado.
 func _write() -> void:
 	_clip.set_meta("writing", true)
 	var full := _label.get_minimum_size().x
 	var tw := create_tween()
-	tw.tween_property(_clip, "size:x", full * 0.38, WRITE_TIME * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_clip, "size:x", full * 0.14, WRITE_TIME * 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.07)
+	tw.tween_property(_clip, "size:x", full * 0.56, WRITE_TIME * 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_interval(0.06)
-	tw.tween_property(_clip, "size:x", full * 0.72, WRITE_TIME * 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_interval(0.05)
-	tw.tween_property(_clip, "size:x", full + 4.0, WRITE_TIME * 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(_clip, "size:x", full + 6.0, WRITE_TIME * 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func() -> void: _clip.set_meta("ruled", true))
+	tw.tween_method(_draw_rule, 0.0, 1.0, RULE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _draw_rule(t: float) -> void:
+	var n := _rule_full.size()
+	if n < 2:
+		return
+	var pts := PackedVector2Array()
+	var reach := t * float(n - 1)
+	for i in n:
+		if float(i) <= reach:
+			pts.append(_rule_full[i])
+	var k := int(floorf(reach))
+	if k < n - 1:
+		pts.append(_rule_full[k].lerp(_rule_full[k + 1], reach - float(k)))
+	_rule.points = pts
 
 
 func _leave() -> void:
@@ -145,3 +202,10 @@ func _gui_input(event: InputEvent) -> void:
 	var tap := (event is InputEventMouseButton and (event as InputEventMouseButton).pressed) or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
 	if tap and not _done:
 		_leave()
+
+
+## Fondo de la pantalla: del color de arriba del vídeo al de abajo.
+class Wash extends Control:
+	func _draw() -> void:
+		var pts := PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0.0), size, Vector2(0.0, size.y)])
+		draw_polygon(pts, PackedColorArray([TOP, TOP, BOTTOM, BOTTOM]))

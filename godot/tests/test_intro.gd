@@ -30,8 +30,10 @@ func _initialize() -> void:
 	holder.size = Vector2(1080, 2160)
 	await process_frame
 	var player: VideoStreamPlayer = intro._player
-	_ok(is_equal_approx(player.size.x, 1080.0) and absf(player.size.y - 1029.0) < 2.0, "el vídeo ocupa el ancho, con su proporción")
-	_ok(intro._clip.position.y >= player.position.y + player.size.y - 60.0, "el título va debajo del vídeo")
+	_ok(is_equal_approx(player.size.x, 1080.0) and absf(player.size.y - 1080.0 * Intro.ASPECT) < 2.0, "el vídeo ocupa el ancho, con su proporción")
+	_ok(player.position.y >= 0.0 and player.position.y + player.size.y <= 2160.0 + 1.0, "y cabe en la pantalla")
+	var title_mid: float = intro._clip.position.y + intro._label.size.y * 0.5
+	_ok(title_mid > 2160.0 * 0.62 and title_mid < 2160.0 * 0.9, "el título va en el tercio de abajo, en el suelo del vídeo (%.0f)" % title_mid)
 	_ok(intro._clip.position.x > 0.0 and intro._clip.position.x + intro._label.size.x <= 1080.0, "el título cabe en el ancho")
 	_ok(intro._clip.size.x < 1.0, "al empezar, el título aún no está escrito")
 	# Un toque la salta.

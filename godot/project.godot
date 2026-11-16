@@ -15,7 +15,7 @@ run/main_scene="res://demo/demo.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/quit_on_go_back=false
 config/icon="res://iconos_app/lanzador_192.png"
-boot_splash/bg_color=Color(0.957, 0.937, 0.886, 1)
+boot_splash/bg_color=Color(0.906, 0.894, 0.945, 1)
 boot_splash/show_image=false
 
 [display]

@@ -341,8 +341,8 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
 //   godot/iconos_app/adaptativo_fondo_432.png  capa de fondo del icono adaptativo (a sangre)
 //   godot/iconos_app/adaptativo_frente_432.png capa del caballo; Android también la usa en la pantalla de arranque
 //   godot/iconos_app/adaptativo_mono_432.png   capa monocroma (iconos temáticos de Android 13+)
-//   godot/iconos_app/arranque_432.png          caballo en tinta para la pantalla de arranque, sobre el papel crema
-//                                              de la intro (ui/intro.gd): del arranque se pasa a la intro sin salto
+//   godot/iconos_app/arranque_432.png          caballo en tinta para la pantalla de arranque, sobre el lila del
+//                                              inicio (e7e4f1), el mismo de arriba de la intro (ui/intro.gd)
 // En el icono adaptativo solo se ve el círculo central de 66/108 del lado: el caballo cabe dentro con margen.
 
 {
