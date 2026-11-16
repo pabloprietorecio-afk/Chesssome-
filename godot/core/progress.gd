@@ -323,22 +323,32 @@ static func summary_lines(state: Dictionary, day: int) -> Array:
 	var solved := int(c["a"])
 	var tried := int(c["p"])
 	if tried > 0:
-		out.append("%d de %d problemas resueltos" % [solved, tried] if tried != 1 else ("1 problema resuelto" if solved == 1 else "1 problema intentado"))
-	if int(c["l"]) > 0:
-		out.append("%d lección%s" % [int(c["l"]), "" if int(c["l"]) == 1 else "es"])
-	if int(c["g"]) > 0:
+		out.append(Loc.f("%d de %d problemas resueltos", [solved, tried]) if tried != 1 else Loc.t("1 problema resuelto" if solved == 1 else "1 problema intentado"))
+	var lessons := int(c["l"])
+	if lessons > 0:
+		out.append(Loc.t("1 lección") if lessons == 1 else Loc.f("%d lecciones", lessons))
+	var games := int(c["g"])
+	if games > 0:
 		var won := int(c["v"])
-		out.append("%d partida%s%s" % [int(c["g"]), "" if int(c["g"]) == 1 else "s", (" (%d ganada%s)" % [won, "" if won == 1 else "s"]) if won > 0 else ""])
+		var line := Loc.t("1 partida") if games == 1 else Loc.f("%d partidas", games)
+		if won > 0:
+			line += Loc.t(" (1 ganada)") if won == 1 else Loc.f(" (%d ganadas)", won)
+		out.append(line)
 	return out
 
 
 ## Nombre y descripción de una insignia, para la interfaz.
 static func badge_info(id: String) -> Dictionary:
+	# Textos en el idioma de la app (Loc), con el singular y el plural por separado para poder traducirlos.
 	if id.begins_with("racha"):
-		return {"nombre": "%s días seguidos" % id.substr(5), "texto": "Has jugado %s días seguidos." % id.substr(5)}
+		var days := id.substr(5).to_int()
+		return {"nombre": Loc.f("%d días seguidos", days), "texto": Loc.f("Has jugado %d días seguidos.", days)}
 	if id.begins_with("dia"):
-		return {"nombre": "%s retos del día" % id.substr(3), "texto": "Has completado %s retos del día." % id.substr(3)}
+		var done := id.substr(3).to_int()
+		return {"nombre": Loc.f("%d retos del día", done), "texto": Loc.f("Has completado %d retos del día.", done)}
 	if id.begins_with("semana"):
-		var n := id.substr(6)
-		return {"nombre": "%s reto%s semanal%s" % [n, "" if n == "1" else "s", "" if n == "1" else "es"], "texto": "Has completado %s reto%s de la semana." % [n, "" if n == "1" else "s"]}
+		var n := id.substr(6).to_int()
+		if n == 1:
+			return {"nombre": Loc.t("1 reto semanal"), "texto": Loc.t("Has completado 1 reto de la semana.")}
+		return {"nombre": Loc.f("%d retos semanales", n), "texto": Loc.f("Has completado %d retos de la semana.", n)}
 	return {"nombre": id, "texto": ""}

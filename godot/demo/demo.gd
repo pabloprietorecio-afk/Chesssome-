@@ -7356,17 +7356,17 @@ func _prog_notify(avisos: Array, delay: float) -> void:
 			sub = str(Progress.badge_info(str(best["id"]))["nombre"])
 		"reto_semana":
 			title = "¡Reto de la semana cumplido!"
-			sub = _sentence(str(Assessment.FAMILY_NAME.get(str(best["familia"]), "")).to_lower())
+			sub = Loc.t(str(Assessment.FAMILY_NAME.get(str(best["familia"]), "")))
 		"reto_dia":
 			title = "¡Reto del día cumplido!"
 			var streak := Progress.streak_now(_prog(), _prog_day())
-			sub = "Racha de %d días" % streak if streak >= 2 else "Hasta mañana"
+			sub = Loc.f("Racha de %d días", streak) if streak >= 2 else Loc.t("Hasta mañana")
 		"objetivo":
 			title = "¡Objetivo cumplido!"
 			sub = str(PROG_GOAL_DONE.get(str(best["meta"]), ""))
 			party = false
 		"racha":
-			title = "¡Racha de %d días!" % int(best["dias"])
+			title = Loc.f("¡Racha de %d días!", int(best["dias"]))
 			sub = "Sigue mañana"
 			party = false
 	if title == "":
@@ -7462,11 +7462,11 @@ func _prog_home_text() -> String:
 		if bool(g["hecho"]):
 			done += 1
 	var streak := Progress.streak_now(s, day)
-	var text := "Hoy %d de %d" % [done, goals.size()] if not goals.is_empty() else "Tu objetivo de hoy"
+	var text := Loc.f("Hoy %d de %d", [done, goals.size()]) if not goals.is_empty() else Loc.t("Tu objetivo de hoy")
 	if bool((s["reto"] as Dictionary)["completo"]):
-		text = "¡Cumplido hoy!"
+		text = Loc.t("¡Cumplido hoy!")
 	if streak >= 2:
-		text += " · racha de %d días" % streak
+		text += Loc.f(" · racha de %d días", streak)
 	return text
 
 
@@ -7477,13 +7477,13 @@ func _prog_goal_text(g: Dictionary) -> String:
 	var n := int(g["meta"])
 	match str(g["tipo"]):
 		"problemas":
-			return "Resuelve %d problemas" % n if n != 1 else "Resuelve un problema"
+			return Loc.f("Resuelve %d problemas", n) if n != 1 else Loc.t("Resuelve un problema")
 		"repaso":
-			return "Repasa un fallo antiguo" if n == 1 else "Repasa %d fallos antiguos" % n
+			return Loc.t("Repasa un fallo antiguo") if n == 1 else Loc.f("Repasa %d fallos antiguos", n)
 		"leccion":
-			return "Haz una lección" if n == 1 else "Haz %d lecciones" % n
+			return Loc.t("Haz una lección") if n == 1 else Loc.f("Haz %d lecciones", n)
 		"partida":
-			return "Juega una partida" if n == 1 else "Juega %d partidas" % n
+			return Loc.t("Juega una partida") if n == 1 else Loc.f("Juega %d partidas", n)
 	return ""
 
 
@@ -7510,9 +7510,9 @@ func _open_day() -> void:
 	var best := int((s["racha"] as Dictionary)["mejor"])
 	var small := PackedStringArray()
 	if best > streak:
-		small.append("Tu mejor racha: %d días." % best)
+		small.append(Loc.t("Tu mejor racha: 1 día.") if best == 1 else Loc.f("Tu mejor racha: %d días.", best))
 	if ProgressConfig.GRACE_PER_WEEK > 0:
-		small.append("Si un día no puedes jugar no pasa nada: una vez por semana se te perdona.")
+		small.append(Loc.t("Si un día no puedes jugar no pasa nada: una vez por semana se te perdona."))
 	if not small.is_empty():
 		body.add_child(_spacer(8.0))
 		body.add_child(_centered(_para(" ".join(small), F_FOOT, _c("quiet"), font_regular)))
@@ -7527,7 +7527,7 @@ func _open_day() -> void:
 	for g: Dictionary in Progress.goals(s, day):
 		var def: Array = PROG_GOAL_ICON[str(g["tipo"])]
 		var done := bool(g["hecho"])
-		var progress_text := "¡Hecho!" if done else ("%d de %d" % [int(g["actual"]), int(g["meta"])] if int(g["meta"]) > 1 else "Todavía no")
+		var progress_text := "¡Hecho!" if done else (Loc.f("%d de %d", [int(g["actual"]), int(g["meta"])]) if int(g["meta"]) > 1 else "Todavía no")
 		(made[1] as VBoxContainer).add_child(_profile_row("check" if done else str(def[0]), "mint" if done else str(def[1]), _prog_goal_text(g), progress_text))
 
 	# Reto de la semana.
@@ -7539,7 +7539,7 @@ func _open_day() -> void:
 		var wmade := _panel()
 		body.add_child(wmade[0])
 		var fam := str(Assessment.FAMILY_NAME.get(str(w["familia"]), str(w["familia"])))
-		var wtext := "¡Cumplido!" if bool(w["completo"]) else "%d de %d problemas resueltos" % [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])]
+		var wtext := Loc.t("¡Cumplido!") if bool(w["completo"]) else Loc.f("%d de %d problemas resueltos", [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])])
 		(wmade[1] as VBoxContainer).add_child(_profile_row("check" if bool(w["completo"]) else "flag", "mint" if bool(w["completo"]) else "rose", fam, wtext))
 
 	# Aviso diario (solo si hay plugin de notificaciones).
@@ -7552,7 +7552,7 @@ func _open_day() -> void:
 		var aviso_on := bool((s["aviso"] as Dictionary)["activo"])
 		(amade[1] as VBoxContainer).add_child(_switch_row("clock", "peach", "Avisarme cada día", "Un recordatorio para cumplir tu reto, sin agobios.", aviso_on, _aviso_set))
 		if aviso_on:
-			(amade[1] as VBoxContainer).add_child(_option_button("clock", "peach", "Hora del aviso", "%s · toca para cambiar" % _aviso_hour_text(), _aviso_next_hour))
+			(amade[1] as VBoxContainer).add_child(_option_button("clock", "peach", "Hora del aviso", Loc.t("%s · toca para cambiar") % _aviso_hour_text(), _aviso_next_hour))
 
 	# Lo hecho hoy.
 	var lines := Progress.summary_lines(s, day)
@@ -7618,7 +7618,7 @@ func _aviso_setup() -> void:
 
 func _aviso_on_ready() -> void:
 	var channel = (load(AVISO_PLUGIN + "model/NotificationChannel.gd") as GDScript).new()
-	channel.set_id(AVISO_CHANNEL).set_name("Aviso diario").set_description("Un recordatorio al día para entrenar").set_importance(3)
+	channel.set_id(AVISO_CHANNEL).set_name(Loc.t("Aviso diario")).set_description(Loc.t("Un recordatorio al día para entrenar")).set_importance(3)
 	_aviso_node.create_notification_channel(channel)
 	_aviso_ready = true
 	_aviso_refresh()

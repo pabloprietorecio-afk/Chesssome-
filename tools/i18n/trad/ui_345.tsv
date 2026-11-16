@@ -2,7 +2,7 @@ Táctica	Tactics	Tactique	Tattica	タクティクス	Tática	Taktik	रणनी
 Sale de los problemas	Comes from the puzzles	Vient des problèmes	Viene dai problemi	問題の成績から	Vem dos problemas	Dari soal-soal	पहेलियों से	Aus den Aufgaben	По задачам
 Sin medir	Not measured	Non mesuré	Non misurato	未測定	Sem medir	Belum diukur	मापा नहीं गया	Nicht gemessen	Не измерено
 Haz el test de nivel	Take the level test	Fais le test de niveau	Fai il test di livello	レベルテストを受けよう	Faça o teste de nível	Ikuti tes level	स्तर परीक्षा दें	Mach den Einstufungstest	Пройди тест уровня
-Juego	Games	Parties	Gioco	対局	Jogo	Permainan	बाज़ियाँ	Partien	Игра
+Juego	Game rating	Niveau de jeu	Gioco	実戦	Jogo	Permainan	खेल	Spielstärke	Игра
 Juega contra el ordenador	Play against the computer	Joue contre l'ordinateur	Gioca contro il computer	コンピューターと対局しよう	Jogue contra o computador	Main melawan komputer	कंप्यूटर के ख़िलाफ़ खेलें	Spiel gegen den Computer	Сыграй с компьютером
 %d (provisional)	%d (provisional)	%d (provisoire)	%d (provvisorio)	%d（暫定）	%d (provisório)	%d (sementara)	%d (अस्थायी)	%d (vorläufig)	%d (предварительно)
 %d de %d partidas	%d of %d games	%d parties sur %d	%d partite su %d	%d / %d局	%d de %d partidas	%d dari %d permainan	%d / %d बाज़ियाँ	%d von %d Partien	%d из %d партий
@@ -14,7 +14,7 @@ Forma	Form	Forme	Forma	調子	Forma	Performa	फ़ॉर्म	Form	Форма
 Rival · …	Opponent · …	Adversaire · …	Avversario · …	相手 · …	Rival · …	Lawan · …	विरोधी · …	Gegner · …	Соперник · …
 %s · Táctica %d · %s	%s · Tactics %d · %s	%s · Tactique %d · %s	%s · Tattica %d · %s	%s · タクティクス %d · %s	%s · Tática %d · %s	%s · Taktik %d · %s	%s · रणनीति %d · %s	%s · Taktik %d · %s	%s · Тактика %d · %s
 %s · todavía sin nivel	%s · no level yet	%s · pas encore de niveau	%s · ancora senza livello	%s · まだレベルなし	%s · ainda sem nível	%s · belum ada level	%s · अभी कोई स्तर नहीं	%s · noch ohne Level	%s · уровня пока нет
- · Juego %d	 · Games %d	 · Parties %d	 · Gioco %d	 · 対局 %d	 · Jogo %d	 · Permainan %d	 · बाज़ियाँ %d	 · Partien %d	 · Игра %d
+ · Juego %d	 · Game rating %d	 · Niveau de jeu %d	 · Gioco %d	 · 実戦 %d	 · Jogo %d	 · Permainan %d	 · खेल %d	 · Spielstärke %d	 · Игра %d
 Tú	You	Toi	Tu	あなた	Você	Kamu	आप	Du	Ты
 ¡Pulsa el reloj! Tu tiempo sigue corriendo.	Press the clock! Your time is still running.	Appuie sur la pendule ! Ton temps continue de s'écouler.	Premi l'orologio! Il tuo tempo continua a scorrere.	時計を押して！持ち時間は減り続けています。	Aperte o relógio! Seu tempo continua correndo.	Tekan jam! Waktumu terus berjalan.	घड़ी दबाएँ! आपका समय चल रहा है।	Drück die Uhr! Deine Zeit läuft weiter.	Нажми на часы! Твоё время идёт.
 Se acabó el tiempo, pero no queda material para dar mate: tablas.	Time ran out, but there's not enough material to mate: draw.	Le temps est écoulé, mais il n'y a pas assez de matériel pour mater : nulle.	Il tempo è finito, ma non c'è materiale per dare matto: patta.	時間切れですが、メイトできる駒がありません：引き分け。	O tempo acabou, mas não há material para dar mate: empate.	Waktu habis, tapi bahan tidak cukup untuk skakmat: remis.	समय ख़त्म, पर मात देने लायक मोहरे नहीं बचे: ड्रॉ।	Die Zeit ist abgelaufen, aber es fehlt das Material zum Mattsetzen: remis.	Время вышло, но для мата не хватает материала: ничья.

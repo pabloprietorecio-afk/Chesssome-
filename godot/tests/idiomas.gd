@@ -58,8 +58,42 @@ func _ready() -> void:
 			await _shot("%s_7_solucion" % code)
 			demo._go_home_now()
 			await _frames(4)
+		if OS.get_environment("PREMIOS") != "":
+			await _premios(demo, code)
 	print("HECHO")
 	get_tree().quit()
+
+
+## Premios en cada idioma (PREMIOS=1): «Tu día» con racha de 4 días, objetivos, reto semanal, lo hecho hoy e
+## insignias; el aviso de premio; y los textos del resumen, las insignias y el aviso diario.
+func _premios(demo: Control, code: String) -> void:
+	var now: Array = demo._prog_now()
+	var bias: int = int(now[1])
+	var today: int = demo._prog_day()
+	var st := Progress.new_state()
+	var ctx: Dictionary = demo._prog_ctx()
+	for d in range(today - 3, today + 1):
+		var at := d * 86400 + 43200 - bias * 60
+		Progress.ensure_today(st, d, ctx)
+		var fam := str(st["semana"]["familia"])
+		for i in (2 if d == today else 1):
+			Progress.record_problem(st, {"correct": i == 0, "family": fam}, at, bias, ctx)
+	Progress.record_game(st, {"own_moves": 12, "result": 1}, today * 86400 + 43200 - bias * 60, bias, ctx)
+	st["insignias"] = ["racha3", "semana1", "dia10"]
+	st["aviso"]["activo"] = true
+	demo.prog = st
+	demo._open_home()
+	await _frames(8)
+	await _shot("%s_8_inicio_reto" % code)
+	demo._open_day()
+	await _frames(10)
+	await _shot("%s_9_tu_dia" % code)
+	demo._prog_toast(Loc.t("¡Reto del día cumplido!"), Loc.f("Racha de %d días", 4), true)
+	await get_tree().create_timer(0.7).timeout
+	await _shot("%s_10_aviso" % code)
+	print("PREMIOS %s · %s · %s · %s" % [code, " | ".join(Progress.summary_lines(st, today)), str(Progress.badge_info("semana5")["nombre"]), str(Reminder._text(st, today, today, today))])
+	demo.prog = {}
+	demo._close_progress()
 
 
 func _frames(n: int) -> void:

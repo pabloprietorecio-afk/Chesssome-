@@ -14,7 +14,7 @@ WORDS = ['alfil', 'caballo', 'dama', 'peón', 'rey', 'torre', 'sí', 'no', 'ene'
 # Lo que no se ve o no se traduce (cabeceras HTTP, rutas de Firebase, la marca, mensajes para desarrolladores…).
 EXCLUDE = re.compile(r'^(Content-Type|Accept|grant_type|auth=|orderBy|partidas/|abiertas/|AIza|\^\[|A CHESS$|WAY$|'
                      r'Falta el índice|.*\\x\{|No se puede cargar|Icono desconocido|Jan$|Feb$|Mar$|Apr$|May$|Jun$|Jul$|Aug$|'
-                     r'Sep$|Oct$|Nov$|Dec$|coño$|Lichess$|OK$|A Chess Way$)')
+                     r'Sep$|Oct$|Nov$|Dec$|coño$|Lichess$|OK$|A Chess Way$|NotificationSchedulerPlugin$|racha%d$|dia%d$|semana%d$)')
 def wanted(s):
     if EXCLUDE.search(s):
         return False

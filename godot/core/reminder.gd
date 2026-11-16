@@ -52,40 +52,45 @@ static func _allowed(d: int, last: int) -> bool:
 static func _text(state: Dictionary, d: int, today: int, last: int) -> Array:
 	var gap := d - last if last >= 0 else 0
 	if last >= 0 and gap >= 7:
-		return ["Un rato de ajedrez", "Un problema de 2 minutos para volver cuando quieras."]
+		return [Loc.t("Un rato de ajedrez"), Loc.t("Un problema de 2 minutos para volver cuando quieras.")]
 	var c := Progress.counts(state, d)
 	var played_today := int(c["p"]) + int(c["l"]) + int(c["g"]) > 0
 	# La racha que se conserva si juega hoy.
 	var streak := Progress.streak_now(state, d)
 	if streak >= 2 and not played_today:
-		return ["¡Tu racha de %d días!" % streak, "Un problema o una partida y la mantienes."]
+		return [Loc.f("¡Tu racha de %d días!", streak), Loc.t("Un problema o una partida y la mantienes.")]
 	# Lo que le falta del reto de hoy.
 	if d == today:
 		for g: Dictionary in Progress.goals(state, d):
 			if not bool(g["hecho"]):
-				return ["Tu reto de hoy", "Te falta %s." % _remaining(g)]
+				return [Loc.t("Tu reto de hoy"), _remaining(g)]
 	# El reto de la semana.
 	var w: Dictionary = state["semana"]
 	if str(w["familia"]) != "" and int(w["idx"]) == Progress.week_index(d) and not bool(w["completo"]):
 		var fam := str(Assessment.FAMILY_NAME.get(str(w["familia"]), str(w["familia"])))
-		return ["Reto de la semana: %s" % fam.to_lower(), "Llevas %d de %d problemas." % [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])]]
+		# En español va en minúscula («Reto de la semana: mates»); en otros idiomas, como se traduce.
+		var fam_text := fam.to_lower() if Loc.language == "es" else Loc.t(fam)
+		return [Loc.f("Reto de la semana: %s", fam_text), Loc.f("Llevas %d de %d problemas.", [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])])]
 	var fallbacks: Array = [
-		["Un problema al día", "Dos minutos bastan para entrenar."],
-		["Hoy toca ajedrez", "Resuelve un problema o juega una partida."],
-		["Tu reto del día te espera", "%d problemas y listo." % ProgressConfig.DAILY_PROBLEMS],
+		[Loc.t("Un problema al día"), Loc.t("Dos minutos bastan para entrenar.")],
+		[Loc.t("Hoy toca ajedrez"), Loc.t("Resuelve un problema o juega una partida.")],
+		[Loc.t("Tu reto del día te espera"), Loc.f("%d problemas y listo.", ProgressConfig.DAILY_PROBLEMS)],
 	]
 	return fallbacks[d % fallbacks.size()]
 
 
+## Lo que falta del objetivo `g`, como frase entera («Te falta resolver 2 problemas más.»), para poder traducirla.
 static func _remaining(g: Dictionary) -> String:
 	var left := int(g["meta"]) - int(g["actual"])
 	match str(g["tipo"]):
 		"problemas":
-			return "resolver %d problema%s más" % [left, "" if left == 1 else "s"] if int(g["actual"]) > 0 else "resolver %d problemas" % left
+			if int(g["actual"]) == 0:
+				return Loc.f("Te falta resolver %d problemas.", left)
+			return Loc.t("Te falta resolver 1 problema más.") if left == 1 else Loc.f("Te falta resolver %d problemas más.", left)
 		"repaso":
-			return "repasar un fallo"
+			return Loc.t("Te falta repasar un fallo.")
 		"leccion":
-			return "hacer una lección"
+			return Loc.t("Te falta hacer una lección.")
 		"partida":
-			return "jugar una partida"
+			return Loc.t("Te falta jugar una partida.")
 	return ""
