@@ -2716,9 +2716,12 @@ func _set_phase(p: Phase) -> void:
 		summary_open = false
 		result_popup_at = Time.get_ticks_msec() + 450
 	# Un repaso queda hecho cuando el problema termina, resuelto o con la solución a la vista.
-	if is_review and (p == Phase.SOLVED or p == Phase.SHOWN) and not puzzle.is_empty() and not reviewed.has(str(puzzle["id"])):
+	var review_done := is_review and (p == Phase.SOLVED or p == Phase.SHOWN) and not puzzle.is_empty() and not reviewed.has(str(puzzle["id"]))
+	if review_done:
 		reviewed[str(puzzle["id"])] = true
 		_save_player()
+	if p == Phase.SOLVED or p == Phase.SHOWN:
+		_prog_finish(p == Phase.SOLVED, review_done)
 	_refresh()
 
 
@@ -8488,15 +8491,28 @@ func _prog_ctx() -> Dictionary:
 	return {"can_review": due >= 2, "lessons_left": lessons_left, "kids": kids, "focus": focus, "families": families}
 
 
+## Primer intento de un problema nuevo (el que mueve el nivel): cuenta para «Resuelve 3 problemas».
 func _prog_problem(correct: bool) -> void:
 	if kids:
 		return
-	var family := str((_try.get("item", {}) as Dictionary).get("family", "otros"))
 	var n := _prog_now()
-	var avisos := Progress.record_problem(_prog(), {"correct": correct, "review": is_review, "family": family}, int(n[0]), int(n[1]), _prog_ctx())
+	var avisos := Progress.record_problem(_prog(), {"correct": correct}, int(n[0]), int(n[1]), _prog_ctx())
 	# Si ya sale el aviso de puntos ganados, el de objetivos espera a que termine.
 	var after_points := mode == "train" and correct and float(_rating_shown[1]) > float(_rating_shown[0]) + 0.5
 	_prog_done(avisos, 3.2 if after_points else 0.6)
+
+
+## Un problema del entrenamiento que termina, nuevo o repetido (resuelto, o con la solución a la vista): cuenta para
+## el reto de la semana (cada problema de su categoría, una vez) y para el repaso de hoy. Antes, un problema ya
+## intentado (los repasos y los repetidos) no contaba para nada, porque solo se anotaba el primer intento.
+func _prog_finish(solved: bool, review: bool) -> void:
+	if kids or mode != "train" or not _has_player() or index < 0 or index >= pool.size():
+		return
+	var item: Dictionary = pool[index]
+	var n := _prog_now()
+	var avisos := Progress.record_finish(_prog(), {"id": str(item["id"]), "family": str(item.get("family", "otros")), "solved": solved, "review": review}, int(n[0]), int(n[1]), _prog_ctx())
+	# Si además sale el aviso de puntos ganados, _prog_problem ya pidió esperar más (se queda el retraso mayor).
+	_prog_done(avisos, 0.6)
 
 
 func _prog_lesson() -> void:
@@ -8516,9 +8532,26 @@ func _prog_game() -> void:
 	_prog_done(Progress.record_game(_prog(), {"own_moves": own, "result": game_won}, int(n[0]), int(n[1]), _prog_ctx()), 1.4)
 
 
+var _prog_pending: Array = []
+var _prog_pending_delay := -1.0
+
+
 func _prog_done(avisos: Array, delay: float) -> void:
 	_prog_save()
 	_aviso_refresh()
+	# Al resolver un problema nuevo llegan dos anotaciones seguidas (el primer intento y el final): se juntan sus
+	# avisos y sale solo el más importante.
+	_prog_pending.append_array(avisos)
+	if _prog_pending_delay < 0.0:
+		_prog_flush.call_deferred()
+	_prog_pending_delay = maxf(_prog_pending_delay, delay)
+
+
+func _prog_flush() -> void:
+	var avisos := _prog_pending
+	var delay := _prog_pending_delay
+	_prog_pending = []
+	_prog_pending_delay = -1.0
 	_prog_notify(avisos, delay)
 
 

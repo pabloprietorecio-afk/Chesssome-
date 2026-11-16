@@ -190,7 +190,8 @@ func _reto_del_dia(demo: Control) -> void:
 		week_family = str(st["semana"]["familia"])
 		var n := 3 if d == today else 1
 		for i in n:
-			Progress.record_problem(st, {"correct": true, "family": week_family if d == today else "otros"}, at, bias, ctx)
+			Progress.record_problem(st, {"correct": true}, at, bias, ctx)
+			Progress.record_finish(st, {"id": "s%d_%d" % [d, i], "family": week_family if d == today else "otros", "solved": true}, at, bias, ctx)
 	st["aviso"]["activo"] = true
 	demo.prog = st
 	demo._open_home()

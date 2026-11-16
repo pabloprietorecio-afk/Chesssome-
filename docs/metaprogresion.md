@@ -4,7 +4,8 @@ Capa de constancia alrededor del juego, sin monedas ni XP: el progreso real sigu
 
 - **Reto del día** (`Progress.ensure_today`): resolver 3 problemas; repasar un fallo antiguo (solo si hay fallos que repasar) o hacer una lección (si quedan); jugar una partida (no en Kids). Una partida cuenta con al menos 8 jugadas propias; si la abandonas, no cuenta (si abandona el rival, sí).
 - **Racha**: un día cuenta con cualquier actividad. Un día sin jugar se perdona una vez por semana (lunes–domingo).
-- **Reto semanal**: 5 problemas resueltos de la categoría más floja del jugador (la de «Mi nivel y mi plan»), o una que se va turnando; no se repite la de la semana anterior.
+- **Reto semanal**: 5 problemas resueltos de la categoría más floja del jugador (la de «Mi nivel y mi plan»), o una que se va turnando; no se repite la de la semana anterior. Cuenta cada problema de esa categoría que el jugador resuelva jugando él las jugadas (aunque antes fallara, y aunque ya lo hubiera visto: hay categorías con solo 14 problemas), una vez por semana; con la solución a la vista no cuenta. `Progress.record_finish`.
+- **Repaso de hoy**: cuenta al terminar el repaso de un fallo antiguo, resuelto o con la solución a la vista. Hasta el 16-11 no contaba nunca: el repaso es un problema ya intentado y solo se anotaba el primer intento de cada problema (`tests/test_retos.gd` lo comprueba con la app entera).
 - **Insignias**: racha de 3, 7 y 30 días; 10 y 30 retos del día; 1 y 5 retos semanales.
 - Nada de esto se usa en el nivel Kids.
 

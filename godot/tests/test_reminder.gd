@@ -27,7 +27,7 @@ func _at(d: int, h: int, m: int = 0) -> int:
 
 
 func _problem(s: Dictionary, d: int, correct: bool = true, family: String = "mate") -> void:
-	Progress.record_problem(s, {"correct": correct, "family": family}, _at(d, 12), 0, CTX)
+	Progress.record_problem(s, {"correct": correct}, _at(d, 12), 0, CTX)
 
 
 func _apagado() -> void:

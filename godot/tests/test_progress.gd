@@ -27,8 +27,22 @@ func _at(day: int) -> int:
 	return day * 86400 + 12 * 3600
 
 
+var _ids := 0
+
+
+## Como en la app: un problema nuevo anota su primer intento (record_problem) y, al terminar, el final
+## (record_finish); un repaso es un problema ya intentado, así que solo anota el final.
 func _problem(s: Dictionary, day: int, correct: bool = true, family: String = "mate", review: bool = false, ctx: Dictionary = CTX) -> Array:
-	return Progress.record_problem(s, {"correct": correct, "family": family, "review": review}, _at(day), 0, ctx)
+	_ids += 1
+	var avisos: Array = []
+	if not review:
+		avisos.append_array(Progress.record_problem(s, {"correct": correct}, _at(day), 0, ctx))
+	avisos.append_array(_finish(s, day, "p%d" % _ids, family, correct, review, ctx))
+	return avisos
+
+
+func _finish(s: Dictionary, day: int, id: String, family: String, solved: bool, review: bool = false, ctx: Dictionary = CTX) -> Array:
+	return Progress.record_finish(s, {"id": id, "family": family, "solved": solved, "review": review}, _at(day), 0, ctx)
 
 
 func _kinds(avisos: Array) -> Array:
@@ -83,6 +97,17 @@ func _reto_del_dia() -> void:
 	Progress.ensure_today(s6, 100, {"can_review": true, "families": {}})
 	_problem(s6, 100, false, "mate", true, {"can_review": true, "families": {}})
 	_ok(Progress.goals(s6, 100)[1]["hecho"], "intentar un repaso cumple el objetivo")
+	# El repaso es un problema ya intentado: no pasa por el primer intento, solo por el final (antes no contaba).
+	var s7 := Progress.new_state()
+	var rctx := {"can_review": true, "families": {}}
+	Progress.ensure_today(s7, 100, rctx)
+	var got := _finish(s7, 100, "viejo", "mate", true, true, rctx)
+	_ok(Progress.goals(s7, 100)[1]["hecho"] and _kinds(got).has("objetivo"), "resolver un repaso (solo el final) cumple el objetivo y avisa")
+	_ok(int(Progress.counts(s7, 100)["p"]) == 0 and int(Progress.counts(s7, 100)["a"]) == 0, "el repaso no cuenta como problema nuevo")
+	_ok(int(s7["racha"]["actual"]) == 1, "repasar también cuenta como día jugado")
+	var s8 := Progress.new_state()
+	Progress.ensure_today(s8, 100, rctx)
+	_ok(_finish(s8, 100, "x", "mate", true, false, rctx).is_empty() and int(s8["racha"]["actual"]) == 0, "terminar un problema repetido fuera del reto no cambia nada")
 
 
 func _partidas_cortas() -> void:
@@ -164,6 +189,28 @@ func _reto_semanal() -> void:
 	var fin := _problem(s, 101, true, "peon", false, ctx)
 	_ok(_kinds(fin).has("reto_semana") and _kinds(fin).has("insignia") and (s["insignias"] as Array).has("semana1"), "el quinto acierto completa la semana y da insignia")
 	_ok(not _kinds(_problem(s, 102, true, "peon", false, ctx)).has("reto_semana"), "no se repite")
+	# Lo que pasaba en el móvil: problemas resueltos tras un fallo, o ya vistos antes, no contaban.
+	var w := Progress.new_state()
+	Progress.ensure_today(w, 100, ctx)
+	Progress.record_problem(w, {"correct": false}, _at(100), 0, ctx)
+	_finish(w, 100, "a", "peon", true, false, ctx)
+	_ok(int(w["semana"]["hecho"]) == 1, "resolverlo después de fallar cuenta para la semana")
+	_finish(w, 100, "b", "peon", true, false, ctx)
+	_ok(int(w["semana"]["hecho"]) == 2, "un problema ya visto (solo el final) cuenta para la semana")
+	_finish(w, 101, "b", "peon", true, false, ctx)
+	_ok(int(w["semana"]["hecho"]) == 2, "el mismo problema solo cuenta una vez por semana")
+	_finish(w, 101, "c", "peon", false, false, ctx)
+	_ok(int(w["semana"]["hecho"]) == 2, "con la solución a la vista no cuenta")
+	_finish(w, 101, "d", "mate", true, false, ctx)
+	_ok(int(w["semana"]["hecho"]) == 2, "otra categoría no cuenta")
+	Progress.save_state(w, "user://test_progreso_semana.json")
+	var back := Progress.load_state("user://test_progreso_semana.json")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_progreso_semana.json"))
+	_ok((back["semana"]["ids"] as Array) == ["a", "b"], "los problemas contados se guardan")
+	_finish(back, 101, "a", "peon", true, false, ctx)
+	_ok(int(back["semana"]["hecho"]) == 2, "y al volver a abrir la app no se cuentan otra vez")
+	_finish(back, 107, "a", "peon", true, false, ctx)
+	_ok(int(back["semana"]["idx"]) == Progress.week_index(107) and (back["semana"]["ids"] as Array).size() <= 1, "la semana siguiente empieza de cero")
 	# Otra semana: nueva categoría, que no repite la anterior.
 	var next := Progress.new_state()
 	next["semana"]["idx"] = Progress.week_index(100) - 1

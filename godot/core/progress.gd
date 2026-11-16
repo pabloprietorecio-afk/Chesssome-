@@ -8,7 +8,7 @@ extends RefCounted
 ##   dias     {«nº de día»: {p intentos, a resueltos, r repasos, l lecciones, g partidas, v ganadas}}
 ##   racha    {actual, mejor, ultimo (nº de día), gracia (semana en que se usó el día de gracia)}
 ##   reto     {dia, metas: [{tipo, meta, hecho}], completo}
-##   semana   {idx, familia, meta, hecho, completo}
+##   semana   {idx, familia, meta, hecho, completo, ids (problemas ya contados esta semana)}
 ##   retos_dia, retos_semana: cuántos se han completado
 ##   insignias: [ids]
 ##   aviso    {activo, hora, min}: el aviso diario (core/reminder.gd), apagado hasta que el jugador lo activa
@@ -43,7 +43,7 @@ static func new_state() -> Dictionary:
 		"dias": {},
 		"racha": {"actual": 0, "mejor": 0, "ultimo": -1, "gracia": -1},
 		"reto": {"dia": -1, "metas": [], "completo": false},
-		"semana": {"idx": -1, "familia": "", "meta": ProgressConfig.WEEKLY_PROBLEMS, "hecho": 0, "completo": false},
+		"semana": {"idx": -1, "familia": "", "meta": ProgressConfig.WEEKLY_PROBLEMS, "hecho": 0, "completo": false, "ids": []},
 		"retos_dia": 0,
 		"retos_semana": 0,
 		"insignias": [],
@@ -81,7 +81,12 @@ static func load_state(path: String = PATH) -> Dictionary:
 		state["reto"] = {"dia": int((d["reto"] as Dictionary).get("dia", -1)), "metas": goals, "completo": bool((d["reto"] as Dictionary).get("completo", false))}
 	if d.get("semana") is Dictionary:
 		var w: Dictionary = d["semana"]
-		state["semana"] = {"idx": int(w.get("idx", -1)), "familia": str(w.get("familia", "")), "meta": maxi(1, int(w.get("meta", ProgressConfig.WEEKLY_PROBLEMS))), "hecho": int(w.get("hecho", 0)), "completo": bool(w.get("completo", false))}
+		var ids: Array = []
+		if w.get("ids") is Array:
+			for id: Variant in (w["ids"] as Array):
+				if not ids.has(str(id)):
+					ids.append(str(id))
+		state["semana"] = {"idx": int(w.get("idx", -1)), "familia": str(w.get("familia", "")), "meta": maxi(1, int(w.get("meta", ProgressConfig.WEEKLY_PROBLEMS))), "hecho": int(w.get("hecho", 0)), "completo": bool(w.get("completo", false)), "ids": ids}
 	state["retos_dia"] = int(d.get("retos_dia", 0))
 	state["retos_semana"] = int(d.get("retos_semana", 0))
 	if d.get("aviso") is Dictionary:
@@ -146,7 +151,7 @@ static func ensure_today(state: Dictionary, day: int, ctx: Dictionary) -> void:
 	var week := week_index(day)
 	var w: Dictionary = state["semana"]
 	if int(w["idx"]) != week:
-		state["semana"] = {"idx": week, "familia": _pick_family(week, str(w["familia"]), ctx), "meta": ProgressConfig.WEEKLY_PROBLEMS, "hecho": 0, "completo": false}
+		state["semana"] = {"idx": week, "familia": _pick_family(week, str(w["familia"]), ctx), "meta": ProgressConfig.WEEKLY_PROBLEMS, "hecho": 0, "completo": false, "ids": []}
 
 
 ## Categoría de la semana: la más floja del jugador que tenga problemas de sobra; si no hay datos, se van
@@ -170,7 +175,8 @@ static func _pick_family(week: int, previous: String, ctx: Dictionary) -> String
 
 # ---------------------------------------------------------------- eventos
 
-## Un problema terminado. `ev`: {correct, review (era un repaso), family}. Devuelve los avisos.
+## El primer intento de un problema nuevo (lo que mueve el nivel). `ev`: {correct}. Cuenta para «Resuelve 3
+## problemas» si salió a la primera. Devuelve los avisos.
 static func record_problem(state: Dictionary, ev: Dictionary, now: int, bias_min: int, ctx: Dictionary) -> Array:
 	var day := day_number(now, bias_min)
 	ensure_today(state, day, ctx)
@@ -180,10 +186,32 @@ static func record_problem(state: Dictionary, ev: Dictionary, now: int, bias_min
 	c["p"] = int(c["p"]) + 1
 	if bool(ev.get("correct", false)):
 		c["a"] = int(c["a"]) + 1
-		var w: Dictionary = state["semana"]
-		if str(w["familia"]) != "" and str(ev.get("family", "")) == str(w["familia"]):
-			w["hecho"] = int(w["hecho"]) + 1
-	if bool(ev.get("review", false)):
+	_check(state, day, avisos)
+	return avisos
+
+
+## Un problema que termina, nuevo o repetido: resuelto (jugando tú las jugadas, aunque antes fallaras) o con la
+## solución a la vista. `ev`: {id, family, solved, review (era el repaso de un fallo antiguo)}.
+##  - Reto de la semana: cuenta cada problema de su categoría que resuelvas, una sola vez por semana.
+##  - Repaso de hoy: cuenta el repaso, resuelto o con la solución vista.
+## Devuelve los avisos (vacío si no cambia nada).
+static func record_finish(state: Dictionary, ev: Dictionary, now: int, bias_min: int, ctx: Dictionary) -> Array:
+	var day := day_number(now, bias_min)
+	ensure_today(state, day, ctx)
+	var w: Dictionary = state["semana"]
+	var ids: Array = w["ids"]
+	var id := str(ev.get("id", ""))
+	var weekly := bool(ev.get("solved", false)) and id != "" and str(w["familia"]) != "" and str(ev.get("family", "")) == str(w["familia"]) and not ids.has(id)
+	var review := bool(ev.get("review", false))
+	if not weekly and not review:
+		return []
+	var avisos: Array = []
+	_touch(state, day, avisos)
+	if weekly:
+		ids.append(id)
+		w["hecho"] = int(w["hecho"]) + 1
+	if review:
+		var c := _today(state, day)
 		c["r"] = int(c["r"]) + 1
 	_check(state, day, avisos)
 	return avisos

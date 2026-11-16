@@ -77,7 +77,8 @@ func _premios(demo: Control, code: String) -> void:
 		Progress.ensure_today(st, d, ctx)
 		var fam := str(st["semana"]["familia"])
 		for i in (2 if d == today else 1):
-			Progress.record_problem(st, {"correct": i == 0, "family": fam}, at, bias, ctx)
+			Progress.record_problem(st, {"correct": i == 0}, at, bias, ctx)
+			Progress.record_finish(st, {"id": "s%d_%d" % [d, i], "family": fam, "solved": i == 0}, at, bias, ctx)
 	Progress.record_game(st, {"own_moves": 12, "result": 1}, today * 86400 + 43200 - bias * 60, bias, ctx)
 	st["insignias"] = ["racha3", "semana1", "dia10"]
 	st["aviso"]["activo"] = true
