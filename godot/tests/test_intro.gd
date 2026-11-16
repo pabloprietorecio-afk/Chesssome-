@@ -36,13 +36,27 @@ func _initialize() -> void:
 	_ok(title_mid > 2160.0 * 0.62 and title_mid < 2160.0 * 0.9, "el título va en el tercio de abajo, en el suelo del vídeo (%.0f)" % title_mid)
 	_ok(intro._clip.position.x > 0.0 and intro._clip.position.x + intro._label.size.x <= 1080.0, "el título cabe en el ancho")
 	_ok(intro._clip.size.x < 1.0, "al empezar, el título aún no está escrito")
+	# Sonido: el del vídeo, que arranca con él, al volumen de los efectos de la app.
+	_ok(intro._audio != null and intro._audio.stream is AudioStreamOggVorbis, "la intro lleva su sonido (Ogg Vorbis)")
+	await create_timer(0.7).timeout
+	_ok(intro._audio.playing, "el sonido arranca con el vídeo")
+	_ok(is_equal_approx(intro._audio.volume_db, Intro.SOUND_DB), "al volumen de los efectos")
 	# Un toque la salta.
 	var tap := InputEventMouseButton.new()
 	tap.pressed = true
 	tap.button_index = MOUSE_BUTTON_LEFT
 	intro._gui_input(tap)
+	await create_timer(Intro.FADE * 0.6).timeout
+	_ok(is_instance_valid(intro) and intro._audio.volume_db < Intro.SOUND_DB - 3.0, "al saltarla, el sonido se apaga con la imagen")
 	await create_timer(Intro.FADE + 0.3).timeout
 	_ok(_terminada, "un toque termina la intro")
+	# Con el sonido apagado en Opciones, sin sonido.
+	var quiet := Intro.new()
+	quiet.sound = false
+	holder.add_child(quiet)
+	await process_frame
+	_ok(quiet._audio == null, "con el sonido apagado, la intro va en silencio")
+	quiet.queue_free()
 	await _en_la_app()
 	print("%d comprobaciones, %d fallos" % [hechos, fallos])
 	if fallos == 0:

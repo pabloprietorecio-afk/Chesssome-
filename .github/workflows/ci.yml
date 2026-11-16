@@ -581,6 +581,8 @@ jobs:
           $AAPT2 dump badging $A | grep -E "^(sdkVersion|targetSdkVersion|compileSdkVersion)" || true
           T=$($AAPT2 dump badging $A | sed -n "s/^targetSdkVersion:'\([0-9]*\)'.*/\1/p")
           [ -n "$T" ] && [ "$T" -ge 35 ] || { echo "targetSdkVersion=$T: Play exige 35 o más"; exit 1; }
+          # Sonido de la intro (importado por Godot: va como .oggvorbisstr dentro de .godot/imported).
+          if grep -q "intro_sonido.ogg" build/avisos-log/apk-contenido.txt; then echo "OK sonido de la intro"; else echo "FALTA el sonido de la intro"; exit 1; fi
           for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/data/ads.json assets/ui/iconos.json assets/intro/intro.ogv; do
             if grep -q " $f$" build/avisos-log/apk-contenido.txt; then echo "OK $f"; else echo "FALTA $f"; exit 1; fi
           done

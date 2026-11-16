@@ -5360,6 +5360,7 @@ func _play_intro() -> void:
 	intro_seen = true
 	_save_settings()
 	var intro := Intro.new()
+	intro.sound = sound_on
 	add_child(intro)
 
 

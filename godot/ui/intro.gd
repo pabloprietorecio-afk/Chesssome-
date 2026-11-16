@@ -3,7 +3,8 @@ extends Control
 ## Intro animada del arranque: el caballo de marfil salta por el tablero y vuelve a su tesela naranja, el icono de la
 ## app (vídeo de Pablo hecho con PixVerse a partir del fotograma final que le preparamos; sin texto ni sonido). Al
 ## final, «A Chess Way» se escribe a mano (Caveat, OFL) en el suelo crema del vídeo y debajo se traza el subrayado
-## naranja del inicio. Un toque la salta. Opciones → «Intro»: siempre, una vez, nunca.
+## naranja del inicio. Con su sonido (el del mismo vídeo, igualado al volumen de los efectos de la app), salvo con
+## el sonido apagado en Opciones. Un toque la salta. Opciones → «Intro»: siempre, una vez, nunca.
 ##
 ## El vídeo es Ogg Theora (lo único que lee Godot), recortado sin las franjas negras (864 × 1520) y sin el corte del
 ## principio. Tiene que estar en el filtro de exportación (intro/*.ogv): Godot no lo importa y, si falta, la intro no
@@ -12,6 +13,10 @@ extends Control
 signal finished
 
 const VIDEO := "res://intro/intro.ogv"
+## Sonido del vídeo (mismo recorte), en Ogg Vorbis: −19 LUFS, como «lección terminada»; picos a −3,3 dB.
+const SOUND := "res://intro/intro_sonido.ogg"
+## Volumen de reproducción: el de los efectos de la app (demo.gd, sfx_player).
+const SOUND_DB := -4.0
 const FONT := "res://fonts/Caveat-Bold.woff2"
 const TITLE := "A Chess Way"
 ## Proporción del vídeo (alto / ancho).
@@ -33,6 +38,10 @@ const HOLD := 0.75
 const FADE := 0.4
 
 var _player: VideoStreamPlayer
+## Con sonido (lo decide la app según Opciones antes de añadir la intro).
+var sound := true
+var _audio: AudioStreamPlayer
+var _audio_wait := 0.0
 var _wash: Control
 var _fade_top: ColorRect
 var _fade_bottom: ColorRect
@@ -82,6 +91,11 @@ func _ready() -> void:
 	_rule.joint_mode = Line2D.LINE_JOINT_ROUND
 	_rule.antialiased = true
 	add_child(_rule)
+	if sound and ResourceLoader.exists(SOUND):
+		_audio = AudioStreamPlayer.new()
+		_audio.stream = load(SOUND)
+		_audio.volume_db = SOUND_DB
+		add_child(_audio)
 	resized.connect(_layout)
 	_layout()
 	_player.play()
@@ -96,6 +110,17 @@ func _ready() -> void:
 	tw.tween_callback(func() -> void: _player.paused = true)
 	tw.tween_interval(maxf(WRITE_FROM + WRITE_TIME + RULE_TIME + HOLD - FREEZE_AT, 0.1))
 	tw.tween_callback(_leave)
+
+
+## El sonido arranca con el primer fotograma del vídeo (el descodificador tarda un poco en empezar), y como mucho
+## medio segundo después, por si el vídeo no avanza.
+func _process(delta: float) -> void:
+	if _audio == null or _audio.playing or _done or _audio_wait < 0.0:
+		return
+	_audio_wait += delta
+	if _player.stream_position > 0.0 or _audio_wait > 0.5:
+		_audio.play(maxf(_player.stream_position, 0.0))
+		_audio_wait = -1.0
 
 
 func _fade_strip(color: Color, top: bool) -> ColorRect:
@@ -190,6 +215,9 @@ func _leave() -> void:
 	_done = true
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, FADE)
+	if _audio != null:
+		# Si se salta, el sonido se apaga a la vez que la imagen.
+		tw.parallel().tween_property(_audio, "volume_db", -40.0, FADE)
 	tw.tween_callback(_end)
 
 
