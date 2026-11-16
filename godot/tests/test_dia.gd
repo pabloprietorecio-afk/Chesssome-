@@ -68,6 +68,14 @@ func _initialize() -> void:
 	s["reto"]["metas"][0]["hecho"] = true
 	s["reto"]["metas"][0]["actual"] = 3
 	_ok((await _open(demo)).size() == 4, "un reto cumplido no lleva «Ir»")
+	# Aviso diario: a las 21:00 siempre, aunque se hubiera guardado otra hora; sin selector de hora.
+	s["aviso"] = {"activo": true, "hora": 13, "min": 30}
+	var st: Dictionary = demo._aviso_settings()
+	_ok(int(st["hour"]) == 21 and int(st["minute"]) == 0 and bool(st["enabled"]), "el aviso va a las 21:00, sin importar la hora guardada")
+	demo._open_day()
+	await _frames(3)
+	_ok(not _has_text(demo.progress, Loc.t("Hora del aviso")), "sin selector de hora")
+	_ok(_has_text(demo.progress, Loc.f("A las %s, solo si aún no has cumplido tu reto.", "21:00")) or not (demo._aviso_available() or not demo.use_settings), "dice cuándo llega: a las 21:00")
 	print("%d comprobaciones, %d fallos" % [hechos, fallos])
 	if fallos == 0:
 		print("TODO OK")
@@ -98,6 +106,15 @@ func _label_of(n: Node) -> String:
 		if t != "":
 			return t
 	return ""
+
+
+func _has_text(n: Node, text: String) -> bool:
+	if n is Label and (n as Label).text == text:
+		return true
+	for c in n.get_children():
+		if _has_text(c, text):
+			return true
+	return false
 
 
 func _no_page(demo: Control) -> bool:

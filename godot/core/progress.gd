@@ -47,7 +47,7 @@ static func new_state() -> Dictionary:
 		"retos_dia": 0,
 		"retos_semana": 0,
 		"insignias": [],
-		"aviso": {"activo": false, "hora": ReminderConfig.DEFAULT_HOUR, "min": 0},
+		"aviso": {"activo": false, "hora": ReminderConfig.HOUR, "min": 0},
 	}
 
 
@@ -86,7 +86,7 @@ static func load_state(path: String = PATH) -> Dictionary:
 	state["retos_semana"] = int(d.get("retos_semana", 0))
 	if d.get("aviso") is Dictionary:
 		var a: Dictionary = d["aviso"]
-		state["aviso"] = {"activo": bool(a.get("activo", false)), "hora": clampi(int(a.get("hora", ReminderConfig.DEFAULT_HOUR)), 0, 23), "min": clampi(int(a.get("min", 0)), 0, 59)}
+		state["aviso"] = {"activo": bool(a.get("activo", false)), "hora": clampi(int(a.get("hora", ReminderConfig.HOUR)), 0, 23), "min": clampi(int(a.get("min", 0)), 0, 59)}
 	if d.get("insignias") is Array:
 		var ids: Array = []
 		for id: Variant in (d["insignias"] as Array):

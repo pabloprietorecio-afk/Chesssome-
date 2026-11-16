@@ -8798,9 +8798,8 @@ func _open_day() -> void:
 		var amade := _panel()
 		body.add_child(amade[0])
 		var aviso_on := bool((s["aviso"] as Dictionary)["activo"])
-		(amade[1] as VBoxContainer).add_child(_switch_row("clock", "peach", "Avisarme cada día", "Un recordatorio para cumplir tu reto, sin agobios.", aviso_on, _aviso_set))
-		if aviso_on:
-			(amade[1] as VBoxContainer).add_child(_option_button("clock", "peach", "Hora del aviso", Loc.t("%s · toca para cambiar") % _aviso_hour_text(), _aviso_next_hour))
+		# Hora fija (21:00): solo se elige si se quiere el aviso.
+		(amade[1] as VBoxContainer).add_child(_switch_row("clock", "peach", "Avisarme cada día", Loc.f("A las %s, solo si aún no has cumplido tu reto.", _aviso_hour_text()), aviso_on, _aviso_set))
 
 	# Lo hecho hoy.
 	var lines := Progress.summary_lines(s, day)
@@ -8840,8 +8839,6 @@ func _open_day() -> void:
 const AVISO_PLUGIN := "res://addons/NotificationSchedulerPlugin/"
 const AVISO_ID := 4201
 const AVISO_CHANNEL := "chessome_diario"
-## Horas entre las que se elige con un toque: mañana, mediodía, tarde y noche.
-const AVISO_HORAS := [8, 13, 19, 21]
 
 var _aviso_node: Node
 var _aviso_ready := false
@@ -8881,9 +8878,11 @@ func _aviso_on_permission(_permission: String, granted: bool) -> void:
 			_open_day()
 
 
+## Activado o no, siempre a la misma hora (ReminderConfig.HOUR): la hora que se guardó antes, si se eligió otra, ya
+## no cuenta.
 func _aviso_settings() -> Dictionary:
 	var a: Dictionary = _prog()["aviso"]
-	return {"enabled": bool(a["activo"]), "hour": int(a["hora"]), "minute": int(a["min"])}
+	return {"enabled": bool(a["activo"]), "hour": ReminderConfig.HOUR, "minute": 0}
 
 
 ## Vuelve a programar el próximo aviso (se cancela el anterior): tras cada cosa que hace el jugador y al salir de la app.
@@ -8913,20 +8912,11 @@ func _aviso_set(on: bool) -> void:
 	_open_day()
 
 
-## Cambia la hora del aviso a la siguiente de la lista.
-func _aviso_next_hour() -> void:
-	var a: Dictionary = _prog()["aviso"]
-	var i := AVISO_HORAS.find(int(a["hora"]))
-	a["hora"] = int(AVISO_HORAS[(i + 1) % AVISO_HORAS.size()])
-	a["min"] = 0
-	_prog_save()
-	_aviso_refresh()
-	_open_day()
-
-
+## La hora del aviso como se escribe en cada idioma: «21:00» y, en inglés, «9 PM».
 func _aviso_hour_text() -> String:
-	var a: Dictionary = _prog()["aviso"]
-	return "%d:%02d" % [int(a["hora"]), int(a["min"])]
+	if Loc.language == "en":
+		return "%d PM" % (ReminderConfig.HOUR - 12) if ReminderConfig.HOUR > 12 else "%d AM" % ReminderConfig.HOUR
+	return "%d:00" % ReminderConfig.HOUR
 
 
 # ---------------------------------------------------------------- insignia del nivel

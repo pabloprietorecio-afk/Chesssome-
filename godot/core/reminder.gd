@@ -16,7 +16,7 @@ static func plan(state: Dictionary, settings: Dictionary, now: int, bias_min: in
 	if not bool(settings.get("enabled", false)):
 		return {}
 	var today := Progress.day_number(now, bias_min)
-	var minute_of_day := int(settings.get("hour", ReminderConfig.DEFAULT_HOUR)) * 60 + int(settings.get("minute", 0))
+	var minute_of_day := int(settings.get("hour", ReminderConfig.HOUR)) * 60 + int(settings.get("minute", 0))
 	var last := int((state["racha"] as Dictionary)["ultimo"])
 	for d in range(today, today + ReminderConfig.LOOKAHEAD_DAYS):
 		var at := d * 86400 + minute_of_day * 60 - bias_min * 60

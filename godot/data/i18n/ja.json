@@ -509,6 +509,7 @@
 "«Mate en {1}» significa mate forzado en tres jugadas.": "「{1}手詰め」は、3手で必ずメイトできるという意味です。"
 },
 "A Chess Way · %s": "A Chess Way · %s",
+"A las %s, solo si aún no has cumplido tu reto.": "%s に。まだ今日のチャレンジを達成していないときだけ。",
 "A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo.": "%d秒押さないと知らせます（振動あり）。持ち時間は減り続けます。",
 "A reforzar": "要強化",
 "A tu gusto": "お好みで",

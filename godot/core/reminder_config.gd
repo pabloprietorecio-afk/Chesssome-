@@ -2,8 +2,9 @@ class_name ReminderConfig
 extends RefCounted
 ## Valores del aviso diario («echa una partida o cumple tu reto»). Para ajustarlo se cambia SOLO este archivo.
 
-## Hora por defecto del aviso (el jugador podrá elegirla).
-const DEFAULT_HOUR := 19
+## Hora del aviso, fija (decisión de Pablo, 16 nov): a las 21:00 de la hora local, para acabar el reto del día. El
+## jugador solo elige si lo quiere o no.
+const HOUR := 21
 ## Mientras el jugador entre al menos cada tantos días, el aviso es diario.
 const IGNORED_DAYS_LIMIT := 3
 ## Pasados esos días sin entrar, un aviso por semana (a los 7 y a los 14 días), y después ninguno.

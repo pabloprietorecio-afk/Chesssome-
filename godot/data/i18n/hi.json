@@ -509,6 +509,7 @@
 "«Mate en {1}» significa mate forzado en tres jugadas.": "«{1} में मात» का मतलब है तीन चालों में पक्की मात।"
 },
 "A Chess Way · %s": "A Chess Way · %s",
+"A las %s, solo si aún no has cumplido tu reto.": "%s बजे, सिर्फ़ तब जब तुमने अपनी चुनौती अभी पूरी न की हो।",
 "A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo.": "%d सेकंड तक न दबाने पर याद दिलाता है (और वाइब्रेट करता है)। आपका समय चलता रहता है।",
 "A reforzar": "मज़बूत करना है",
 "A tu gusto": "अपनी पसंद से",
