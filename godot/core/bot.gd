@@ -16,17 +16,16 @@ const MATE := 100000
 const INF_SCORE := 1000000
 
 ## name, depth, noise (centipeones), random (probabilidad de una jugada al azar), think (segundos como mucho);
-## elo y rd: fuerza medida (15 nov 2026, .github/workflows/calibrar-bot.yml + tools/calibrar/ajustar.py) en partidas
-## contra Stockfish 16 con UCI_Elo 1320 y 1600 (ritmo 60 s + 0,6 s) y entre niveles vecinos, en un servidor de
-## GitHub: escala de Stockfish, anclada a CCRL 40/4 (motores, no personas). rd = la mitad del margen (±2 errores
-## típicos). En un móvil, los niveles con tope de tiempo pueden jugar algo peor. «Muy difícil» quedó sin medir
-## (se paró la medición): sin «elo», sus partidas no cuentan para el nivel de juego.
+## elo y rd: fuerza medida (15-16 nov 2026, .github/workflows/calibrar-bot.yml + tools/calibrar/ajustar.py) en
+## partidas contra Stockfish 16 con UCI_Elo 1320, 1600 y 2000 (ritmo 60 s + 0,6 s) y entre niveles vecinos, en un
+## servidor de GitHub: escala de Stockfish, anclada a CCRL 40/4 (motores, no personas). rd = la mitad del margen
+## (±2 errores típicos). En un móvil, los niveles con tope de tiempo pueden jugar algo peor.
 const LEVELS := [
-	{"name": "Muy fácil", "depth": 1, "noise": 200, "random": 0.35, "think": 0.6, "elo": 453.0, "rd": 248.0},
-	{"name": "Fácil", "depth": 2, "noise": 60, "random": 0.06, "think": 1.0, "elo": 1129.0, "rd": 76.0},
-	{"name": "Medio", "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1578.0, "rd": 55.0},
-	{"name": "Difícil", "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1782.0, "rd": 53.0},
-	{"name": "Muy difícil", "depth": 12, "noise": 0, "random": 0.0, "think": 5.0},
+	{"name": "Muy fácil", "depth": 1, "noise": 200, "random": 0.35, "think": 0.6, "elo": 457.0, "rd": 248.0},
+	{"name": "Fácil", "depth": 2, "noise": 60, "random": 0.06, "think": 1.0, "elo": 1133.0, "rd": 76.0},
+	{"name": "Medio", "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1589.0, "rd": 57.0},
+	{"name": "Difícil", "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1807.0, "rd": 44.0},
+	{"name": "Muy difícil", "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1912.0, "rd": 46.0},
 ]
 
 var level := 0
