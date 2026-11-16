@@ -247,6 +247,46 @@ static func _inset(c: Control, margin: float) -> MarginContainer:
 	m.add_child(c)
 	return m
 
+## Icono de la app (ui/inicio/icono.bin, tools/inicio/icono.py) con la sombra suave que lleva en el diseño de Pablo:
+## medida en su captura, cae hacia abajo (unos 12 px bajo una tesela de 223 y apenas 5 a los lados) y oscurece el
+## fondo como mucho un 17 %. La pinta una caja con las mismas esquinas, debajo de la imagen y un poco metida para no asomar.
+## `grow`: se dibuja ese factor más grande, hacia la derecha y centrado en alto, sin cambiar lo que ocupa en la
+## maqueta (en la cabecera de la lista, el diseño la lleva un 6,7 % mayor que su hueco, con el título en su sitio).
+static func _icon_mark(side: float, grow := 1.0) -> Control:
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(side, side)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shade := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.95, 0.55, 0.2)
+	sb.set_corner_radius_all(int(roundf(side * grow * 0.255)))
+	sb.corner_detail = 16
+	sb.shadow_color = Color(0.32, 0.18, 0.1, 0.22)
+	sb.shadow_size = maxi(int(roundf(side * grow * 0.036)), 2)
+	sb.shadow_offset = Vector2(0.0, side * grow * 0.018)
+	shade.add_theme_stylebox_override("panel", sb)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var extra := side * (grow - 1.0)
+	var tuck := maxf(side * grow * 0.012, 1.0)
+	shade.offset_left = tuck
+	shade.offset_top = tuck - extra * 0.5
+	shade.offset_right = extra - tuck
+	shade.offset_bottom = extra * 0.5 - tuck
+	box.add_child(shade)
+	var mark := TextureRect.new()
+	mark.texture = art("icono")
+	mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	mark.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mark.offset_top = -extra * 0.5
+	mark.offset_right = extra
+	mark.offset_bottom = extra * 0.5
+	box.add_child(mark)
+	return box
+
 
 static func _center_v(c: Control) -> Control:
 	c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -365,14 +405,7 @@ static func build_list(d: Variant, items: Array) -> void:
 	# Cabecera: el icono de la app, el nombre y la pregunta.
 	var head := _hbox(u(16.0))
 	head.custom_minimum_size = Vector2(0.0, u(76.0))
-	var mark := TextureRect.new()
-	mark.texture = art("icono")
-	mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	mark.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	mark.custom_minimum_size = Vector2(u(76.0), u(76.0))
-	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	head.add_child(mark)
+	head.add_child(_icon_mark(u(76.0), 1.067))
 	var names := _vbox(0.0)
 	names.alignment = BoxContainer.ALIGNMENT_BEGIN
 	names.add_child(_gap(0.0, u(5.0)))
@@ -780,13 +813,7 @@ static func _grid_header(d: Variant, height: float) -> Control:
 		who_row.add_child(words)
 	else:
 		who.pressed.connect(Callable(d, "_open_experience"))
-		var emblem := TextureRect.new()
-		emblem.texture = art("icono")
-		emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		emblem.custom_minimum_size = Vector2(u(48.0), u(48.0))
-		emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var emblem := _icon_mark(u(48.0))
 		emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		who_row.add_child(emblem)
 		var hello := _vbox(0.0)
