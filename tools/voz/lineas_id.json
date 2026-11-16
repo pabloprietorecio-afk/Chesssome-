@@ -1,0 +1,754 @@
+[
+ {
+  "id": "44ac40dedaf3",
+  "text": "Sempurna!"
+ },
+ {
+  "id": "b489832750e7",
+  "text": "Bagus sekali!"
+ },
+ {
+  "id": "22703fef8837",
+  "text": "Bagus sekali! Bisa dengan langkah lebih sedikit. Mau coba lagi?"
+ },
+ {
+  "id": "2968318c5360",
+  "text": "Hampir. Coba lagi!"
+ },
+ {
+  "id": "5d5f58432db5",
+  "text": "Ups! Di petak itu kamu akan dimakan. Coba lagi."
+ },
+ {
+  "id": "c0badf33d79c",
+  "text": "Pelajaran selesai!"
+ },
+ {
+  "id": "9ede6045205b",
+  "text": "Kamu sudah menyelesaikan kursus! Sekarang kamu bisa main catur."
+ },
+ {
+  "id": "9bb52e4fb60c",
+  "text": "Petunjuk: lihat bidak ini."
+ },
+ {
+  "id": "4a35877ae0b4",
+  "text": "Ini untuk orang dewasa. Minta bantuan orang dewasa."
+ },
+ {
+  "id": "82f573018cd2",
+  "text": "Halo! Aku pelatih caturmu. Kita mulai?"
+ },
+ {
+  "id": "530858af9156",
+  "text": "Bagus sekali! Sekarang ayo main dengan yang sudah kamu pelajari."
+ },
+ {
+  "id": "4424b13e969d",
+  "text": "Ayo main! Kamu pegang Putih."
+ },
+ {
+  "id": "ba27ea687871",
+  "text": "Ayo main! Kamu pegang Hitam."
+ },
+ {
+  "id": "6853257bf444",
+  "text": "Perang pion! Yang pertama sampai ke ujung papan menang."
+ },
+ {
+  "id": "dd477cdb4efc",
+  "text": "Pion dan kuda. Yang mempromosikan pion atau memakan semua bidak lawan menang."
+ },
+ {
+  "id": "902cf3426853",
+  "text": "Hati-hati! Rajamu kena skak."
+ },
+ {
+  "id": "f300d340cb7f",
+  "text": "Skakmat! Kamu menang!"
+ },
+ {
+  "id": "707b60212302",
+  "text": "Kali ini lawan yang menang. Main lagi!"
+ },
+ {
+  "id": "e08ea9b81d5c",
+  "text": "Remis! Tidak ada yang menang."
+ },
+ {
+  "id": "515175f2264c",
+  "text": "Kamu menang!"
+ },
+ {
+  "id": "74999327058e",
+  "text": "Lawan menang. Sekali lagi!"
+ },
+ {
+  "id": "0428c665d64a",
+  "text": "Petunjuk: coba dengan bidak ini."
+ },
+ {
+  "id": "cbd4e736f24e",
+  "text": "Ayo ulas permainannya! Aku tunjukkan momen-momen penting."
+ },
+ {
+  "id": "7b82ba508858",
+  "text": "Bagus sekali! Kamu tidak membiarkan bidak tanpa pembela dan tidak melewatkan skakmat."
+ },
+ {
+  "id": "d807af788702",
+  "text": "Di sini kamu meninggalkan bidak tanpa pembela. Lihat dulu apakah bisa dimakan!"
+ },
+ {
+  "id": "6ae8d89a9442",
+  "text": "Di sini kamu bisa memakan bidak gratis. Selalu lihat bidak mana yang bisa kamu makan!"
+ },
+ {
+  "id": "00aafde6e803",
+  "text": "Di sini kamu punya skakmat! Selalu cari apakah bisa skakmat."
+ },
+ {
+  "id": "f5ff80f12d0b",
+  "text": "Setelah langkah ini, lawan bisa men-skakmat kamu. Jaga rajamu!"
+ },
+ {
+  "id": "24da7d0e6c14",
+  "text": "Kamu menggerakkan raja dan tidak bisa rokade lagi. Lebih baik rokade untuk melindunginya."
+ },
+ {
+  "id": "64d983338ee5",
+  "text": "Kamu menggerakkan bidak yang sama berkali-kali. Lebih baik keluarkan semua bidak dulu."
+ },
+ {
+  "id": "9a4c99080ef4",
+  "text": "Cari langkah terbaik."
+ },
+ {
+  "id": "c5cb9e20aeed",
+  "text": "Hati-hati! Dengan langkah itu, lawan bisa men-skakmat kamu. Lihat panahnya dan coba yang lain."
+ },
+ {
+  "id": "0abb532838b2",
+  "text": "Bidak yang kamu gerakkan jadi sendirian, dan lawan bisa memakannya. Lihat panahnya dan coba yang lain."
+ },
+ {
+  "id": "76386c60a855",
+  "text": "Dengan langkah itu kamu meninggalkan bidak tanpa pembela, dan lawan bisa memakannya. Lihat panahnya dan coba yang lain."
+ },
+ {
+  "id": "b53105ef8bf4",
+  "text": "Dengan langkah itu kamu akhirnya kehilangan bidak. Lihat apa yang dilakukan lawan dan coba yang lain."
+ },
+ {
+  "id": "173f7d520b02",
+  "text": "Langkah itu bukan yang terbaik. Ada yang jauh lebih kuat. Cari!"
+ },
+ {
+  "id": "1fb460237d22",
+  "text": "Ada yang lebih baik! Cari langkah yang memenangkan bidak atau memberi skakmat."
+ },
+ {
+  "id": "ab630eca16a6",
+  "text": "Langkah itu juga bagus, tapi ada jalan yang lebih cepat. Cari!"
+ },
+ {
+  "id": "6a4eef4e4477",
+  "text": "Lihat: ini langkah yang benar. Ikuti panah hijau."
+ },
+ {
+  "id": "cb2d88ceaa3f",
+  "text": "Skakmat! Raja tidak bisa kabur, dan tidak ada yang bisa menyelamatkannya."
+ },
+ {
+  "id": "50e9192f1772",
+  "text": "Serangan ganda! Satu bidak menyerang dua hal sekaligus, dan lawan hanya bisa menyelamatkan satu."
+ },
+ {
+  "id": "b55c79f0df63",
+  "text": "Bidak sebaris! Saat menyerang yang di depan, yang di belakang jadi dalam bahaya."
+ },
+ {
+  "id": "b8edcc59f1ca",
+  "text": "Bagus sekali! Kamu menyingkirkan bidak pembela, dan yang dilindunginya jadi sendirian."
+ },
+ {
+  "id": "77a27981585d",
+  "text": "Bagus sekali! Pion yang sampai ke ujung papan menjadi menteri."
+ },
+ {
+  "id": "d90865b41d4e",
+  "text": "Bagus sekali! Bidak itu sendirian tanpa pembela, dan kamu memakannya."
+ },
+ {
+  "id": "f529222c650f",
+  "text": "Bagus sekali! Kamu menemukan langkah terkuat."
+ },
+ {
+  "id": "3fd6f017d854",
+  "text": "Papan catur"
+ },
+ {
+  "id": "dcdc9ec0834f",
+  "text": "Halo! Ayo belajar catur."
+ },
+ {
+  "id": "257f6933b4a2",
+  "text": "Dimainkan di papan dengan 64 petak, terang dan gelap. Dua pemain: Putih dan Hitam. Putih selalu mulai."
+ },
+ {
+  "id": "4cac74cf8129",
+  "text": "Sekarang kamu sudah kenal papannya!"
+ },
+ {
+  "id": "2940562f2837",
+  "text": "Beginilah permainan dimulai. Setiap pemain punya 16 bidak. Kamu pegang Putih, yang dekat denganmu."
+ },
+ {
+  "id": "69693c271398",
+  "text": "Setiap petak punya nama: huruf dan angka, seperti di permainan tebak kapal."
+ },
+ {
+  "id": "3a6519b7cefd",
+  "text": "Benteng"
+ },
+ {
+  "id": "e4f520713466",
+  "text": "Benteng berjalan lurus: maju, mundur, dan ke samping. Sejauh yang ia mau."
+ },
+ {
+  "id": "c4a2a8634bbf",
+  "text": "Tapi ia tidak bisa melompati bidak lain."
+ },
+ {
+  "id": "44439f6f0a46",
+  "text": "Benteng berjalan lurus."
+ },
+ {
+  "id": "66b79c075c19",
+  "text": "Bawa benteng ke bintang."
+ },
+ {
+  "id": "a4bc04b878a0",
+  "text": "Sekarang ambil kedua bintang."
+ },
+ {
+  "id": "7cd27c91df81",
+  "text": "Ambil ketiga bintang."
+ },
+ {
+  "id": "c85f46ab5740",
+  "text": "Pion-pionmu ada di tengah. Benteng tidak bisa melompatinya. Cari jalan lain!"
+ },
+ {
+  "id": "8f3752b3aabc",
+  "text": "Gajah"
+ },
+ {
+  "id": "ff5a455c7184",
+  "text": "Gajah berjalan diagonal, seperti memotong petak lewat sudutnya. Sejauh yang ia mau."
+ },
+ {
+  "id": "8f8b32d4dc9d",
+  "text": "Karena itu ia selalu menginjak petak berwarna sama."
+ },
+ {
+  "id": "305508f0648b",
+  "text": "Gajah berjalan diagonal."
+ },
+ {
+  "id": "6a76be7194b3",
+  "text": "Bawa gajah ke bintang."
+ },
+ {
+  "id": "41da266fc2d5",
+  "text": "Ambil kedua bintang."
+ },
+ {
+  "id": "d44cca7faacb",
+  "text": "Gajah ini hanya menginjak petak terang. Ambil ketiga bintang."
+ },
+ {
+  "id": "174939166807",
+  "text": "Ada pion yang menghalangi. Cari jalan lain!"
+ },
+ {
+  "id": "c1cb50e67ccf",
+  "text": "Menteri"
+ },
+ {
+  "id": "7fb579270e20",
+  "text": "Menteri adalah bidak paling kuat."
+ },
+ {
+  "id": "5b4b6fd32bd9",
+  "text": "Ia bisa berjalan lurus seperti benteng, dan diagonal seperti gajah."
+ },
+ {
+  "id": "18f464580482",
+  "text": "Menteri berjalan lurus dan diagonal."
+ },
+ {
+  "id": "156014e7cab8",
+  "text": "Ambil keempat bintang dengan langkah sesedikit mungkin."
+ },
+ {
+  "id": "b9d7417ffa1d",
+  "text": "Raja"
+ },
+ {
+  "id": "8e383d33274d",
+  "text": "Raja adalah bidak terpenting. Kamu harus menjaganya baik-baik!"
+ },
+ {
+  "id": "542a9e28ff8d",
+  "text": "Tapi jalannya pelan: hanya satu petak setiap kali, ke arah mana saja."
+ },
+ {
+  "id": "ff5f146f4b42",
+  "text": "Raja berjalan satu petak demi satu petak."
+ },
+ {
+  "id": "481f475de654",
+  "text": "Bawa raja ke bintang."
+ },
+ {
+  "id": "aafe96792b5f",
+  "text": "Ambil kedua bintang, langkah demi langkah."
+ },
+ {
+  "id": "43be4454848e",
+  "text": "Ambil kedua bintang. Raja juga bisa berjalan diagonal."
+ },
+ {
+  "id": "9bfcc170a6a3",
+  "text": "Kuda"
+ },
+ {
+  "id": "83e4bcbe9eb1",
+  "text": "Kuda melompat membentuk huruf L: dua petak ke satu arah dan satu lagi ke arah lain."
+ },
+ {
+  "id": "6c672f4ead8b",
+  "text": "Ia satu-satunya bidak yang bisa melompati bidak lain."
+ },
+ {
+  "id": "9ea084cd5944",
+  "text": "Kuda melompat membentuk huruf L."
+ },
+ {
+  "id": "2743b736c7b6",
+  "text": "Bawa kuda ke bintang."
+ },
+ {
+  "id": "09d23016b818",
+  "text": "Kuda melompati pion-pionmu!"
+ },
+ {
+  "id": "854d0e2c088f",
+  "text": "Pion"
+ },
+ {
+  "id": "d2b754eed9c1",
+  "text": "Pion berjalan maju satu petak. Saat pertama kali bergerak, ia bisa maju dua."
+ },
+ {
+  "id": "401e5c4901a7",
+  "text": "Ia tidak pernah mundur. Dan untuk memakan, ia bergerak diagonal."
+ },
+ {
+  "id": "5a36b9d0bdf8",
+  "text": "Pion berjalan lurus dan memakan diagonal."
+ },
+ {
+  "id": "d8cc2ae7b14d",
+  "text": "Pertama kali, pion bisa maju dua petak. Lakukan sekaligus!"
+ },
+ {
+  "id": "4ebd8e347050",
+  "text": "Makan kedua bidak hitam. Ingat: pion memakan diagonal."
+ },
+ {
+  "id": "cac1c22ff278",
+  "text": "Makan ketiga bidak. Perhatikan baik-baik ke arah mana pion memakan."
+ },
+ {
+  "id": "aedc71e7df80",
+  "text": "Memakan"
+ },
+ {
+  "id": "c83d87cbdf12",
+  "text": "Memakan berarti membawa bidakmu ke petak bidak lawan. Kamu mengeluarkannya dari papan dan menempati tempatnya."
+ },
+ {
+  "id": "4c21a2cfe459",
+  "text": "Memakan berarti mengambil bidak lawan."
+ },
+ {
+  "id": "051cde8684c3",
+  "text": "Makan kedua bidak hitam dengan benteng."
+ },
+ {
+  "id": "6d6d4c134f2e",
+  "text": "Makan ketiga bidak dengan gajah."
+ },
+ {
+  "id": "4dfa086a6d6b",
+  "text": "Makan ketiga bidak dengan kuda."
+ },
+ {
+  "id": "d061f3ebe9ac",
+  "text": "Makan keempat bidak dengan menteri, dengan langkah sesedikit yang kamu bisa."
+ },
+ {
+  "id": "7785c5bc0f05",
+  "text": "Jangan sampai dimakan!"
+ },
+ {
+  "id": "96015065ba6c",
+  "text": "Bidak hitam juga bisa memakan."
+ },
+ {
+  "id": "7b5e65ccc137",
+  "text": "Sebelum melangkah, lihat apakah petak tujuanmu diserang."
+ },
+ {
+  "id": "e4be2d4727a8",
+  "text": "Sebelum melangkah, lihat apa yang diserang lawan."
+ },
+ {
+  "id": "27974669ea03",
+  "text": "Makan kedua bidak tanpa dimakan. Mulai dari yang mana?"
+ },
+ {
+  "id": "021644c5a996",
+  "text": "Pion hitam melindungi kuda. Makan keduanya tanpa kehilangan menterimu."
+ },
+ {
+  "id": "abedc2e81998",
+  "text": "Makan ketiga bidak. Awas pion hitam!"
+ },
+ {
+  "id": "fec5313f19d1",
+  "text": "Nilai setiap bidak"
+ },
+ {
+  "id": "d45453907825",
+  "text": "Ada bidak yang lebih berharga dari yang lain. Pion bernilai 1. Kuda dan gajah, 3. Benteng, 5. Dan menteri, 9."
+ },
+ {
+  "id": "d6857044e637",
+  "text": "Raja tidak pernah bisa dimakan."
+ },
+ {
+  "id": "466a016b6396",
+  "text": "Menteri paling berharga dari semuanya."
+ },
+ {
+  "id": "2dcd3edebb1d",
+  "text": "Kamu bisa memakan tiga bidak. Ambil yang paling berharga!"
+ },
+ {
+  "id": "d122889350ea",
+  "text": "Langkah itu tidak memakan apa pun. Coba yang lain!"
+ },
+ {
+  "id": "080d836f483b",
+  "text": "Kuda bernilai 3. Ada yang lebih berharga."
+ },
+ {
+  "id": "99078ec241e1",
+  "text": "Pion bernilai 1. Ada yang lebih berharga."
+ },
+ {
+  "id": "c9fe7f780e75",
+  "text": "Bagus! Benteng bernilai 5: paling berharga."
+ },
+ {
+  "id": "98e13655b936",
+  "text": "Kuda bisa memakan tiga bidak. Mana yang kamu ambil?"
+ },
+ {
+  "id": "797b1a195233",
+  "text": "Bagus! Menteri bernilai 9: paling berharga."
+ },
+ {
+  "id": "dabafe7e2178",
+  "text": "Pion bisa memakan ke dua sisi. Pilih dengan baik!"
+ },
+ {
+  "id": "add9fd0a8e4b",
+  "text": "Skak"
+ },
+ {
+  "id": "61c6ea0923b9",
+  "text": "Memberi skak berarti menyerang raja lawan. Saat rajanya kena skak, ia harus segera menyelamatkannya."
+ },
+ {
+  "id": "8fc940a384c3",
+  "text": "Skak berarti menyerang raja."
+ },
+ {
+  "id": "4b58472bc16d",
+  "text": "Beri skak raja hitam dengan benteng."
+ },
+ {
+  "id": "cb8d1fdaafc2",
+  "text": "Langkah itu tidak menyerang raja hitam. Coba yang lain!"
+ },
+ {
+  "id": "bd1cd8e9cc5c",
+  "text": "Skak! Dengan bentengmu kamu menyerang raja hitam."
+ },
+ {
+  "id": "05b935019aed",
+  "text": "Beri skak dengan gajah."
+ },
+ {
+  "id": "adf5f6ede147",
+  "text": "Skak! Dengan gajahmu kamu menyerang raja hitam."
+ },
+ {
+  "id": "591bfe4014f1",
+  "text": "Beri skak dengan kuda."
+ },
+ {
+  "id": "e111bac330dd",
+  "text": "Skak! Dengan kudamu kamu menyerang raja hitam."
+ },
+ {
+  "id": "a546d5caa4d8",
+  "text": "Keluar dari skak"
+ },
+ {
+  "id": "40a7494044a3",
+  "text": "Ada tiga cara menyelamatkan raja dari skak: menggerakkannya, memakan bidak yang menyerang, atau menaruh bidak lain di antaranya."
+ },
+ {
+  "id": "bfb423eaab51",
+  "text": "Raja selamat dengan bergerak, memakan, atau ditutup."
+ },
+ {
+  "id": "17bca71ed116",
+  "text": "Rajamu kena skak! Di sini kamu hanya bisa menyelamatkannya dengan menggerakkannya."
+ },
+ {
+  "id": "7fdca10cfa1e",
+  "text": "Bagus! Kamu menyelamatkan rajamu dengan menggerakkannya."
+ },
+ {
+  "id": "d633a4492d91",
+  "text": "Skak lagi! Sekarang makan bidak yang menyerang."
+ },
+ {
+  "id": "368fde95d1d6",
+  "text": "Bagus! Kamu menyelamatkan rajamu dengan memakan bidak penyerang."
+ },
+ {
+  "id": "012150c58805",
+  "text": "Dan sekarang, taruh bidak di antaranya."
+ },
+ {
+  "id": "8a58ffa81c63",
+  "text": "Bagus! Kamu menyelamatkan rajamu dengan menutup skak."
+ },
+ {
+  "id": "f6f69eeb817d",
+  "text": "Skakmat"
+ },
+ {
+  "id": "97e3b5b6a740",
+  "text": "Skakmat adalah skak yang membuat raja tidak bisa selamat. Yang memberi skakmat menang!"
+ },
+ {
+  "id": "dcc9a02c876c",
+  "text": "Skakmat berarti menang!"
+ },
+ {
+  "id": "1a38a733e18f",
+  "text": "Beri skakmat. Pion hitam tidak membiarkan raja mereka kabur."
+ },
+ {
+  "id": "0366d9195249",
+  "text": "Langkah itu tidak memberi skak. Coba yang lain!"
+ },
+ {
+  "id": "9aa3909fbf08",
+  "text": "Skakmat! Raja hitam tidak bisa diselamatkan."
+ },
+ {
+  "id": "4c56a3193a0d",
+  "text": "Beri skakmat dengan menteri. Rajamu membantunya."
+ },
+ {
+  "id": "6b575c361d2a",
+  "text": "Itu skak, tapi raja hitam bisa kabur. Coba yang lain!"
+ },
+ {
+  "id": "a7a084b8c186",
+  "text": "Beri skakmat dengan kuda."
+ },
+ {
+  "id": "150ebb8fa538",
+  "text": "Beri skakmat dengan benteng."
+ },
+ {
+  "id": "22002d5b5908",
+  "text": "Pat"
+ },
+ {
+  "id": "d5ca4ed73955",
+  "text": "Awas: jika raja lawan tidak kena skak tapi tidak bisa bergerak ke mana pun, itu pat. Dan hasilnya seri."
+ },
+ {
+  "id": "321ff2af74a8",
+  "text": "Pat berarti seri. Hati-hati!"
+ },
+ {
+  "id": "4d338f8654a8",
+  "text": "Lihat: giliran raja hitam. Ia tidak kena skak, tapi tidak bisa bergerak ke mana pun. Itu pat, dan hasilnya seri! Ketuk «Kenapa?»."
+ },
+ {
+  "id": "2d23f8ed049a",
+  "text": "Pat lagi: raja hitam tidak kena skak, tapi pion dan rajamu menutup semua petaknya."
+ },
+ {
+  "id": "bf4ab9770b54",
+  "text": "Beri skakmat. Tapi jangan sampai pat!"
+ },
+ {
+  "id": "17801ccf1b46",
+  "text": "Pat! Raja hitam tidak kena skak, tapi tidak bisa bergerak. Itu seri."
+ },
+ {
+  "id": "afbf00614ba2",
+  "text": "Lagi: skakmat, tanpa membuatnya pat."
+ },
+ {
+  "id": "2fce11f84e92",
+  "text": "Itu skak, tapi bidak itu bisa dimakan. Coba yang lain!"
+ },
+ {
+  "id": "cbe978e4d33a",
+  "text": "Rokade"
+ },
+ {
+  "id": "a52e8ec08679",
+  "text": "Rokade adalah langkah khusus: kamu menggerakkan raja dan benteng sekaligus untuk menyembunyikan raja."
+ },
+ {
+  "id": "6829f5494e4b",
+  "text": "Caranya, gerakkan raja dua petak ke arah benteng. Benteng akan melompat sendiri ke sisi lain."
+ },
+ {
+  "id": "758c8700d5cd",
+  "text": "Dengan rokade, raja bersembunyi."
+ },
+ {
+  "id": "60f58f496487",
+  "text": "Lakukan rokade ke arah benteng yang paling dekat."
+ },
+ {
+  "id": "2884bed18aba",
+  "text": "Untuk rokade, gerakkan raja dua petak ke arah benteng."
+ },
+ {
+  "id": "035dc831f98d",
+  "text": "Rokade! Rajamu sudah bersembunyi."
+ },
+ {
+  "id": "df6ceddbbec0",
+  "text": "Rokade itu ke sisi lain."
+ },
+ {
+  "id": "bfb9086ff133",
+  "text": "Sekarang lakukan ke sisi lain."
+ },
+ {
+  "id": "6032ea8c1c4c",
+  "text": "Promosi"
+ },
+ {
+  "id": "464e2b35401f",
+  "text": "Jika pion sampai ke ujung papan, ia berubah menjadi bidak lain! Hampir selalu menteri."
+ },
+ {
+  "id": "7d701c83a8dd",
+  "text": "Pion yang sampai ke ujung menjadi menteri."
+ },
+ {
+  "id": "82169a89c2d6",
+  "text": "Bawa pion sampai ujung dan jadikan menteri."
+ },
+ {
+  "id": "444cf9f35465",
+  "text": "Bisa, tapi menteri yang terkuat. Pilih menteri!"
+ },
+ {
+  "id": "4ac504b36984",
+  "text": "Promosi! Pionmu sekarang menjadi menteri."
+ },
+ {
+  "id": "ed486233e5d1",
+  "text": "Bawa pion sampai ujung papan."
+ },
+ {
+  "id": "a63b86b1a179",
+  "text": "Makan dan promosi sekaligus."
+ },
+ {
+  "id": "7d78252408d9",
+  "text": "En passant"
+ },
+ {
+  "id": "689e83eda0bb",
+  "text": "Langkah ini agak aneh. Jika pion lawan maju dua petak dan berhenti di samping pionmu, kamu bisa memakannya seolah ia hanya maju satu."
+ },
+ {
+  "id": "719f9281430b",
+  "text": "Tapi hanya tepat saat itu."
+ },
+ {
+  "id": "7f348ed5da09",
+  "text": "En passant: hanya tepat setelahnya."
+ },
+ {
+  "id": "dd7125f51bb3",
+  "text": "Pion hitam baru saja maju dua petak. Makan secara en passant!"
+ },
+ {
+  "id": "c20ddd40c0ef",
+  "text": "Gerakkan pionmu secara diagonal, tepat di belakang pion hitam."
+ },
+ {
+  "id": "bc4f6749da50",
+  "text": "En passant! Kamu memakan pion hitam."
+ },
+ {
+  "id": "ec437d2ce0f4",
+  "text": "Lagi: pion hitam baru saja tiba. Manfaatkan!"
+ },
+ {
+  "id": "51c1eb8f2a67",
+  "text": "Skakmat dari permainan nyata 1"
+ },
+ {
+  "id": "d5f93a6dde58",
+  "text": "Posisi ini dari permainan sungguhan. Di semuanya kamu bisa skakmat dengan satu langkah."
+ },
+ {
+  "id": "4e934fbcee6f",
+  "text": "Perhatikan seluruh papan."
+ },
+ {
+  "id": "296509a01a75",
+  "text": "Kamu pemburu raja!"
+ },
+ {
+  "id": "c3b34623d463",
+  "text": "Cari skakmat."
+ },
+ {
+  "id": "fb56db3bef84",
+  "text": "Skakmat dari permainan nyata 2"
+ }
+]

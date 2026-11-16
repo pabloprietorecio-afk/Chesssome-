@@ -47,7 +47,7 @@ func _draw() -> void:
 		if a > lo:
 			draw_line(Vector2(left, y1), Vector2(left + w, y1), grid, 2.0)
 		if small_font != null and y1 - y0 > 34.0:
-			draw_string(small_font, Vector2(left + w + 16.0, (y0 + y1) * 0.5 + 12.0), "Nivel %d" % i, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, quiet)
+			draw_string(small_font, Vector2(left + w + 16.0, (y0 + y1) * 0.5 + 12.0), Loc.f("Nivel %d", i), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, quiet)
 	# Línea y relleno.
 	var pts := PackedVector2Array()
 	var n := values.size()
@@ -66,7 +66,7 @@ func _draw() -> void:
 	draw_circle(pts[n - 1], 6.0, Color.WHITE)
 	# Al pie: de dónde vienes y dónde estás.
 	if small_font != null:
-		draw_string(small_font, Vector2(left, size.y - 12.0), "Problema 1 · %d" % roundi(float(values[0])), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, quiet)
-		var now := "Ahora · %d" % roundi(float(values[n - 1]))
+		draw_string(small_font, Vector2(left, size.y - 12.0), Loc.f("Problema 1 · %d", roundi(float(values[0]))), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, quiet)
+		var now := Loc.f("Ahora · %d", roundi(float(values[n - 1])))
 		var tw := small_font.get_string_size(now, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
 		draw_string(small_font, Vector2(left + w - tw, size.y - 12.0), now, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, ink)

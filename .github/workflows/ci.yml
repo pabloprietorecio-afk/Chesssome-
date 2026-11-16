@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     # «assets-fetch» y «sonidos-fetch» solo sirven para descargar candidatas (assets.yml, sonidos.yml).
-    branches-ignore: [assets-fetch, assets-src, sonidos-fetch, assets-snd, problemas-fetch, problemas-src, voz-fetch, voz-src, voz-exp-fetch, voz-exp-src, firebase-prueba, firebase-resultado]
+    branches-ignore: [assets-fetch, assets-src, sonidos-fetch, assets-snd, problemas-fetch, problemas-src, voz-fetch, voz-src, voz-exp-fetch, voz-exp-src, voz-idiomas-fetch, voz-idiomas-src, firebase-prueba, firebase-resultado]
   pull_request:
   workflow_dispatch:
 
@@ -199,6 +199,19 @@ jobs:
           prerelease: true
           make_latest: false
           body: "APK de depuración de la demo 3D (versión ${{ github.run_number }}, commit ${{ github.sha }})."
+          files: build/android/Chessome-debug.apk
+          overwrite_files: true
+
+      # Rama de idiomas: su propio enlace fijo, para probarla sin tocar el APK de main.
+      - name: APK de la rama de idiomas («apk-idiomas»)
+        if: github.ref == 'refs/heads/idiomas'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-idiomas
+          name: "A Chess Way · APK de la rama idiomas"
+          prerelease: true
+          make_latest: false
+          body: "APK de depuración de la rama idiomas (versión ${{ github.run_number }}, commit ${{ github.sha }})."
           files: build/android/Chessome-debug.apk
           overwrite_files: true
 

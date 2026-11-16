@@ -93,7 +93,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 			paras.append(idea)
 		arrows.append({"from": from, "to": to, "tone": "good"})
 		if verdict == GOOD and best != m and loss >= 60:
-			paras.append("También estaba %s." % SanEs.san(pos, best))
+			paras.append(Loc.f("También estaba %s.", SanEs.san(pos, best)))
 		elif verdict == BEST and bs >= NEAR_MATE:
 			paras.append("Lleva a un mate forzado.")
 	else:
@@ -104,7 +104,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 		if allows_mate:
 			var mate := GameReview.mate_in_one(after)
 			if mate >= 0:
-				paras.append("Permite jaque mate: %s." % SanEs.san(after, mate))
+				paras.append(Loc.f("Permite jaque mate: %s.", SanEs.san(after, mate)))
 				arrows.append({"from": Chess.move_from(mate), "to": Chess.move_to(mate), "tone": "info"})
 			else:
 				paras.append("Deja al rival un mate forzado.")
@@ -113,11 +113,11 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 			if not r.is_empty():
 				var reply := int(r["best"])
 				var tag := MoveWhy.short_tag(after, reply)
-				paras.append("Permite %s%s." % [SanEs.san(after, reply), (": " + tag) if tag != "" else ""])
+				paras.append(Loc.f("Permite %s%s.", [SanEs.san(after, reply), (": " + tag) if tag != "" else ""]))
 				arrows.append({"from": Chess.move_from(reply), "to": Chess.move_to(reply), "tone": "info"})
 		# La mejor y por qué.
 		var best_why := MoveWhy.move_paras(pos, best, color)
-		var best_text := "La mejor era %s" % SanEs.san(pos, best)
+		var best_text := Loc.f("La mejor era %s", SanEs.san(pos, best))
 		var btag := MoveWhy.short_tag(pos, best)
 		if missed_mate:
 			best_text += ": llevaba a un mate forzado"

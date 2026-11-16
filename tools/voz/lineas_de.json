@@ -1,0 +1,754 @@
+[
+ {
+  "id": "cf1bd7a6c87d",
+  "text": "Perfekt!"
+ },
+ {
+  "id": "235e74f3be87",
+  "text": "Sehr gut!"
+ },
+ {
+  "id": "e49f7e6a15ff",
+  "text": "Sehr gut! Es geht auch mit weniger Zügen. Versuchst du es nochmal?"
+ },
+ {
+  "id": "a63bab735603",
+  "text": "Fast. Versuch es nochmal!"
+ },
+ {
+  "id": "1401bf1486df",
+  "text": "Hoppla! Auf diesem Feld würdest du geschlagen. Versuch es nochmal."
+ },
+ {
+  "id": "1ed15df98fe4",
+  "text": "Lektion geschafft!"
+ },
+ {
+  "id": "4a9fa808e218",
+  "text": "Du hast den Kurs geschafft! Jetzt kannst du Schach spielen."
+ },
+ {
+  "id": "8121c290c45b",
+  "text": "Tipp: Schau dir diese Figur an."
+ },
+ {
+  "id": "5a1303ecde17",
+  "text": "Das ist für Erwachsene. Bitte einen Erwachsenen um Hilfe."
+ },
+ {
+  "id": "006cf4fca2ee",
+  "text": "Hallo! Ich bin dein Schachtrainer. Fangen wir an?"
+ },
+ {
+  "id": "3d088e75a573",
+  "text": "Sehr gut! Jetzt spielen wir eine Partie mit dem, was du gelernt hast."
+ },
+ {
+  "id": "fb219aa6a48d",
+  "text": "Los geht's! Du hast Weiß."
+ },
+ {
+  "id": "27a2891f11dd",
+  "text": "Los geht's! Du hast Schwarz."
+ },
+ {
+  "id": "4518de8f84ab",
+  "text": "Bauernkrieg! Wer zuerst das Ende des Bretts erreicht, gewinnt."
+ },
+ {
+  "id": "b390352d267e",
+  "text": "Bauern und Springer. Wer einen Bauern umwandelt oder alle Figuren des Gegners schlägt, gewinnt."
+ },
+ {
+  "id": "a564a5ac9b10",
+  "text": "Vorsicht! Dein König steht im Schach."
+ },
+ {
+  "id": "84d8c9ed7c6f",
+  "text": "Schachmatt! Du hast gewonnen!"
+ },
+ {
+  "id": "d93e9c9f880f",
+  "text": "Diesmal hat der Gegner gewonnen. Spiel noch eine!"
+ },
+ {
+  "id": "4b94c93da3e6",
+  "text": "Remis! Niemand gewinnt."
+ },
+ {
+  "id": "14986ccc5d54",
+  "text": "Du hast gewonnen!"
+ },
+ {
+  "id": "8ce9f8af56a5",
+  "text": "Der Gegner hat gewonnen. Nochmal!"
+ },
+ {
+  "id": "d40d4aa311ce",
+  "text": "Tipp: Versuch es mit dieser Figur."
+ },
+ {
+  "id": "4c3d0e9ca4f9",
+  "text": "Lass uns die Partie anschauen! Ich zeige dir die wichtigen Momente."
+ },
+ {
+  "id": "55bae1cafae6",
+  "text": "Sehr gut! Du hast keine Figur ungedeckt gelassen und kein Matt verpasst."
+ },
+ {
+  "id": "f5feae34aa66",
+  "text": "Hier hast du eine Figur ungedeckt gelassen. Schau vorher, ob man sie schlagen kann!"
+ },
+ {
+  "id": "8a88945c507c",
+  "text": "Hier konntest du eine Figur kostenlos schlagen. Schau immer, welche Figuren du schlagen kannst!"
+ },
+ {
+  "id": "bc8113f10549",
+  "text": "Hier hattest du ein Schachmatt! Schau immer, ob du mattsetzen kannst."
+ },
+ {
+  "id": "988666baf8a6",
+  "text": "Nach diesem Zug konnte dich der Gegner mattsetzen. Pass auf deinen König auf!"
+ },
+ {
+  "id": "8d1d1f087ce8",
+  "text": "Du hast den König gezogen und kannst nicht mehr rochieren. Rochieren schützt ihn besser."
+ },
+ {
+  "id": "466d3cd66890",
+  "text": "Du hast dieselbe Figur oft gezogen. Besser zuerst alle Figuren herausbringen."
+ },
+ {
+  "id": "576a48695ba4",
+  "text": "Such den besten Zug."
+ },
+ {
+  "id": "34397d61faf9",
+  "text": "Vorsicht! Mit diesem Zug kann dich der Gegner mattsetzen. Schau auf den Pfeil und versuch einen anderen."
+ },
+ {
+  "id": "574af7fa79f6",
+  "text": "Die Figur, die du gezogen hast, steht allein und der Gegner kann sie schlagen. Schau auf den Pfeil und versuch einen anderen."
+ },
+ {
+  "id": "68f25abc3281",
+  "text": "Mit diesem Zug lässt du eine Figur ungedeckt und der Gegner kann sie schlagen. Schau auf den Pfeil und versuch einen anderen."
+ },
+ {
+  "id": "62e5c66a1226",
+  "text": "Mit diesem Zug verlierst du am Ende Figuren. Schau, was der Gegner macht, und versuch einen anderen."
+ },
+ {
+  "id": "08637171f22e",
+  "text": "Dieser Zug ist nicht der beste. Es gibt einen viel stärkeren. Such ihn!"
+ },
+ {
+  "id": "e888be28cc26",
+  "text": "Es gab etwas Besseres! Such einen Zug, der eine Figur gewinnt oder mattsetzt."
+ },
+ {
+  "id": "7fd49818a43a",
+  "text": "Dieser Zug ist auch gut, aber es gibt einen schnelleren Weg. Such ihn!"
+ },
+ {
+  "id": "fb6d2bac3633",
+  "text": "Schau: Das war der richtige Zug. Folge dem grünen Pfeil."
+ },
+ {
+  "id": "a2b57bfbe0cf",
+  "text": "Schachmatt! Der König kann nicht fliehen und niemand kann ihn retten."
+ },
+ {
+  "id": "cd1a7f543e93",
+  "text": "Doppelangriff! Eine einzige Figur greift zwei Dinge zugleich an und der Gegner kann nur eines retten."
+ },
+ {
+  "id": "2c8dfe619f5a",
+  "text": "Figuren in einer Linie! Greifst du die vordere an, gerät die hintere in Gefahr."
+ },
+ {
+  "id": "d8fc7e88a409",
+  "text": "Sehr gut! Du hast die verteidigende Figur beseitigt und was sie gedeckt hat, steht jetzt allein."
+ },
+ {
+  "id": "57e72e9cf32b",
+  "text": "Sehr gut! Ein Bauer, der das Ende des Bretts erreicht, wird zur Dame."
+ },
+ {
+  "id": "3f13b5fecd1c",
+  "text": "Sehr gut! Diese Figur stand allein, niemand hat sie gedeckt, und du hast sie geschlagen."
+ },
+ {
+  "id": "7343b60bdc85",
+  "text": "Sehr gut! Du hast den stärksten Zug gefunden."
+ },
+ {
+  "id": "54eae446426a",
+  "text": "Das Brett"
+ },
+ {
+  "id": "1c3a0be4fb2d",
+  "text": "Hallo! Wir lernen Schach."
+ },
+ {
+  "id": "a4318ffc1b19",
+  "text": "Man spielt auf einem Brett mit 64 Feldern, hellen und dunklen. Zwei spielen: Weiß und Schwarz. Weiß fängt immer an."
+ },
+ {
+  "id": "552c9589116f",
+  "text": "Jetzt kennst du das Brett!"
+ },
+ {
+  "id": "6c1a94b24f21",
+  "text": "So beginnt eine Partie. Jeder Spieler hat 16 Figuren. Du hast Weiß, die Figuren in deiner Nähe."
+ },
+ {
+  "id": "df61b2c40d0d",
+  "text": "Jedes Feld hat einen Namen: einen Buchstaben und eine Zahl, wie bei Schiffe versenken."
+ },
+ {
+  "id": "ff9c016d8a91",
+  "text": "Der Turm"
+ },
+ {
+  "id": "12601d3a3f48",
+  "text": "Der Turm geht geradeaus: nach vorn, nach hinten und zur Seite. So weit er will."
+ },
+ {
+  "id": "80400444876d",
+  "text": "Aber er kann nicht über andere Figuren springen."
+ },
+ {
+  "id": "a283c48b5edb",
+  "text": "Der Turm geht geradeaus."
+ },
+ {
+  "id": "ced84de76355",
+  "text": "Bring den Turm zum Stern."
+ },
+ {
+  "id": "031dfdbe65a5",
+  "text": "Jetzt sammle die zwei Sterne."
+ },
+ {
+  "id": "dda596dac0bd",
+  "text": "Sammle die drei Sterne."
+ },
+ {
+  "id": "5c1f93ae630b",
+  "text": "Deine Bauern sind im Weg. Der Turm kann nicht drüberspringen. Such einen anderen Weg!"
+ },
+ {
+  "id": "8be0bf75d649",
+  "text": "Der Läufer"
+ },
+ {
+  "id": "fb3287c0a4d1",
+  "text": "Der Läufer geht diagonal, als würde er die Felder an den Ecken durchschneiden. So weit er will."
+ },
+ {
+  "id": "c90c3333b09b",
+  "text": "Deshalb betritt er immer Felder derselben Farbe."
+ },
+ {
+  "id": "efe95ac6a126",
+  "text": "Der Läufer geht diagonal."
+ },
+ {
+  "id": "005e69938d35",
+  "text": "Bring den Läufer zum Stern."
+ },
+ {
+  "id": "536c5c5231be",
+  "text": "Sammle die zwei Sterne."
+ },
+ {
+  "id": "aa6adb9ff157",
+  "text": "Dieser Läufer betritt nur helle Felder. Sammle die drei Sterne."
+ },
+ {
+  "id": "9099c2ce7a46",
+  "text": "Ein Bauer steht im Weg. Such einen anderen!"
+ },
+ {
+  "id": "13bc4db25c06",
+  "text": "Die Dame"
+ },
+ {
+  "id": "84a999e697da",
+  "text": "Die Dame ist die stärkste Figur von allen."
+ },
+ {
+  "id": "fb216a86a1cb",
+  "text": "Sie kann geradeaus gehen wie der Turm und diagonal wie der Läufer."
+ },
+ {
+  "id": "43f7cd6bbec9",
+  "text": "Die Dame geht gerade und diagonal."
+ },
+ {
+  "id": "7c370e8ee12c",
+  "text": "Sammle die vier Sterne mit so wenig Zügen wie du kannst."
+ },
+ {
+  "id": "743fed1d10c1",
+  "text": "Der König"
+ },
+ {
+  "id": "21176662e857",
+  "text": "Der König ist die wichtigste Figur. Pass gut auf ihn auf!"
+ },
+ {
+  "id": "4d3742879299",
+  "text": "Aber er geht langsam: immer nur ein Feld, in jede Richtung."
+ },
+ {
+  "id": "d089aba4bfb5",
+  "text": "Der König geht Feld für Feld."
+ },
+ {
+  "id": "936e696a0449",
+  "text": "Bring den König zum Stern."
+ },
+ {
+  "id": "08facbc6d79c",
+  "text": "Sammle die zwei Sterne, Schritt für Schritt."
+ },
+ {
+  "id": "eb5af3d13287",
+  "text": "Sammle die zwei Sterne. Der König kann auch diagonal gehen."
+ },
+ {
+  "id": "f250b5a21fec",
+  "text": "Der Springer"
+ },
+ {
+  "id": "1c3aa78a66ed",
+  "text": "Der Springer springt wie ein L: zwei Felder in eine Richtung und eins in die andere."
+ },
+ {
+  "id": "d7bdd76b3d6a",
+  "text": "Er ist die einzige Figur, die über andere springen kann."
+ },
+ {
+  "id": "7568a7352120",
+  "text": "Der Springer springt wie ein L."
+ },
+ {
+  "id": "fd10e0beb20b",
+  "text": "Bring den Springer zum Stern."
+ },
+ {
+  "id": "7737a5ee505f",
+  "text": "Der Springer springt über deine Bauern!"
+ },
+ {
+  "id": "470d37b96680",
+  "text": "Der Bauer"
+ },
+ {
+  "id": "5edbe87e09c3",
+  "text": "Der Bauer geht ein Feld nach vorn. Beim ersten Mal darf er zwei gehen."
+ },
+ {
+  "id": "8839c149f36c",
+  "text": "Er geht nie zurück. Und zum Schlagen geht er diagonal."
+ },
+ {
+  "id": "b67cf6eae6f5",
+  "text": "Der Bauer geht geradeaus und schlägt diagonal."
+ },
+ {
+  "id": "766aea32ae5e",
+  "text": "Beim ersten Mal darf der Bauer zwei Felder ziehen. Mach es in einem Zug!"
+ },
+ {
+  "id": "295da7a3df0b",
+  "text": "Schlag die zwei schwarzen Figuren. Denk daran: Der Bauer schlägt diagonal."
+ },
+ {
+  "id": "d2407e3696ac",
+  "text": "Schlag die drei Figuren. Schau genau, wohin der Bauer schlägt."
+ },
+ {
+  "id": "7c1a489cfcb9",
+  "text": "Schlagen"
+ },
+ {
+  "id": "928bd91fc3eb",
+  "text": "Schlagen heißt, deine Figur auf das Feld einer gegnerischen Figur zu stellen. Du nimmst sie weg und stellst dich an ihren Platz."
+ },
+ {
+  "id": "76c425c8e4e6",
+  "text": "Schlagen heißt, eine gegnerische Figur wegzunehmen."
+ },
+ {
+  "id": "1381319ee0d4",
+  "text": "Schlag die zwei schwarzen Figuren mit dem Turm."
+ },
+ {
+  "id": "015b196e12e2",
+  "text": "Schlag die drei Figuren mit dem Läufer."
+ },
+ {
+  "id": "63b513748a8b",
+  "text": "Schlag die drei Figuren mit dem Springer."
+ },
+ {
+  "id": "ecce9fd6de57",
+  "text": "Schlag die vier Figuren mit der Dame, mit so wenig Zügen wie du kannst."
+ },
+ {
+  "id": "a297892db59c",
+  "text": "Lass dich nicht schlagen!"
+ },
+ {
+  "id": "c09aadfd6694",
+  "text": "Auch die schwarzen Figuren können schlagen."
+ },
+ {
+  "id": "c852f53a4404",
+  "text": "Schau vor dem Ziehen, ob das Feld, auf das du gehst, angegriffen ist."
+ },
+ {
+  "id": "324ddc1f474d",
+  "text": "Schau vor dem Ziehen, was der Gegner angreift."
+ },
+ {
+  "id": "5a150d40b3aa",
+  "text": "Schlag die zwei Figuren, ohne geschlagen zu werden. Mit welcher fängst du an?"
+ },
+ {
+  "id": "d9145e3fb1a5",
+  "text": "Der schwarze Bauer schützt den Springer. Schlag beide, ohne deine Dame zu verlieren."
+ },
+ {
+  "id": "1ac813d7b779",
+  "text": "Schlag die drei Figuren. Vorsicht mit den schwarzen Bauern!"
+ },
+ {
+  "id": "5adb61213867",
+  "text": "Was jede Figur wert ist"
+ },
+ {
+  "id": "dabec22d0cb5",
+  "text": "Manche Figuren sind mehr wert als andere. Der Bauer ist 1 wert. Springer und Läufer 3. Der Turm 5. Und die Dame 9."
+ },
+ {
+  "id": "ea14eb78ed5f",
+  "text": "Der König kann nie geschlagen werden."
+ },
+ {
+  "id": "6ea11fbb0714",
+  "text": "Die Dame ist am meisten wert."
+ },
+ {
+  "id": "655226bf2ebd",
+  "text": "Du kannst drei Figuren schlagen. Nimm die wertvollste!"
+ },
+ {
+  "id": "47be2f48a9c6",
+  "text": "Dieser Zug schlägt nichts. Versuch einen anderen!"
+ },
+ {
+  "id": "1747b3d5e088",
+  "text": "Der Springer ist 3 wert. Eine andere ist mehr wert."
+ },
+ {
+  "id": "c35239e0af72",
+  "text": "Der Bauer ist 1 wert. Eine andere ist mehr wert."
+ },
+ {
+  "id": "05bb347c8650",
+  "text": "Gut! Der Turm ist 5 wert: Er ist am meisten wert."
+ },
+ {
+  "id": "7bf954536be3",
+  "text": "Der Springer kann drei Figuren schlagen. Welche nimmst du?"
+ },
+ {
+  "id": "2118ff674063",
+  "text": "Gut! Die Dame ist 9 wert: Sie ist am meisten wert."
+ },
+ {
+  "id": "a3e9413eea89",
+  "text": "Der Bauer kann nach beiden Seiten schlagen. Wähle gut!"
+ },
+ {
+  "id": "7962737010c7",
+  "text": "Das Schach"
+ },
+ {
+  "id": "5ded11e7fc26",
+  "text": "Schach geben heißt, den König des Gegners anzugreifen. Steht sein König im Schach, muss er ihn sofort retten."
+ },
+ {
+  "id": "e0f0f8881d9c",
+  "text": "Schach heißt, den König anzugreifen."
+ },
+ {
+  "id": "88f49eebcc10",
+  "text": "Gib dem schwarzen König mit dem Turm Schach."
+ },
+ {
+  "id": "337f4c153ce3",
+  "text": "Dieser Zug greift den schwarzen König nicht an. Versuch einen anderen!"
+ },
+ {
+  "id": "3eee5f0da87b",
+  "text": "Schach! Mit deinem Turm greifst du den schwarzen König an."
+ },
+ {
+  "id": "e75e3e9b670e",
+  "text": "Gib mit dem Läufer Schach."
+ },
+ {
+  "id": "55500778b040",
+  "text": "Schach! Mit deinem Läufer greifst du den schwarzen König an."
+ },
+ {
+  "id": "6988b4981b83",
+  "text": "Gib mit dem Springer Schach."
+ },
+ {
+  "id": "7ce862e25229",
+  "text": "Schach! Mit deinem Springer greifst du den schwarzen König an."
+ },
+ {
+  "id": "e7859316dba3",
+  "text": "Aus dem Schach heraus"
+ },
+ {
+  "id": "6f94f18631a4",
+  "text": "Es gibt drei Wege, den König aus dem Schach zu retten: ihn ziehen, die angreifende Figur schlagen oder eine andere Figur dazwischenstellen."
+ },
+ {
+  "id": "7705816e91ca",
+  "text": "Der König rettet sich durch Ziehen, Schlagen oder Dazwischenstellen."
+ },
+ {
+  "id": "2a35e8dc8415",
+  "text": "Dein König steht im Schach! Hier kannst du ihn nur retten, indem du ihn ziehst."
+ },
+ {
+  "id": "de3ee77fe4ce",
+  "text": "Gut! Du hast deinen König gerettet, indem du ihn gezogen hast."
+ },
+ {
+  "id": "beab43f80c81",
+  "text": "Wieder Schach! Jetzt schlag die angreifende Figur."
+ },
+ {
+  "id": "66bb29406a71",
+  "text": "Gut! Du hast deinen König gerettet, indem du die angreifende Figur geschlagen hast."
+ },
+ {
+  "id": "75805cc559ab",
+  "text": "Und jetzt stell eine Figur dazwischen."
+ },
+ {
+  "id": "93e0cfba87b8",
+  "text": "Gut! Du hast deinen König gerettet, indem du das Schach abgedeckt hast."
+ },
+ {
+  "id": "11475fec644d",
+  "text": "Das Schachmatt"
+ },
+ {
+  "id": "59fb3474934c",
+  "text": "Schachmatt ist ein Schach, aus dem sich der König nicht retten kann. Wer mattsetzt, gewinnt die Partie!"
+ },
+ {
+  "id": "e9c80e77bc79",
+  "text": "Schachmatt heißt gewinnen!"
+ },
+ {
+  "id": "61ba4e19b74f",
+  "text": "Setz matt. Die schwarzen Bauern lassen ihren König nicht entkommen."
+ },
+ {
+  "id": "e4eff1895977",
+  "text": "Dieser Zug gibt kein Schach. Versuch einen anderen!"
+ },
+ {
+  "id": "6df8b4924638",
+  "text": "Schachmatt! Der schwarze König kann nicht gerettet werden."
+ },
+ {
+  "id": "286745157b6a",
+  "text": "Setz mit der Dame matt. Dein König hilft ihr."
+ },
+ {
+  "id": "235c6db6cc84",
+  "text": "Es ist Schach, aber der schwarze König kann entkommen. Versuch einen anderen!"
+ },
+ {
+  "id": "8563327211d0",
+  "text": "Setz mit dem Springer matt."
+ },
+ {
+  "id": "18cdb351e9df",
+  "text": "Setz mit dem Turm matt."
+ },
+ {
+  "id": "f12cec28c204",
+  "text": "Das Patt"
+ },
+ {
+  "id": "8fa06b4bafd5",
+  "text": "Achtung: Steht der gegnerische König nicht im Schach, kann aber nirgendwohin ziehen, ist es Patt. Dann ist es unentschieden."
+ },
+ {
+  "id": "3c9ccd998f2d",
+  "text": "Patt ist unentschieden. Vorsicht!"
+ },
+ {
+  "id": "42f128eaab1b",
+  "text": "Schau: Der schwarze König ist dran. Er steht nicht im Schach, kann aber nirgendwohin. Das ist Patt, und es ist unentschieden! Tippe auf „Warum?“."
+ },
+ {
+  "id": "bd4c1f26cd6c",
+  "text": "Noch ein Patt: Der schwarze König steht nicht im Schach, aber dein Bauer und dein König nehmen ihm alle Felder."
+ },
+ {
+  "id": "eaf0ef49a234",
+  "text": "Setz matt. Aber setz ihn nicht patt!"
+ },
+ {
+  "id": "7300683ee3b5",
+  "text": "Patt! Der schwarze König steht nicht im Schach, kann sich aber nicht bewegen. Das ist unentschieden."
+ },
+ {
+  "id": "4527d0798be2",
+  "text": "Noch einmal: Schachmatt, ohne ihn pattzusetzen."
+ },
+ {
+  "id": "4ea3620f482b",
+  "text": "Es ist Schach, aber diese Figur kann geschlagen werden. Versuch einen anderen!"
+ },
+ {
+  "id": "7f4e58ac6fc9",
+  "text": "Die Rochade"
+ },
+ {
+  "id": "efac56c219d3",
+  "text": "Die Rochade ist ein besonderer Zug: Du ziehst König und Turm gleichzeitig, um den König zu verstecken."
+ },
+ {
+  "id": "b6316e03f96f",
+  "text": "Dazu ziehst du den König zwei Felder Richtung Turm. Der Turm springt von selbst auf die andere Seite."
+ },
+ {
+  "id": "26544481c693",
+  "text": "Mit der Rochade versteckt sich der König."
+ },
+ {
+  "id": "840907a50497",
+  "text": "Rochiere zur näheren Seite, wo der Turm steht."
+ },
+ {
+  "id": "ca16fccb5c62",
+  "text": "Zum Rochieren zieh den König zwei Felder Richtung Turm."
+ },
+ {
+  "id": "d472ad60b1c8",
+  "text": "Rochade! Dein König ist jetzt versteckt."
+ },
+ {
+  "id": "6b1aa188c0a2",
+  "text": "Diese Rochade geht zur anderen Seite."
+ },
+ {
+  "id": "e8c6c2374451",
+  "text": "Jetzt mach es zur anderen Seite."
+ },
+ {
+  "id": "3bf056e294c9",
+  "text": "Umwandeln"
+ },
+ {
+  "id": "ed4b0da2bd8b",
+  "text": "Kommt ein Bauer bis ans Ende des Bretts, verwandelt er sich in eine andere Figur! Fast immer in eine Dame."
+ },
+ {
+  "id": "0532e58f016c",
+  "text": "Ein Bauer, der das Ende erreicht, wird zur Dame."
+ },
+ {
+  "id": "42b4741585ef",
+  "text": "Bring den Bauern bis ans Ende und mach ihn zur Dame."
+ },
+ {
+  "id": "1e3b04a85702",
+  "text": "Das geht, aber die Dame ist am stärksten. Wähle die Dame!"
+ },
+ {
+  "id": "65ca6295218f",
+  "text": "Umgewandelt! Dein Bauer ist jetzt eine Dame."
+ },
+ {
+  "id": "228452c05853",
+  "text": "Bring den Bauern bis ans Ende des Bretts."
+ },
+ {
+  "id": "6e9b4f85eb0a",
+  "text": "Schlag und wandle gleichzeitig um."
+ },
+ {
+  "id": "76b14121f942",
+  "text": "Schlagen en passant"
+ },
+ {
+  "id": "0c53cea3fce4",
+  "text": "Dieser Zug ist etwas seltsam. Zieht ein gegnerischer Bauer zwei Felder und stellt sich neben deinen, kannst du ihn schlagen, als wäre er nur eins gezogen."
+ },
+ {
+  "id": "edec016ebf31",
+  "text": "Aber nur genau in diesem Moment."
+ },
+ {
+  "id": "0af8a8b1e2e7",
+  "text": "En passant: nur direkt danach."
+ },
+ {
+  "id": "23c8778785ba",
+  "text": "Der schwarze Bauer ist gerade zwei Felder gezogen. Schlag ihn en passant!"
+ },
+ {
+  "id": "2990cedb1bbb",
+  "text": "Zieh deinen Bauern diagonal, direkt hinter den schwarzen Bauern."
+ },
+ {
+  "id": "57ef4473cf3f",
+  "text": "En passant! Du hast den schwarzen Bauern geschlagen."
+ },
+ {
+  "id": "87a706be8290",
+  "text": "Noch einmal: Der schwarze Bauer ist gerade angekommen. Nutze es!"
+ },
+ {
+  "id": "110974e8c015",
+  "text": "Matts aus echten Partien 1"
+ },
+ {
+  "id": "19b3d062dc0e",
+  "text": "Diese Stellungen stammen aus echten Partien. In allen kannst du mit einem einzigen Zug mattsetzen."
+ },
+ {
+  "id": "dd43965445f6",
+  "text": "Schau dir das ganze Brett gut an."
+ },
+ {
+  "id": "bb870d67ffa9",
+  "text": "Du bist ein Königsjäger!"
+ },
+ {
+  "id": "7c9dc177ad42",
+  "text": "Such das Schachmatt."
+ },
+ {
+  "id": "439ba53ce88f",
+  "text": "Matts aus echten Partien 2"
+ }
+]

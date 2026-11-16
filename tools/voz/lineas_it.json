@@ -1,0 +1,754 @@
+[
+ {
+  "id": "b459126f0e14",
+  "text": "Perfetto!"
+ },
+ {
+  "id": "50ca91286aef",
+  "text": "Bravissimo!"
+ },
+ {
+  "id": "5dc958e46443",
+  "text": "Bravissimo! Si può fare con meno mosse. Riprovi?"
+ },
+ {
+  "id": "944766b2de27",
+  "text": "Quasi. Riprova!"
+ },
+ {
+  "id": "a4d5f32c8ffb",
+  "text": "Ops! Su quella casa ti catturerebbero. Riprova."
+ },
+ {
+  "id": "d0f0d4ca050d",
+  "text": "Lezione finita!"
+ },
+ {
+  "id": "61633585b01b",
+  "text": "Hai finito il corso! Ora sai giocare a scacchi."
+ },
+ {
+  "id": "0c5ebc2802f9",
+  "text": "Suggerimento: guarda questo pezzo."
+ },
+ {
+  "id": "d745d62f9923",
+  "text": "Questo è per i grandi. Chiedi aiuto a un adulto."
+ },
+ {
+  "id": "a40ae3afe853",
+  "text": "Ciao! Sono il tuo allenatore di scacchi. Cominciamo?"
+ },
+ {
+  "id": "6cea42cc3500",
+  "text": "Bravissimo! Ora giochiamo una partita con quello che hai imparato."
+ },
+ {
+  "id": "1c0e42dada6a",
+  "text": "Si gioca! Tu hai il Bianco."
+ },
+ {
+  "id": "0ffc52fafb73",
+  "text": "Si gioca! Tu hai il Nero."
+ },
+ {
+  "id": "9f4b3d0c57ec",
+  "text": "Guerra di pedoni! Vince chi arriva per primo in fondo alla scacchiera."
+ },
+ {
+  "id": "3eaa22ff8ce2",
+  "text": "Pedoni e cavalli. Vince chi promuove un pedone o cattura tutti i pezzi dell'avversario."
+ },
+ {
+  "id": "6142b3965798",
+  "text": "Attento! Il tuo re è sotto scacco."
+ },
+ {
+  "id": "735a6a85f66e",
+  "text": "Scacco matto! Hai vinto!"
+ },
+ {
+  "id": "fe4000a33427",
+  "text": "Stavolta ha vinto l'avversario. Giocane un'altra!"
+ },
+ {
+  "id": "58c42611f4a0",
+  "text": "Patta! Nessuno vince."
+ },
+ {
+  "id": "f11ac24cfa11",
+  "text": "Hai vinto!"
+ },
+ {
+  "id": "a18014161566",
+  "text": "Ha vinto l'avversario. Ancora!"
+ },
+ {
+  "id": "92a29eecdbde",
+  "text": "Suggerimento: prova con questo pezzo."
+ },
+ {
+  "id": "e04ea720e2aa",
+  "text": "Ripassiamo la partita! Ti mostro i momenti importanti."
+ },
+ {
+  "id": "2375f2878fcf",
+  "text": "Bravissimo! Non hai lasciato pezzi indifesi e non ti è sfuggito nessun matto."
+ },
+ {
+  "id": "6d97973c97f0",
+  "text": "Qui hai lasciato un pezzo indifeso. Guarda prima se te lo possono catturare!"
+ },
+ {
+  "id": "d37b20bc99b4",
+  "text": "Qui potevi catturare un pezzo gratis. Guarda sempre quali pezzi puoi catturare!"
+ },
+ {
+  "id": "fa2664e2cfc8",
+  "text": "Qui avevi scacco matto! Cerca sempre se puoi dare matto."
+ },
+ {
+  "id": "4de699851b1f",
+  "text": "Dopo questa mossa, l'avversario poteva darti scacco matto. Attento al tuo re!"
+ },
+ {
+  "id": "46289b83234b",
+  "text": "Hai mosso il re e non puoi più arroccare. È meglio arroccare per proteggerlo."
+ },
+ {
+  "id": "0a0aa5df4f1c",
+  "text": "Hai mosso lo stesso pezzo tante volte. È meglio far uscire prima tutti i pezzi."
+ },
+ {
+  "id": "86ce59d3fcc7",
+  "text": "Cerca la mossa migliore."
+ },
+ {
+  "id": "697d3c35d04f",
+  "text": "Attento! Con quella mossa, l'avversario ti può dare scacco matto. Guarda la freccia e provane un'altra."
+ },
+ {
+  "id": "0a308c9dd412",
+  "text": "Il pezzo che hai mosso resta da solo e l'avversario lo può catturare. Guarda la freccia e provane un'altra."
+ },
+ {
+  "id": "a466de1299b8",
+  "text": "Con quella mossa lasci un pezzo indifeso e l'avversario lo può catturare. Guarda la freccia e provane un'altra."
+ },
+ {
+  "id": "f95f8dea8c5b",
+  "text": "Con quella mossa finisci per perdere pezzi. Guarda cosa fa l'avversario e provane un'altra."
+ },
+ {
+  "id": "a089464218f9",
+  "text": "Quella mossa non è la migliore. Ce n'è una molto più forte. Trovala!"
+ },
+ {
+  "id": "84af6fd72e92",
+  "text": "C'era di meglio! Cerca una mossa che vinca un pezzo o dia scacco matto."
+ },
+ {
+  "id": "d2425a78f62f",
+  "text": "Anche quella mossa è buona, ma c'è una strada più veloce. Trovala!"
+ },
+ {
+  "id": "714133667cef",
+  "text": "Guarda: questa era la mossa giusta. Segui la freccia verde."
+ },
+ {
+  "id": "d88cfec7df42",
+  "text": "Scacco matto! Il re non può scappare e nessuno lo può salvare."
+ },
+ {
+  "id": "f4a74b969ec5",
+  "text": "Attacco doppio! Un solo pezzo attacca due cose insieme e l'avversario ne può salvare solo una."
+ },
+ {
+  "id": "abe0f6093c54",
+  "text": "Pezzi in fila! Attaccando quello davanti, quello dietro resta in pericolo."
+ },
+ {
+  "id": "5ea246a736d7",
+  "text": "Bravissimo! Hai tolto il pezzo che difendeva e ciò che difendeva è rimasto solo."
+ },
+ {
+  "id": "e6a563a8a4f9",
+  "text": "Bravissimo! Un pedone che arriva in fondo alla scacchiera diventa donna."
+ },
+ {
+  "id": "aaca23cdf48a",
+  "text": "Bravissimo! Quel pezzo era solo, senza nessuno a difenderlo, e l'hai catturato."
+ },
+ {
+  "id": "bb72b45b9d25",
+  "text": "Bravissimo! Hai trovato la mossa più forte."
+ },
+ {
+  "id": "cb51d84b21e0",
+  "text": "La scacchiera"
+ },
+ {
+  "id": "5deba80acd81",
+  "text": "Ciao! Impariamo gli scacchi."
+ },
+ {
+  "id": "aa352d8e2eae",
+  "text": "Si gioca su una scacchiera con 64 case, chiare e scure. Si gioca in due: Bianco e Nero. Inizia sempre il Bianco."
+ },
+ {
+  "id": "790f17f1b8ce",
+  "text": "Ora conosci la scacchiera!"
+ },
+ {
+  "id": "cc48dfc315c0",
+  "text": "Così inizia una partita. Ogni giocatore ha 16 pezzi. Tu hai il Bianco, i pezzi vicino a te."
+ },
+ {
+  "id": "17a036b471e3",
+  "text": "Ogni casa ha un nome: una lettera e un numero, come nella battaglia navale."
+ },
+ {
+  "id": "b1fc1eb3fa61",
+  "text": "La torre"
+ },
+ {
+  "id": "0bdd2b53fe0a",
+  "text": "La torre va in linea retta: avanti, indietro e di lato. Lontano quanto vuole."
+ },
+ {
+  "id": "c0d8bfa23fde",
+  "text": "Ma non può saltare sopra altri pezzi."
+ },
+ {
+  "id": "f3b704f65ee3",
+  "text": "La torre va in linea retta."
+ },
+ {
+  "id": "4473e28e6126",
+  "text": "Porta la torre fino alla stella."
+ },
+ {
+  "id": "a0e24a4d83ff",
+  "text": "Ora raccogli le due stelle."
+ },
+ {
+  "id": "d740190de4c6",
+  "text": "Raccogli le tre stelle."
+ },
+ {
+  "id": "83505f148941",
+  "text": "I tuoi pedoni sono in mezzo. La torre non può saltarli. Cerca un'altra strada!"
+ },
+ {
+  "id": "7c464b808c87",
+  "text": "L'alfiere"
+ },
+ {
+  "id": "97d09f99e149",
+  "text": "L'alfiere va in diagonale, come se tagliasse le case dagli angoli. Lontano quanto vuole."
+ },
+ {
+  "id": "5d32a892f377",
+  "text": "Per questo pesta sempre case dello stesso colore."
+ },
+ {
+  "id": "2c230739e843",
+  "text": "L'alfiere va in diagonale."
+ },
+ {
+  "id": "f144961b11c4",
+  "text": "Porta l'alfiere fino alla stella."
+ },
+ {
+  "id": "361029df0fc2",
+  "text": "Raccogli le due stelle."
+ },
+ {
+  "id": "f462b9e6fcb5",
+  "text": "Questo alfiere pesta solo case chiare. Raccogli le tre stelle."
+ },
+ {
+  "id": "d661a96d265c",
+  "text": "Un pedone gli blocca la strada. Cercane un'altra!"
+ },
+ {
+  "id": "cce95067ed62",
+  "text": "La donna"
+ },
+ {
+  "id": "8a79faeeaf85",
+  "text": "La donna è il pezzo più forte di tutti."
+ },
+ {
+  "id": "796397b17fb9",
+  "text": "Può andare in linea retta, come la torre, e in diagonale, come l'alfiere."
+ },
+ {
+  "id": "346f173bdc5d",
+  "text": "La donna va dritta e in diagonale."
+ },
+ {
+  "id": "e067d501564f",
+  "text": "Raccogli le quattro stelle con meno mosse che puoi."
+ },
+ {
+  "id": "2e9c371aed2a",
+  "text": "Il re"
+ },
+ {
+  "id": "e726f4afca1c",
+  "text": "Il re è il pezzo più importante. Bisogna proteggerlo bene!"
+ },
+ {
+  "id": "310758679285",
+  "text": "Ma cammina piano: solo una casa alla volta, in qualsiasi direzione."
+ },
+ {
+  "id": "0d0186ad0272",
+  "text": "Il re cammina una casa alla volta."
+ },
+ {
+  "id": "5093ccea939f",
+  "text": "Porta il re fino alla stella."
+ },
+ {
+  "id": "08a538835a82",
+  "text": "Raccogli le due stelle, passo dopo passo."
+ },
+ {
+  "id": "cab589d8a64c",
+  "text": "Raccogli le due stelle. Il re può andare anche in diagonale."
+ },
+ {
+  "id": "0f7d7069dc95",
+  "text": "Il cavallo"
+ },
+ {
+  "id": "f6780ee43b88",
+  "text": "Il cavallo salta facendo una elle: due case da una parte e una in più dall'altra."
+ },
+ {
+  "id": "d05492b1a52d",
+  "text": "È l'unico pezzo che può saltare sopra gli altri."
+ },
+ {
+  "id": "03bfb761ef66",
+  "text": "Il cavallo salta facendo una elle."
+ },
+ {
+  "id": "d127098fb9ff",
+  "text": "Porta il cavallo fino alla stella."
+ },
+ {
+  "id": "43522a7ca1bf",
+  "text": "Il cavallo salta sopra i tuoi pedoni!"
+ },
+ {
+  "id": "40b36c9af6ba",
+  "text": "Il pedone"
+ },
+ {
+  "id": "c50a94638b05",
+  "text": "Il pedone va avanti di una casa. La prima volta che si muove può avanzare di due."
+ },
+ {
+  "id": "6b4f4f215ecb",
+  "text": "Non va mai indietro. E per catturare va in diagonale."
+ },
+ {
+  "id": "4f0f976b2ad5",
+  "text": "Il pedone va dritto e cattura in diagonale."
+ },
+ {
+  "id": "7ddf791b4576",
+  "text": "La prima volta il pedone può avanzare di due case. Fallo in una volta!"
+ },
+ {
+  "id": "19f6577c7615",
+  "text": "Cattura i due pezzi neri. Ricorda: il pedone cattura in diagonale."
+ },
+ {
+  "id": "6b89b8b4b312",
+  "text": "Cattura i tre pezzi. Guarda bene verso dove cattura il pedone."
+ },
+ {
+  "id": "6bc979a209b6",
+  "text": "Catturare"
+ },
+ {
+  "id": "42e1f4717fdc",
+  "text": "Catturare è portare il tuo pezzo sulla casa di un pezzo avversario. Lo togli dalla scacchiera e ti metti al suo posto."
+ },
+ {
+  "id": "66dadb3c7000",
+  "text": "Catturare è togliere un pezzo avversario."
+ },
+ {
+  "id": "911bf0e1344c",
+  "text": "Cattura i due pezzi neri con la torre."
+ },
+ {
+  "id": "88bd207c0fb1",
+  "text": "Cattura i tre pezzi con l'alfiere."
+ },
+ {
+  "id": "7ba453682a8e",
+  "text": "Cattura i tre pezzi con il cavallo."
+ },
+ {
+  "id": "ed7194ce95ce",
+  "text": "Cattura i quattro pezzi con la donna, con meno mosse che puoi."
+ },
+ {
+  "id": "c0bcd924ef18",
+  "text": "Non farti catturare!"
+ },
+ {
+  "id": "8676dcacc561",
+  "text": "Anche i pezzi neri possono catturare."
+ },
+ {
+  "id": "23b55b8c60f5",
+  "text": "Prima di muovere, guarda se la casa dove vai è attaccata."
+ },
+ {
+  "id": "8b601f71425f",
+  "text": "Prima di muovere, guarda cosa attacca l'avversario."
+ },
+ {
+  "id": "775387328feb",
+  "text": "Cattura i due pezzi senza farti catturare. Da quale cominci?"
+ },
+ {
+  "id": "9beb84064b43",
+  "text": "Il pedone nero protegge il cavallo. Catturali tutti e due senza perdere la donna."
+ },
+ {
+  "id": "b3c3fa91646d",
+  "text": "Cattura i tre pezzi. Attento ai pedoni neri!"
+ },
+ {
+  "id": "ad8c36cff9e8",
+  "text": "Quanto vale ogni pezzo"
+ },
+ {
+  "id": "348b2e8f74ee",
+  "text": "Alcuni pezzi valgono più di altri. Il pedone vale 1. Il cavallo e l'alfiere, 3. La torre, 5. E la donna, 9."
+ },
+ {
+  "id": "a2ee02398019",
+  "text": "Il re non si può mai catturare."
+ },
+ {
+  "id": "28aec4836540",
+  "text": "La donna vale più di tutti."
+ },
+ {
+  "id": "43d324917206",
+  "text": "Puoi catturare tre pezzi. Prenditi quello che vale di più!"
+ },
+ {
+  "id": "87c286b6c6ea",
+  "text": "Quella mossa non cattura niente. Provane un'altra!"
+ },
+ {
+  "id": "199999e0628d",
+  "text": "Il cavallo vale 3. Ce n'è un altro che vale di più."
+ },
+ {
+  "id": "280acc077dfc",
+  "text": "Il pedone vale 1. Ce n'è un altro che vale di più."
+ },
+ {
+  "id": "a4e27e75813a",
+  "text": "Bene! La torre vale 5: è quella che vale di più."
+ },
+ {
+  "id": "f0c6efd7500c",
+  "text": "Il cavallo può catturare tre pezzi. Quale ti prendi?"
+ },
+ {
+  "id": "f44f8c0a302e",
+  "text": "Bene! La donna vale 9: è quella che vale di più."
+ },
+ {
+  "id": "f4b1f129d6aa",
+  "text": "Il pedone può catturare da entrambi i lati. Scegli bene!"
+ },
+ {
+  "id": "45b755634ef7",
+  "text": "Lo scacco"
+ },
+ {
+  "id": "92bd69792fde",
+  "text": "Dare scacco è attaccare il re dell'avversario. Quando il suo re è sotto scacco, deve salvarlo subito."
+ },
+ {
+  "id": "afd1941f38db",
+  "text": "Lo scacco è attaccare il re."
+ },
+ {
+  "id": "a475197d1917",
+  "text": "Dai scacco al re nero con la torre."
+ },
+ {
+  "id": "13173fc974f8",
+  "text": "Quella mossa non attacca il re nero. Provane un'altra!"
+ },
+ {
+  "id": "632a73c0a847",
+  "text": "Scacco! Con la tua torre attacchi il re nero."
+ },
+ {
+  "id": "cb17e82d856d",
+  "text": "Dai scacco con l'alfiere."
+ },
+ {
+  "id": "cf931ee35d3b",
+  "text": "Scacco! Con il tuo alfiere attacchi il re nero."
+ },
+ {
+  "id": "7fd9a0c18bda",
+  "text": "Dai scacco con il cavallo."
+ },
+ {
+  "id": "58d2417680f2",
+  "text": "Scacco! Con il tuo cavallo attacchi il re nero."
+ },
+ {
+  "id": "2b77798dc617",
+  "text": "Uscire dallo scacco"
+ },
+ {
+  "id": "6a7dad6cf293",
+  "text": "Ci sono tre modi per salvare il re dallo scacco: muoverlo, catturare il pezzo che attacca o mettere un altro pezzo in mezzo."
+ },
+ {
+  "id": "6d9761034a93",
+  "text": "Il re si salva muovendosi, catturando o coprendo."
+ },
+ {
+  "id": "3e622e0e5db2",
+  "text": "Il tuo re è sotto scacco! Qui puoi salvarlo solo muovendolo."
+ },
+ {
+  "id": "1d373c506af9",
+  "text": "Bene! Hai salvato il tuo re spostandolo."
+ },
+ {
+  "id": "ca5c38ee60bc",
+  "text": "Ancora scacco! Ora cattura il pezzo che attacca."
+ },
+ {
+  "id": "0ebeadc53378",
+  "text": "Bene! Hai salvato il tuo re catturando il pezzo che attaccava."
+ },
+ {
+  "id": "50c1a2d2d0bd",
+  "text": "E ora metti un pezzo in mezzo."
+ },
+ {
+  "id": "66b48b80f1f8",
+  "text": "Bene! Hai salvato il tuo re coprendo lo scacco."
+ },
+ {
+  "id": "af14c1ace436",
+  "text": "Lo scacco matto"
+ },
+ {
+  "id": "0cc308fe459f",
+  "text": "Lo scacco matto è uno scacco da cui il re non si può salvare. Chi dà scacco matto vince la partita!"
+ },
+ {
+  "id": "d7440242112c",
+  "text": "Scacco matto è vincere!"
+ },
+ {
+  "id": "942a25649791",
+  "text": "Dai scacco matto. I pedoni neri non lasciano scappare il loro re."
+ },
+ {
+  "id": "14c61f6c63d5",
+  "text": "Quella mossa non dà scacco. Provane un'altra!"
+ },
+ {
+  "id": "f0830d276046",
+  "text": "Scacco matto! Il re nero non si può salvare."
+ },
+ {
+  "id": "29690a17eff8",
+  "text": "Dai scacco matto con la donna. Il tuo re la aiuta."
+ },
+ {
+  "id": "29d573c29d05",
+  "text": "È scacco, ma il re nero può scappare. Provane un'altra!"
+ },
+ {
+  "id": "5f1889c60dfa",
+  "text": "Dai scacco matto con il cavallo."
+ },
+ {
+  "id": "ab9b8673f956",
+  "text": "Dai scacco matto con la torre."
+ },
+ {
+  "id": "9bbedac05551",
+  "text": "Lo stallo"
+ },
+ {
+  "id": "dfefbcac1cb2",
+  "text": "Attento: se il re avversario non è sotto scacco ma non può muoversi da nessuna parte, è stallo. E allora è pareggio."
+ },
+ {
+  "id": "edbe8ff00f11",
+  "text": "Lo stallo è pareggio. Attento!"
+ },
+ {
+  "id": "973035980b0b",
+  "text": "Guarda: tocca al re nero. Non è sotto scacco, ma non può muoversi da nessuna parte. Questo è stallo, ed è pareggio! Tocca «Perché?»."
+ },
+ {
+  "id": "d7e447c5a7a8",
+  "text": "Un altro stallo: il re nero non è sotto scacco, ma il tuo pedone e il tuo re gli tolgono tutte le case."
+ },
+ {
+  "id": "e19297dd348a",
+  "text": "Dai scacco matto. Ma non metterlo in stallo!"
+ },
+ {
+  "id": "ebc217384bfb",
+  "text": "Stallo! Il re nero non è sotto scacco, ma non può muoversi. È pareggio."
+ },
+ {
+  "id": "64e8e500701c",
+  "text": "Di nuovo: scacco matto, senza metterlo in stallo."
+ },
+ {
+  "id": "27ddca305dcb",
+  "text": "È scacco, ma ti possono catturare quel pezzo. Provane un'altra!"
+ },
+ {
+  "id": "4b223f619f2d",
+  "text": "L'arrocco"
+ },
+ {
+  "id": "071214d0ac79",
+  "text": "L'arrocco è una mossa speciale: muovi il re e la torre insieme, per nascondere il re."
+ },
+ {
+  "id": "39b4cab8a5db",
+  "text": "Per farlo, muovi il re di due case verso la torre. La torre salta da sola dall'altra parte."
+ },
+ {
+  "id": "8b991abd9717",
+  "text": "Con l'arrocco, il re si nasconde."
+ },
+ {
+  "id": "4f0ed7e5b05a",
+  "text": "Fai l'arrocco verso la torre più vicina."
+ },
+ {
+  "id": "b1828209778c",
+  "text": "Per arroccare, muovi il re di due case verso la torre."
+ },
+ {
+  "id": "77f617e153ba",
+  "text": "Arrocco! Il tuo re ora è nascosto."
+ },
+ {
+  "id": "b36f1db28fed",
+  "text": "Quell'arrocco va dall'altra parte."
+ },
+ {
+  "id": "5ca730c467ad",
+  "text": "Ora fallo dall'altra parte."
+ },
+ {
+  "id": "fb6fc090c00e",
+  "text": "Promuovere"
+ },
+ {
+  "id": "df92d34c01ce",
+  "text": "Se un pedone arriva fino in fondo alla scacchiera, si trasforma in un altro pezzo! Quasi sempre in donna."
+ },
+ {
+  "id": "e6d7f20109bb",
+  "text": "Un pedone che arriva in fondo diventa donna."
+ },
+ {
+  "id": "da246980233b",
+  "text": "Porta il pedone fino in fondo e trasformalo in donna."
+ },
+ {
+  "id": "263c137a9044",
+  "text": "Si può, ma la donna è la più forte. Scegli la donna!"
+ },
+ {
+  "id": "7895eb6fb1e3",
+  "text": "Promosso! Il tuo pedone ora è una donna."
+ },
+ {
+  "id": "9e437c896b0a",
+  "text": "Porta il pedone fino in fondo alla scacchiera."
+ },
+ {
+  "id": "0dec60a6e43f",
+  "text": "Cattura e promuovi nello stesso momento."
+ },
+ {
+  "id": "2e7a0625d6ce",
+  "text": "La presa en passant"
+ },
+ {
+  "id": "45586ea7a4fc",
+  "text": "Questa mossa è un po' strana. Se un pedone avversario avanza di due case e si mette accanto al tuo, puoi catturarlo come se fosse avanzato di una sola."
+ },
+ {
+  "id": "e52fc6c6702d",
+  "text": "Ma solo proprio in quel momento."
+ },
+ {
+  "id": "8ccf5655eca0",
+  "text": "En passant: solo subito dopo."
+ },
+ {
+  "id": "575fc6d03f42",
+  "text": "Il pedone nero è appena avanzato di due case. Catturalo en passant!"
+ },
+ {
+  "id": "4f6b3c30c5b6",
+  "text": "Muovi il tuo pedone in diagonale, proprio dietro il pedone nero."
+ },
+ {
+  "id": "c56554b54609",
+  "text": "En passant! Hai catturato il pedone nero."
+ },
+ {
+  "id": "f25fa11de314",
+  "text": "Di nuovo: il pedone nero è appena arrivato. Approfittane!"
+ },
+ {
+  "id": "cc9923eecb57",
+  "text": "Matti da partite reali 1"
+ },
+ {
+  "id": "b69fdfeeb377",
+  "text": "Queste posizioni vengono da partite vere. In tutte puoi dare scacco matto con una sola mossa."
+ },
+ {
+  "id": "83eb4b629b7e",
+  "text": "Guarda bene tutta la scacchiera."
+ },
+ {
+  "id": "50bf9d4f5285",
+  "text": "Sei un cacciatore di re!"
+ },
+ {
+  "id": "7aae94e2cd2c",
+  "text": "Cerca lo scacco matto."
+ },
+ {
+  "id": "876c96e0f047",
+  "text": "Matti da partite reali 2"
+ }
+]

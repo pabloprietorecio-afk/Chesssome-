@@ -83,7 +83,36 @@ func for_move(k: int, uci: String) -> Dictionary:
 
 func _text(index: Variant) -> String:
 	var i := int(index)
-	return str(_strings[i]) if i >= 0 and i < _strings.size() else ""
+	return Loc.explain(str(_strings[i])) if i >= 0 and i < _strings.size() else ""
+
+
+## Fila del análisis del motor (etiqueta, jugada, evaluación, profundidad, continuación), en el idioma de la app.
+func _row(index: Variant) -> PackedStringArray:
+	var i := int(index)
+	if i < 0 or i >= _strings.size():
+		return PackedStringArray()
+	var cells := str(_strings[i]).split("\t")
+	if Loc.language == "es":
+		return cells
+	if cells.size() > 0:
+		cells[0] = Loc.t(cells[0])
+	if cells.size() > 1:
+		cells[1] = Loc.san_text(cells[1])
+	if cells.size() > 2:
+		cells[2] = Loc.explain(cells[2])
+	if cells.size() > 4:
+		cells[4] = Loc.san_text(cells[4])
+	return cells
+
+
+## Variante (etiqueta y jugadas) en el idioma de la app.
+static func _line(line: Dictionary) -> Dictionary:
+	if Loc.language == "es":
+		return line
+	var out := line.duplicate()
+	out["label"] = Loc.t(str(line.get("label", "")))
+	out["text"] = Loc.san_text(str(line.get("text", "")))
+	return out
 
 
 func _unpack(e: Dictionary) -> Dictionary:
@@ -102,18 +131,18 @@ func _unpack(e: Dictionary) -> Dictionary:
 		for i: Variant in packed.get("n", []):
 			var li := int(i)
 			if li >= 0 and li < _lines.size():
-				lines.append(_lines[li])
+				lines.append(_line(_lines[li]))
 		var rows: Array = []
 		for i: Variant in packed.get("r", []):
-			rows.append(_text(i).split("\t"))
+			rows.append(_row(i))
 		levels.append({"title": _text(packed.get("t", -1)), "paragraphs": paragraphs, "arrows": arrows, "lines": lines, "rows": rows})
 	var facts: Array = []
 	for f: Array in e.get("f", []):
 		if f.size() >= 2:
 			facts.append([str(f[0]), _text(f[1])])
 	return {
-		"san": str(e.get("s", "")),
-		"best": str(e.get("b", "")),
+		"san": Loc.san_text(str(e.get("s", ""))),
+		"best": Loc.san_text(str(e.get("b", ""))),
 		"correct": int(e.get("ok", 0)) == 1,
 		"verdict": str(e.get("v", "")),
 		# Clase de error de la jugada ("" si es la del problema): ver Assessment.ERROR_KINDS.

@@ -1,0 +1,754 @@
+[
+ {
+  "id": "74511f48860f",
+  "text": "Perfeito!"
+ },
+ {
+  "id": "0a66934e39a4",
+  "text": "Muito bem!"
+ },
+ {
+  "id": "02a86a76e086",
+  "text": "Muito bem! Dá para fazer com menos lances. Quer tentar de novo?"
+ },
+ {
+  "id": "e7573572ca35",
+  "text": "Quase. Tente de novo!"
+ },
+ {
+  "id": "1f9f075d3f04",
+  "text": "Opa! Nessa casa você seria capturado. Tente de novo."
+ },
+ {
+  "id": "b3f38ebd253d",
+  "text": "Lição concluída!"
+ },
+ {
+  "id": "dcdf35097b72",
+  "text": "Você terminou o curso! Agora já sabe jogar xadrez."
+ },
+ {
+  "id": "e8f1495cea0f",
+  "text": "Dica: olhe esta peça."
+ },
+ {
+  "id": "0b5327b01fb5",
+  "text": "Isto é para adultos. Peça ajuda a um adulto."
+ },
+ {
+  "id": "2023dc2cec8c",
+  "text": "Olá! Sou seu treinador de xadrez. Vamos começar?"
+ },
+ {
+  "id": "073de8b8f197",
+  "text": "Muito bem! Agora vamos jogar uma partida com o que você aprendeu."
+ },
+ {
+  "id": "24f97a45bd72",
+  "text": "Vamos jogar! Você está com as brancas."
+ },
+ {
+  "id": "69de7a47ca5d",
+  "text": "Vamos jogar! Você está com as pretas."
+ },
+ {
+  "id": "88e99dc81f6f",
+  "text": "Guerra de peões! Ganha quem chegar primeiro ao fim do tabuleiro."
+ },
+ {
+  "id": "ef275f123465",
+  "text": "Peões e cavalos. Ganha quem coroar um peão ou capturar todas as peças do rival."
+ },
+ {
+  "id": "0e5a554cbfd2",
+  "text": "Cuidado! Seu rei está em xeque."
+ },
+ {
+  "id": "e54ded05f3d7",
+  "text": "Xeque-mate! Você ganhou!"
+ },
+ {
+  "id": "de1c8aaccfa7",
+  "text": "Desta vez o rival ganhou. Jogue outra!"
+ },
+ {
+  "id": "e1b9d3e828cf",
+  "text": "Empate! Ninguém ganha."
+ },
+ {
+  "id": "d0bff7146f29",
+  "text": "Você ganhou!"
+ },
+ {
+  "id": "c4d4d93380f5",
+  "text": "O rival ganhou. De novo!"
+ },
+ {
+  "id": "961da8606e53",
+  "text": "Dica: tente com esta peça."
+ },
+ {
+  "id": "507591d00974",
+  "text": "Vamos rever a partida! Eu mostro os momentos importantes."
+ },
+ {
+  "id": "bf2aa362c895",
+  "text": "Muito bem! Você não deixou peças sem defesa nem deixou escapar nenhum mate."
+ },
+ {
+  "id": "776d0810917f",
+  "text": "Aqui você deixou uma peça sem defesa. Veja antes se podem capturá-la!"
+ },
+ {
+  "id": "865b0e2ecc4c",
+  "text": "Aqui você podia capturar uma peça de graça. Veja sempre quais peças pode capturar!"
+ },
+ {
+  "id": "0d427a7c0790",
+  "text": "Aqui você tinha xeque-mate! Procure sempre se pode dar mate."
+ },
+ {
+  "id": "32930106a757",
+  "text": "Depois deste lance, o rival podia dar xeque-mate. Cuidado com seu rei!"
+ },
+ {
+  "id": "5aec6c956a5e",
+  "text": "Você moveu o rei e não pode mais rocar. É melhor rocar para protegê-lo."
+ },
+ {
+  "id": "a511618dea2e",
+  "text": "Você moveu a mesma peça muitas vezes. É melhor tirar primeiro todas as peças."
+ },
+ {
+  "id": "0385aeddf50a",
+  "text": "Procure o melhor lance."
+ },
+ {
+  "id": "7ac01d28dd33",
+  "text": "Cuidado! Com esse lance, o rival pode dar xeque-mate. Olhe a seta e tente outro."
+ },
+ {
+  "id": "bfc5248a05f9",
+  "text": "A peça que você moveu fica sozinha, e o rival pode capturá-la. Olhe a seta e tente outro."
+ },
+ {
+  "id": "76d4a2bb5839",
+  "text": "Com esse lance você deixa uma peça sem defesa, e o rival pode capturá-la. Olhe a seta e tente outro."
+ },
+ {
+  "id": "f256d87898e7",
+  "text": "Com esse lance você acaba perdendo peças. Veja o que o rival faz e tente outro."
+ },
+ {
+  "id": "1d1dad667b27",
+  "text": "Esse lance não é o melhor. Há outro muito mais forte. Procure!"
+ },
+ {
+  "id": "575784e314c0",
+  "text": "Havia algo melhor! Procure um lance que ganhe uma peça ou dê xeque-mate."
+ },
+ {
+  "id": "e92d4141c075",
+  "text": "Esse lance também é bom, mas há um caminho mais rápido. Procure!"
+ },
+ {
+  "id": "0703a7242569",
+  "text": "Olhe: este era o lance bom. Siga a seta verde."
+ },
+ {
+  "id": "73c76813e3d4",
+  "text": "Xeque-mate! O rei não pode escapar, e ninguém pode salvá-lo."
+ },
+ {
+  "id": "5e4036a14fac",
+  "text": "Ataque duplo! Uma só peça ataca duas coisas ao mesmo tempo, e o rival só pode salvar uma."
+ },
+ {
+  "id": "fbf6dc7f3832",
+  "text": "Peças em fila! Ao atacar a da frente, a de trás fica em perigo."
+ },
+ {
+  "id": "0ea333857898",
+  "text": "Muito bem! Você tirou a peça que defendia, e o que ela defendia ficou sozinho."
+ },
+ {
+  "id": "f728e900391a",
+  "text": "Muito bem! Um peão que chega ao fim do tabuleiro vira dama."
+ },
+ {
+  "id": "0823270af5d2",
+  "text": "Muito bem! Essa peça estava sozinha, sem ninguém para defendê-la, e você a capturou."
+ },
+ {
+  "id": "3dd6e3df692c",
+  "text": "Muito bem! Você encontrou o lance mais forte."
+ },
+ {
+  "id": "d041a4d6c6cc",
+  "text": "O tabuleiro"
+ },
+ {
+  "id": "2886f68ea158",
+  "text": "Olá! Vamos aprender xadrez."
+ },
+ {
+  "id": "a77d3a3e2af5",
+  "text": "Joga-se num tabuleiro com 64 casas, claras e escuras. Jogam dois: brancas e pretas. As brancas sempre começam."
+ },
+ {
+  "id": "b93ee2e7b9c2",
+  "text": "Agora você conhece o tabuleiro!"
+ },
+ {
+  "id": "5fb6d64c0156",
+  "text": "Assim começa uma partida. Cada jogador tem 16 peças. Você está com as brancas, as que estão perto de você."
+ },
+ {
+  "id": "3ab5e7ef04ae",
+  "text": "Cada casa tem um nome: uma letra e um número, como no jogo de batalha naval."
+ },
+ {
+  "id": "7e4253ffb21b",
+  "text": "A torre"
+ },
+ {
+  "id": "bdae7ca4b20a",
+  "text": "A torre anda em linha reta: para frente, para trás e para os lados. Até onde quiser."
+ },
+ {
+  "id": "07d716039c28",
+  "text": "Mas não pode pular por cima de outras peças."
+ },
+ {
+  "id": "8d1247400f7d",
+  "text": "A torre anda em linha reta."
+ },
+ {
+  "id": "4acce92e08bf",
+  "text": "Leve a torre até a estrela."
+ },
+ {
+  "id": "0adc6117b2ce",
+  "text": "Agora pegue as duas estrelas."
+ },
+ {
+  "id": "70a2fd00c67c",
+  "text": "Pegue as três estrelas."
+ },
+ {
+  "id": "19b6664f0ad6",
+  "text": "Seus peões estão no meio. A torre não pode pulá-los. Procure outro caminho!"
+ },
+ {
+  "id": "ff4cfb7e60a4",
+  "text": "O bispo"
+ },
+ {
+  "id": "4e49924f9b4e",
+  "text": "O bispo anda na diagonal, como se cortasse as casas pelos cantos. Até onde quiser."
+ },
+ {
+  "id": "f53a5487097c",
+  "text": "Por isso sempre pisa em casas da mesma cor."
+ },
+ {
+  "id": "7bb1b22f3559",
+  "text": "O bispo anda na diagonal."
+ },
+ {
+  "id": "af01a054cdcf",
+  "text": "Leve o bispo até a estrela."
+ },
+ {
+  "id": "826390633e85",
+  "text": "Pegue as duas estrelas."
+ },
+ {
+  "id": "260b3a2597f8",
+  "text": "Este bispo só pisa em casas claras. Pegue as três estrelas."
+ },
+ {
+  "id": "efcb4b918078",
+  "text": "Um peão bloqueia o caminho. Procure outro!"
+ },
+ {
+  "id": "fb05deffc438",
+  "text": "A dama"
+ },
+ {
+  "id": "829b154693ad",
+  "text": "A dama é a peça mais forte de todas."
+ },
+ {
+  "id": "e2e6300b1a44",
+  "text": "Pode ir em linha reta, como a torre, e na diagonal, como o bispo."
+ },
+ {
+  "id": "19c910ca855a",
+  "text": "A dama anda reto e na diagonal."
+ },
+ {
+  "id": "c479ad7e9415",
+  "text": "Pegue as quatro estrelas com o menor número de lances que puder."
+ },
+ {
+  "id": "36724dcc8508",
+  "text": "O rei"
+ },
+ {
+  "id": "360e529be269",
+  "text": "O rei é a peça mais importante. É preciso cuidar muito bem dele!"
+ },
+ {
+  "id": "e1234d5d68ef",
+  "text": "Mas anda devagar: só uma casa por vez, para qualquer lado."
+ },
+ {
+  "id": "7906dd4434a6",
+  "text": "O rei anda de uma em uma casa."
+ },
+ {
+  "id": "ec5c491afbd7",
+  "text": "Leve o rei até a estrela."
+ },
+ {
+  "id": "7dc67932bd51",
+  "text": "Pegue as duas estrelas, passo a passo."
+ },
+ {
+  "id": "a01a030f3da5",
+  "text": "Pegue as duas estrelas. O rei também pode ir na diagonal."
+ },
+ {
+  "id": "aa1a070c749d",
+  "text": "O cavalo"
+ },
+ {
+  "id": "8d1a9e4d9ab9",
+  "text": "O cavalo salta fazendo um L: duas casas para um lado e mais uma para o outro."
+ },
+ {
+  "id": "47bcef458d31",
+  "text": "É a única peça que pode pular por cima das outras."
+ },
+ {
+  "id": "c047c9685fd3",
+  "text": "O cavalo salta fazendo um L."
+ },
+ {
+  "id": "4e5e56e87c49",
+  "text": "Leve o cavalo até a estrela."
+ },
+ {
+  "id": "d5f5cdcb2e47",
+  "text": "O cavalo pula por cima dos seus peões!"
+ },
+ {
+  "id": "d30a70e6d9fc",
+  "text": "O peão"
+ },
+ {
+  "id": "f6ee138ec6ea",
+  "text": "O peão anda para frente, uma casa. Na primeira vez que se move, pode avançar duas."
+ },
+ {
+  "id": "a08ca2e5df8e",
+  "text": "Nunca vai para trás. E para capturar, vai na diagonal."
+ },
+ {
+  "id": "80296162ff8d",
+  "text": "O peão anda reto e captura na diagonal."
+ },
+ {
+  "id": "c416ef002226",
+  "text": "Na primeira vez, o peão pode avançar duas casas. Faça de uma vez!"
+ },
+ {
+  "id": "7bfd7e1c80c4",
+  "text": "Capture as duas peças pretas. Lembre: o peão captura na diagonal."
+ },
+ {
+  "id": "18223b0901d0",
+  "text": "Capture as três peças. Veja bem para onde o peão captura."
+ },
+ {
+  "id": "5adc271447bf",
+  "text": "Capturar"
+ },
+ {
+  "id": "243dbbebce73",
+  "text": "Capturar é levar sua peça à casa de uma peça do rival. Você a tira do tabuleiro e fica no lugar dela."
+ },
+ {
+  "id": "f1780d47633f",
+  "text": "Capturar é tirar uma peça do rival."
+ },
+ {
+  "id": "a477dbfb3156",
+  "text": "Capture as duas peças pretas com a torre."
+ },
+ {
+  "id": "a71751892848",
+  "text": "Capture as três peças com o bispo."
+ },
+ {
+  "id": "be375498728b",
+  "text": "Capture as três peças com o cavalo."
+ },
+ {
+  "id": "989d67ce52ee",
+  "text": "Capture as quatro peças com a dama, com o menor número de lances que puder."
+ },
+ {
+  "id": "da9fea3ebdcc",
+  "text": "Não deixe que te capturem!"
+ },
+ {
+  "id": "12ac240aa9c4",
+  "text": "As peças pretas também podem capturar."
+ },
+ {
+  "id": "5daa2ee44288",
+  "text": "Antes de mover, veja se a casa para onde vai está atacada."
+ },
+ {
+  "id": "bc282cd455b4",
+  "text": "Antes de mover, veja o que o rival ataca."
+ },
+ {
+  "id": "842518f080a0",
+  "text": "Capture as duas peças sem ser capturado. Por qual você começa?"
+ },
+ {
+  "id": "bb1993361be9",
+  "text": "O peão preto protege o cavalo. Capture os dois sem perder sua dama."
+ },
+ {
+  "id": "6ce77d3946d0",
+  "text": "Capture as três peças. Cuidado com os peões pretos!"
+ },
+ {
+  "id": "b5bbf79b9ea7",
+  "text": "Quanto vale cada peça"
+ },
+ {
+  "id": "364ca1f9be67",
+  "text": "Algumas peças valem mais que outras. O peão vale 1. O cavalo e o bispo, 3. A torre, 5. E a dama, 9."
+ },
+ {
+  "id": "d6fb69a2e66f",
+  "text": "O rei nunca pode ser capturado."
+ },
+ {
+  "id": "172bc75fc424",
+  "text": "A dama vale mais que todas."
+ },
+ {
+  "id": "df7fb59c6fcd",
+  "text": "Você pode capturar três peças. Leve a que vale mais!"
+ },
+ {
+  "id": "e2997224840c",
+  "text": "Esse lance não captura nada. Tente outro!"
+ },
+ {
+  "id": "d180b287bc2f",
+  "text": "O cavalo vale 3. Há outra que vale mais."
+ },
+ {
+  "id": "7abe58efc9a3",
+  "text": "O peão vale 1. Há outra que vale mais."
+ },
+ {
+  "id": "19d035071cca",
+  "text": "Boa! A torre vale 5: é a que vale mais."
+ },
+ {
+  "id": "a3619c690c9b",
+  "text": "O cavalo pode capturar três peças. Qual você leva?"
+ },
+ {
+  "id": "91b282def861",
+  "text": "Boa! A dama vale 9: é a que vale mais."
+ },
+ {
+  "id": "093b7294a605",
+  "text": "O peão pode capturar dos dois lados. Escolha bem!"
+ },
+ {
+  "id": "da25eb3126ff",
+  "text": "O xeque"
+ },
+ {
+  "id": "08b2c1fde706",
+  "text": "Dar xeque é atacar o rei do rival. Quando o rei dele está em xeque, ele tem que salvá-lo na hora."
+ },
+ {
+  "id": "7c96b3eacb99",
+  "text": "Xeque é atacar o rei."
+ },
+ {
+  "id": "c7abb8175c6a",
+  "text": "Dê xeque no rei preto com a torre."
+ },
+ {
+  "id": "1d714ba258c4",
+  "text": "Esse lance não ataca o rei preto. Tente outro!"
+ },
+ {
+  "id": "d927743d6474",
+  "text": "Xeque! Com sua torre você ataca o rei preto."
+ },
+ {
+  "id": "5daf9709e5f3",
+  "text": "Dê xeque com o bispo."
+ },
+ {
+  "id": "10af3ff468e5",
+  "text": "Xeque! Com seu bispo você ataca o rei preto."
+ },
+ {
+  "id": "4e08254f2faa",
+  "text": "Dê xeque com o cavalo."
+ },
+ {
+  "id": "d64c88cc4326",
+  "text": "Xeque! Com seu cavalo você ataca o rei preto."
+ },
+ {
+  "id": "9c07975812da",
+  "text": "Sair do xeque"
+ },
+ {
+  "id": "d95feb30b188",
+  "text": "Há três maneiras de salvar o rei do xeque: movê-lo, capturar a peça que ataca ou pôr outra peça no meio."
+ },
+ {
+  "id": "12e6c30a5c67",
+  "text": "O rei se salva movendo-se, capturando ou tapando."
+ },
+ {
+  "id": "114eef25b07b",
+  "text": "Seu rei está em xeque! Aqui você só pode salvá-lo movendo-o."
+ },
+ {
+  "id": "6874ef1659c8",
+  "text": "Boa! Você salvou seu rei movendo-o."
+ },
+ {
+  "id": "394fd561ede0",
+  "text": "Xeque de novo! Agora capture a peça que ataca."
+ },
+ {
+  "id": "b49157485e64",
+  "text": "Boa! Você salvou seu rei capturando a peça que atacava."
+ },
+ {
+  "id": "7cdd2a78d0ae",
+  "text": "E agora, ponha uma peça no meio."
+ },
+ {
+  "id": "832c4bf27628",
+  "text": "Boa! Você salvou seu rei tapando o xeque."
+ },
+ {
+  "id": "973a812b2df0",
+  "text": "O xeque-mate"
+ },
+ {
+  "id": "8256ff8c9489",
+  "text": "Xeque-mate é um xeque do qual o rei não pode se salvar. Quem dá xeque-mate ganha a partida!"
+ },
+ {
+  "id": "bb27d23eb1cf",
+  "text": "Xeque-mate é ganhar!"
+ },
+ {
+  "id": "8d241bc186c0",
+  "text": "Dê xeque-mate. Os peões pretos não deixam o rei deles escapar."
+ },
+ {
+  "id": "026085b055ba",
+  "text": "Esse lance não dá xeque. Tente outro!"
+ },
+ {
+  "id": "4dbd4b19b39a",
+  "text": "Xeque-mate! O rei preto não pode se salvar."
+ },
+ {
+  "id": "fa63b021a605",
+  "text": "Dê xeque-mate com a dama. Seu rei ajuda."
+ },
+ {
+  "id": "af00e0b5e3cd",
+  "text": "É xeque, mas o rei preto pode escapar. Tente outro!"
+ },
+ {
+  "id": "8be24cb11ed0",
+  "text": "Dê xeque-mate com o cavalo."
+ },
+ {
+  "id": "44136b084f24",
+  "text": "Dê xeque-mate com a torre."
+ },
+ {
+  "id": "f7577e0a3894",
+  "text": "O afogamento"
+ },
+ {
+  "id": "c69648150dbd",
+  "text": "Atenção: se o rei rival não está em xeque, mas não pode se mover para lugar nenhum, é afogamento. E aí é empate."
+ },
+ {
+  "id": "740859c7b269",
+  "text": "Afogamento é empate. Cuidado!"
+ },
+ {
+  "id": "c7148fc4816f",
+  "text": "Olhe: é a vez do rei preto. Ele não está em xeque, mas não pode se mover para lugar nenhum. Isso é afogamento, e é empate! Toque em «Por quê?»."
+ },
+ {
+  "id": "e3b7d5b103f8",
+  "text": "Outro afogamento: o rei preto não está em xeque, mas seu peão e seu rei tiram todas as casas dele."
+ },
+ {
+  "id": "4be2d806bdde",
+  "text": "Dê xeque-mate. Mas não o afogue!"
+ },
+ {
+  "id": "5d1d059aa399",
+  "text": "Afogamento! O rei preto não está em xeque, mas não pode se mover. Isso é empate."
+ },
+ {
+  "id": "3ed99b15d6f5",
+  "text": "De novo: xeque-mate, sem afogá-lo."
+ },
+ {
+  "id": "219a4f451b10",
+  "text": "É xeque, mas podem capturar essa peça. Tente outro!"
+ },
+ {
+  "id": "4b861cd258ba",
+  "text": "O roque"
+ },
+ {
+  "id": "3072919422a4",
+  "text": "O roque é um lance especial: você move o rei e a torre ao mesmo tempo, para esconder o rei."
+ },
+ {
+  "id": "6bc935abe714",
+  "text": "Para fazer, mova o rei duas casas em direção à torre. A torre pula sozinha para o outro lado."
+ },
+ {
+  "id": "d036eceb5792",
+  "text": "Com o roque, o rei se esconde."
+ },
+ {
+  "id": "fe9d446c01f6",
+  "text": "Faça o roque para o lado da torre mais próxima."
+ },
+ {
+  "id": "8e33b6f036ea",
+  "text": "Para rocar, mova o rei duas casas em direção à torre."
+ },
+ {
+  "id": "90977ef50fcd",
+  "text": "Roque! Seu rei já está escondido."
+ },
+ {
+  "id": "c9ba3d567de0",
+  "text": "Esse roque é para o outro lado."
+ },
+ {
+  "id": "b0568f1ac777",
+  "text": "Agora faça para o outro lado."
+ },
+ {
+  "id": "df6a217c945d",
+  "text": "Coroar"
+ },
+ {
+  "id": "1a4a2a153243",
+  "text": "Se um peão chega até o fim do tabuleiro, vira outra peça! Quase sempre dama."
+ },
+ {
+  "id": "03956b23bf32",
+  "text": "Um peão que chega ao fim vira dama."
+ },
+ {
+  "id": "773e1a602b8a",
+  "text": "Leve o peão até o fim e transforme-o em dama."
+ },
+ {
+  "id": "ec190f369c7c",
+  "text": "Pode, mas a dama é a mais forte. Escolha dama!"
+ },
+ {
+  "id": "d86b9e21e2c0",
+  "text": "Coroado! Seu peão agora é uma dama."
+ },
+ {
+  "id": "0cd627c6cce5",
+  "text": "Leve o peão até o fim do tabuleiro."
+ },
+ {
+  "id": "86932d02c3c2",
+  "text": "Capture e coroe ao mesmo tempo."
+ },
+ {
+  "id": "3c83ab566598",
+  "text": "A captura en passant"
+ },
+ {
+  "id": "c7274cae289d",
+  "text": "Este lance é um pouco estranho. Se um peão rival avança duas casas e fica ao lado do seu, você pode capturá-lo como se tivesse avançado só uma."
+ },
+ {
+  "id": "2e810a9294ea",
+  "text": "Mas só bem naquele momento."
+ },
+ {
+  "id": "05d686da5dab",
+  "text": "En passant: só logo depois."
+ },
+ {
+  "id": "5a92c4fc4d07",
+  "text": "O peão preto acabou de avançar duas casas. Capture-o en passant!"
+ },
+ {
+  "id": "0dbf3f659a62",
+  "text": "Mova seu peão na diagonal, bem atrás do peão preto."
+ },
+ {
+  "id": "9ccd301f3fd3",
+  "text": "En passant! Você capturou o peão preto."
+ },
+ {
+  "id": "0802ac4f5278",
+  "text": "De novo: o peão preto acabou de chegar. Aproveite!"
+ },
+ {
+  "id": "3f055fd8b6dd",
+  "text": "Mates de partidas reais 1"
+ },
+ {
+  "id": "97ee5d8f5fb2",
+  "text": "Estas posições são de partidas de verdade. Em todas você pode dar xeque-mate com um só lance."
+ },
+ {
+  "id": "4c66e3c80614",
+  "text": "Olhe bem todo o tabuleiro."
+ },
+ {
+  "id": "d5ebe7153b15",
+  "text": "Você é um caçador de reis!"
+ },
+ {
+  "id": "ab7f398b691a",
+  "text": "Procure o xeque-mate."
+ },
+ {
+  "id": "4d2cd50ccea1",
+  "text": "Mates de partidas reais 2"
+ }
+]

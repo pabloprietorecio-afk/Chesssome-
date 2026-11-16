@@ -1,6 +1,7 @@
 class_name SanEs
 extends RefCounted
-## Notación algebraica en español (C caballo, A alfil, T torre, D dama, R rey), como la de las explicaciones.
+## Notación algebraica con las letras del idioma de la app (en español: C caballo, A alfil, T torre, D dama, R rey;
+## ver Loc.LETTERS), como la de las explicaciones.
 
 const LETTER := ["", "", "C", "A", "T", "D", "R"]
 
@@ -23,9 +24,9 @@ static func san(pos: Chess, m: int) -> String:
 				out = Chess.sq_name(from).substr(0, 1) + "x"
 			out += Chess.sq_name(to)
 			if Chess.move_promo(m) != 0:
-				out += "=" + LETTER[Chess.move_promo(m)]
+				out += "=" + Loc.piece_letter(Chess.move_promo(m))
 		else:
-			out = LETTER[t]
+			out = Loc.piece_letter(t)
 			# Otra pieza igual que también puede ir a esa casilla: se dice de cuál se trata.
 			var same_file := false
 			var same_rank := false

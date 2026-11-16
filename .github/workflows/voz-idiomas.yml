@@ -1,0 +1,69 @@
+name: Voz del nivel Kids en otros idiomas
+
+# Genera los OGG de tools/voz/lineas_<idioma>.json (los escribe tools/voz/idiomas.py) y los publica en la rama
+# voz-idiomas-src (godot/voz_<idioma>/*.ogg). Se lanza con un push a la rama voz-idiomas-fetch.
+# Kokoro-82M (Apache-2.0) para en, fr, it, ja, pt e hi; Supertonic 3 (Open RAIL-M: hay que avisar en la ficha de la
+# tienda de que la voz es sintética) para de, ru e id. espeak-ng (GPL-3.0) solo se instala aquí: no entra en la app.
+on:
+  push:
+    branches: [voz-idiomas-fetch]
+
+jobs:
+  voz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        idioma: [en, fr, it, ja, pt, hi, de, ru, id]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependencias
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak-ng ffmpeg
+          pip install -q soundfile numpy
+          case "${{ matrix.idioma }}" in
+            de|ru|id)
+              pip install -q "sherpa-onnx>=1.13,<2"
+              M=sherpa-onnx-supertonic-3-tts-int8-2026-05-11
+              curl -sSL -o m.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$M.tar.bz2"
+              tar xjf m.tar.bz2
+              echo "SUPERTONIC=$PWD/$M" >> $GITHUB_ENV ;;
+            *)
+              pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+              pip install -q "kokoro>=0.9.4"
+              if [ "${{ matrix.idioma }}" = ja ]; then pip install -q "misaki[ja]" && (python -m unidic download || true); fi ;;
+          esac
+      - name: Generar
+        run: python tools/voz/generar_idiomas.py --idioma ${{ matrix.idioma }} --salida out/godot --supertonic "${SUPERTONIC:-}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voz-${{ matrix.idioma }}
+          path: out/godot
+          retention-days: 3
+
+  publicar:
+    needs: voz
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: arts
+      - name: Publicar en la rama voz-idiomas-src
+        run: |
+          mkdir -p out/godot
+          for d in arts/*/; do cp -r "$d"* out/godot/ 2>/dev/null || true; done
+          cd out
+          for d in godot/voz_*; do echo "$d: $(ls $d | wc -l) audios, $(du -sh $d | cut -f1)"; done
+          git init -q
+          git checkout -q -b voz-idiomas-src
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Voz Kids en otros idiomas (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" voz-idiomas-src

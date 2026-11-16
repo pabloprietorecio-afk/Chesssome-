@@ -1,0 +1,29 @@
+acc:tu torre	your rook	ta tour	la tua torre	あなたのルーク	sua torre	bentengmu	आपका हाथी	deinen Turm	твою ладью
+acc:la torre	the rook	la tour	la torre	ルーク	a torre	benteng	हाथी	den Turm	ладью
+acc:un peón	a pawn	un pion	un pedone	ポーン1つ	um peão	satu pion	एक प्यादा	einen Bauern	пешку
+acc:peones	pawns	pions	pedoni	ポーン	peões	pion	प्यादे	Bauern	пешки
+acc:tu peón	your pawn	ton pion	il tuo pedone	あなたのポーン	seu peão	pionmu	आपका प्यादा	deinen Bauern	твою пешку
+acc:el peón	the pawn	le pion	il pedone	ポーン	o peão	pion	प्यादा	den Bauern	пешку
+acc:tu dama	your queen	ta dame	la tua donna	あなたのクイーン	sua dama	menterimu	आपका वज़ीर	deine Dame	твоего ферзя
+acc:la dama	the queen	la dame	la donna	クイーン	a dama	menteri	वज़ीर	die Dame	ферзя
+acc:el caballo	the knight	le cavalier	il cavallo	ナイト	o cavalo	kuda	घोड़ा	den Springer	коня
+acc:el alfil	the bishop	le fou	l'alfiere	ビショップ	o bispo	gajah	ऊँट	den Läufer	слона
+acc:una torre	a rook	une tour	una torre	ルーク1つ	uma torre	satu benteng	एक हाथी	einen Turm	ладью
+acc:el rey	the king	le roi	il re	キング	o rei	raja	राजा	den König	короля
+acc:tu caballo	your knight	ton cavalier	il tuo cavallo	あなたのナイト	seu cavalo	kudamu	आपका घोड़ा	deinen Springer	твоего коня
+acc:una dama	a queen	une dame	una donna	クイーン1つ	uma dama	satu menteri	एक वज़ीर	eine Dame	ферзя
+acc:dama	queen	dame	donna	クイーン	dama	menteri	वज़ीर	Dame	ферзя
+acc:tu rey	your king	ton roi	il tuo re	あなたのキング	seu rei	rajamu	आपका राजा	deinen König	твоего короля
+acc:tu alfil	your bishop	ton fou	il tuo alfiere	あなたのビショップ	seu bispo	gajahmu	आपका ऊँट	deinen Läufer	твоего слона
+acc:torre	rook	tour	torre	ルーク	torre	benteng	हाथी	Turm	ладью
+acc:caballo	knight	cavalier	cavallo	ナイト	cavalo	kuda	घोड़ा	Springer	коня
+acc:alfil	bishop	fou	alfiere	ビショップ	bispo	gajah	ऊँट	Läufer	слона
+acc:torres	rooks	tours	torri	ルーク	torres	benteng	हाथी	Türme	ладьи
+acc:un rey	a king	un roi	un re	キング	um rei	seorang raja	एक राजा	einen König	короля
+acc:rey	king	roi	re	キング	rei	raja	राजा	König	короля
+acc:el rey rival	the opponent's king	le roi adverse	il re avversario	相手のキング	o rei rival	raja lawan	विरोधी का राजा	den gegnerischen König	короля соперника
+acc:un caballo	a knight	un cavalier	un cavallo	ナイト1つ	um cavalo	satu kuda	एक घोड़ा	einen Springer	коня
+acc:un alfil	a bishop	un fou	un alfiere	ビショップ1つ	um bispo	satu gajah	एक ऊँट	einen Läufer	слона
+acc:alfiles	bishops	fous	alfieri	ビショップ	bispos	gajah	ऊँट	Läufer	слонов
+acc:las torres	the rooks	les tours	le torri	ルーク	as torres	benteng-benteng	हाथी	die Türme	ладьи
+acc:caballos	knights	cavaliers	cavalli	ナイト	cavalos	kuda	घोड़े	Springer	коней
