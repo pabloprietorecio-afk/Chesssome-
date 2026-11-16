@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -541,7 +541,7 @@ jobs:
           # Icono propio y arranque sin el logo de Godot (solo informativo: nombres de recursos de la plantilla).
           $AAPT2 dump resources $A | grep -iE "mipmap/|splash|boot" | head -30 || true
           unzip -l $A | grep -iE "res/mipmap|res/drawable.*splash" | head -20 || true
-          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/ui/iconos.json; do
+          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/ui/iconos.json; do
             if grep -q " $f$" build/avisos-log/apk-contenido.txt; then echo "OK $f"; else echo "FALTA $f"; exit 1; fi
           done
 

@@ -1101,7 +1101,7 @@ func _notification(what: int) -> void:
 		elif whatif:
 			_toggle_whatif()
 		elif mode == "learn":
-			_open_course()
+			_learn_back()
 		elif mode == "game":
 			_ask_leave()
 		elif use_settings:
@@ -2004,7 +2004,7 @@ func _refresh(animate: bool = true) -> void:
 	if counter_check != null:
 		counter_check.visible = (mode == "train" or mode == "free") and not puzzle.is_empty() and _puzzle_state(str(puzzle.get("id", ""))) == 2
 	if mode == "learn":
-		counter.text = Loc.t("Aprende desde cero")
+		counter.text = Loc.t("Finales de campeones") if Cine.is_lesson(str(lesson.get("id", ""))) else Loc.t("Aprende desde cero")
 	elif mode == "game":
 		counter.text = Loc.t("Partida")
 	elif mode == "train" and _has_player():
@@ -4627,7 +4627,7 @@ func _open_course() -> void:
 
 
 func _start_lesson(id: String) -> void:
-	for l: Dictionary in _course_lessons():
+	for l: Dictionary in (Cine.lessons() if Cine.is_lesson(id) else _course_lessons()):
 		if str(l["id"]) == id:
 			lesson = l
 	if lesson.is_empty():
@@ -4652,9 +4652,10 @@ func _show_lesson_step() -> void:
 	view.board.set_arrows([])
 	view.board.set_goals([])
 	view.board.only_square = -1
-	view.set_orientation(0)
+	view.set_orientation(int(lesson.get("orientation", 0)))
 	view.interactive = false
 	ex_text = ""
+	_cine_hint_shown = false
 	ex_good = false
 	ex_moves = 0
 	ex_fails = 0
@@ -4689,6 +4690,7 @@ func _show_lesson_step() -> void:
 	else:
 		ex = exercises[lesson_ex]
 		view.set_fen(str(ex["fen"]))
+		_lesson_marks()
 		_say([_ex_text(ex)])
 		match str(ex["kind"]):
 			"info":
@@ -4704,6 +4706,18 @@ func _show_lesson_step() -> void:
 				view.interactive = true
 	phase = Phase.SOLVING
 	_refresh()
+
+
+## La última jugada y las flechas del paso (las lecciones del cine las traen; las del curso, no).
+func _lesson_marks() -> void:
+	var last: Array = ex.get("last", [])
+	if last.size() == 2:
+		view.board.mark_last_move(Chess.sq_index(str(last[0])), Chess.sq_index(str(last[1])))
+	var arrows: Array = []
+	for a: Dictionary in ex.get("arrows", []):
+		arrows.append({"from": Chess.sq_index(str(a["from"])), "to": Chess.sq_index(str(a["to"])), "tone": str(a.get("tone", "info"))})
+	if not arrows.is_empty():
+		view.board.set_arrows(arrows)
 
 
 func _squares(names: Array) -> Array:
@@ -4766,6 +4780,8 @@ func _learn_move(uci: String) -> void:
 	var verdict: Dictionary = (ex.get("moves", {}) as Dictionary).get(uci, {})
 	ex_last_uci = uci
 	ex_text = str(verdict.get("k" if kids else "t", verdict.get("t", "")))
+	if ex.has("cine"):
+		ex_text = Cine.answer(ex, uci)
 	_say([BRAVO, ex_text] if bool(verdict.get("ok", false)) else [ex_text])
 	_sfx("acierto" if bool(verdict.get("ok", false)) else "error")
 	view.interactive = false
@@ -4782,6 +4798,7 @@ func _learn_move(uci: String) -> void:
 	if my_run != run_id:
 		return
 	view.set_fen(str(ex["fen"]))
+	_lesson_marks()
 	view.interactive = true
 
 
@@ -4815,7 +4832,16 @@ func _build_learn_card() -> void:
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 12)
 		chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chips.add_child(_chip(Loc.f("%d ejercicios", exercises.size()), _c("field"), _c("ink"), "book"))
+		if Cine.is_lesson(str(lesson.get("id", ""))):
+			var questions := 0
+			for e0: Dictionary in exercises:
+				if str(e0.get("kind", "")) == "move":
+					questions += 1
+			chips.add_child(_chip(Loc.f("%d preguntas", questions), _c("field"), _c("ink"), "target"))
+			var clip := Cine.clip_of(str(lesson["id"]))
+			chips.add_child(_chip(Loc.f("Vídeo al final: %s", str((clip.get("video", {}) as Dictionary).get("channel", "YouTube"))), _c("field"), _c("quiet"), "play"))
+		else:
+			chips.add_child(_chip(Loc.f("%d ejercicios", exercises.size()), _c("field"), _c("ink"), "book"))
 		card_body.add_child(chips)
 		return
 	if ex_state == "end":
@@ -4824,7 +4850,19 @@ func _build_learn_card() -> void:
 		card_body.add_child(_para("★".repeat(stars) + "☆".repeat(3 - stars), F_TITLE, _tint("butter")[1], font_display))
 		card_body.add_child(_para(str(_lesson_text("takeaway")), F_BODY, _c("ink"), font_regular))
 		return
-	var step := _chip(Loc.f("Ejercicio %d de %d", [lesson_ex + 1, exercises.size()]), _c("field"), _c("quiet"))
+	var step_text := Loc.f("Ejercicio %d de %d", [lesson_ex + 1, exercises.size()])
+	if Cine.is_lesson(str(lesson.get("id", ""))):
+		# En los finales: «Pregunta 2 de 3» y, después, «Explicación 4 de 11».
+		var kind := str(ex.get("kind", ""))
+		var nth := 0
+		var total := 0
+		for i in exercises.size():
+			if str((exercises[i] as Dictionary).get("kind", "")) == kind:
+				total += 1
+				if i <= lesson_ex:
+					nth += 1
+		step_text = Loc.f("Pregunta %d de %d" if kind == "move" else "Explicación %d de %d", [nth, total])
+	var step := _chip(step_text, _c("field"), _c("quiet"))
 	step.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	card_body.add_child(step)
 	if learn_why_open:
@@ -4919,9 +4957,9 @@ func _build_learn_actions() -> void:
 	var row: Array[Button] = []
 	match ex_state:
 		"intro":
-			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Empezar", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			row = [_learn_back_button(quiet), _button("next", "Empezar", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 		"info":
-			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			row = [_learn_back_button(quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 			if _learn_why_ok():
 				if learn_why_open:
 					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
@@ -4931,7 +4969,7 @@ func _build_learn_actions() -> void:
 					why0["icon_color"] = tint0[1]
 					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint0[0], _c("ink"), why0))
 		"play":
-			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet)]
+			row = [_learn_back_button(quiet)]
 			if str(ex.get("kind", "")) == "move":
 				var tint := _tint("butter")
 				var help := wide.duplicate()
@@ -4939,7 +4977,7 @@ func _build_learn_actions() -> void:
 				row.append(_button("bulb", "Pista", _learn_hint, tint[0], _c("ink"), help))
 			row.append(_button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide))
 		"fail":
-			row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			row = [_learn_back_button(quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
 			if _learn_why_ok():
 				if learn_why_open:
 					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
@@ -4960,14 +4998,19 @@ func _build_learn_actions() -> void:
 					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint[0], _c("ink"), why))
 		"end":
 			var unit := _unit_of(str(lesson.get("id", "")))
-			if not unit.is_empty() and unit.has("game") and _is_last_of_unit(str(lesson.get("id", ""))):
-				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("piece_knight", "Partida", _start_unit_game.bind(str(unit["id"])), _c("accent"), _c("accent_ink"), go)]
+			if Cine.is_lesson(str(lesson.get("id", ""))):
+				var red := _tint("rose")
+				var vid := wide.duplicate()
+				vid["icon_color"] = red[1]
+				row = [_button("play", "Ver el vídeo", _open_cine_video, red[0], _c("ink"), vid), _button("next", "Siguiente final" if _next_cine_id() != "" else "Finales", _next_lesson, _c("accent"), _c("accent_ink"), go)]
+			elif not unit.is_empty() and unit.has("game") and _is_last_of_unit(str(lesson.get("id", ""))):
+				row = [_learn_back_button(quiet), _button("piece_knight", "Partida", _start_unit_game.bind(str(unit["id"])), _c("accent"), _c("accent_ink"), go)]
 			elif last_lesson and kids:
 				row = [_button("retry", "Repetir", _start_lesson.bind(str(lesson.get("id", ""))), _c("accent_soft"), _c("accent_text"), wide), _button("next", "Curso", _open_course, _c("accent"), _c("accent_ink"), go)]
 			elif last_lesson:
-				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Test de nivel", _after_course, _c("accent"), _c("accent_ink"), go)]
+				row = [_learn_back_button(quiet), _button("next", "Test de nivel", _after_course, _c("accent"), _c("accent_ink"), go)]
 			else:
-				row = [_button("back", "Curso", _open_course, _c("field"), _c("ink"), quiet), _button("next", "Siguiente lección", _next_lesson, _c("accent"), _c("accent_ink"), go)]
+				row = [_learn_back_button(quiet), _button("next", "Siguiente lección", _next_lesson, _c("accent"), _c("accent_ink"), go)]
 	left_button = row[0]
 	right_button = row[row.size() - 1]
 	for b: Button in row:
@@ -5058,11 +5101,14 @@ func _sync_learn_popup() -> void:
 	if line != "":
 		column.add_child(_centered(_para(line, F_BODY, _c("ink"), font_medium)))
 	column.add_child(_spacer(6.0))
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 16)
-	for b: Button in _popup_row:
-		buttons.add_child(b)
-	column.add_child(buttons)
+	# Con tres botones no caben en una fila: los dos primeros arriba y el principal, solo, debajo.
+	var rows_of: Array = [_popup_row] if _popup_row.size() <= 2 else [_popup_row.slice(0, _popup_row.size() - 1), [_popup_row[_popup_row.size() - 1]]]
+	for group: Array in rows_of:
+		var buttons := HBoxContainer.new()
+		buttons.add_theme_constant_override("separation", 16)
+		for b: Button in group:
+			buttons.add_child(b)
+		column.add_child(buttons)
 	# Centrada sobre el tablero, con un margen a los lados.
 	var place := func() -> void:
 		if not is_instance_valid(panel) or board_slot == null or not is_instance_valid(board_slot):
@@ -5085,14 +5131,39 @@ func _sync_learn_popup() -> void:
 	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
 
 
+## «Curso» en las lecciones del curso; «Finales» en las del cine.
+func _learn_back_button(opts: Dictionary) -> Button:
+	if Cine.is_lesson(str(lesson.get("id", ""))):
+		return _button("back", "Finales", _open_cine, _c("field"), _c("ink"), opts)
+	return _button("back", "Curso", _open_course, _c("field"), _c("ink"), opts)
+
+
+func _learn_back() -> void:
+	if Cine.is_lesson(str(lesson.get("id", ""))):
+		_open_cine()
+	else:
+		_open_course()
+
+
 func _is_last_lesson() -> bool:
 	var lessons := _course_lessons()
 	return not lessons.is_empty() and str(lessons[lessons.size() - 1]["id"]) == str(lesson.get("id", ""))
 
 
 ## Pista en una jugada de lección: se señala la pieza que hay que mover (la de la primera jugada que vale).
+var _cine_hint_shown := false
+
+
 func _learn_hint() -> void:
 	if ex.is_empty() or ex_state != "play" or str(ex.get("kind", "")) != "move":
+		return
+	if str(ex.get("hint", "")) != "" and not _cine_hint_shown:
+		# En el cine, primero la pista del clip; la segunda vez, la pieza.
+		_cine_hint_shown = true
+		ex_fails = maxi(ex_fails, 1)
+		ex_text = Loc.t("Pista:") + " " + Loc.t(str(ex["hint"]))
+		ex_good = true
+		_refresh()
 		return
 	var moves: Dictionary = ex.get("moves", {})
 	for uci: Variant in moves.keys():
@@ -5117,6 +5188,13 @@ func _next_lesson_step() -> void:
 
 
 func _next_lesson() -> void:
+	if Cine.is_lesson(str(lesson.get("id", ""))):
+		var nxt := _next_cine_id()
+		if nxt != "":
+			_start_lesson(nxt)
+		else:
+			_open_cine()
+		return
 	var lessons := _course_lessons()
 	for i in lessons.size():
 		if str(lessons[i]["id"]) == str(lesson.get("id", "")) and i + 1 < lessons.size():
@@ -5394,6 +5472,11 @@ func _open_train_hub() -> void:
 	body.add_child(go)
 	body.add_child(_centered(_para("Mezcla las categorías y refuerza lo que más fallas." if not kids else "Problemas de todo tipo, a tu nivel.", F_FOOT, _c("quiet"), font_regular)))
 	body.add_child(_spacer(10.0))
+	if not kids and not Cine.clips().is_empty():
+		body.add_child(_text("FINALES DE CAMPEONES", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(8.0))
+		body.add_child(_option_button("film", "rose", "Finales de campeones", Loc.f("%d momentos de partidas famosas: ¿qué jugarías tú?", Cine.clips().size()), _open_cine))
+		body.add_child(_spacer(18.0))
 	body.add_child(_text("POR CATEGORÍA", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(8.0))
 	for fam: String in Assessment.FAMILIES:
@@ -5428,6 +5511,54 @@ func _open_train_hub() -> void:
 		body.add_child(_option_button(str(look[0]), str(look[1]), fam_name, text, _train_family.bind(fam)))
 		body.add_child(_spacer(14.0))
 	footer.add_child(_button("home", "Inicio", _open_home, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 92.0, "icon": 44.0, "font": font_medium}))
+
+
+## Finales de campeones: momentos de partidas famosas. En cada uno, primero las preguntas («¿Qué jugarías?»), después
+## la explicación y, al final, el vídeo oficial en YouTube (fuera de la app; dentro llegará en la fase 2).
+func _open_cine() -> void:
+	if kids:
+		_open_train_hub()
+		return
+	var page := _page("cine")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var tile := _icon_tile("film", "rose", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Finales de campeones", F_TITLE + 12, _c("ink"), font_display)))
+	body.add_child(_centered(_para("Momentos que decidieron partidas famosas. Primero piensas qué jugarías; después ves por qué y, al final, el vídeo.", F_SUB, _c("quiet"), font_medium)))
+	var tints := ["rose", "peach", "butter", "mint", "sky", "lilac"]
+	var n := 0
+	for c: Dictionary in Cine.clips():
+		body.add_child(_spacer(30.0 if n == 0 else 14.0))
+		var l: Dictionary = c["lesson"]
+		var id := str(l["id"])
+		var line := Loc.t(str(c["subtitle"]))
+		if course_done.has(id):
+			line = Loc.t("Hecho") + " · " + "★".repeat(int(course_done[id])) + "☆".repeat(3 - int(course_done[id])) + " · " + line
+		body.add_child(_option_button("film", str(tints[n % tints.size()]), str(c["title"]), line, _start_lesson.bind(id)))
+		n += 1
+	body.add_child(_spacer(20.0))
+	body.add_child(_centered(_para("Los vídeos son de los canales oficiales y se abren en YouTube.", F_FOOT, _c("quiet"), font_regular)))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("back", "Entrenar", _open_train_hub, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
+
+
+## El siguiente final de la lista ("" si es el último).
+func _next_cine_id() -> String:
+	var all := Cine.lessons()
+	for i in all.size():
+		if str(all[i]["id"]) == str(lesson.get("id", "")) and i + 1 < all.size():
+			return str(all[i + 1]["id"])
+	return ""
+
+
+## El vídeo del final, en YouTube (la app de YouTube o el navegador).
+func _open_cine_video() -> void:
+	var clip := Cine.clip_of(str(lesson.get("id", "")))
+	if not clip.is_empty():
+		OS.shell_open(Cine.video_url(clip))
 
 
 func _train_family(fam: String) -> void:
@@ -9334,6 +9465,8 @@ func _lesson_line(l: Dictionary) -> String:
 
 
 func _ex_text(e: Dictionary) -> String:
+	if e.has("parts"):
+		return Cine.info_text(e)
 	return str(e.get("kids", e.get("text", ""))) if kids else str(e.get("text", ""))
 
 
@@ -9642,6 +9775,8 @@ func _leave_progress() -> void:
 		_close_progress()
 	elif progress_kind == "day":
 		_open_home()
+	elif progress_kind == "cine":
+		_open_train_hub()
 	elif progress_kind == "progress" or (progress_kind == "course" and mode == "learn" and not lesson.is_empty()):
 		_close_progress()
 	elif progress_kind in ["course", "experience"] and use_settings:

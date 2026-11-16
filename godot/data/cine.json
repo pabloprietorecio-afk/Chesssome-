@@ -1,0 +1,2783 @@
+{
+"generatedBy": "tools/cine/build.py",
+"source": "rama cine-video (17a1575), Stockfish 19 Lite WASM, profundidad 24",
+"clips": [
+{
+"id": "ding-gukesh-2024-g14",
+"title": "El error que decidió un Mundial",
+"subtitle": "Ding Liren – Gukesh · Mundial 2024, partida 14",
+"event": "Campeonato del Mundo de la FIDE 2024, Singapur",
+"year": 2024,
+"white": "Ding Liren",
+"black": "Gukesh D",
+"video": {
+"id": "W9JtcW_0Sr8",
+"channel": "FIDE chess",
+"title": "Gukesh wins! - The final minutes of the FIDE World Championship 2024",
+"start": 3
+},
+"lesson": {
+"id": "cine-ding-gukesh-2024-g14",
+"title": "El error que decidió un Mundial",
+"icon": "film",
+"orientation": 1,
+"intro": [
+"Ding Liren – Gukesh · Mundial 2024, partida 14",
+"Singapur, 12 de diciembre de 2024. Última partida del Mundial, con 6,5 a 6,5 en el marcador. El final de torre y alfil parece encaminado a las tablas… hasta que Ding Liren juega 55.Tf2."
+],
+"takeaway": "Antes de cambiar piezas, mira el final que queda: en los finales de peones, la oposición puede decidir la partida.",
+"lessonTitle": "Cómo se ganó el Mundial con un final de peones",
+"exercises": [
+{
+"kind": "move",
+"fen": "B7/8/4b3/4kp2/6p1/6P1/1r3R2/6K1 b - - 17 55",
+"text": "Ding acaba de jugar 55.Tf2. Juegan las negras: ¿qué jugarías?",
+"hint": "Imagina el tablero sin las torres. Y después, sin los alfiles.",
+"last": [
+"f4",
+"f2"
+],
+"cine": {
+"target": "win",
+"played": "b2f2",
+"playedSan": "Txf2",
+"playedCls": "keeps",
+"why": "Txf2: cambiar las torres es el primer paso. El alfil blanco está arrinconado en a8, así que después se podrá forzar también el cambio de alfiles y entrar en un final de peones ganado."
+},
+"moves": {
+"b2f2": {
+"ok": true,
+"c": "keeps",
+"san": "Txf2",
+"loses": false,
+"line": "56.Rxf2 Ad5 57.Axd5 Rxd5 58.Re3 Re5 59.Rd3 f4 60.Re2 f3+"
+},
+"b2b1": {
+"ok": false,
+"c": "spoils",
+"san": "Tb1+",
+"loses": false,
+"line": "56.Rh2 Ac4 57.Td2 Tb3 58.Ag2 Ad3 59.Rg1 Ae4 60.Rf2 Ta3"
+},
+"b2b8": {
+"ok": false,
+"c": "spoils",
+"san": "Tb8",
+"loses": false,
+"line": "56.Te2+ Rd6 57.Td2+ Rc5 58.Ag2 Tb3 59.Rf2 f4 60.gxf4 g3+"
+},
+"b2b6": {
+"ok": false,
+"c": "spoils",
+"san": "Tb6",
+"loses": false,
+"line": "56.Td2 Ac4 57.Rf2 Tb3 58.Td8 Tb2+ 59.Rg1 Ae6 60.Te8 Tb6"
+},
+"b2b4": {
+"ok": false,
+"c": "spoils",
+"san": "Tb4",
+"loses": false,
+"line": "56.Te2+ Rf6 57.Rf2 Ac4 58.Tc2 Re5 59.Ab7 Ab3 60.Te2+ Rf6"
+},
+"b2b3": {
+"ok": false,
+"c": "spoils",
+"san": "Tb3",
+"loses": false,
+"line": "56.Te2+ Rf6 57.Rf2 Ta3 58.Ab7 Tc3 59.Te3 Tc4 60.Aa8 Tb4"
+},
+"b2b5": {
+"ok": false,
+"c": "spoils",
+"san": "Tb5",
+"loses": false,
+"line": "56.Te2+ Rf6 57.Rf2 Tb8 58.Ac6 Ac4 59.Tc2 Ad3 60.Tc3 Tb2+"
+},
+"b2a2": {
+"ok": false,
+"c": "spoils",
+"san": "Ta2",
+"loses": false,
+"line": "56.Txa2 Axa2 57.Ac6 f4 58.Rf2 Ae6 59.Aa4 Ac8 60.Ab5 Af5"
+},
+"e6d5": {
+"ok": false,
+"c": "spoils",
+"san": "Ad5",
+"loses": false,
+"line": "56.Txb2 Axa8 57.Rf2 Af3 58.Re3 Ae4 59.Tb6 Ac2 60.Re2 Ae4"
+},
+"f5f4": {
+"ok": false,
+"c": "spoils",
+"san": "f4",
+"loses": true,
+"line": "56.gxf4+ Rf5 57.Txb2 Rxf4 58.Tb4+ Rg3 59.Ta4 Af5 60.Ab7 Ah7"
+},
+"e6d7": {
+"ok": false,
+"c": "spoils",
+"san": "Ad7",
+"loses": true,
+"line": "56.Txb2 f4 57.Td2 fxg3 58.Txd7 Re6 59.Td1 g2 60.Axg2 Re7"
+},
+"e6c4": {
+"ok": false,
+"c": "spoils",
+"san": "Ac4",
+"loses": true,
+"line": "56.Txb2 f4 57.Tb4 fxg3 58.Txc4 g2 59.Axg2 Re6 60.Rf1 Rd7"
+},
+"b2c2": {
+"ok": false,
+"c": "spoils",
+"san": "Tc2",
+"loses": true,
+"line": "56.Txc2 f4 57.Te2+ Rf5 58.gxf4 Ab3 59.Te4 g3 60.Tb4 Rg4"
+},
+"b2d2": {
+"ok": false,
+"c": "spoils",
+"san": "Td2",
+"loses": true,
+"line": "56.Txd2 f4 57.Te2+ Rf5 58.gxf4 Ab3 59.Te4 g3 60.Tb4 Rg4"
+},
+"e5d4": {
+"ok": false,
+"c": "spoils",
+"san": "Rd4",
+"loses": true,
+"line": "56.Txb2 Re5 57.Rf2 Rf6 58.Tb6 Re5 59.Ab7 f4 60.Tb5+ Rd6"
+},
+"b2b7": {
+"ok": false,
+"c": "spoils",
+"san": "Tb7",
+"loses": true,
+"line": "56.Axb7 Rd4 57.Tb2 Ac4 58.Rf2 Rc3 59.Tb6 Rd4 60.Aa8 Re5"
+},
+"b2e2": {
+"ok": false,
+"c": "spoils",
+"san": "Te2",
+"loses": true,
+"line": "56.Txe2+ Rf6 57.Rf2 Ad7 58.Tb2 Rg5 59.Tb4 Ae6 60.Ab7 Ad7"
+},
+"e6f7": {
+"ok": false,
+"c": "spoils",
+"san": "Af7",
+"loses": true,
+"line": "56.Txb2 Ac4 57.Tf2 Ad3 58.Tf4 Rf6 59.Rf2 Aa6 60.Td4 Ab5"
+},
+"e6b3": {
+"ok": false,
+"c": "spoils",
+"san": "Ab3",
+"loses": true,
+"line": "56.Txb2 Ac4 57.Tf2 Ad3 58.Tf4 Rf6 59.Ab7 Ac2 60.Ac8 Rg5"
+},
+"e6a2": {
+"ok": false,
+"c": "spoils",
+"san": "Aa2",
+"loses": true,
+"line": "56.Txb2 Ac4 57.Tf2 Ad3 58.Tf4 Rf6 59.Ab7 Ac2 60.Rf1 Re5"
+},
+"e5f6": {
+"ok": false,
+"c": "spoils",
+"san": "Rf6",
+"loses": true,
+"line": "56.Txb2 Af7 57.Tf2 Rg5 58.Tf4 Ae8 59.Rf2 Ad7 60.Re3 Ae8"
+},
+"e6g8": {
+"ok": false,
+"c": "spoils",
+"san": "Ag8",
+"loses": true,
+"line": "56.Txb2 Ac4 57.Tf2 Ad3 58.Tf4 Ab5 59.Rf2 Ae8 60.Ab7 Ag6"
+},
+"e6c8": {
+"ok": false,
+"c": "spoils",
+"san": "Ac8",
+"loses": true,
+"line": "56.Txb2 Rf6 57.Td2 Rg5 58.Td4 Rh5 59.Rf2 Aa6 60.Ac6 Rg5"
+},
+"e5d6": {
+"ok": false,
+"c": "spoils",
+"san": "Rd6",
+"loses": true,
+"line": "56.Txb2 Ad7 57.Td2+ Rc7 58.Td4 Ae6 59.Rf2 Rb8 60.Ad5 Ad7"
+}
+}
+},
+{
+"kind": "move",
+"fen": "B7/8/4b3/4kp2/6p1/6P1/5K2/8 b - - 0 56",
+"text": "Las blancas han recapturado con el rey. ¿Y ahora?",
+"hint": "Mira el alfil de a8: solo tiene una diagonal.",
+"last": [
+"g1",
+"f2"
+],
+"cine": {
+"target": "win",
+"played": "e6d5",
+"playedSan": "Ad5",
+"playedCls": "keeps",
+"why": "Ad5: el alfil negro se planta en la única diagonal del alfil de a8. No hay casilla donde esconderse, así que las blancas tienen que cambiar. Queda un final de reyes y peones con un peón más para las negras."
+},
+"moves": {
+"e6d5": {
+"ok": true,
+"c": "keeps",
+"san": "Ad5",
+"loses": false,
+"line": "57.Axd5 Rxd5 58.Re1 Re5 59.Rd1 f4 60.Re2 f3+ 61.Re3 Rf5"
+},
+"f5f4": {
+"ok": false,
+"c": "spoils",
+"san": "f4",
+"loses": false,
+"line": "57.gxf4+ Rxf4 58.Ac6 Af5 59.Ab7 Ae4 60.Ac8 Af3 61.Ad7 Ae4"
+},
+"e5f6": {
+"ok": false,
+"c": "spoils",
+"san": "Rf6",
+"loses": false,
+"line": "57.Ab7 Rg5 58.Aa6 f4 59.gxf4+ Rxf4 60.Ab7 Ac4 61.Ac6 Ad3"
+},
+"e6b3": {
+"ok": false,
+"c": "spoils",
+"san": "Ab3",
+"loses": false,
+"line": "57.Ac6 f4 58.Ad7 Ae6 59.gxf4+ Rf5 60.Axe6+ Rxe6 61.Rg2 Rf6"
+},
+"e6a2": {
+"ok": false,
+"c": "spoils",
+"san": "Aa2",
+"loses": false,
+"line": "57.Ac6 f4 58.Ad7 Ae6 59.gxf4+ Rf5 60.Axe6+ Rxe6 61.Rg2 Rf6"
+},
+"e6c4": {
+"ok": false,
+"c": "spoils",
+"san": "Ac4",
+"loses": false,
+"line": "57.Ac6 f4 58.Ad7 Ae6 59.gxf4+ Rf5 60.Axe6+ Rxe6 61.Rg2 Rf6"
+},
+"e6f7": {
+"ok": false,
+"c": "spoils",
+"san": "Af7",
+"loses": false,
+"line": "57.Ac6 f4 58.Ad7 Ae6 59.gxf4+ Rf5 60.Axe6+ Rxe6 61.Rg2 Rf6"
+},
+"e6g8": {
+"ok": false,
+"c": "spoils",
+"san": "Ag8",
+"loses": false,
+"line": "57.Ac6 f4 58.Ad7 Ae6 59.gxf4+ Rf5 60.Axe6+ Rxe6 61.Rg2 Rf6"
+},
+"e6c8": {
+"ok": false,
+"c": "spoils",
+"san": "Ac8",
+"loses": false,
+"line": "57.Re3 Aa6 58.Ac6 Ac4 59.Aa4 Ad5 60.Ab5 Ag2 61.Ad7 Ae4"
+},
+"e5d6": {
+"ok": false,
+"c": "spoils",
+"san": "Rd6",
+"loses": false,
+"line": "57.Ab7 Re5 58.Re3 Ad5 59.Aa6 Ac6 60.Af1 Ae4 61.Ab5 Aa8"
+},
+"e5d4": {
+"ok": false,
+"c": "spoils",
+"san": "Rd4",
+"loses": false,
+"line": "57.Ab7 Ad7 58.Ag2 Re5 59.Re3 Ae6 60.Af1 Ac8 61.Ab5 Ab7"
+},
+"e6d7": {
+"ok": false,
+"c": "spoils",
+"san": "Ad7",
+"loses": false,
+"line": "57.Re3 Ab5 58.Ah1 Ac4 59.Ac6 Ad5 60.Aa4 Ab7 61.Ab5 Ae4"
+}
+}
+},
+{
+"kind": "move",
+"fen": "8/8/8/3k1p2/6p1/4K1P1/8/8 b - - 1 58",
+"text": "Final de reyes y peones. Juegan las negras: ¿qué jugarías?",
+"hint": "Los dos reyes, frente a frente.",
+"last": [
+"f2",
+"e3"
+],
+"cine": {
+"target": "win",
+"played": "d5e5",
+"playedSan": "Re5",
+"playedCls": "keeps",
+"why": "Re5: el rey negro toma la oposición. Ahora mueve el blanco y tiene que ceder el paso. Ding Liren se rindió aquí."
+},
+"moves": {
+"d5e5": {
+"ok": true,
+"c": "keeps",
+"san": "Re5",
+"loses": false,
+"line": "59.Rd3 f4 60.Re2 f3+ 61.Re3 Rf5 62.Rf2 Re4 63.Rf1 Rd3"
+},
+"d5d6": {
+"ok": false,
+"c": "spoils",
+"san": "Rd6",
+"loses": false,
+"line": "59.Re2 Rd5 60.Rd3 Re5 61.Re3 Rf6 62.Rd2 Re7 63.Re3"
+},
+"d5e6": {
+"ok": false,
+"c": "spoils",
+"san": "Re6",
+"loses": false,
+"line": "59.Rd2 Rf6 60.Rd3 Re7 61.Re3"
+},
+"d5c6": {
+"ok": false,
+"c": "spoils",
+"san": "Rc6",
+"loses": true,
+"line": "59.Rf4 Rd6 60.Rxf5 Re7 61.Rxg4 Rf8 62.Rh5 Rg7 63.Rg5 Rh7"
+},
+"d5c5": {
+"ok": false,
+"c": "spoils",
+"san": "Rc5",
+"loses": true,
+"line": "59.Rf4 Rd6 60.Rxf5 Re7 61.Rxg4 Rf8 62.Rh5 Rg7 63.Rg5 Rh7"
+},
+"f5f4": {
+"ok": false,
+"c": "spoils",
+"san": "f4+",
+"loses": true,
+"line": "59.Rxf4 Re6 60.Rxg4 Rf6 61.Rh5 Rg7 62.Rg5 Rh7 63.Rf6 Rh8"
+},
+"d5c4": {
+"ok": false,
+"c": "spoils",
+"san": "Rc4",
+"loses": true,
+"line": "59.Rf4 Rc3 60.Rxf5 Rd4 61.Rxg4 Re4 62.Rh5 Rd5 63.Rg5 Re5"
+}
+}
+},
+{
+"kind": "info",
+"fen": "B7/8/4b3/4kp2/5Rp1/6P1/1r6/6K1 w - - 16 55",
+"text": "Final de torre y alfil igualado. El alfil blanco de a8 tiene poco sitio, pero mientras haya torres no corre peligro.",
+"last": [],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "B7/8/4b3/4kp2/6p1/6P1/1r3R2/6K1 b - - 17 55",
+"text": "55.Tf2? ofrece cambiar las torres. Parece prudente, pero es el error: con 55.Ag2 o 55.Ta4, Ding seguía en tablas.",
+"last": [
+"f4",
+"f2"
+],
+"arrows": [
+{
+"from": "f2",
+"to": "b2",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "B7/8/4b3/4kp2/6p1/6P1/5r2/6K1 w - - 0 56",
+"text": "55…Txf2: Gukesh acepta el cambio.",
+"last": [
+"b2",
+"f2"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "B7/8/4b3/4kp2/6p1/6P1/5K2/8 b - - 0 56",
+"text": "56.Rxf2. Sin torres, el problema del alfil de a8 se ve claro: solo tiene una diagonal.",
+"last": [
+"g1",
+"f2"
+],
+"arrows": [
+{
+"from": "a8",
+"to": "d5",
+"tone": "info"
+}
+]
+},
+{
+"kind": "info",
+"fen": "B7/8/8/3bkp2/6p1/6P1/5K2/8 w - - 1 57",
+"text": "56…Ad5: el alfil negro se planta en esa diagonal. Es la única jugada que gana; con cualquier otra, tablas.",
+"last": [
+"e6",
+"d5"
+],
+"arrows": [
+{
+"from": "d5",
+"to": "a8",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/3k1p2/6p1/6P1/5K2/8 w - - 0 58",
+"text": "57.Axd5 Rxd5: el alfil blanco no tenía escapatoria, porque en b7 o c6 también lo capturaban. Queda un final de reyes y peones con un peón más para las negras.",
+"last": [
+"e5",
+"d5"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/3k1p2/6p1/4K1P1/8/8 b - - 1 58",
+"text": "58.Re3: el rey blanco se pone delante para frenar al negro.",
+"last": [
+"f2",
+"e3"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/4kp2/6p1/4K1P1/8/8 w - - 2 59",
+"text": "58…Re5: la oposición. Los reyes quedan frente a frente, con una casilla en medio, y le toca mover a las blancas. Era la única que ganaba: 58…Re6 o 58…Rd6 dejaban tablas.",
+"last": [
+"d5",
+"e5"
+],
+"arrows": [
+{
+"from": "e5",
+"to": "e3",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/4kp2/6p1/4K1P1/8/8 w - - 2 59",
+"text": "Mueva lo que mueva, el rey blanco tiene que ceder el paso y el rey negro entra en su campo. Por eso Ding se rindió aquí.",
+"last": [
+"d5",
+"e5"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/4kp2/6p1/4K1P1/8/8 w - - 2 59",
+"text": "¿Por qué, si solo tiene un peón menos? El final de peones está perdido. El rey negro rodea al blanco por d4 y d3; el peón de f se adelanta hasta f2 para desviar al rey blanco, el rey negro se come el peón de g3 y el peón de g corona. El peón de g corona: las negras tienen dama y las blancas, solo el rey. Por eso Ding abandonó.",
+"parts": [
+"¿Por qué, si solo tiene un peón menos?",
+"El final de peones está perdido. El rey negro rodea al blanco por d4 y d3; el peón de f se adelanta hasta f2 para desviar al rey blanco, el rey negro se come el peón de g3 y el peón de g corona.",
+"El peón de g corona: las negras tienen dama y las blancas, solo el rey. Por eso Ding abandonó."
+],
+"last": [
+"d5",
+"e5"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/4kp2/6p1/4K1P1/8/8 w - - 2 59",
+"text": "Con esta partida, Gukesh ganó el Mundial por 7,5 a 6,5 y se convirtió, con 18 años, en el campeón del mundo más joven de la historia.",
+"last": [
+"d5",
+"e5"
+],
+"arrows": []
+}
+]
+}
+},
+{
+"id": "gukesh-carlsen-2025-norway-r6-error",
+"title": "El error de Carlsen",
+"subtitle": "Gukesh – Carlsen · Norway Chess 2025, ronda 6",
+"event": "Norway Chess 2025, ronda 6 · Stavanger",
+"year": 2025,
+"white": "Gukesh D",
+"black": "Magnus Carlsen",
+"video": {
+"id": "xbX88PgcaYc",
+"channel": "ChessBase India",
+"title": "The LOUDEST BANG you will ever hear in chess | Gukesh beats Magnus Carlsen in Norway",
+"start": 271
+},
+"lesson": {
+"id": "cine-gukesh-carlsen-2025-norway-r6-error",
+"title": "El error de Carlsen",
+"icon": "film",
+"orientation": 0,
+"intro": [
+"Gukesh – Carlsen · Norway Chess 2025, ronda 6",
+"Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Carlsen, con negras, ha llevado ventaja casi toda la partida, pero los dos llegan al final con muy poco tiempo en el reloj. Gukesh acaba de jugar 52.Cd7."
+],
+"takeaway": "Antes de dar un jaque, mira qué piezas tuyas quedan atacadas.",
+"lessonTitle": "Por qué 52…Ce2+ fue un error",
+"exercises": [
+{
+"kind": "move",
+"fen": "5r2/3N4/6p1/3pp3/5nPP/1P4K1/5R2/4k3 b - - 4 52",
+"text": "Juegan las negras: Carlsen, con segundos en el reloj. ¿Qué jugarías?",
+"hint": "Tu torre de f8 está atacada.",
+"last": [
+"f6",
+"d7"
+],
+"cine": {
+"target": "draw",
+"played": "f4e2",
+"playedSan": "Ce2+",
+"playedCls": "spoils",
+"why": "La torre de f8 está atacada por el caballo de d7. Apartarla (Te8, Tg8, Th8 o Ta8) mantiene el equilibrio, y 52…g5 también. En la partida, Carlsen jugó 52…Ce2+??: tras 53.Txe2+ Rxe2 54.Cxf8, las blancas quedaron con una pieza de más."
+},
+"moves": {
+"f8e8": {
+"ok": true,
+"c": "keeps",
+"san": "Te8",
+"loses": false,
+"line": "53.Cf6 Td8 54.g5 Ce2+ 55.Rg2 d4 56.Tf1+ Rd2 57.Rf3 d3"
+},
+"g6g5": {
+"ok": true,
+"c": "keeps",
+"san": "g5",
+"loses": false,
+"line": "53.hxg5 Te8 54.Txf4 exf4+ 55.Rxf4 d4 56.Ce5 Re2 57.g6 d3"
+},
+"f8g8": {
+"ok": true,
+"c": "keeps",
+"san": "Tg8",
+"loses": false,
+"line": "53.Cxe5 Ce2+ 54.Rg2 d4 55.Tf6 Rd2 56.Cf3+ Re3 57.Te6+ Rd3"
+},
+"f8h8": {
+"ok": true,
+"c": "keeps",
+"san": "Th8",
+"loses": false,
+"line": "53.Cxe5 Ce2+ 54.Rg2 Te8 55.Tf1+ Rd2 56.Cxg6 Te4 57.g5 d4"
+},
+"f8a8": {
+"ok": true,
+"c": "keeps",
+"san": "Ta8",
+"loses": false,
+"line": "53.Cxe5 Ce2+ 54.Rg2 Te8 55.Tf1+ Rd2 56.Cxg6 Te4 57.g5 d4"
+},
+"f8c8": {
+"ok": false,
+"c": "unclear",
+"san": "Tc8",
+"loses": false,
+"line": "53.Cxe5 Ce2+ 54.Rg2 Te8 55.Cxg6 Te4 56.Tf1+ Rd2 57.g5 d4"
+},
+"f8d8": {
+"ok": false,
+"c": "unclear",
+"san": "Td8",
+"loses": false,
+"line": "53.Cxe5 Ce2+ 54.Rg2 Te8 55.Cxg6 Te4 56.Tf1+ Rd2 57.g5 d4"
+},
+"f4h5": {
+"ok": false,
+"c": "spoils",
+"san": "Ch5+",
+"loses": true,
+"line": "53.gxh5 Tg8 54.Cf6 Tg7 55.h6 Tb7 56.Tb2 Tb8 57.Cxd5 Td8"
+},
+"e5e4": {
+"ok": false,
+"c": "spoils",
+"san": "e4",
+"loses": true,
+"line": "53.Cxf8 g5 54.hxg5 Ch3 55.Tf5 d4 56.Rxh3 e3 57.g6 d3"
+},
+"d5d4": {
+"ok": false,
+"c": "spoils",
+"san": "d4",
+"loses": true,
+"line": "53.Cxf8 d3 54.Th2 Ce2+ 55.Rf3 e4+ 56.Re3 Cg3 57.Ta2 Cf1+"
+},
+"f4e2": {
+"ok": false,
+"c": "spoils",
+"san": "Ce2+",
+"loses": true,
+"line": "53.Txe2+ Rxe2 54.Cxf8 d4 55.Cd7 d3 56.Cb6 d2 57.Ca4 Rd3"
+},
+"f8b8": {
+"ok": false,
+"c": "spoils",
+"san": "Tb8",
+"loses": true,
+"line": "53.Cxb8 Ce6 54.Cc6 e4 55.Th2 Rd1 56.h5 gxh5 57.gxh5 Cg7"
+},
+"f8f5": {
+"ok": false,
+"c": "spoils",
+"san": "Tf5",
+"loses": true,
+"line": "53.gxf5 Cd3 54.fxg6 Cxf2 55.Cxe5 Ce4+ 56.Rf3 Cf6 57.Re3 Rd1"
+},
+"f8f7": {
+"ok": false,
+"c": "spoils",
+"san": "Tf7",
+"loses": true,
+"line": "53.Cxe5 Tf8 54.Txf4 Te8 55.Cxg6 Re2 56.Tf2+ Rd1 57.Cf4 d4"
+},
+"e1d1": {
+"ok": false,
+"c": "spoils",
+"san": "Rd1",
+"loses": true,
+"line": "53.Cxf8 Cd3 54.Th2 d4 55.Ce6 Cb4 56.Cc5 Cc2 57.Ce4 Ce3"
+},
+"f4e6": {
+"ok": false,
+"c": "spoils",
+"san": "Ce6",
+"loses": true,
+"line": "53.Cxf8 Cc5 54.Cxg6 Ce4+ 55.Rf3 Cxf2 56.Cxe5 Ce4 57.Re3 Rd1"
+},
+"f4d3": {
+"ok": false,
+"c": "spoils",
+"san": "Cd3",
+"loses": true,
+"line": "53.Txf8 e4 54.Cf6 Cb4 55.h5 e3 56.h6 e2 57.h7 Rd2"
+},
+"f8f6": {
+"ok": false,
+"c": "spoils",
+"san": "Tf6",
+"loses": true,
+"line": "53.Cxf6 d4 54.Ce4 Ce2+ 55.Rf3 Cf4 56.Th2 Rd1 57.b4 Cd5"
+},
+"f4h3": {
+"ok": false,
+"c": "spoils",
+"san": "Ch3",
+"loses": true,
+"line": "53.Txf8 Cf4 54.Cxe5 Ce6 55.Te8 Cc7 56.Cf3+ Rd1 57.Te5 Rc2"
+},
+"f4g2": {
+"ok": false,
+"c": "spoils",
+"san": "Cg2",
+"loses": true,
+"line": "53.Txf8 Cf4 54.Cxe5 Ce6 55.Tf2 Rd1 56.Cf3 Cc5 57.Td2+ Rc1"
+}
+}
+},
+{
+"kind": "info",
+"fen": "5r2/3N4/6p1/3pp3/5nPP/1P4K1/5R2/4k3 b - - 4 52",
+"text": "El caballo de d7 ataca la torre de f8.",
+"last": [],
+"arrows": [
+{
+"from": "d7",
+"to": "f8",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "5r2/3N4/6p1/3pp3/6PP/1P4K1/4nR2/4k3 w - - 5 53",
+"text": "52…Ce2+?? Con segundos en el reloj, Carlsen da jaque en vez de salvar la torre.",
+"last": [
+"f4",
+"e2"
+],
+"arrows": [
+{
+"from": "e2",
+"to": "g3",
+"tone": "info"
+}
+]
+},
+{
+"kind": "info",
+"fen": "5r2/3N4/6p1/3pp3/6PP/1P4K1/4R3/4k3 b - - 0 53",
+"text": "53.Txe2+: la torre blanca se come el caballo, y con jaque, porque el rey negro está en e1.",
+"last": [
+"f2",
+"e2"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "5N2/8/6p1/3pp3/6PP/1P4K1/4k3/8 b - - 0 54",
+"text": "53…Rxe2 54.Cxf8: el rey recupera la pieza, pero el caballo se come la torre. Las blancas quedan con un caballo de más, y ganan.",
+"last": [
+"d7",
+"f8"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "4r3/3N4/6p1/3pp3/5nPP/1P4K1/5R2/4k3 w - - 5 53",
+"text": "Volvamos atrás. Lo correcto era salvar la torre: con 52…Te8 la partida seguía equilibrada, incluso algo mejor para las negras. También valían Tg8, Th8, Ta8 o 52…g5.",
+"last": [
+"f8",
+"e8"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N2K2/1P1pp3/4k3/8 b - - 3 62",
+"text": "Tras 52…Ce2+?? 53.Txe2+ Rxe2 54.Cxf8, Gukesh quedó con una pieza de más. Cómo acabó, en «El golpe en la mesa».",
+"last": [
+"g3",
+"f4"
+],
+"arrows": []
+}
+]
+}
+},
+{
+"id": "gukesh-carlsen-2025-norway-r6",
+"title": "El golpe en la mesa",
+"subtitle": "Gukesh – Carlsen · Norway Chess 2025, ronda 6",
+"event": "Norway Chess 2025, ronda 6 · Stavanger",
+"year": 2025,
+"white": "Gukesh D",
+"black": "Magnus Carlsen",
+"video": {
+"id": "xbX88PgcaYc",
+"channel": "ChessBase India",
+"title": "The LOUDEST BANG you will ever hear in chess | Gukesh beats Magnus Carlsen in Norway",
+"start": 362
+},
+"lesson": {
+"id": "cine-gukesh-carlsen-2025-norway-r6",
+"title": "El golpe en la mesa",
+"icon": "film",
+"orientation": 0,
+"intro": [
+"Gukesh – Carlsen · Norway Chess 2025, ronda 6",
+"Stavanger, 1 de junio de 2025. Sexta ronda de Norway Chess. Tras el error de Carlsen en la jugada 52, Gukesh tiene un caballo contra dos peones negros que avanzan, y a los dos les quedan segundos en el reloj."
+],
+"takeaway": "Contra peones que avanzan, gana el jaque que además ataca un peón y vigila su camino.",
+"lessonTitle": "Por qué 61.Cc4+ gana y por qué abandonó Carlsen",
+"exercises": [
+{
+"kind": "move",
+"fen": "8/8/8/7P/8/1P1pp1K1/1N1k4/8 w - - 0 61",
+"text": "Juegan las blancas: Gukesh. Carlsen acaba de empujar 60…e3. ¿Qué jugarías?",
+"hint": "Busca un jaque que, además, ataque un peón.",
+"last": [
+"e4",
+"e3"
+],
+"cine": {
+"target": "win",
+"played": "b2c4",
+"playedSan": "Cc4+",
+"playedCls": "keeps",
+"why": "61.Cc4+: jaque al rey de d2 y, a la vez, el caballo ataca el peón de e3. Es la única que gana. Tras 61…Re2 62.Rf4, Carlsen abandonó."
+},
+"moves": {
+"b2c4": {
+"ok": true,
+"c": "keeps",
+"san": "Cc4+",
+"loses": false,
+"line": "61…Rc3 62.Cxe3 Rxb3 63.h6 Rc3 64.Rf3 Rd4 65.h7 Re5 66.h8=D+"
+},
+"h5h6": {
+"ok": false,
+"c": "spoils",
+"san": "h6",
+"loses": true,
+"line": "61…e2 62.Cc4+ Rc1 63.Rf2 d2 64.Rxe2 d1=D+ 65.Re3 Dxb3+ 66.Rd4"
+},
+"g3f3": {
+"ok": false,
+"c": "spoils",
+"san": "Rf3",
+"loses": true,
+"line": "61…e2 62.Cc4+ Rc1 63.Ce5 Rc2 64.Rf2 d2 65.Cf3 Rd1 66.Re3"
+},
+"g3f4": {
+"ok": false,
+"c": "spoils",
+"san": "Rf4",
+"loses": true,
+"line": "61…e2 62.Re5 e1=D+ 63.Rd5 Dc1 64.Cc4+ Rc3 65.Cd6 Dg5+ 66.Rc6"
+},
+"b3b4": {
+"ok": false,
+"c": "spoils",
+"san": "b4",
+"loses": true,
+"line": "61…e2 62.Cc4+ Rc1 63.Rf2 d2 64.Rxe2 d1=D+ 65.Re3 Dd5 66.Ca3"
+},
+"g3g2": {
+"ok": false,
+"c": "spoils",
+"san": "Rg2",
+"loses": true,
+"line": "61…e2 62.Cc4+ Rc1 63.Rf2 d2 64.Rxe2 d1=D+ 65.Re3 Rc2 66.h6"
+},
+"g3h4": {
+"ok": false,
+"c": "spoils",
+"san": "Rh4",
+"loses": true,
+"line": "61…e2 62.Rg5 e1=D 63.Cc4+ Rc3 64.h6 De4 65.h7 Dxh7 66.Ce3"
+},
+"g3g4": {
+"ok": false,
+"c": "spoils",
+"san": "Rg4",
+"loses": true,
+"line": "61…e2 62.h6 e1=D 63.Rf5 De8 64.b4 Df8+ 65.Re5 Dxh6 66.Cc4+"
+},
+"g3h3": {
+"ok": false,
+"c": "spoils",
+"san": "Rh3",
+"loses": true,
+"line": "61…e2 62.h6 e1=D 63.Cc4+ Rc1 64.h7 Dh1+ 65.Rg3 d2 66.Rf4"
+},
+"g3h2": {
+"ok": false,
+"c": "spoils",
+"san": "Rh2",
+"loses": true,
+"line": "61…e2 62.Cc4+ Rc3 63.h6 e1=D 64.h7 Dh4+ 65.Rg2 Dxh7 66.Rf3"
+},
+"b2a4": {
+"ok": false,
+"c": "spoils",
+"san": "Ca4",
+"loses": true,
+"line": "61…e2 62.Rf4 e1=D 63.h6 De3+ 64.Rf5 Dxh6 65.b4 Rc2 66.Cc5"
+},
+"b2d1": {
+"ok": false,
+"c": "spoils",
+"san": "Cd1",
+"loses": true,
+"line": "61…Rxd1 62.Rf4 e2 63.Re3 Rc2 64.Rf2 d2 65.Rxe2 d1=D+ 66.Re3"
+},
+"b2d3": {
+"ok": false,
+"c": "spoils",
+"san": "Cxd3",
+"loses": true,
+"line": "61…Rxd3 62.Rf4 e2 63.Re5 Rc3 64.h6 e1=D+ 65.Rf6 Dh4+ 66.Rg7"
+}
+}
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/8/1P1pp1K1/1N1k4/8 w - - 0 61",
+"text": "Los peones negros de d3 y e3 están a dos pasos de coronar. Si las blancas no los frenan ya, …e2 y no hay forma de pararlos: por ejemplo, tras 61.h6? e2, ganan las negras.",
+"last": [],
+"arrows": [
+{
+"from": "e3",
+"to": "e1",
+"tone": "bad"
+},
+{
+"from": "d3",
+"to": "d1",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N5/1P1pp1K1/3k4/8 b - - 1 61",
+"text": "61.Cc4+ hace tres cosas a la vez. Da jaque, así que las negras tienen que mover el rey y no pueden avanzar un peón. Ataca el peón de e3. Y vigila d2, la casilla por la que tiene que pasar el peón de d3.",
+"last": [
+"b2",
+"c4"
+],
+"arrows": [
+{
+"from": "c4",
+"to": "e3",
+"tone": "good"
+},
+{
+"from": "c4",
+"to": "d2",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N5/1P1pp1K1/4k3/8 w - - 2 62",
+"text": "Carlsen apartó el rey a e2, desde donde defiende los dos peones. Cualquier jugada de rey pierde aquí.",
+"last": [
+"d2",
+"e2"
+],
+"arrows": [
+{
+"from": "e2",
+"to": "e3",
+"tone": "info"
+},
+{
+"from": "e2",
+"to": "d3",
+"tone": "info"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N2K2/1P1pp3/4k3/8 b - - 3 62",
+"text": "62.Rf4: el rey blanco también ataca e3. Ahora ese peón está atacado dos veces (rey y caballo) y defendido una sola (rey negro). Ojo: correr con el peón, 62.h6?, habría dejado la posición igualada.",
+"last": [
+"g3",
+"f4"
+],
+"arrows": [
+{
+"from": "f4",
+"to": "e3",
+"tone": "good"
+},
+{
+"from": "c4",
+"to": "e3",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N2K2/1P2p3/3pk3/8 w - - 0 63",
+"text": "Por qué abandonó Carlsen. Su mejor defensa era 62…d2: el peón amenaza coronar en d1.",
+"last": [
+"d3",
+"d2"
+],
+"arrows": [
+{
+"from": "d2",
+"to": "d1",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/5K2/1P2N3/3pk3/8 b - - 0 63",
+"text": "63.Cxe3: el caballo se come el peón de e3 y, desde e3, vigila d1. Si el peón corona, el caballo se come la dama.",
+"last": [
+"c4",
+"e3"
+],
+"arrows": [
+{
+"from": "e3",
+"to": "d1",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/1P3K2/3kN3/3p4/8 b - - 0 64",
+"text": "63…Rd3 64.b4: el rey negro no puede comerse el caballo, porque lo defiende el rey blanco. Las blancas tienen tiempo de avanzar su peón.",
+"last": [
+"b3",
+"b4"
+],
+"arrows": [
+{
+"from": "f4",
+"to": "e3",
+"tone": "info"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/1P3K2/3k4/8/3N4 b - - 0 65",
+"text": "64…d1=D 65.Cxd1: la dama nueva cae enseguida. Quedan caballo y dos peones contra el rey solo, una victoria clara. Por eso abandonó Carlsen.",
+"last": [
+"e3",
+"d1"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N2K2/1P1pp3/4k3/8 b - - 3 62",
+"text": "¿Por qué, si tiene dos peones a punto de coronar? Su mejor intento era 62…d2, pero no basta: el caballo frena el peón en d1 y el peón blanco de h corona. El peón de h corona: las blancas tienen dama, caballo y peón contra el rey solo. Por eso Carlsen abandonó.",
+"parts": [
+"¿Por qué, si tiene dos peones a punto de coronar?",
+"Su mejor intento era 62…d2, pero no basta: el caballo frena el peón en d1 y el peón blanco de h corona.",
+"El peón de h corona: las blancas tienen dama, caballo y peón contra el rey solo. Por eso Carlsen abandonó."
+],
+"last": [
+"g3",
+"f4"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/8/7P/2N2K2/1P1pp3/4k3/8 b - - 3 62",
+"text": "Carlsen abandonó tras 62.Rf4 y dio un golpe en la mesa. Fue la primera victoria de Gukesh contra Carlsen en una partida clásica.",
+"last": [
+"g3",
+"f4"
+],
+"arrows": []
+}
+]
+}
+},
+{
+"id": "nepomniachtchi-ding-2023-wch-tb4",
+"title": "El último error del Mundial",
+"subtitle": "Nepomniachtchi – Ding · Mundial 2023, desempate 4",
+"event": "Campeonato del Mundo de la FIDE 2023, desempate (partida rápida 4) · Astana",
+"year": 2023,
+"white": "Ian Nepomniachtchi",
+"black": "Ding Liren",
+"video": {
+"id": "W79Fse7LZQA",
+"channel": "ChessBase India",
+"title": "DING is the new KING",
+"start": 11
+},
+"lesson": {
+"id": "cine-nepomniachtchi-ding-2023-wch-tb4",
+"title": "El último error del Mundial",
+"icon": "film",
+"orientation": 1,
+"intro": [
+"Nepomniachtchi – Ding · Mundial 2023, desempate 4",
+"Astana, 30 de abril de 2023. Cuarta y última partida rápida del desempate del Mundial: si acaba en tablas, se jugarán partidas relámpago. Las negras de Ding tienen dos peones pasados, pero a Nepomniachtchi le basta con no fallar… y le quedan unos 20 segundos."
+],
+"takeaway": "Con poco tiempo, mira primero los jaques: a veces un sacrificio da tablas por jaque perpetuo.",
+"lessonTitle": "Cómo pudo salvarse Nepo y cómo ganó Ding",
+"exercises": [
+{
+"kind": "move",
+"fen": "8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - - 0 59",
+"text": "Juega Nepo, con blancas y unos 20 segundos en el reloj. Si no pierde, habrá partidas relámpago. ¿Qué jugarías?",
+"hint": "Mira el peón de g7: es lo único que protege al rey negro.",
+"last": [
+"a4",
+"a3"
+],
+"cine": {
+"target": "draw",
+"played": "c4c7",
+"playedSan": "Dc7",
+"playedCls": "spoils",
+"why": "59.Axg7! Rxg7 60.Dc7+ y jaque perpetuo: tablas. También 59.h5 y 59.Dd5 mantenían las tablas. En la partida, Nepo jugó 59.Dc7??, que amenaza Dxg7 mate, pero pierde."
+},
+"moves": {
+"d4g7": {
+"ok": true,
+"c": "keeps",
+"san": "Axg7",
+"loses": false,
+"line": "59…Rxg7 60.Dd4+ Rf7 61.Dd5+ Re7 62.Db7+ Re6 63.Db6+ Rd5 64.Db5+"
+},
+"h4h5": {
+"ok": true,
+"c": "keeps",
+"san": "h5",
+"loses": false,
+"line": "59…Af8 60.Df7 De4 61.Axc3 De7 62.Dd5 Dc5 63.Df7 Dxc3 64.Dxf8"
+},
+"c4d5": {
+"ok": true,
+"c": "keeps",
+"san": "Dd5",
+"loses": false,
+"line": "59…Dd3 60.De5 Dg6 61.h5 Df7 62.Rg1 a2 63.De4+ Rh8 64.Da8+"
+},
+"c4f7": {
+"ok": false,
+"c": "spoils",
+"san": "Df7",
+"loses": true,
+"line": "59…Dg6 60.Dd5 c2 61.Ae3 c1=A 62.Axc1 Dc2 63.Axa3 Dxf2+ 64.Rh3"
+},
+"d4e5": {
+"ok": false,
+"c": "spoils",
+"san": "Ae5",
+"loses": true,
+"line": "59…Df5 60.Axg7 Dxf2+ 61.Rh3 Ad6 62.Dd3+ Rxg7 63.Dxd6 Df1+ 64.Rh2"
+},
+"c4e6": {
+"ok": false,
+"c": "spoils",
+"san": "De6",
+"loses": true,
+"line": "59…Dg6 60.Dc4 c2 61.Ae3 Ae7 62.Dd5 c1=D 63.Axc1 Dc2 64.Axa3"
+},
+"c4c7": {
+"ok": false,
+"c": "spoils",
+"san": "Dc7",
+"loses": true,
+"line": "59…Dg6 60.Dc4 c2 61.Ae3 Ae7 62.Dd5 c1=D 63.Axc1 Dc2 64.Axa3"
+},
+"f2f3": {
+"ok": false,
+"c": "spoils",
+"san": "f3",
+"loses": true,
+"line": "59…Dc2+ 60.Rh3 Ad6 61.h5 Df5+ 62.Rg2 c2 63.Ae3 Dxh5 64.Dxc2+"
+},
+"c4a6": {
+"ok": false,
+"c": "spoils",
+"san": "Da6",
+"loses": true,
+"line": "59…Ac5 60.Axg7 Rxg7 61.De6 Db6 62.De5+ Rf7 63.Dh5+ Re6 64.Df3"
+},
+"f2f4": {
+"ok": false,
+"c": "spoils",
+"san": "f4",
+"loses": true,
+"line": "59…Dc2+ 60.Rh3 Df5+ 61.Rh2 c2 62.Ae3 Ae1 63.g4 Dxg4 64.Dxc2+"
+},
+"h2g2": {
+"ok": false,
+"c": "spoils",
+"san": "Rg2",
+"loses": true,
+"line": "59…a2 60.Df7 De4+ 61.Rh2 Dxd4 62.Df5+ Rg8 63.De6+ Rf8 64.Dxa2"
+},
+"h2h3": {
+"ok": false,
+"c": "spoils",
+"san": "Rh3",
+"loses": true,
+"line": "59…a2 60.Df7 Dh1+ 61.Rg4 Dd1+ 62.Rh3 Dxd4 63.Df5+ Rg8 64.De6+"
+},
+"d4f6": {
+"ok": false,
+"c": "spoils",
+"san": "Af6",
+"loses": true,
+"line": "59…a2 60.Df7 Dg6 61.Dxa2 Dxf6 62.De2 Rh8 63.h5 Dc6 64.Dc2"
+},
+"c4e2": {
+"ok": false,
+"c": "spoils",
+"san": "De2",
+"loses": true,
+"line": "59…a2 60.De5 Dg6 61.De1 c2 62.Dc1 Df5 63.h5 Ac5 64.Axc5"
+},
+"c4b5": {
+"ok": false,
+"c": "spoils",
+"san": "Db5",
+"loses": true,
+"line": "59…a2 60.De5 Dg6 61.De1 c2 62.Dc1 Df5 63.Dh1 Ac5 64.Axc5"
+},
+"c4c6": {
+"ok": false,
+"c": "spoils",
+"san": "Dc6",
+"loses": true,
+"line": "59…a2 60.Axg7 a1=D 61.Dxh6+ Rg8 62.De6+ Rxg7 63.De5+ Rf7 64.Dd5+"
+},
+"c4c8": {
+"ok": false,
+"c": "spoils",
+"san": "Dc8",
+"loses": true,
+"line": "59…a2 60.Axg7 a1=D 61.Dh8+ Rg6 62.De8+ Rxg7 63.De5+ Rf7 64.Dd5+"
+},
+"g3g4": {
+"ok": false,
+"c": "spoils",
+"san": "g4",
+"loses": true,
+"line": "59…a2 60.Df7 Ad6+ 61.f4 Axf4+ 62.Dxf4 a1=D 63.Df5+ Dxf5 64.gxf5"
+},
+"d4c3": {
+"ok": false,
+"c": "spoils",
+"san": "Axc3",
+"loses": true,
+"line": "59…Axc3 60.Dxc3 a2 61.f4 a1=D 62.Dxa1 Dxa1 63.Rg2 Dd1 64.Rf2"
+},
+"d4c5": {
+"ok": false,
+"c": "spoils",
+"san": "Ac5",
+"loses": true,
+"line": "59…Axc5 60.Dxc5 a2 61.Dxc3 a1=D 62.Dxa1 Dxa1 63.Rg2 Dd1 64.h5"
+},
+"d4e3": {
+"ok": false,
+"c": "spoils",
+"san": "Ae3",
+"loses": true,
+"line": "59…a2 60.Dd5 a1=D 61.h5 Dg1+ 62.Rh3 Dh1+ 63.Dxh1 Dxh1+ 64.Rg4"
+},
+"d4b6": {
+"ok": false,
+"c": "spoils",
+"san": "Ab6",
+"loses": true,
+"line": "59…a2 60.Dd5 a1=D 61.Dg2 Df5 62.Ad4 Dd1 63.Axg7 Rxg7 64.Db7+"
+},
+"c4c3": {
+"ok": false,
+"c": "spoils",
+"san": "Dxc3",
+"loses": true,
+"line": "59…Axc3 60.Axc3 Dc1 61.Ae5 Dd2 62.Aa1 Dxf2+ 63.Rh3 a2 64.h5"
+},
+"d4a7": {
+"ok": false,
+"c": "spoils",
+"san": "Aa7",
+"loses": true,
+"line": "59…a2 60.Ae3 a1=D 61.Ac1 Af8 62.Rg2 Da8+ 63.Rg1 Dxc1+ 64.Df1"
+},
+"c4b4": {
+"ok": false,
+"c": "spoils",
+"san": "Dxb4",
+"loses": true,
+"line": "59…Dxb4 60.Ae5 c2 61.Af4 a2 62.f3 a1=D 63.Rg2 Dbe1 64.Rh3"
+},
+"c4b3": {
+"ok": false,
+"c": "spoils",
+"san": "Db3",
+"loses": true,
+"line": "59…Dxb3 60.g4 Ad6+ 61.Rg2 Dd5+ 62.f3 Dxd4 63.f4 Dxf4 64.g5"
+},
+"c4c5": {
+"ok": false,
+"c": "spoils",
+"san": "Dc5",
+"loses": true,
+"line": "59…Axc5 60.Axc5 a2 61.g4 a1=D 62.Rg3 De4 63.f3 De2 64.g5"
+},
+"c4g8": {
+"ok": false,
+"c": "spoils",
+"san": "Dg8+",
+"loses": true,
+"line": "59…Rxg8 60.g4 De4 61.Axc3 Axc3 62.Rg3 Ae5+ 63.f4 Axf4+ 64.Rf2"
+},
+"c4a2": {
+"ok": false,
+"c": "spoils",
+"san": "Da2",
+"loses": true,
+"line": "59…Dxa2 60.h5 Dd5 61.g4 Dxd4 62.Rg3 c2 63.g5 c1=D 64.g6+"
+},
+"c4d3": {
+"ok": false,
+"c": "spoils",
+"san": "Dd3+",
+"loses": true,
+"line": "59…Dxd3 60.Axc3 Axc3 61.g4 a2 62.Rg2 a1=D 63.f3 Da2+ 64.Rg3"
+},
+"c4f1": {
+"ok": false,
+"c": "spoils",
+"san": "Df1",
+"loses": true,
+"line": "59…Dxf1 60.Ae3 a2 61.g4 Ad6+ 62.f4 a1=D 63.h5 Dae1 64.g5"
+}
+}
+},
+{
+"kind": "move",
+"fen": "8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - - 1 59",
+"text": "Nepo ha jugado 59.Dc7 y amenaza Dxg7 mate. Juega Ding: ¿qué jugarías?",
+"hint": "Defiende g7, pero sin dejar tu dama fuera de juego.",
+"last": [
+"c4",
+"c7"
+],
+"cine": {
+"target": "win",
+"played": "b1g6",
+"playedSan": "Dg6",
+"playedCls": "keeps",
+"why": "59…Dg6!: defiende g7 y la dama vuelve al centro de la partida. Es la única que gana: con 59…Af8 también se defiende g7, pero solo se hacen tablas."
+},
+"moves": {
+"b1g6": {
+"ok": true,
+"c": "keeps",
+"san": "Dg6",
+"loses": false,
+"line": "60.Dc4 c2 61.Ae3 Ae7 62.Dd5 c1=D 63.Axc1 Dc2 64.Axa3 Dxf2+"
+},
+"b4f8": {
+"ok": false,
+"c": "spoils",
+"san": "Af8",
+"loses": false,
+"line": "60.Df7 De4 61.Axc3 De7 62.Dd5 Dc5 63.Df7 Dxc3 64.Dxf8 Da5"
+},
+"b4e7": {
+"ok": false,
+"c": "spoils",
+"san": "Ae7",
+"loses": true,
+"line": "60.Dxe7 Dg6 61.Axc3 a2 62.Da7 Dg4 63.Aa1 Rg8 64.Dxa2+ Rf8"
+},
+"b1g1": {
+"ok": false,
+"c": "spoils",
+"san": "Dg1+",
+"loses": true,
+"line": "60.Rxg1 Af8 61.Axc3 Rg8 62.Dc4+ Rh7 63.h5 a2 64.Df7 a1=D+"
+},
+"b1h1": {
+"ok": false,
+"c": "spoils",
+"san": "Dh1+",
+"loses": true,
+"line": "60.Rxh1 Af8 61.Axc3 Rg8 62.h5 a2 63.Aa1 Rh8 64.Df7 Rh7"
+},
+"h7g6": {
+"ok": false,
+"c": "spoils",
+"san": "Rg6",
+"loses": true,
+"line": "60.Dxg7+ Rf5 61.De5+ Rg4 62.Df4+ Rh5 63.Df3+ Rg6 64.h5+ Rh7"
+},
+"a3a2": {
+"ok": false,
+"c": "spoils",
+"san": "a2",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"c3c2": {
+"ok": false,
+"c": "spoils",
+"san": "c2",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"h6h5": {
+"ok": false,
+"c": "spoils",
+"san": "h5",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"h7h8": {
+"ok": false,
+"c": "spoils",
+"san": "Rh8",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"h7g8": {
+"ok": false,
+"c": "spoils",
+"san": "Rg8",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b4a5": {
+"ok": false,
+"c": "spoils",
+"san": "Aa5",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b4c5": {
+"ok": false,
+"c": "spoils",
+"san": "Ac5",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b4d6": {
+"ok": false,
+"c": "spoils",
+"san": "Ad6",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1a1": {
+"ok": false,
+"c": "spoils",
+"san": "Da1",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1c1": {
+"ok": false,
+"c": "spoils",
+"san": "Dc1",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1d1": {
+"ok": false,
+"c": "spoils",
+"san": "Dd1",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1e1": {
+"ok": false,
+"c": "spoils",
+"san": "De1",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1f1": {
+"ok": false,
+"c": "spoils",
+"san": "Df1",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1a2": {
+"ok": false,
+"c": "spoils",
+"san": "Da2",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1b2": {
+"ok": false,
+"c": "spoils",
+"san": "Db2",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1c2": {
+"ok": false,
+"c": "spoils",
+"san": "Dc2",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1b3": {
+"ok": false,
+"c": "spoils",
+"san": "Db3",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1d3": {
+"ok": false,
+"c": "spoils",
+"san": "Dd3",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1e4": {
+"ok": false,
+"c": "spoils",
+"san": "De4",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+},
+"b1f5": {
+"ok": false,
+"c": "spoils",
+"san": "Df5",
+"loses": true,
+"line": "60.Dxg7#",
+"end": "checkmate"
+}
+}
+},
+{
+"kind": "move",
+"fen": "8/6pk/3b2qp/8/2Q4P/p3B1P1/2p2PK1/8 b - - 3 62",
+"text": "Nepo acaba de jugar 62.Rg2. Ding pensó casi un minuto. ¿Qué jugarías?",
+"hint": "Antes de correr con los peones, asegura tu rey.",
+"last": [
+"h2",
+"g2"
+],
+"cine": {
+"target": "win",
+"played": "h6h5",
+"playedSan": "h5",
+"playedCls": "keeps",
+"why": "62…h5: frena el peón blanco de h4 y deja al rey negro a salvo. Con el rey seguro, los peones de a y c deciden la partida."
+},
+"moves": {
+"h6h5": {
+"ok": true,
+"c": "keeps",
+"san": "h5",
+"loses": false,
+"line": "63.Dd5 a2 64.Dxa2 De4+ 65.Rh2 Dxh4+ 66.Rg1 De4 67.Da5 Dxe3"
+},
+"h7h8": {
+"ok": false,
+"c": "unclear",
+"san": "Rh8",
+"loses": false,
+"line": "63.h5 Df5 64.g4 Dd7 65.f3 Dc7 66.Da4 Af8 67.Ac1 Dc3"
+},
+"d6e7": {
+"ok": false,
+"c": "unclear",
+"san": "Ae7",
+"loses": false,
+"line": "63.h5 Df5 64.g4 c1=D 65.Axc1 Db1 66.De2 Af8 67.Af4 a2"
+},
+"d6f8": {
+"ok": false,
+"c": "unclear",
+"san": "Af8",
+"loses": false,
+"line": "63.h5 Df5 64.g4 c1=D 65.Axc1 Db1 66.Ae3 a2 67.Ad4 a1=D"
+},
+"d6b8": {
+"ok": false,
+"c": "unclear",
+"san": "Ab8",
+"loses": false,
+"line": "63.h5 Dxh5 64.Dxc2+ Dg6 65.Db3 Ad6 66.Ac1 De4+ 67.Rh2 Dh4+"
+},
+"g6f5": {
+"ok": false,
+"c": "unclear",
+"san": "Df5",
+"loses": false,
+"line": "63.g4 c1=D 64.Axc1 Db1 65.De2 Af8 66.Af4 Db7+ 67.Rg3 Db3+"
+},
+"c2c1b": {
+"ok": false,
+"c": "spoils",
+"san": "c1=A",
+"loses": false,
+"line": "63.Axc1 Db1 64.Dd4 Ae7 65.Dd2 a2 66.Ab2 De4+ 67.Rh2 De6"
+},
+"c2c1q": {
+"ok": false,
+"c": "spoils",
+"san": "c1=D",
+"loses": false,
+"line": "63.Axc1 Db1 64.Dd4 Ae7 65.Dd2 De4+ 66.Rh2 Dc4 67.Dd1 a2"
+},
+"c2c1r": {
+"ok": false,
+"c": "spoils",
+"san": "c1=T",
+"loses": false,
+"line": "63.Axc1 Db1 64.Dd4 Ae7 65.Dd2 De4+ 66.Rh2 Dc4 67.Dd1 a2"
+},
+"c2c1n": {
+"ok": false,
+"c": "spoils",
+"san": "c1=C",
+"loses": false,
+"line": "63.Axc1 Db1 64.Dd4 Ae7 65.Dd2 Rh8 66.Rh2 Ac5 67.Dc3 Df5"
+},
+"a3a2": {
+"ok": false,
+"c": "spoils",
+"san": "a2",
+"loses": false,
+"line": "63.h5 Df5 64.g4 Dd7 65.Dxc2+ Rh8 66.Dxa2 Dxg4+ 67.Rf1 Dh3+"
+},
+"g6f6": {
+"ok": false,
+"c": "spoils",
+"san": "Df6",
+"loses": false,
+"line": "63.Dxc2+ Dg6 64.Db3 De4+ 65.Rg1 Af8 66.Rh2 Ae7 67.Da2 Ad6"
+},
+"g6e8": {
+"ok": false,
+"c": "spoils",
+"san": "De8",
+"loses": false,
+"line": "63.Dxc2+ Dg6 64.Db3 De4+ 65.Rg1 Af8 66.Rh2 Ae7 67.Da2 Ad6"
+},
+"g6h5": {
+"ok": false,
+"c": "spoils",
+"san": "Dh5",
+"loses": false,
+"line": "63.Dxc2+ Dg6 64.Db3 De4+ 65.Rg1 Af8 66.Rh2 Ae7 67.Da2 Ad6"
+},
+"d6e5": {
+"ok": false,
+"c": "spoils",
+"san": "Ae5",
+"loses": false,
+"line": "63.h5 Dxh5 64.De4+ Dg6 65.Dxe5 a2 66.Rh2 Df7 67.De4+ g6"
+},
+"d6b4": {
+"ok": false,
+"c": "spoils",
+"san": "Ab4",
+"loses": false,
+"line": "63.Dxb4 c1=D 64.Axc1 Dc6+ 65.Rh2 Dxc1 66.De4+ Rh8 67.Da8+ Rh7"
+},
+"d6g3": {
+"ok": false,
+"c": "spoils",
+"san": "Axg3",
+"loses": false,
+"line": "63.fxg3 a2 64.h5 Df5 65.Dxa2 De4+ 66.Rh2 Dd3 67.Df7 Dxe3"
+},
+"d6c7": {
+"ok": false,
+"c": "spoils",
+"san": "Ac7",
+"loses": false,
+"line": "63.Dxc7 a2 64.Ad4 c1=D 65.Dxc1 De4+ 66.Rg1 Dxd4 67.Dc2+ Rh8"
+},
+"d6c5": {
+"ok": false,
+"c": "spoils",
+"san": "Ac5",
+"loses": false,
+"line": "63.Dxc5 De4+ 64.Rh2 a2 65.Da3 Dc4 66.Da7 c1=T 67.Axc1 Dxc1"
+},
+"d6f4": {
+"ok": false,
+"c": "spoils",
+"san": "Af4",
+"loses": true,
+"line": "63.Axf4 a2 64.h5 Df5 65.Dxa2 De4+ 66.Rh2 De2 67.Ae3 Dxh5+"
+},
+"g6g5": {
+"ok": false,
+"c": "spoils",
+"san": "Dg5",
+"loses": true,
+"line": "63.hxg5 hxg5 64.Dd3+ Rg8 65.Dxd6 Rf7 66.Dd7+ Rg6 67.De6+ Rh7"
+},
+"g6g4": {
+"ok": false,
+"c": "spoils",
+"san": "Dg4",
+"loses": true,
+"line": "63.Dxg4 Af8 64.De4+ Rh8 65.Dxc2 Ae7 66.Da4 Af6 67.Da8+ Rh7"
+},
+"g6e6": {
+"ok": false,
+"c": "spoils",
+"san": "De6",
+"loses": true,
+"line": "63.Dxe6 a2 64.Dxa2 Ae5 65.Dxc2+ g6 66.Af4 Ad4 67.h5 Rh8"
+},
+"g6g3": {
+"ok": false,
+"c": "spoils",
+"san": "Dxg3+",
+"loses": true,
+"line": "63.fxg3 a2 64.Dxa2 Ae5 65.Dxc2+ g6 66.De4 Af6 67.Ad4 Axd4"
+},
+"g6f7": {
+"ok": false,
+"c": "spoils",
+"san": "Df7",
+"loses": true,
+"line": "63.Dxf7 Ac5 64.Df5+ Rg8 65.Dd5+ Rh7 66.Dxc5 Rg6 67.Dxa3 h5"
+},
+"g6e4": {
+"ok": false,
+"c": "spoils",
+"san": "De4+",
+"loses": true,
+"line": "63.Dxe4+ Rh8 64.De8+ Rh7 65.Df7 Ac5 66.Df5+ Rg8 67.Dd5+ Rh7"
+},
+"g6d3": {
+"ok": false,
+"c": "spoils",
+"san": "Dd3",
+"loses": true,
+"line": "63.Dxd3+ Rg8 64.Dxd6 Rf7 65.Dd7+ Rf8 66.Ac5+ Rg8 67.Axa3 c1=D"
+}
+}
+},
+{
+"kind": "info",
+"fen": "8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - - 0 59",
+"text": "Las negras tienen dos peones pasados, en a3 y c3, muy cerca de coronar. Nepo, con unos 20 segundos, tiene que encontrar cómo salvarse.",
+"last": [],
+"arrows": [
+{
+"from": "a3",
+"to": "a1",
+"tone": "bad"
+},
+{
+"from": "c3",
+"to": "c1",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/6Bk/7p/8/1bQ4P/p1p3P1/5P1K/1q6 b - - 0 59",
+"text": "59.Axg7!: un sacrificio. El alfil se come el peón que protege al rey negro.",
+"last": [
+"d4",
+"g7"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/2Q3k1/7p/8/1b5P/p1p3P1/5P1K/1q6 b - - 1 60",
+"text": "59…Rxg7 60.Dc7+: la dama da jaque tras jaque y el rey negro no tiene dónde esconderse. Tablas por jaque perpetuo.",
+"last": [
+"c4",
+"c7"
+],
+"arrows": [
+{
+"from": "c7",
+"to": "g7",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - - 1 59",
+"text": "En la partida, Nepo jugó 59.Dc7??. Amenaza Dxg7 mate: la dama y el alfil de d4 apuntan a g7.",
+"last": [
+"c4",
+"c7"
+],
+"arrows": [
+{
+"from": "c7",
+"to": "g7",
+"tone": "bad"
+},
+{
+"from": "d4",
+"to": "g7",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/2Q3pk/6qp/8/1b1B3P/p1p3P1/5P1K/8 w - - 2 60",
+"text": "59…Dg6!: defiende g7 y la dama negra vuelve al juego. Era la única jugada que ganaba.",
+"last": [
+"b1",
+"g6"
+],
+"arrows": [
+{
+"from": "g6",
+"to": "g7",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/6pk/6qp/8/1bQB3P/p5P1/2p2P1K/8 w - - 0 61",
+"text": "60.Dc4 c2: el peón de c ya está a un paso de coronar.",
+"last": [
+"c3",
+"c2"
+],
+"arrows": [
+{
+"from": "c2",
+"to": "c1",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/6pk/3b2qp/8/2Q4P/p3B1P1/2p2P1K/8 w - - 2 62",
+"text": "61.Ae3 Ad6: los dos peones negros quedan protegidos, el de a3 por el alfil y el de c2 por la dama.",
+"last": [
+"b4",
+"d6"
+],
+"arrows": [
+{
+"from": "d6",
+"to": "a3",
+"tone": "good"
+},
+{
+"from": "g6",
+"to": "c2",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/6pk/3b2q1/7p/2Q4P/p3B1P1/2p2PK1/8 w - - 0 63",
+"text": "62.Rg2 h5!: frena el peón blanco de h4 y deja al rey negro a salvo. Con el rey seguro, los peones deciden.",
+"last": [
+"h6",
+"h5"
+],
+"arrows": [
+{
+"from": "h5",
+"to": "h4",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/6pk/8/5q1P/5b2/4B1p1/Q1p5/5K2 w - - 0 69",
+"text": "¿Por qué, si todavía tiene dama y alfil? El alfil negro se come el de e3 con jaque, el peón de c corona y la dama blanca no basta para frenar los peones negros. Mate. Con la mejor defensa, las negras coronan el peón de c y dan mate en ocho jugadas. Por eso Nepo abandonó.",
+"parts": [
+"¿Por qué, si todavía tiene dama y alfil?",
+"El alfil negro se come el de e3 con jaque, el peón de c corona y la dama blanca no basta para frenar los peones negros.",
+"Mate. Con la mejor defensa, las negras coronan el peón de c y dan mate en ocho jugadas. Por eso Nepo abandonó."
+],
+"last": [
+"e5",
+"f4"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/6pk/8/5q1P/5b2/4B1p1/Q1p5/5K2 w - - 0 69",
+"text": "Nepomniachtchi abandonó tras 68…Axf4. Ding Liren se convirtió en el 17.º campeón del mundo, el primero de China.",
+"last": [
+"e5",
+"f4"
+],
+"arrows": []
+}
+]
+}
+},
+{
+"id": "firouzja-gukesh-2025-superbet-r6",
+"title": "La técnica de Firouzja",
+"subtitle": "Firouzja – Gukesh · Superbet Chess Classic 2025, ronda 6",
+"event": "Superbet Chess Classic Romania 2025 (Grand Chess Tour), ronda 6 · Bucarest",
+"year": 2025,
+"white": "Alireza Firouzja",
+"black": "Gukesh D",
+"video": {
+"id": "T-7gJKWFp_g",
+"channel": "ChessBase India",
+"title": "Alireza Firouzja - D Gukesh, Commentary by IM Sagar Shah",
+"start": 1012
+},
+"lesson": {
+"id": "cine-firouzja-gukesh-2025-superbet-r6",
+"title": "La técnica de Firouzja",
+"icon": "film",
+"orientation": 0,
+"intro": [
+"Firouzja – Gukesh · Superbet Chess Classic 2025, ronda 6",
+"Bucarest, 13 de mayo de 2025. Sexta ronda del Superbet Chess Classic. El campeón del mundo, Gukesh, defendía un final de torre contra alfil que parecía tablas, pero acaba de mover su alfil a g5 y ha perdido su último peón. Firouzja tiene que mostrar la técnica."
+],
+"takeaway": "Con torre contra alfil, acerca tu rey: rey y torre juntos encierran al rey contrario en la esquina.",
+"lessonTitle": "Cómo gana Firouzja con torre contra alfil",
+"exercises": [
+{
+"kind": "move",
+"fen": "8/5R2/5p1k/7P/6K1/8/3b4/8 w - - 2 56",
+"text": "Juegan las blancas: Firouzja. Gukesh acaba de jugar 55…Ad2. ¿Qué jugarías?",
+"hint": "Al negro le queda un solo peón.",
+"last": [
+"g5",
+"d2"
+],
+"cine": {
+"target": "win",
+"played": "f7f6",
+"playedSan": "Txf6+",
+"playedCls": "keeps",
+"why": "56.Txf6+: la torre se come el último peón negro con jaque. Es la mejor con diferencia."
+},
+"moves": {
+"f7f6": {
+"ok": true,
+"c": "keeps",
+"san": "Txf6+",
+"loses": false,
+"line": "56…Rg7 57.Td6 Ac1 58.Tg6+ Rh7 59.Rf5 Ad2 60.Td6 Ae3 61.h6"
+},
+"f7c7": {
+"ok": false,
+"c": "unclear",
+"san": "Tc7",
+"loses": false,
+"line": "56…Ae3 57.Td7 Ac1 58.Tb7 Ad2 59.Tb3 Aa5 60.Tf3 Rg7 61.Th3"
+},
+"f7b7": {
+"ok": false,
+"c": "spoils",
+"san": "Tb7",
+"loses": false,
+"line": "56…Ac3 57.Tf7 Ae5 58.Rf5 Ac3"
+},
+"f7a7": {
+"ok": false,
+"c": "spoils",
+"san": "Ta7",
+"loses": false,
+"line": "56…Ac3 57.Tf7 Ab2 58.Tc7 Ae5 59.Tc6 Ab2 60.Rf5 Ae5"
+},
+"f7f8": {
+"ok": false,
+"c": "spoils",
+"san": "Tf8",
+"loses": false,
+"line": "56…Ac3 57.Tc8 Aa1 58.Rf5 Ad4 59.Re6 Rg7 60.Tc7+ Rh6"
+},
+"g4h3": {
+"ok": false,
+"c": "spoils",
+"san": "Rh3",
+"loses": false,
+"line": "56…Ac3 57.Rg4 Ab2 58.Tc7 Ae5 59.Tc6 Ab2"
+},
+"g4f3": {
+"ok": false,
+"c": "spoils",
+"san": "Rf3",
+"loses": false,
+"line": "56…Ac3 57.Rg4 Ab2 58.Tc7 Ae5 59.Tc6 Ab2"
+},
+"g4h4": {
+"ok": false,
+"c": "spoils",
+"san": "Rh4",
+"loses": false,
+"line": "56…Ac3 57.Rg4 Ab2 58.Tc7 Ae5 59.Tc6 Ab2 60.Rf5 Ae5 61.Tc4"
+},
+"f7d7": {
+"ok": false,
+"c": "spoils",
+"san": "Td7",
+"loses": false,
+"line": "56…Ac3 57.Rf5 Ab2 58.Tc7 Ad4 59.Tc6 Rxh5 60.Tc4 Ae5 61.Tc1"
+},
+"g4f5": {
+"ok": false,
+"c": "spoils",
+"san": "Rf5",
+"loses": false,
+"line": "56…Ac3 57.Tc7 Ae5 58.Tb7 Ac3"
+},
+"f7e7": {
+"ok": false,
+"c": "spoils",
+"san": "Te7",
+"loses": false,
+"line": "56…Ac3 57.Te8 Aa1 58.Tg8 Ae5 59.Tg6+ Rh7 60.Rf5 Ac3 61.h6"
+},
+"g4g3": {
+"ok": false,
+"c": "spoils",
+"san": "Rg3",
+"loses": false,
+"line": "56…Ac3 57.Rg4 Ab2 58.Tc7 Ae5 59.Tc6 Ab2"
+},
+"f7h7": {
+"ok": false,
+"c": "spoils",
+"san": "Th7+",
+"loses": true,
+"line": "56…Rxh7 57.Rf5 Ag5 58.h6 Rxh6 59.Re4 Rh5 60.Rf3 Ad2 61.Rf2"
+},
+"f7g7": {
+"ok": false,
+"c": "spoils",
+"san": "Tg7",
+"loses": true,
+"line": "56…Rxg7 57.Rf5 Ag5 58.Re4 Rh6 59.Rd4 Rxh5 60.Rd5 Rg4 61.Re6"
+}
+}
+},
+{
+"kind": "move",
+"fen": "8/7k/6R1/5K2/8/8/8/2b5 w - - 2 63",
+"text": "El rey negro ha vuelto a h7. Juegan las blancas: ¿qué jugarías?",
+"hint": "La torre sola no basta: hace falta el rey.",
+"last": [
+"h6",
+"h7"
+],
+"cine": {
+"target": "win",
+"played": "f5f6",
+"playedSan": "Rf6",
+"playedCls": "keeps",
+"why": "63.Rf6!: es la única que gana. El rey blanco se acerca para encerrar al rey negro: tras 63…Ae3 64.Rf7, al rey negro solo le queda h8."
+},
+"moves": {
+"f5f6": {
+"ok": true,
+"c": "keeps",
+"san": "Rf6",
+"loses": false,
+"line": "63…Af4 64.Rf7 Ac7 65.Tf6 Ab8 66.Tb6 Ac7 67.Tb7 Ad8 68.Re8+"
+},
+"g6b6": {
+"ok": false,
+"c": "spoils",
+"san": "Tb6",
+"loses": false,
+"line": "63…Rg7 64.Tb4 Ae3 65.Tg4+ Rf7 66.Th4 Ac1 67.Th7+ Rf8 68.Tb7"
+},
+"g6g2": {
+"ok": false,
+"c": "spoils",
+"san": "Tg2",
+"loses": false,
+"line": "63…Ae3 64.Re5 Ab6 65.Re4 Aa5 66.Tg3 Ae1 67.Te3 Ad2 68.Td3"
+},
+"g6g4": {
+"ok": false,
+"c": "spoils",
+"san": "Tg4",
+"loses": false,
+"line": "63…Ab2 64.Tg3 Ad4 65.Td3 Aa1 66.Ta3 Ad4 67.Tg3 Aa1 68.Ta3"
+},
+"g6e6": {
+"ok": false,
+"c": "spoils",
+"san": "Te6",
+"loses": false,
+"line": "63…Ab2 64.Rg5 Rg7 65.Te7+ Rg8 66.Rf5 Rf8 67.Tb7 Ac3 68.Re4"
+},
+"g6g3": {
+"ok": false,
+"c": "spoils",
+"san": "Tg3",
+"loses": false,
+"line": "63…Ab2 64.Tb3 Ad4 65.Td3 Aa1 66.Ta3 Ad4"
+},
+"g6f6": {
+"ok": false,
+"c": "spoils",
+"san": "Tf6",
+"loses": false,
+"line": "63…Ab2 64.Tf7+ Rh6 65.Td7 Aa1 66.Td1 Ab2 67.Td7"
+},
+"g6g1": {
+"ok": false,
+"c": "spoils",
+"san": "Tg1",
+"loses": false,
+"line": "63…Ab2 64.Tg3 Aa1 65.Ta3 Ab2"
+},
+"g6d6": {
+"ok": false,
+"c": "spoils",
+"san": "Td6",
+"loses": false,
+"line": "63…Ab2 64.Rg5 Rg7 65.Td7+ Rf8 66.Rf4 Ac3 67.Tb7 Ag7 68.Re4"
+},
+"g6a6": {
+"ok": false,
+"c": "spoils",
+"san": "Ta6",
+"loses": false,
+"line": "63…Ab2 64.Tb6 Aa1 65.Tb1 Ad4 66.Rg5 Rg7 67.Tb7+ Rf8 68.Rf5"
+},
+"g6c6": {
+"ok": false,
+"c": "spoils",
+"san": "Tc6",
+"loses": false,
+"line": "63…Ab2 64.Tc7+ Rh6 65.Td7 Aa1 66.Td1 Ab2"
+},
+"f5g4": {
+"ok": false,
+"c": "spoils",
+"san": "Rg4",
+"loses": false,
+"line": "63…Rxg6 64.Rh4 Rf5 65.Rg3 Rf6 66.Rg2 Rf5",
+"end": "insufficient"
+},
+"f5e5": {
+"ok": false,
+"c": "spoils",
+"san": "Re5",
+"loses": false,
+"line": "63…Rxg6 64.Rd4 Rf5 65.Rc4 Re4 66.Rc3 Ag5 67.Rc4",
+"end": "insufficient"
+},
+"g6g7": {
+"ok": false,
+"c": "spoils",
+"san": "Tg7+",
+"loses": false,
+"line": "63…Rxg7 64.Re6 Ag5 65.Rd5 Ah6 66.Rc4 Rg6 67.Rd3 Rf5 68.Re2",
+"end": "insufficient"
+},
+"f5e6": {
+"ok": false,
+"c": "spoils",
+"san": "Re6",
+"loses": false,
+"line": "63…Rxg6 64.Re5 Rf7 65.Rd4 Rf6 66.Rd3 Rf5 67.Rd4",
+"end": "insufficient"
+},
+"g6g5": {
+"ok": false,
+"c": "spoils",
+"san": "Tg5",
+"loses": false,
+"line": "63…Axg5 64.Re5 Rg6 65.Re4 Ah6 66.Rf3 Rf5 67.Rf2 Re4 68.Re2",
+"end": "insufficient"
+},
+"g6g8": {
+"ok": false,
+"c": "spoils",
+"san": "Tg8",
+"loses": false,
+"line": "63…Rxg8 64.Re4 Rg7 65.Rd3 Rf6 66.Re2 Re5 67.Rf1 Re4 68.Re2",
+"end": "insufficient"
+},
+"g6h6": {
+"ok": false,
+"c": "spoils",
+"san": "Th6+",
+"loses": false,
+"line": "63…Rxh6 64.Re4 Rg5 65.Rd3 Rf5 66.Rd4 Ah6 67.Rc4 Re4 68.Rc3",
+"end": "insufficient"
+},
+"f5e4": {
+"ok": false,
+"c": "spoils",
+"san": "Re4",
+"loses": false,
+"line": "63…Rxg6 64.Rd3 Rf5 65.Rd4 Ah6 66.Rc4 Re4 67.Rc3 Ag5 68.Rc4",
+"end": "insufficient"
+}
+}
+},
+{
+"kind": "info",
+"fen": "8/5R2/5p1k/7P/6K1/8/3b4/8 w - - 2 56",
+"text": "Las blancas tienen torre y peón de h; las negras, alfil y peón de f.",
+"last": [],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/5R1k/7P/6K1/8/3b4/8 b - - 0 56",
+"text": "56.Txf6+: la torre se come el último peón negro, y con jaque.",
+"last": [
+"f7",
+"f6"
+],
+"arrows": [
+{
+"from": "f6",
+"to": "h6",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/6k1/3R4/7P/6K1/8/3b4/8 b - - 2 57",
+"text": "56…Rg7 57.Td6: la torre sigue en la sexta fila.",
+"last": [
+"f6",
+"d6"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/6k1/3R4/5K1P/8/8/8/2b5 b - - 4 58",
+"text": "57…Ac1 58.Rf5: el rey blanco se acerca al rey negro.",
+"last": [
+"g4",
+"f5"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/6k1/6R1/5K1P/8/4b3/8/8 b - - 6 59",
+"text": "58…Ae3 59.Tg6+: jaque, y el rey negro se va al borde.",
+"last": [
+"d6",
+"g6"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/7k/6RP/5K2/8/4b3/8/8 b - - 0 60",
+"text": "59…Rh7 60.h6: Firouzja ofrece el peón de h.",
+"last": [
+"h5",
+"h6"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/6Rk/7P/5K2/8/8/8/2b5 b - - 2 61",
+"text": "60…Ac1 61.Tg7+.",
+"last": [
+"g6",
+"g7"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/6Rk/5K2/8/8/8/2b5 b - - 1 62",
+"text": "61…Rxh6 62.Tg6+: el rey negro se ha comido el peón, pero sigue en la esquina.",
+"last": [
+"g7",
+"g6"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/7k/5KR1/8/8/8/8/2b5 b - - 3 63",
+"text": "62…Rh7 63.Rf6!: la única jugada que gana. El rey blanco se acerca para encerrar al rey negro.",
+"last": [
+"f5",
+"f6"
+],
+"arrows": [
+{
+"from": "f6",
+"to": "f7",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/5K1k/6R1/8/8/4b3/8/8 b - - 5 64",
+"text": "63…Ae3 64.Rf7: el rey blanco controla g7 y g8, y la torre, h6. Al rey negro solo le queda h8.",
+"last": [
+"f6",
+"f7"
+],
+"arrows": [
+{
+"from": "f7",
+"to": "g8",
+"tone": "good"
+},
+{
+"from": "g6",
+"to": "h6",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "8/5K1k/8/6b1/8/8/8/1R6 b - - 15 69",
+"text": "¿Por qué, si todavía tiene el alfil? Con la mejor defensa, el alfil tiene que ponerse delante del rey para tapar un jaque y la torre se lo come. La torre se come el alfil: queda rey y torre contra rey solo, un mate seguro. Por eso Gukesh abandonó.",
+"parts": [
+"¿Por qué, si todavía tiene el alfil?",
+"Con la mejor defensa, el alfil tiene que ponerse delante del rey para tapar un jaque y la torre se lo come.",
+"La torre se come el alfil: queda rey y torre contra rey solo, un mate seguro. Por eso Gukesh abandonó."
+],
+"last": [
+"b4",
+"b1"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/5K1k/8/6b1/8/8/8/1R6 b - - 15 69",
+"text": "Gukesh abandonó tras 69.Tb1. Firouzja se unió al grupo de cabeza; Gukesh, campeón del mundo, quedó último tras seis rondas.",
+"last": [
+"b4",
+"b1"
+],
+"arrows": []
+}
+]
+}
+},
+{
+"id": "nakamura-carlsen-2024-norway-armageddon",
+"title": "Se le acabó el tiempo",
+"subtitle": "Nakamura – Carlsen · Norway Chess 2024, armagedón",
+"event": "Norway Chess 2024, ronda 7, armagedón · Stavanger",
+"year": 2024,
+"white": "Hikaru Nakamura",
+"black": "Magnus Carlsen",
+"video": {
+"id": "_xbZRdj-U0A",
+"channel": "ChessBase India",
+"title": "The most thrilling Nakamura vs Carlsen encounter",
+"start": 843
+},
+"lesson": {
+"id": "cine-nakamura-carlsen-2024-norway-armageddon",
+"title": "Se le acabó el tiempo",
+"icon": "film",
+"orientation": 0,
+"intro": [
+"Nakamura – Carlsen · Norway Chess 2024, armagedón",
+"Stavanger, junio de 2024. Armagedón de la séptima ronda de Norway Chess: Nakamura necesita ganar, porque las tablas dan la victoria a Carlsen. Nakamura tiene dama contra dos torres y caballo, pero las negras tienen un peón en d3 a punto de coronar. Y a Carlsen le queda menos de un minuto."
+],
+"takeaway": "Antes de comerte un peón peligroso, mira qué lo defiende y qué jugadas tiene el rival. A veces una jugada tranquila de rey gana más que un ataque.",
+"lessonTitle": "El peón que casi corona",
+"exercises": [
+{
+"kind": "move",
+"fen": "3rr2k/1Q4p1/7p/P7/5n2/5PP1/1P1p3P/3R2K1 w - - 0 36",
+"text": "Juega Nakamura, con blancas y algo más de dos minutos. A Carlsen le quedan menos de 40 segundos. ¿Qué jugarías?",
+"hint": "Comerte el peón de d2 ahora no funciona: lo defiende la torre de d8. ¿Qué pieza blanca puede acercarse?",
+"last": [
+"d3",
+"d2"
+],
+"cine": {
+"target": "win",
+"played": "b7b4",
+"playedSan": "Db4",
+"playedCls": "spoils",
+"why": "36.Rf1!: el rey se acerca al peón de d2 y vigila e1 y e2. Era la única que ganaba. En la partida, Nakamura jugó 36.Db4?, que ataca el caballo de f4 y el peón de d2, pero Carlsen encontró 36…Td4!: la torre protege el caballo y, si 37.Dxd4, Ce2+ ataca rey y dama. Nakamura tuvo que dar la dama por la torre y la ventaja se esfumó."
+},
+"moves": {
+"g1f1": {
+"ok": true,
+"c": "keeps",
+"san": "Rf1",
+"loses": false,
+"line": "36…Cd5 37.Txd2 Ce3+ 38.Re1 Cg2+ 39.Rd1 Te1+ 40.Rc2 Ce3+ 41.Rc3"
+},
+"b7b4": {
+"ok": false,
+"c": "spoils",
+"san": "Db4",
+"loses": false,
+"line": "36…Td4 37.Dxd2 Txd2 38.Txd2 Ce6 39.Te2 Rg8 40.f4 g6 41.b4"
+},
+"b7e4": {
+"ok": false,
+"c": "spoils",
+"san": "De4",
+"loses": true,
+"line": "36…Txe4 37.fxe4 Ce2+ 38.Rf2 Cc1 39.b4 Cd3+ 40.Re2 Cxb4 41.Txd2"
+},
+"b7b6": {
+"ok": false,
+"c": "spoils",
+"san": "Db6",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Cd3+ 38.Rg2 Te2+ 39.Rh3 Td5 40.Txd2 Txd2 41.Dg6"
+},
+"b7c7": {
+"ok": false,
+"c": "spoils",
+"san": "Dc7",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Cd3+ 38.Rg2 Te2+ 39.Rh3 Cf2+ 40.Rh4 Td4+ 41.g4"
+},
+"b7a6": {
+"ok": false,
+"c": "spoils",
+"san": "Da6",
+"loses": true,
+"line": "36…Te1+ 37.Df1 Ce2+ 38.Rf2 Txf1+ 39.Rxf1 Cc1 40.f4 Cb3 41.Re2"
+},
+"b7b5": {
+"ok": false,
+"c": "spoils",
+"san": "Db5",
+"loses": true,
+"line": "36…Te1+ 37.Df1 Ce2+ 38.Rf2 Txf1+ 39.Rxf1 Cc1 40.f4 Cb3 41.Re2"
+},
+"b7b3": {
+"ok": false,
+"c": "spoils",
+"san": "Db3",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Cd3+ 38.Dxd3 Txd3 39.Txd2 Txd2+ 40.Rxe1 Txb2 41.a6"
+},
+"d1d2": {
+"ok": false,
+"c": "spoils",
+"san": "Txd2",
+"loses": true,
+"line": "36…Txd2 37.De4 Ch3+ 38.Rf1 Txe4 39.fxe4 Txb2 40.e5 Tf2+ 41.Re1"
+},
+"g3f4": {
+"ok": false,
+"c": "spoils",
+"san": "gxf4",
+"loses": true,
+"line": "36…Te1+ 37.Rg2 Txd1 38.Db6 Te8 39.Df2 Tde1 40.Dxd2 T8e2+ 41.Dxe2"
+},
+"g1f2": {
+"ok": false,
+"c": "spoils",
+"san": "Rf2",
+"loses": true,
+"line": "36…Cd3+ 37.Rg2 Te2+ 38.Rg1 Te1+ 39.Rg2 Txd1 40.Db6 Te8 41.Dd4"
+},
+"h2h4": {
+"ok": false,
+"c": "spoils",
+"san": "h4",
+"loses": true,
+"line": "36…Te1+ 37.Rh2 Txd1 38.gxf4 Tb1 39.Db3 d1=D 40.Dxd1 Tbxd1 41.b4"
+},
+"b7c6": {
+"ok": false,
+"c": "spoils",
+"san": "Dc6",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Txd1 38.Dc2 Ch3+ 39.Rg2 Tc1 40.Dxd2 Txd2+ 41.Rxh3"
+},
+"h2h3": {
+"ok": false,
+"c": "spoils",
+"san": "h3",
+"loses": true,
+"line": "36…Te1+ 37.Rh2 Txd1 38.gxf4 Tf1 39.Db3 d1=D 40.Dxd1 Tfxd1 41.f5"
+},
+"a5a6": {
+"ok": false,
+"c": "spoils",
+"san": "a6",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Txd1 38.gxf4 Ta1 39.Db3 d1=D 40.Dxd1 Tdxd1 41.b4"
+},
+"b7d5": {
+"ok": false,
+"c": "spoils",
+"san": "Dd5",
+"loses": true,
+"line": "36…Txd5 37.Rf1 Cg2 38.Rxg2 Te1 39.Txd2 Txd2+ 40.Rh3 Tee2 41.Rg4"
+},
+"b7d7": {
+"ok": false,
+"c": "spoils",
+"san": "Dd7",
+"loses": true,
+"line": "36…Txd7 37.Rf1 Cg2 38.Rxg2 Te1 39.Txd2 Txd2+ 40.Rh3 Tee2 41.Rg4"
+},
+"b7f7": {
+"ok": false,
+"c": "spoils",
+"san": "Df7",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Cd3+ 38.Rg2 Txd1 39.Db3 Tb1 40.f4 d1=D 41.Dxd1"
+},
+"g3g4": {
+"ok": false,
+"c": "spoils",
+"san": "g4",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Txd1 38.Db3 Te1 39.a6 d1=D 40.Dxd1 Texd1 41.h4"
+},
+"b7b8": {
+"ok": false,
+"c": "spoils",
+"san": "Db8",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Cd3+ 38.Rg2 Te2+ 39.Rh3 Txb8 40.Txd2 Txd2 41.b3"
+},
+"b7g7": {
+"ok": false,
+"c": "spoils",
+"san": "Dxg7+",
+"loses": true,
+"line": "36…Rxg7 37.Rf1 Te2 38.gxf4 Tde8 39.a6 Te1+ 40.Rg2 Txd1 41.f5"
+},
+"b7a8": {
+"ok": false,
+"c": "spoils",
+"san": "Da8",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Cd3+ 38.Rg2 Te2+ 39.Rh3 Txa8 40.Txd2 Cf2+ 41.Rg2"
+},
+"b7a7": {
+"ok": false,
+"c": "spoils",
+"san": "Da7",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Txd1 38.gxf4 Th1 39.Rg2 d1=D 40.Df2 Td2 41.Dxd2"
+},
+"b7e7": {
+"ok": false,
+"c": "spoils",
+"san": "De7",
+"loses": true,
+"line": "36…Txe7 37.Rf1 Te2 38.gxf4 Tde8 39.f5 Te1+ 40.Rf2 Txd1 41.f6"
+},
+"b7c8": {
+"ok": false,
+"c": "spoils",
+"san": "Dc8",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Te2+ 38.Rf1 Txc8 39.gxf4 Tce8 40.f5 Te1+ 41.Rf2"
+},
+"b2b4": {
+"ok": false,
+"c": "spoils",
+"san": "b4",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Txd1 38.Re3 Ce6 39.Re4 Te1+ 40.Rf5 d1=D 41.Rg4"
+},
+"b2b3": {
+"ok": false,
+"c": "spoils",
+"san": "b3",
+"loses": true,
+"line": "36…Te1+ 37.Rf2 Txd1 38.Re3 Ch3 39.Re4 Te1+ 40.Rf5 d1=D 41.Rg6"
+},
+"d1f1": {
+"ok": false,
+"c": "spoils",
+"san": "Tf1",
+"loses": true,
+"line": "36…d1=D 37.gxf4 Dc2 38.Db5 Dg6+ 39.Dg5 hxg5 40.f5 Dh5 41.f6"
+},
+"d1b1": {
+"ok": false,
+"c": "spoils",
+"san": "Tb1",
+"loses": true,
+"line": "36…d1=D+ 37.Txd1 Txd1+ 38.Rf2 Te2#",
+"end": "checkmate"
+},
+"d1a1": {
+"ok": false,
+"c": "spoils",
+"san": "Ta1",
+"loses": true,
+"line": "36…d1=D+ 37.Txd1 Txd1+ 38.Rf2 Te2#",
+"end": "checkmate"
+},
+"d1c1": {
+"ok": false,
+"c": "spoils",
+"san": "Tc1",
+"loses": true,
+"line": "36…dxc1=D+ 37.Rf2 Td2#",
+"end": "checkmate"
+},
+"g1h1": {
+"ok": false,
+"c": "spoils",
+"san": "Rh1",
+"loses": true,
+"line": "36…Te1+ 37.Txe1 dxe1=D#",
+"end": "checkmate"
+},
+"d1e1": {
+"ok": false,
+"c": "spoils",
+"san": "Te1",
+"loses": true,
+"line": "36…dxe1=D#",
+"end": "checkmate"
+}
+}
+},
+{
+"kind": "info",
+"fen": "3rr2k/1Q4p1/7p/P7/5n2/5PP1/1P1p3P/3R2K1 w - - 0 36",
+"text": "El peón de d2 está a un paso de coronar. Lo defiende la torre de d8; la torre de d1 lo frena.",
+"last": [],
+"arrows": [
+{
+"from": "d8",
+"to": "d2",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "4r2k/1Q4p1/7p/P7/5n2/5PP1/1P1r3P/6K1 w - - 0 37",
+"text": "Comérselo ya no sirve: 36.Txd2? Txd2, y las blancas pierden la torre.",
+"last": [
+"d8",
+"d2"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "3rr2k/1Q4p1/7p/P7/5n2/5PP1/1P1p3P/3R1K2 b - - 1 36",
+"text": "36.Rf1!: el rey se acerca al peón y vigila e1 y e2, para que las piezas negras no entren por ahí. Las blancas ganaban.",
+"last": [
+"g1",
+"f1"
+],
+"arrows": [
+{
+"from": "f1",
+"to": "e2",
+"tone": "good"
+}
+]
+},
+{
+"kind": "info",
+"fen": "3rr2k/6p1/7p/P7/1Q3n2/5PP1/1P1p3P/3R2K1 b - - 1 36",
+"text": "En la partida, 36.Db4?: la dama ataca el caballo de f4 y el peón de d2.",
+"last": [
+"b7",
+"b4"
+],
+"arrows": [
+{
+"from": "b4",
+"to": "f4",
+"tone": "bad"
+},
+{
+"from": "b4",
+"to": "d2",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "4r2k/6p1/7p/P7/1Q1r1n2/5PP1/1P1p3P/3R2K1 w - - 2 37",
+"text": "36…Td4!: la torre corta la fila y protege el caballo. Si 37.Dxd4, Ce2+ ataca rey y dama a la vez.",
+"last": [
+"d8",
+"d4"
+],
+"arrows": [
+{
+"from": "f4",
+"to": "e2",
+"tone": "bad"
+}
+]
+},
+{
+"kind": "info",
+"fen": "4r2k/6p1/7p/P7/5n2/5PP1/1P1r3P/3R2K1 w - - 0 38",
+"text": "37.Dxd2 Txd2: Nakamura se come el peón, pero tiene que dar la dama por la torre.",
+"last": [
+"d4",
+"d2"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "4r2k/6p1/7p/P7/5n2/5PP1/1P1R3P/6K1 b - - 0 38",
+"text": "38.Txd2: queda torre y peones contra torre y caballo. La ventaja blanca ha desaparecido.",
+"last": [
+"d1",
+"d2"
+],
+"arrows": []
+},
+{
+"kind": "info",
+"fen": "8/8/1P5p/Pkn3rK/8/5PP1/2R5/8 w - - 2 52",
+"text": "La posición final estaba igualada, y en un armagedón las tablas daban la victoria a Carlsen. Pero tras 51…Tg5+, la bandera de Carlsen cayó: perdió por tiempo y Nakamura ganó la ronda.",
+"last": [
+"g6",
+"g5"
+],
+"arrows": []
+}
+]
+}
+}
+]
+}

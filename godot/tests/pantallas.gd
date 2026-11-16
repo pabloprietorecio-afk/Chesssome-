@@ -159,6 +159,7 @@ func _ready() -> void:
 		print("PORQUE ", wp["text"])
 	demo._learn_why_toggle()
 	await _frames(2)
+	await _cine(demo)
 	# Flechas cortas (a la casilla de al lado) por encima de las piezas: Txf2 en verde, Cxd1 en violeta.
 	demo.view.set_fen("r1b1k2r/ppppn1pp/2n5/2p1N3/2P5/8/P4nPP/2RQ1RK1 b - - 0 16")
 	demo.view.board.set_arrows([{"from": 5, "to": 13, "tone": "good"}, {"from": 13, "to": 3, "tone": "info"}, {"from": 53, "to": 36, "tone": "bad"}])
@@ -405,6 +406,52 @@ func _mis_partidas(demo: Control) -> void:
 	await _shot("p22_mis_partidas_lista")
 	demo._filter_my_games("", "")
 	demo._close_progress()
+
+
+## Finales de campeones: la entrada en Entrenar, la lista, la presentación, una pregunta (fallo y acierto), un paso
+## de la explicación con flechas y el final con el vídeo.
+func _cine(demo: Control) -> void:
+	# Los intentos de prueba de arriba son de una lista de nivel, sin todos los campos de un problema: al acabar la
+	# lección, el resumen del día los leería. Fuera mientras tanto.
+	var tries_before: Array = demo.player["tries"]
+	demo.player["tries"] = []
+	demo._open_train_hub()
+	await _frames(6)
+	demo.progress_scroll.scroll_vertical = 1100
+	await _frames(4)
+	await _shot("p34_entrenar_finales")
+	demo._open_cine()
+	await _frames(6)
+	await _shot("p35_finales_lista")
+	demo._start_lesson("cine-ding-gukesh-2024-g14")
+	await get_tree().create_timer(0.6).timeout
+	await _shot("p36_final_presentacion")
+	demo._next_lesson_step()
+	await get_tree().create_timer(0.6).timeout
+	await _shot("p37_final_pregunta")
+	demo.view.show_move("b2b1")
+	demo._on_move_played("b2b1")
+	await get_tree().create_timer(0.8).timeout
+	await _shot("p38_final_fallo")
+	print("CINE fallo: ", demo.ex_text)
+	demo._show_lesson_step()
+	await _frames(4)
+	demo.view.show_move("b2f2")
+	demo._on_move_played("b2f2")
+	await get_tree().create_timer(0.8).timeout
+	await _shot("p39_final_acierto")
+	demo.lesson_ex = 4
+	demo._show_lesson_step()
+	await get_tree().create_timer(0.6).timeout
+	await _shot("p40_final_explicacion")
+	demo.lesson_ex = (demo.lesson["exercises"] as Array).size()
+	demo._show_lesson_step()
+	await get_tree().create_timer(0.8).timeout
+	await _shot("p41_final_fin")
+	print("CINE fin: ", demo.course_done.get("cine-ding-gukesh-2024-g14", -1))
+	demo._open_home()
+	await _frames(4)
+	demo.player["tries"] = tries_before
 
 
 func _find_clock(n: Node) -> FlipClock:
