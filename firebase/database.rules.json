@@ -27,6 +27,7 @@
           ".validate": "newData.isString() && newData.val().matches(/^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
         },
         "no": {
+          ".write": "auth != null && newData.parent().child('creador').val() === auth.uid",
           "$uid": {
             ".write": "auth != null && newData.parent().parent().child('creador').val() === auth.uid",
             ".validate": "newData.val() === true"

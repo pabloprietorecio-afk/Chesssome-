@@ -114,6 +114,13 @@ func _init() -> void:
 	o._check_fin({"fin": {"tipo": "abandono", "pierde": 1, "de": "a", "t": 1}})
 	_ok(got == [["ausencia", 0]] and o.phase == "ended", "fin por abandono: gana el que lo reclama")
 	o.free()
+	# Bloqueados al abrir: por rutas («no/<uid>»), que es lo que dejan las reglas; los 50 últimos.
+	var bl := {}
+	for i in 60:
+		bl["u%d" % i] = "Jugador %d" % i
+	var row := Online.blocked_row(bl)
+	_ok(row.size() == 50 and row.has("no/u59") and not row.has("no/u9") and row["no/u10"] == true, "bloqueados: 50 últimos, como rutas no/<uid>")
+	_ok(not row.has("no") and Online.blocked_row({}).is_empty(), "nunca la lista entera «no» (daba 401)")
 	print("%d comprobaciones, %d fallos" % [hechos, fallos])
 	if fallos == 0:
 		print("TODO OK")

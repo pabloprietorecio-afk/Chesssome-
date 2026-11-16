@@ -44,6 +44,14 @@ test('espera: abrir un espacio con un ritmo válido', async () => {
   // Bloqueados: solo los pone el creador.
   await assertSucceeds(set(ref(db('a'), 'espera/g1/no/c'), true));
   await assertFails(set(ref(db('b'), 'espera/g1/no/x'), true));
+  // Abrir con jugadores bloqueados (un usuario lo vio fallar, «código 200/401», 16 nov): la app antigua manda la
+  // lista entera en el mismo PATCH; la nueva, por rutas. Las dos valen, solo para el creador y solo con «true».
+  await assertSucceeds(update(ref(db('a'), 'espera/g5'), { creador: 'a', latido: ts(), ritmo: '5+3', no: { c: true, d: true } }));
+  await assertSucceeds(update(ref(db('a'), 'espera/g6'), { creador: 'a', latido: ts(), ritmo: '5+3', 'no/c': true, 'no/d': true }));
+  await assertFails(update(ref(db('b'), 'espera/g7'), { creador: 'a', latido: ts(), ritmo: '5+3', no: { c: true } }));
+  await assertFails(update(ref(db('a'), 'espera/g8'), { creador: 'a', latido: ts(), ritmo: '5+3', no: { c: 'x' } }));
+  await assertFails(update(ref(db('b'), 'espera/g5'), { no: { b: true } }));
+  await assertFails(set(ref(db('b'), 'espera/g5/no'), null));
   await assertFails(remove(ref(db('b'), 'espera/g1')));
   await assertSucceeds(remove(ref(db('a'), 'espera/g1')));
 });

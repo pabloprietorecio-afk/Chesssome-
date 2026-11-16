@@ -594,18 +594,23 @@ func send_gesture(kind: String) -> bool:
 	return int(r["status"]) == 200
 
 
+## Bloqueados para la fila de `espera`: {"no/<uid>": true, …}, los 50 últimos.
+static func blocked_row(list: Dictionary) -> Dictionary:
+	var out := {}
+	var keys: Array = list.keys()
+	for k in keys.slice(maxi(0, keys.size() - 50)):
+		out["no/" + str(k)] = true
+	return out
+
+
 func _open() -> void:
 	var gen := _gen
 	var id := new_game_id(int(_server_now() / 1000.0), _rng)
 	var a := await request(HTTPClient.METHOD_PATCH, "partidas/" + id, {"creador": uid, "ritmo": rhythm})
 	var row := {"creador": uid, "latido": {".sv": "timestamp"}, "ritmo": rhythm}
-	if not blocked.is_empty():
-		# Los que he bloqueado no se unen a mi partida (los 50 últimos).
-		var no := {}
-		var keys: Array = blocked.keys()
-		for k in keys.slice(maxi(0, keys.size() - 50)):
-			no[str(k)] = true
-		row["no"] = no
+	# Los que he bloqueado no se unen a mi partida (los 50 últimos). Van como rutas («no/<uid>»): las reglas solo
+	# dejan escribir cada uno por separado; la lista entera de golpe («no»: {…}) daba 401 («código 200/401», 16 nov).
+	row.merge(blocked_row(blocked))
 	var b := await request(HTTPClient.METHOD_PATCH, "espera/" + id, row)
 	if int(b["status"]) == 200 and b["json"] is Dictionary:
 		_calibrate((b["json"] as Dictionary).get("latido"), float(b["sent"]), float(b["recv"]))
