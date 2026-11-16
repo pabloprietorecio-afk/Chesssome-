@@ -5751,7 +5751,9 @@ func _record_game() -> void:
 	}
 	GameLog.add(_log(), g, rival_info)
 	GameLog.save_log(_log())
-	_prog_game()
+	# Una partida que abandonas no cuenta para el reto del día (si abandona el rival, sí: tú la has jugado).
+	if not (game_won < 0 and GameLog.reason(g) == "abandono"):
+		_prog_game()
 
 
 ## Insignia de un rival guardado (o del de ahora): su foto o su icono dentro del anillo del color de su nivel.

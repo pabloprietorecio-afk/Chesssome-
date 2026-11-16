@@ -2,7 +2,7 @@
 
 Capa de constancia alrededor del juego, sin monedas ni XP: el progreso real sigue siendo el nivel de habilidad (Glicko-2).
 
-- **Reto del día** (`Progress.ensure_today`): resolver 3 problemas; repasar un fallo antiguo (solo si hay fallos que repasar) o hacer una lección (si quedan); jugar una partida (no en Kids). Una partida cuenta con al menos 8 jugadas propias.
+- **Reto del día** (`Progress.ensure_today`): resolver 3 problemas; repasar un fallo antiguo (solo si hay fallos que repasar) o hacer una lección (si quedan); jugar una partida (no en Kids). Una partida cuenta con al menos 8 jugadas propias; si la abandonas, no cuenta (si abandona el rival, sí).
 - **Racha**: un día cuenta con cualquier actividad. Un día sin jugar se perdona una vez por semana (lunes–domingo).
 - **Reto semanal**: 5 problemas resueltos de la categoría más floja del jugador (la de «Mi nivel y mi plan»), o una que se va turnando; no se repite la de la semana anterior.
 - **Insignias**: racha de 3, 7 y 30 días; 10 y 30 retos del día; 1 y 5 retos semanales.

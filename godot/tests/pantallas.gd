@@ -200,6 +200,14 @@ func _reto_del_dia(demo: Control) -> void:
 	demo._record_game()
 	var c2: Dictionary = Progress.counts(demo.prog, demo._prog_day())
 	print("CAMINOS REALES problemas=%d partidas=%d ganadas=%d" % [int(c2["a"]), int(c2["g"]), int(c2["v"])])
+	# Abandonar una partida online no cuenta como partida jugada.
+	demo.game = {"online": true}
+	demo.game_recorded = false
+	demo.game_won = -1
+	demo.game_result = "Has abandonado la partida."
+	demo._record_game()
+	print("ABANDONO partidas=%d (antes %d)" % [int(Progress.counts(demo.prog, demo._prog_day())["g"]), int(c2["g"])])
+	demo.game = {}
 	demo.prog = {}
 	demo._try = {}
 	demo._close_progress()
