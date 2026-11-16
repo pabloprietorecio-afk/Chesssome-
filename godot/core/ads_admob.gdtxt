@@ -1,0 +1,91 @@
+extends RefCounted
+## Puente con el plugin AdMob de Poing Studios (https://github.com/poingstudios/godot-admob-plugin, MIT, v5.1.0).
+## Esto es `core/ads_admob.gd` en las compilaciones de Android: la CI copia este archivo (sin la `.gdtxt`) después de
+## instalar el plugin en res://addons/admob. Fuera de ahí no existe, porque usa las clases del plugin
+## (MobileAds, InterstitialAdLoader…) y no compilaría sin él. API consultada en el código fuente del plugin v5.1.0.
+
+var _unit := ""
+var _ad: InterstitialAd = null
+var _loading := false
+var _can_request := false
+
+
+func start(cfg: Dictionary) -> void:
+	_unit = str(cfg.get("interstitial", ""))
+	# Todo el tráfico como dirigido a niños y contenido G (ver core/ads.gd).
+	var rc := RequestConfiguration.new()
+	rc.tag_for_child_directed_treatment = RequestConfiguration.TagForChildDirectedTreatment.TRUE
+	rc.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_G
+	MobileAds.set_request_configuration(rc)
+	# Consentimiento (UMP): solo se pide el formulario si Google dice que hace falta (UE/Reino Unido).
+	UserMessagingPlatform.consent_information.update(
+		ConsentRequestParameters.new(), _on_consent_updated, _on_consent_failed)
+
+
+func _on_consent_updated() -> void:
+	var info := UserMessagingPlatform.consent_information
+	if info.get_is_consent_form_available() and info.get_consent_status() == ConsentInformation.ConsentStatus.REQUIRED:
+		UserMessagingPlatform.load_consent_form(_on_form_loaded, _on_form_failed)
+	else:
+		_init_ads()
+
+
+func _on_consent_failed(_error: FormError) -> void:
+	# Sin red o sin respuesta: no se piden anuncios (se reintentará en el próximo arranque).
+	_can_request = false
+
+
+func _on_form_loaded(form: ConsentForm) -> void:
+	form.show(_on_form_dismissed)
+
+
+func _on_form_failed(_error: FormError) -> void:
+	_can_request = false
+
+
+func _on_form_dismissed(_error: FormError) -> void:
+	var status := UserMessagingPlatform.consent_information.get_consent_status()
+	if status == ConsentInformation.ConsentStatus.OBTAINED or status == ConsentInformation.ConsentStatus.NOT_REQUIRED:
+		_init_ads()
+
+
+func _init_ads() -> void:
+	_can_request = true
+	var listener := OnInitializationCompleteListener.new()
+	listener.on_initialization_complete = func(_status: InitializationStatus) -> void: _load()
+	MobileAds.initialize(listener)
+
+
+func _load() -> void:
+	if _loading or _ad != null or not _can_request or _unit == "":
+		return
+	_loading = true
+	var callback := InterstitialAdLoadCallback.new()
+	callback.on_ad_loaded = _on_loaded
+	callback.on_ad_failed_to_load = func(_error: LoadAdError) -> void: _loading = false
+	InterstitialAdLoader.new().load(_unit, AdRequest.new(), callback)
+
+
+func _on_loaded(ad: InterstitialAd) -> void:
+	_loading = false
+	_ad = ad
+	ad.full_screen_content_callback.on_ad_dismissed_full_screen_content = _after_ad
+	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_error: AdError) -> void: _after_ad()
+
+
+func _after_ad() -> void:
+	if _ad != null:
+		_ad.destroy()
+	_ad = null
+	_load()
+
+
+func is_ready() -> bool:
+	return _ad != null
+
+
+func show() -> bool:
+	if _ad == null:
+		return false
+	_ad.show()
+	return true

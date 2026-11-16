@@ -175,6 +175,8 @@ var course: Array = []
 var kids_lines := {}
 ## Nivel Kids (desde 8 años): textos muy sencillos con voz, solo el curso; salir pide la puerta para adultos.
 var kids := false
+## Anuncios entre actividades (core/ads.gd); sin el plugin de Android no hacen nada.
+var ads := Ads.new()
 ## Pantalla de inicio que ha elegido el jugador: «lista» o «rejilla» (ui/home_screens.gd). Kids tiene la suya.
 var home_style := "lista"
 var voice_on := true
@@ -1077,6 +1079,8 @@ func _ready() -> void:
 		return
 	_load_player()
 	_aviso_setup()
+	if not kids:
+		ads.start()
 	_idle()
 	if not welcome_seen:
 		_open_welcome()
@@ -5290,6 +5294,8 @@ func _open_home() -> void:
 		else:
 			HomeScreens.build_list(self, _home_items())
 		_place_tip()
+		# Entre actividades y solo aquí (core/ads.gd): nunca en Kids, online ni en mitad de nada.
+		ads.maybe_show(kids or online.phase != "idle" or online_busy)
 		return
 	var page := _page("home")
 	var body: VBoxContainer = page["body"]
@@ -7419,6 +7425,7 @@ func _sync_captures() -> void:
 
 
 func _process(delta: float) -> void:
+	ads.tick(delta)
 	_sync_captures()
 	if mode == "game" and bool(game.get("online", false)) and game_state in ["play", "think", "press"]:
 		_online_idle_tick()

@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -393,6 +393,9 @@ jobs:
     env:
       PLUGIN_VERSION: "6.0"
       PLUGIN_SHA256: "806c85eafe8f4c8aa4ee37e0ed1ab551e85db8755f8aeb1c6302092f809725a3"
+      # AdMob de Poing Studios (MIT): etiqueta v5.1.0 fijada por su commit; las librerías de Android, por su suma.
+      ADMOB_COMMIT: "615974e9f66921a54e3c71c33db0856bdbf19d13"
+      ADMOB_TEMPLATE_SHA256: "f7fdf644d50c0e231d8f02ae044057e489d0bcafcf50e908a4858477e7ee05ee"
     steps:
       - uses: actions/checkout@v4
 
@@ -479,6 +482,28 @@ jobs:
           tail -4 godot/project.godot
           ls godot/addons
 
+      # Anuncios entre actividades (core/ads.gd). El puente (core/ads_admob.gdtxt) solo se activa aquí, con el plugin
+      # instalado: sin él no compilaría. IDs: godot/data/ads.json (de prueba de Google hasta poner los de Pablo).
+      - name: Plugin de anuncios (AdMob, Poing Studios; versión fija)
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/poingstudios/godot-admob-plugin /tmp/admob-src
+          git -C /tmp/admob-src checkout -q $ADMOB_COMMIT
+          grep -q 'version="5.1.0"' /tmp/admob-src/platforms/godot_editor/addons/admob/plugin.cfg
+          cp -r /tmp/admob-src/platforms/godot_editor/addons/admob godot/addons/admob
+          wget -nv --tries=6 --waitretry=15 --retry-connrefused "https://github.com/poingstudios/godot-admob-plugin/releases/download/v5.1.0/android-template-v${GODOT_VERSION}.zip" -O /tmp/admob-android.zip
+          echo "${ADMOB_TEMPLATE_SHA256}  /tmp/admob-android.zip" | sha256sum -c -
+          mkdir -p godot/addons/admob/android/bin
+          unzip -q -o /tmp/admob-android.zip -d godot/addons/admob/android/bin
+          cat godot/addons/admob/android/bin/package.gd
+          cp godot/core/ads_admob.gdtxt godot/core/ads_admob.gd
+          APP_ID=$(python3 -c "import json;print(json.load(open('godot/data/ads.json'))['app_id'])")
+          grep -q 'res://addons/espera_online/plugin.cfg")' godot/project.godot
+          sed -i 's|"res://addons/espera_online/plugin.cfg")|"res://addons/espera_online/plugin.cfg", "res://addons/admob/plugin.cfg")|' godot/project.godot
+          printf '\n[admob]\n\ngeneral/android/app_id="%s"\n' "$APP_ID" >> godot/project.godot
+          tail -8 godot/project.godot
+          if [ "$APP_ID" = "ca-app-pub-3940256099942544~3347511713" ]; then echo "::warning::Los anuncios usan los IDs de PRUEBA de Google (godot/data/ads.json). No publicar así: no generan ingresos."; fi
+
       # Esperar rival con la app minimizada (android_espera/LEEME.md): el código Java va dentro de la plantilla de
       # Gradle, junto a GodotApp.java; el manifiesto lo completa res://addons/espera_online al exportar.
       - name: Complemento EsperaOnline (Java en la plantilla de Gradle)
@@ -541,7 +566,17 @@ jobs:
           # Icono propio y arranque sin el logo de Godot (solo informativo: nombres de recursos de la plantilla).
           $AAPT2 dump resources $A | grep -iE "mipmap/|splash|boot" | head -30 || true
           unzip -l $A | grep -iE "res/mipmap|res/drawable.*splash" | head -20 || true
-          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/ui/iconos.json; do
+          # Anuncios (plugin de Poing Studios): clases, ID de la app en el manifiesto y puente dentro del juego.
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/poingstudios/godot/admob"; then echo "OK AdMob dentro del APK"; else echo "FALTA AdMob en el APK"; exit 1; fi
+          for f in "com.google.android.gms.ads.APPLICATION_ID" "org.godotengine.plugin.v2.PoingGodotAdMob"; do
+            if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
+          done
+          # Informativo: permiso del identificador de publicidad y versión objetivo de Android (Play exige la reciente).
+          grep -n "AD_ID" build/avisos-log/manifiesto.txt || echo "(sin permiso AD_ID)"
+          $AAPT2 dump badging $A | grep -E "^(sdkVersion|targetSdkVersion|compileSdkVersion)" || true
+          T=$($AAPT2 dump badging $A | sed -n "s/^targetSdkVersion:'\([0-9]*\)'.*/\1/p")
+          [ -n "$T" ] && [ "$T" -ge 35 ] || { echo "targetSdkVersion=$T: Play exige 35 o más"; exit 1; }
+          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/data/ads.json assets/ui/iconos.json; do
             if grep -q " $f$" build/avisos-log/apk-contenido.txt; then echo "OK $f"; else echo "FALTA $f"; exit 1; fi
           done
 
@@ -576,3 +611,53 @@ jobs:
           body: "APK de depuración (Gradle, con avisos y espera online), versión ${{ github.run_number }}, commit ${{ github.sha }}."
           files: build/android/Chessome-debug.apk
           overwrite_files: true
+
+      # Paquete para Google Play (AAB), firmado con la CLAVE DE SUBIDA guardada en los secretos del repositorio
+      # (UPLOAD_KEYSTORE_B64, UPLOAD_KEYSTORE_PASSWORD, UPLOAD_KEY_ALIAS). Sin ellos, este paso se salta con un aviso.
+      # Va después de publicar el APK para que un fallo aquí no lo bloquee. No se publica en abierto: es un artefacto
+      # del flujo (hay que iniciar sesión en GitHub para bajarlo).
+      - name: AAB para Play Console (firmado con la clave de subida)
+        env:
+          UPLOAD_KEYSTORE_B64: ${{ secrets.UPLOAD_KEYSTORE_B64 }}
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+        run: |
+          set -uo pipefail
+          if [ -z "$UPLOAD_KEYSTORE_B64" ] || [ -z "$UPLOAD_KEYSTORE_PASSWORD" ] || [ -z "$UPLOAD_KEY_ALIAS" ]; then
+            echo "::warning::Sin secretos de firma (UPLOAD_KEYSTORE_B64, UPLOAD_KEYSTORE_PASSWORD, UPLOAD_KEY_ALIAS): no se genera el AAB."
+            exit 0
+          fi
+          echo "$UPLOAD_KEYSTORE_B64" | base64 -d > $RUNNER_TEMP/subida.keystore
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/subida.keystore
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER=$UPLOAD_KEY_ALIAS
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$UPLOAD_KEYSTORE_PASSWORD
+          mkdir -p build/android build/aab-log
+          B=$GITHUB_WORKSPACE/build/android/AChessWay-play.aab
+          for i in 1 2 3; do
+            ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot --export-release "Android Play" $B > build/aab-log/export.log 2>&1 || true
+            [ -f $B ] && break
+            echo "Intento $i sin AAB"; grep -m3 -E "status code|What went wrong" build/aab-log/export.log || true
+            sleep $((i * 60))
+          done
+          tail -40 build/aab-log/export.log
+          ls -lh $B
+          rm -f $RUNNER_TEMP/subida.keystore
+          # Comprobaciones del paquete: firmado, con el juego, los datos y los anuncios.
+          unzip -l $B > build/aab-log/aab-contenido.txt
+          unzip -l $B | grep -E "META-INF/.*\.(RSA|SF)" || { echo "AAB sin firma"; exit 1; }
+          for f in base/manifest/AndroidManifest.xml assets/data/cine.json assets/data/ads.json assets/data/curso.json; do
+            grep -q "$f" build/aab-log/aab-contenido.txt && echo "OK $f" || { echo "FALTA $f en el AAB"; exit 1; }
+          done
+          unzip -p $B 'base/dex/*.dex' | grep -a -q "com/poingstudios/godot/admob" && echo "OK AdMob en el AAB" || { echo "FALTA AdMob en el AAB"; exit 1; }
+          unzip -p $B 'base/dex/*.dex' | grep -a -q "com/pabloprieto/espera" && echo "OK EsperaOnline en el AAB" || { echo "FALTA EsperaOnline en el AAB"; exit 1; }
+          unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "com.pabloprieto.chessome" && echo "OK paquete com.pabloprieto.chessome" || { echo "paquete distinto en el AAB"; exit 1; }
+          SIZE=$(stat -c %s $B); echo "AAB: $((SIZE/1024/1024)) MB"
+          [ $SIZE -lt 200000000 ] || echo "::warning::El AAB supera 200 MB: Play pedirá Play Asset Delivery."
+
+      - name: Subir el AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: AChessWay-play-aab
+          path: build/android/AChessWay-play.aab
+          if-no-files-found: warn
+          retention-days: 30
