@@ -7,6 +7,5 @@ las pantallas de espera del análisis de una partida: uno por espera (se repite 
 siguiente, en ciclo (se guarda en `chessome.cfg` → `app/espera`).
 
 - Godot no importa los `.ogv`: van en el filtro de exportación (`espera/*.ogv`) de `export_presets.cfg`.
-- **Los primeros llevan la marca de agua de PixVerse** (arriba a la derecha): hay que cambiarlos por las descargas
-  sin marca de agua, como el vídeo de la intro.
+- Descargas sin marca de agua (17-11; las primeras la llevaban).
 - Imagen de IA: confirmar los términos de uso comercial de PixVerse antes de publicar (igual que la intro).
