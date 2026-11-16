@@ -1243,6 +1243,8 @@ func _load_settings() -> void:
 		intro_mode = INTRO_MODES[0]
 	intro_seen = bool(cfg.get_value("app", "intro_vista", false))
 	wait_clip = int(cfg.get_value("app", "espera", 0))
+	var subs: Variant = cfg.get_value("partida", "subniveles", {})
+	game_sublevels = subs if subs is Dictionary else {}
 	if not home_style in HomeScreens.STYLES:
 		home_style = HomeScreens.STYLES[0]
 	avatar = str(cfg.get_value("app", "icono", ""))
@@ -1302,6 +1304,7 @@ func _save_settings() -> void:
 	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("app", "icono", avatar)
 	cfg.set_value("partida", "pulsar_reloj", press_clock)
+	cfg.set_value("partida", "subniveles", game_sublevels)
 	cfg.set_value("partida", "aviso_reloj", press_reminder)
 	cfg.set_value("sonido", "voz", voice_on)
 	cfg.set_value("sonido", "musica", music_on)
@@ -6007,7 +6010,56 @@ func _is_last_of_unit(lesson_id: String) -> bool:
 	return str(lessons[lessons.size() - 1]["id"]) == lesson_id
 
 
-## Elegir rival: color y cinco niveles.
+const GROUP_TINTS := ["mint", "sky", "butter", "peach", "rose"]
+const GROUP_ICONS := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen"]
+## Último subnivel elegido en cada grupo (se guarda): sale marcado en la ventana de subniveles.
+var game_sublevels := {}
+
+
+## «Elo 1200–1590» de un grupo (solo con los subniveles medidos).
+func _group_elo_span(g: int) -> String:
+	var elos: Array = []
+	for lv: int in Bot.group_levels(g):
+		if Bot.level_elo(lv) < 0:
+			return ""
+		elos.append(Bot.level_elo(lv))
+	if elos.is_empty():
+		return ""
+	if elos.size() == 1:
+		return Loc.f("Elo %d", int(elos[0]))
+	return Loc.f("Elo %d–%d", [int(elos[0]), int(elos[-1])])
+
+
+## Al tocar un nivel: sus subniveles, con su Elo, en una ventana semitransparente con «Cancelar». Un nivel de un
+## solo escalón («Muy difícil») empieza directamente.
+func _pick_sublevel(g: int) -> void:
+	var levels := Bot.group_levels(g)
+	if levels.size() == 1:
+		_start_level(int(levels[0]))
+		return
+	var column := _popup(Loc.t(str(Bot.GROUPS[g])), Loc.t("Elige un subnivel."))
+	var last := int(game_sublevels.get(str(g), -1))
+	for lv: int in levels:
+		var elo := Bot.level_elo(lv)
+		var text := Loc.f("Elo %d", elo) if elo >= 0 else Loc.t("Elo por medir")
+		var icon := "check" if lv == last else str(GROUP_ICONS[g])
+		var b := _option_button(icon, str(GROUP_TINTS[g]), Bot.level_name(lv), text, func() -> void:
+			_close_confirm()
+			_start_level(lv))
+		column.add_child(b)
+	column.add_child(_para(Loc.f("Elo medido contra %s: escala de motores, no Elo FIDE.", "Stockfish"), F_FOOT, _c("quiet"), font_regular))
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	column.add_child(_button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), opts))
+
+
+func _start_level(lv: int) -> void:
+	game_sublevels[str(Bot.group_of(lv))] = lv
+	_save_settings()
+	var cfg := {"variant": "", "level": lv, "title": Loc.f("Partida · %s", Bot.level_name(lv)), "text": "", "kids": "", "unit": "", "clock": []}
+	_start_game(cfg, -1)
+
+
+## Elegir rival: color y cinco niveles (cada uno con sus subniveles).
 func _open_game_setup() -> void:
 	if sheet_kind != "":
 		_close_options()
@@ -6047,11 +6099,13 @@ func _open_game_setup() -> void:
 	body.add_child(_spacer(30.0))
 	body.add_child(_text("RIVAL", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
-	var tints := ["mint", "sky", "butter", "peach", "rose"]
-	var icons := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen"]
-	for i in Bot.LEVELS.size():
-		var cfg := {"variant": "", "level": i, "title": Loc.f("Partida · %s", str(Bot.LEVELS[i]["name"])), "text": "", "kids": "", "unit": "", "clock": []}
-		body.add_child(_option_button(str(icons[i]), str(tints[i]), str(Bot.LEVELS[i]["name"]), str(GAME_LEVEL_TEXT[i]), _start_game.bind(cfg, -1)))
+	# Los cinco grupos de siempre; cada uno abre sus subniveles (Bot.group_levels).
+	for g in Bot.GROUPS.size():
+		var text := Loc.t(str(GAME_LEVEL_TEXT[g]))
+		var span := _group_elo_span(g)
+		if span != "":
+			text += "\n" + span
+		body.add_child(_option_button(str(GROUP_ICONS[g]), str(GROUP_TINTS[g]), str(Bot.GROUPS[g]), text, _pick_sublevel.bind(g)))
 		body.add_child(_spacer(14.0))
 	body.add_child(_spacer(10.0, true))
 	var frow := HBoxContainer.new()
@@ -6849,7 +6903,7 @@ func _record_game() -> void:
 	else:
 		var lv := int(game.get("level", 0))
 		rid = "bot:%d" % lv
-		rname = Loc.f("Ordenador · %s", str(Bot.LEVELS[clampi(lv, 0, Bot.LEVELS.size() - 1)]["name"]))
+		rname = Loc.f("Ordenador · %s", Bot.level_name(lv))
 	var g := {
 		"fecha": int(Time.get_unix_time_from_system()),
 		"tipo": "online" if is_online else "ordenador",
@@ -8279,7 +8333,7 @@ func _build_game_card() -> void:
 		chess_clock.pressed_mine.connect(_on_clock_pressed)
 		chess_clock.pressed_early.connect(_on_clock_early)
 		var is_online := bool(game.get("online", false))
-		var who := str(online_rival.get("nombre", "")) if is_online else Loc.t(str(Bot.LEVELS[clampi(int(game.get("level", 0)), 0, Bot.LEVELS.size() - 1)]["name"]))
+		var who := str(online_rival.get("nombre", "")) if is_online else Bot.level_name(int(game.get("level", 0)))
 		chess_clock.labels = ["TÚ", who.to_upper().left(14) if who != "" else "RIVAL"]
 		card_body.add_child(chess_clock)
 		if is_online:

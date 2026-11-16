@@ -19,11 +19,16 @@ func _init() -> void:
 		_comprueba(Chess.uci(bot.choose(mate)) == "a1a8", "nivel %d: da el mate en una" % lvl)
 	# Dama negra a tiro gratis en d5 (Cxd5).
 	var free := Chess.from_fen("4k3/8/8/3q4/8/2N5/8/4K3 w - - 0 1")
-	for lvl in range(2, Bot.LEVELS.size()):
+	# Desde «Medio» (los niveles sin jugadas al azar).
+	var steady: Array = []
+	for lvl in Bot.LEVELS.size():
+		if Bot.group_of(lvl) >= 2 and float(Bot.LEVELS[lvl]["random"]) == 0.0:
+			steady.append(lvl)
+	for lvl: int in steady:
 		_comprueba(Chess.uci(Bot.new(lvl, "", 3).choose(free)) == "c3d5", "nivel %d: captura la dama gratis" % lvl)
 	# Con la dama atacada por un peón, desde «Medio» la aparta.
 	var hang := Chess.from_fen("4k3/8/8/2p5/3Q4/8/8/4K3 w - - 0 1")
-	for lvl in range(2, Bot.LEVELS.size()):
+	for lvl: int in steady:
 		var m := Bot.new(lvl, "", 5).choose(hang)
 		var after := hang.after(m)
 		_comprueba(not after.attacked(Chess.move_to(m), 1) or Chess.move_to(m) == Chess.sq_index("c5"), "nivel %d: no deja la dama a tiro (%s)" % [lvl, Chess.uci(m)])
@@ -31,11 +36,21 @@ func _init() -> void:
 	_comprueba(Bot.new(2).choose(Chess.from_fen("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1")) == -1, "ahogado: sin jugada")
 	# Tiempo: el nivel más alto en la posición inicial.
 	var t0 := Time.get_ticks_msec()
-	var top := Bot.new(Bot.LEVELS.size() - 1, "", 1)
+	var top := Bot.new(4, "", 1)
 	var first := top.choose(Chess.from_fen(Board3D.START_FEN))
 	var ms := Time.get_ticks_msec() - t0
 	print("Muy difícil, posición inicial: %s en %d ms, %d nodos" % [Chess.uci(first), ms, top.nodes])
-	_comprueba(ms < int(float(Bot.LEVELS[-1]["think"]) * 1000.0) + 1500, "piensa dentro de su tiempo (%d ms)" % ms)
+	_comprueba(ms < int(float(Bot.LEVELS[4]["think"]) * 1000.0) + 1500, "piensa dentro de su tiempo (%d ms)" % ms)
+	# 13 niveles en los cinco grupos de siempre: 3, 4, 3, 2 y 1 escalones, y los de siempre (índices 0–4) son el
+	# escalón más difícil de su grupo (salvo «Muy difícil», que es uno solo).
+	var counts: Array = []
+	for g in Bot.GROUPS.size():
+		counts.append(Bot.group_levels(g).size())
+	_comprueba(Bot.LEVELS.size() == 13 and counts == [3, 4, 3, 2, 1], "13 niveles: %s" % str(counts))
+	for g in 5:
+		_comprueba(Bot.group_levels(g)[-1] == g, "el nivel de siempre %d es el último escalón de su grupo" % g)
+	_comprueba(Bot.level_name(10) == "Medio 1" and Bot.level_name(2) == "Medio 3" and Bot.level_name(4) == "Muy difícil", "nombres: «Medio 1», «Medio 3», «Muy difícil»")
+	_comprueba(Bot.level_elo(2) == 1590 and Bot.level_elo(1) == 1130, "Elo medido, redondeado a la decena")
 	# Guerra de peones.
 	var peones := Chess.from_fen("8/pppppppp/8/8/8/8/PPPPPPPP/8 w - - 0 1")
 	var e4 := peones.find_uci("e2e4")

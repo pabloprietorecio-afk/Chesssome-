@@ -6,7 +6,7 @@ extends SceneTree
 ## Uso: godot --headless --path godot -s tests/calibrar.gd -- --a 3 --b sf:1320 --partidas 24 --salida res.json
 ##      [--stockfish /usr/games/stockfish] [--semilla 1]
 ## Stockfish juega con reloj de 60 s + 0,6 s por jugada, el ritmo con el que está calibrado su UCI_Elo.
-##   --a      nivel del bot (0–4)
+##   --a      nivel del bot (índice de Bot.LEVELS: 0–12)
 ##   --b      otro nivel («2») o Stockfish con un Elo («sf:1320»)
 ## Colores alternos y aperturas variadas (líneas conocidas de unas pocas jugadas), para que los niveles sin ruido
 ## no repitan siempre la misma partida. Más de 160 jugadas (medias) = tablas.

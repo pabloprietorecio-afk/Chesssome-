@@ -11,7 +11,9 @@ import argparse
 import json
 import math
 
-NAMES = ["Muy fácil", "Fácil", "Medio", "Difícil", "Muy difícil"]
+# Por índice de Bot.LEVELS (godot/core/bot.gd): los cinco de siempre y, detrás, los escalones nuevos del 17-11.
+NAMES = ["Muy fácil 3", "Fácil 4", "Medio 3", "Difícil 2", "Muy difícil",
+         "Muy fácil 1", "Muy fácil 2", "Fácil 1", "Fácil 2", "Fácil 3", "Medio 1", "Medio 2", "Difícil 1"]
 
 
 def expected(ra, rb):

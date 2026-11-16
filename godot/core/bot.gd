@@ -15,18 +15,70 @@ const VALUE := [0, 100, 310, 330, 500, 900, 0]
 const MATE := 100000
 const INF_SCORE := 1000000
 
-## name, depth, noise (centipeones), random (probabilidad de una jugada al azar), think (segundos como mucho);
-## elo y rd: fuerza medida (15-16 nov 2026, .github/workflows/calibrar-bot.yml + tools/calibrar/ajustar.py) en
-## partidas contra Stockfish 16 con UCI_Elo 1320, 1600 y 2000 (ritmo 60 s + 0,6 s) y entre niveles vecinos, en un
-## servidor de GitHub: escala de Stockfish, anclada a CCRL 40/4 (motores, no personas). rd = la mitad del margen
-## (±2 errores típicos). En un móvil, los niveles con tope de tiempo pueden jugar algo peor.
+## name (el grupo: los cinco niveles de siempre), sub (escalón dentro del grupo, del más fácil al más difícil),
+## depth, noise (centipeones), random (probabilidad de una jugada al azar), think (segundos como mucho);
+## elo y rd: fuerza medida (.github/workflows/calibrar-bot.yml + tools/calibrar/ajustar.py) en partidas contra
+## Stockfish 16 con UCI_Elo 1320, 1600 y 2000 (ritmo 60 s + 0,6 s) y entre niveles vecinos, en un servidor de
+## GitHub: escala de Stockfish, anclada a CCRL 40/4 (motores, no personas). rd = la mitad del margen (±2 errores
+## típicos). Por debajo de 1320 (el Elo más bajo de Stockfish) la escala sale solo de las partidas entre niveles: es
+## menos precisa. En un móvil, los niveles con tope de tiempo pueden jugar algo peor. Un nivel sin «elo» no cuenta
+## para el nivel de juego del jugador (core/game_log.gd).
+##
+## Los índices no se reordenan nunca: van guardados en el historial («bot:2»), en las partidas del curso y en las
+## tandas de calibración. Los cinco primeros son los niveles de siempre (15-16 nov 2026); los escalones nuevos
+## (17 nov, decisión de Pablo: 13 en total, Medio 1 hacia 1200) van detrás. El orden para el jugador lo dan
+## «name» y «sub» (GROUPS, group_levels).
 const LEVELS := [
-	{"name": "Muy fácil", "depth": 1, "noise": 200, "random": 0.35, "think": 0.6, "elo": 457.0, "rd": 248.0},
-	{"name": "Fácil", "depth": 2, "noise": 60, "random": 0.06, "think": 1.0, "elo": 1133.0, "rd": 76.0},
-	{"name": "Medio", "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1589.0, "rd": 57.0},
-	{"name": "Difícil", "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1807.0, "rd": 44.0},
-	{"name": "Muy difícil", "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1912.0, "rd": 46.0},
+	{"name": "Muy fácil", "sub": 3, "depth": 1, "noise": 200, "random": 0.35, "think": 0.6, "elo": 457.0, "rd": 248.0},
+	{"name": "Fácil", "sub": 4, "depth": 2, "noise": 60, "random": 0.06, "think": 1.0, "elo": 1133.0, "rd": 76.0},
+	{"name": "Medio", "sub": 3, "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1589.0, "rd": 57.0},
+	{"name": "Difícil", "sub": 2, "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1807.0, "rd": 44.0},
+	{"name": "Muy difícil", "sub": 1, "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1912.0, "rd": 46.0},
+	# Escalones nuevos (objetivo entre paréntesis; el Elo, cuando esté medido).
+	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.6, "think": 0.6},  # (≈250)
+	{"name": "Muy fácil", "sub": 2, "depth": 1, "noise": 250, "random": 0.47, "think": 0.6},  # (≈360)
+	{"name": "Fácil", "sub": 1, "depth": 1, "noise": 130, "random": 0.22, "think": 0.8},  # (≈630)
+	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 100, "random": 0.15, "think": 1.0},  # (≈800)
+	{"name": "Fácil", "sub": 3, "depth": 2, "noise": 75, "random": 0.1, "think": 1.0},  # (≈965)
+	{"name": "Medio", "sub": 1, "depth": 2, "noise": 40, "random": 0.035, "think": 1.2},  # (≈1200)
+	{"name": "Medio", "sub": 2, "depth": 3, "noise": 25, "random": 0.0, "think": 1.5},  # (≈1395)
+	{"name": "Difícil", "sub": 1, "depth": 5, "noise": 6, "random": 0.0, "think": 2.5},  # (≈1700)
 ]
+## Los cinco grupos, de más fácil a más difícil.
+const GROUPS := ["Muy fácil", "Fácil", "Medio", "Difícil", "Muy difícil"]
+
+
+## Índices de los niveles de un grupo, del escalón más fácil al más difícil.
+static func group_levels(group: int) -> Array:
+	var out: Array = []
+	for i in LEVELS.size():
+		if str(LEVELS[i]["name"]) == str(GROUPS[clampi(group, 0, GROUPS.size() - 1)]):
+			out.append(i)
+	out.sort_custom(func(a: int, b: int) -> bool: return int(LEVELS[a]["sub"]) < int(LEVELS[b]["sub"]))
+	return out
+
+
+## Grupo (0–4) de un nivel.
+static func group_of(lvl: int) -> int:
+	return maxi(0, GROUPS.find(str(LEVELS[clampi(lvl, 0, LEVELS.size() - 1)]["name"])))
+
+
+## Nombre para el jugador, en su idioma: «Medio 2»; el grupo solo si no tiene escalones («Muy difícil»).
+static func level_name(lvl: int) -> String:
+	var cfg: Dictionary = LEVELS[clampi(lvl, 0, LEVELS.size() - 1)]
+	var group := Loc.t(str(cfg["name"]))
+	if group_levels(group_of(lvl)).size() <= 1:
+		return group
+	return "%s %d" % [group, int(cfg["sub"])]
+
+
+## Elo medido (redondeado a la decena) o -1 si aún no se ha medido.
+static func level_elo(lvl: int) -> int:
+	var cfg: Dictionary = LEVELS[clampi(lvl, 0, LEVELS.size() - 1)]
+	if not cfg.has("elo"):
+		return -1
+	return int(roundf(float(cfg["elo"]) / 10.0) * 10.0)
+
 
 var level := 0
 var variant := ""
