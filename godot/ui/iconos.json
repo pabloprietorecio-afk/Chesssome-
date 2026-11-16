@@ -201,61 +201,109 @@
    1,
    6
   ],
-  "users": [
-   2,
-   6
-  ],
   "fast": [
-   3,
+   2,
    6
   ],
   "slow": [
-   4,
+   3,
    6
   ],
   "rules": [
-   5,
+   4,
    6
   ],
   "report": [
-   6,
+   5,
    6
   ],
   "block": [
-   7,
+   6,
    6
   ],
   "more": [
+   7,
+   6
+  ],
+  "caret": [
    0,
    7
   ],
-  "piece_pawn": [
+  "fire": [
    1,
    7
   ],
-  "piece_knight": [
+  "crown": [
    2,
    7
   ],
-  "piece_bishop": [
+  "bell": [
    3,
    7
   ],
-  "piece_rook": [
+  "users": [
    4,
    7
   ],
-  "piece_queen": [
+  "baby": [
    5,
    7
   ],
-  "piece_king": [
+  "calendar": [
    6,
    7
   ],
-  "token_pawn": [
+  "nav_home": [
    7,
    7
+  ],
+  "nav_bars": [
+   0,
+   8
+  ],
+  "nav_games": [
+   1,
+   8
+  ],
+  "nav_gear": [
+   2,
+   8
+  ],
+  "rows": [
+   3,
+   8
+  ],
+  "tiles": [
+   4,
+   8
+  ],
+  "piece_pawn": [
+   5,
+   8
+  ],
+  "piece_knight": [
+   6,
+   8
+  ],
+  "piece_bishop": [
+   7,
+   8
+  ],
+  "piece_rook": [
+   0,
+   9
+  ],
+  "piece_queen": [
+   1,
+   9
+  ],
+  "piece_king": [
+   2,
+   9
+  ],
+  "token_pawn": [
+   3,
+   9
   ]
  }
 }

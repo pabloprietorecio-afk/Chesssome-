@@ -16,3 +16,5 @@ Archivos tomados sin modificar del paquete npm `inter-ui` 4.1.1 (subconjunto lat
 - `NotoSansDevanagari-Medium.ttf`: Noto Sans Devanagari Medium, la misma que usa A Tank Story (paquete npm
   `@fontsource/noto-sans-devanagari`, convertida de WOFF a TTF sin cambios). Copyright 2022 The Noto Project
   Authors, licencia SIL OFL 1.1. Respaldo solo en hindi.
+
+Caveat Bold (The Caveat Project Authors), SIL OFL 1.1 (`OFL-Caveat.txt`), del paquete npm `@fontsource/caveat`: solo para la nota manuscrita de la pantalla de inicio «Rejilla».

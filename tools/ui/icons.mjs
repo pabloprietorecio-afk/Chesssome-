@@ -80,13 +80,27 @@ const ICONS = {
   bot: ['robot', 'duotone'],
   // Partidas online: espacios por ritmo, jugadores esperando, normas, denunciar y bloquear.
   infinity: ['infinity', 'duotone'],
-  users: ['users', 'duotone'],
   fast: ['lightning', 'duotone'],
   slow: ['hourglass-medium', 'duotone'],
   rules: ['scroll', 'duotone'],
   report: ['warning', 'duotone'],
   block: ['prohibit', 'duotone'],
   more: ['dots-three-outline', 'duotone'],
+  // Pantallas de inicio nuevas (lista y rejilla): flecha de fila, racha, nivel de juego, avisos y barra inferior.
+  caret: ['caret-right', 'bold'],
+  fire: ['fire-simple', 'fill'],
+  crown: ['crown-simple', 'fill'],
+  bell: ['bell', 'bold'],
+  users: ['users', 'fill'],
+  baby: ['baby', 'bold'],
+  calendar: ['calendar-dots', 'fill'],
+  nav_home: ['house', 'fill'],
+  nav_bars: ['chart-bar', 'fill'],
+  nav_games: ['clock-counter-clockwise', 'bold'],
+  nav_gear: ['gear', 'fill'],
+  // Opciones → «Pantalla de inicio»: lista o rejilla.
+  rows: ['rows', 'fill'],
+  tiles: ['squares-four', 'fill'],
 };
 
 // ---------- PNG (mismo formato sencillo que tools/pieces/fichas.mjs: 8 bits RGBA, sin filtro) ----------
