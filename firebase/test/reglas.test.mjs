@@ -70,6 +70,19 @@ test('unirse: solo uno, y la partida empieza con «listo» del creador', async (
   await assertFails(set(ref(db('c'), 'partidas/p1/jugadas/1'), 'e7e5'));
 });
 
+test('app antigua (sin ritmo ni «listo»): sigue pudiendo jugar', async () => {
+  await env.clearDatabase();
+  await assertSucceeds(update(ref(db('a'), 'abiertas/v1'), { creador: 'a', latido: ts() }));
+  await assertSucceeds(set(ref(db('a'), 'partidas/v1/creador'), 'a'));
+  await assertFails(set(ref(db('a'), 'partidas/v1/jugadas/0'), 'e2e4'));
+  await assertSucceeds(update(ref(db('b'), 'partidas/v1'), { rival: 'b', unidoEn: ts() }));
+  await assertSucceeds(set(ref(db('a'), 'partidas/v1/jugadas/0'), 'e2e4'));
+  await assertSucceeds(set(ref(db('b'), 'partidas/v1/jugadas/1'), 'e7e5'));
+  await assertSucceeds(push(ref(db('b'), 'partidas/v1/gestos'), { de: 'b', g: 'saludo', t: ts() }));
+  await assertSucceeds(remove(ref(db('a'), 'abiertas/v1')));
+  await assertSucceeds(remove(ref(db('b'), 'partidas/v1')));
+});
+
 test('reloj: pulsaciones con la hora del servidor, tras su jugada', async () => {
   await env.clearDatabase();
   await game('p1');

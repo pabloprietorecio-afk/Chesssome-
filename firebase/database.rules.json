@@ -58,7 +58,7 @@
         },
         "jugadas": {
           "$n": {
-            ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('listo').exists() && !root.child('partidas').child($id).child('fin').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
+            ".write": "auth != null && !data.exists() && (root.child('partidas').child($id).child('listo').exists() || (root.child('partidas').child($id).child('unidoEn').exists() && !root.child('partidas').child($id).child('ritmo').exists())) && !root.child('partidas').child($id).child('fin').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
             ".validate": "newData.isString() && newData.val().length <= 8"
           }
         },
