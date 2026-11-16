@@ -333,3 +333,63 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
   writeFileSync(root + 'shots/ui-emblema.png', png(S, S, out));
   console.log(`emblema.bin: ${S} × ${S}`);
 }
+
+// ---------- Iconos de Android: lanzador y pantalla de arranque ----------
+// El mismo icono naranja del inicio (godot/ui/inicio/icono.bin): caballo crema sobre un degradado naranja.
+//   godot/iconos_app/lanzador_192.png         icono clásico (tesela redondeada con transparencia)
+//   godot/iconos_app/adaptativo_fondo_432.png  capa de fondo del icono adaptativo (a sangre)
+//   godot/iconos_app/adaptativo_frente_432.png capa del caballo; Android también la usa en la pantalla de arranque
+//   godot/iconos_app/adaptativo_mono_432.png   capa monocroma (iconos temáticos de Android 13+)
+// En el icono adaptativo solo se ve el círculo central de 66/108 del lado: el caballo cabe dentro con margen.
+
+{
+  const dir = root + 'godot/iconos_app/';
+  mkdirSync(dir, { recursive: true });
+  const KNIGHT = 1;
+  const box = pieceBox(KNIGHT);
+  const mx = (box.x0 + box.x1) / 2, my = (box.y0 + box.y1) / 2;
+  const TOP = [253 / 255, 166 / 255, 86 / 255], BOTTOM = [241 / 255, 100 / 255, 18 / 255];
+  const CREAM = [1.0, 0.969, 0.933], SHADE = [0.62, 0.25, 0.04];
+  const mix = (a, b, t) => a + (b - a) * t;
+  const lerp3 = (a, b, t) => [mix(a[0], b[0], t), mix(a[1], b[1], t), mix(a[2], b[2], t)];
+  const grad = (t) => lerp3(TOP, BOTTOM, clamp01(t));
+  /** Caballo de `h` px de alto centrado en (cx, cy): cobertura y sombra suave. */
+  const knightAt = (px, py, cx, cy, h) => {
+    const scale = (box.y1 - box.y0) / h;
+    const sx = mx + (px - cx) * scale, sy = my + (py - cy) * scale;
+    const cover = clamp01(pieceSd(KNIGHT, sx, sy) / scale + 0.5);
+    const sh = smooth(-0.07 * h, 0.02 * h, pieceSd(KNIGHT, sx, sy - 0.035 * h * scale) / scale);
+    return { cover, sh };
+  };
+  const write = (name, S, pixel) => {
+    const out = new Uint8Array(S * S * 4);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const [r, g, b, a] = pixel(x + 0.5, y + 0.5);
+      out.set([byte(r), byte(g), byte(b), byte(a)], 4 * (x + S * y));
+    }
+    writeFileSync(dir + name, png(S, S, out));
+  };
+  const A = 432, H = 0.41 * A;
+  write('adaptativo_fondo_432.png', A, (px, py) => [...grad(py / A), 1]);
+  write('adaptativo_frente_432.png', A, (px, py) => {
+    const { cover, sh } = knightAt(px, py, A / 2, A / 2, H);
+    const shadowA = 0.22 * sh * (1 - cover);
+    const a = cover + shadowA;
+    if (a <= 0) return [0, 0, 0, 0];
+    const col = lerp3(SHADE, CREAM, cover / a);
+    return [...col, a];
+  });
+  write('adaptativo_mono_432.png', A, (px, py) => [1, 1, 1, knightAt(px, py, A / 2, A / 2, H).cover]);
+  // Icono clásico: tesela «squircle» como la del inicio, con el caballo al 59 % del alto.
+  const L = 192, c = L / 2, r = 0.47 * L, n = 5;
+  write('lanzador_192.png', L, (px, py) => {
+    const d = Math.pow(Math.pow(Math.abs(px - c), n) + Math.pow(Math.abs(py - c), n), 1 / n) - r;
+    const tile = clamp01(0.5 - d);
+    if (tile <= 0) return [0, 0, 0, 0];
+    const { cover, sh } = knightAt(px, py, c, c + 0.01 * L, 0.59 * L);
+    let col = lerp3(grad((py - (c - r)) / (2 * r)), SHADE, 0.22 * sh * (1 - cover));
+    col = lerp3(col, CREAM, cover);
+    return [...col, tile];
+  });
+  console.log('iconos_app: lanzador 192, adaptativo 432 (fondo, frente, mono)');
+}
