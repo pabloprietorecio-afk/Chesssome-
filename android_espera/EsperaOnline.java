@@ -51,7 +51,7 @@ public class EsperaOnline extends GodotPlugin {
 		}
 		Intent intent = new Intent(activity, EsperaService.class);
 		intent.setAction(EsperaService.ACTION_START);
-		for (String key : new String[] {"host", "game", "token", "refresh", "apiKey", "title", "text", "foundTitle", "foundText", "stopLabel"}) {
+		for (String key : new String[] {"host", "game", "token", "refresh", "apiKey", "title", "text", "foundTitle", "foundText", "foundNamed", "playLabel", "backLabel", "stopLabel", "channelWait", "channelFound"}) {
 			Object value = data.get(key);
 			intent.putExtra(key, value == null ? "" : value.toString());
 		}

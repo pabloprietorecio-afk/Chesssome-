@@ -662,7 +662,13 @@ func _bg_start() -> void:
 		"text": Loc.t("Te avisamos cuando entre alguien. Puedes salir de la app."),
 		"foundTitle": Loc.t("¡Rival encontrado!"),
 		"foundText": Loc.t("Vuelve a la app en menos de un minuto para empezar la partida."),
+		# Con el nombre del rival (si tiene): el servicio cambia {nombre} por el suyo.
+		"foundNamed": Loc.f("{nombre} quiere jugar %s contigo. Vuelve en menos de un minuto para empezar.", rhythm_label(rhythm)),
+		"playLabel": Loc.t("Jugar ahora"),
+		"backLabel": Loc.t("Volver"),
 		"stopLabel": Loc.t("Dejar de esperar"),
+		"channelWait": Loc.t("Esperando rival"),
+		"channelFound": Loc.t("Rival encontrado"),
 	})
 
 

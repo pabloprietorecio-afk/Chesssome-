@@ -515,6 +515,9 @@ jobs:
           mkdir -p $ROOT/com/pabloprieto/espera
           cp android_espera/*.java $ROOT/com/pabloprieto/espera/
           ls -la $ROOT/com/pabloprieto/espera
+          # Iconos de los avisos (caballo en blanco para la barra de estado y el icono de la app como imagen grande).
+          cp -r android_espera/res/. godot/android/build/res/
+          ls godot/android/build/res/drawable-xxhdpi/ godot/android/build/res/drawable-nodpi/
           # Vídeo de los Finales de campeones dentro de la app (android_cine/LEEME.md).
           mkdir -p $ROOT/com/pabloprieto/cine
           cp android_cine/*.java $ROOT/com/pabloprieto/cine/
@@ -568,6 +571,9 @@ jobs:
           # El icono de la notificación: sin él Android puede descartar el aviso.
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           if $AAPT2 dump resources $A | grep -q "ic_default_notification"; then echo "OK icono de la notificación"; else echo "FALTA el icono ic_default_notification"; exit 1; fi
+          for r in ic_stat_achessway ic_large_achessway; do
+            if $AAPT2 dump resources $A | grep -q "drawable/$r"; then echo "OK icono de aviso: $r"; else echo "FALTA el icono de aviso $r"; exit 1; fi
+          done
           # Icono propio y arranque sin el logo de Godot (solo informativo: nombres de recursos de la plantilla).
           $AAPT2 dump resources $A | grep -iE "mipmap/|splash|boot" | head -30 || true
           unzip -l $A | grep -iE "res/mipmap|res/drawable.*splash" | head -20 || true

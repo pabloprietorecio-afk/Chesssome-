@@ -341,6 +341,7 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
 //   godot/iconos_app/adaptativo_fondo_432.png  capa de fondo del icono adaptativo (a sangre)
 //   godot/iconos_app/adaptativo_frente_432.png capa del caballo; Android también la usa en la pantalla de arranque
 //   godot/iconos_app/adaptativo_mono_432.png   capa monocroma (iconos temáticos de Android 13+)
+//   android_espera/res/drawable-*/ic_stat_achessway.png  icono de los avisos (barra de estado), en blanco
 //   godot/iconos_app/arranque_432.png          caballo en tinta para la pantalla de arranque, sobre el lila del
 //                                              inicio (e7e4f1), el mismo de arriba de la intro (ui/intro.gd)
 // En el icono adaptativo solo se ve el círculo central de 66/108 del lado: el caballo cabe dentro con margen.
@@ -386,6 +387,18 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
   // Arranque: Android lo enseña en 288 dp con una máscara redonda de 192 dp (2/3 del lado); el caballo cabe dentro.
   const INK = [0.2, 0.18, 0.16];
   write('arranque_432.png', A, (px, py) => [...INK, knightAt(px, py, A / 2, A / 2, 0.36 * A).cover]);
+  // Icono de los avisos de Android (barra de estado): el caballo en blanco sobre transparente, como pide Android
+  // (solo cuenta la transparencia; el sistema lo tiñe). 24 dp con 1 dp de margen, en cada densidad.
+  for (const [dens, S] of [['mdpi', 24], ['hdpi', 36], ['xhdpi', 48], ['xxhdpi', 72], ['xxxhdpi', 96]]) {
+    const out = root + `android_espera/res/drawable-${dens}/`;
+    mkdirSync(out, { recursive: true });
+    const px = new Uint8Array(S * S * 4);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const c = knightAt(x + 0.5, y + 0.5, S / 2, S / 2 + 0.01 * S, 0.84 * S).cover;
+      px.set([255, 255, 255, byte(c)], 4 * (x + S * y));
+    }
+    writeFileSync(out + 'ic_stat_achessway.png', png(S, S, px));
+  }
   // Icono clásico: tesela «squircle» como la del inicio, con el caballo al 59 % del alto.
   const L = 192, c = L / 2, r = 0.47 * L, n = 5;
   write('lanzador_192.png', L, (px, py) => {
@@ -397,5 +410,5 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
     col = lerp3(col, CREAM, cover);
     return [...col, tile];
   });
-  console.log('iconos_app: lanzador 192, adaptativo 432 (fondo, frente, mono), arranque 432');
+  console.log('iconos_app: lanzador 192, adaptativo 432 (fondo, frente, mono), arranque 432; avisos 24–96');
 }

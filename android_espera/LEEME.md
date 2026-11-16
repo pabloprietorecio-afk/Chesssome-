@@ -13,6 +13,17 @@ latido (y caducaría a los 30 s) y nadie avisaría si entra alguien. Este comple
 - «Dejar de esperar» borra la partida en espera; al volver a la app, la búsqueda se da por terminada.
 - Como mucho, dos horas esperando.
 
+## Cómo se ven los avisos
+
+- Icono pequeño: el caballo de la app en blanco (`res/drawable-*/ic_stat_achessway.png`, de `tools/ui/icons.mjs`),
+  teñido del naranja de la marca (`#F26A1E`). Imagen grande: el icono de la app (`res/drawable-nodpi/
+  ic_large_achessway.png`, de `tools/inicio/icono.py`). El CI copia `res/` en la plantilla de Gradle.
+- «Esperando rival · 5+3»: fijo y silencioso (Android lo exige para seguir en segundo plano), con el tiempo que llevas
+  esperando y los botones «Volver» y «Dejar de esperar».
+- «¡Rival encontrado!»: emergente, con sonido y vibración; dice quién («Ana quiere jugar 5+3 contigo…», si puso
+  nombre) y desaparece solo al minuto, cuando quien entró deja de esperarte. Botón «Jugar ahora».
+- Textos en el idioma de la app (los pasa `core/online.gd`), también los nombres de los canales.
+
 ## Archivos
 
 - `EsperaOnline.java`: el complemento de Godot (v2), `Engine.get_singleton("EsperaOnline")`: `start(datos)`,
