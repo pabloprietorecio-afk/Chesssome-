@@ -189,6 +189,8 @@ var home_style := "lista"
 ## Intro animada del arranque (ui/intro.gd): «always», «once» o «never» (Opciones → Intro).
 var intro_mode := "always"
 var intro_seen := false
+## Vídeo del caballo de la próxima espera del análisis (en ciclo; se guarda).
+var wait_clip := 0
 const INTRO_MODES: Array[String] = ["always", "once", "never"]
 const INTRO_NAMES: Array[String] = ["Siempre", "Una vez", "Nunca"]
 var voice_on := true
@@ -1240,6 +1242,7 @@ func _load_settings() -> void:
 	if not intro_mode in INTRO_MODES:
 		intro_mode = INTRO_MODES[0]
 	intro_seen = bool(cfg.get_value("app", "intro_vista", false))
+	wait_clip = int(cfg.get_value("app", "espera", 0))
 	if not home_style in HomeScreens.STYLES:
 		home_style = HomeScreens.STYLES[0]
 	avatar = str(cfg.get_value("app", "icono", ""))
@@ -1294,6 +1297,7 @@ func _save_settings() -> void:
 	cfg.set_value("app", "inicio", home_style)
 	cfg.set_value("app", "intro", intro_mode)
 	cfg.set_value("app", "intro_vista", intro_seen)
+	cfg.set_value("app", "espera", wait_clip)
 	cfg.set_value("app", "idioma", language)
 	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("app", "icono", avatar)
@@ -9561,13 +9565,17 @@ func _detail_tick(done: int, total: int) -> void:
 		_wait_anim.progress = float(done) / float(maxi(total, 1))
 
 
-## La animación de espera: el caballo del logo (vídeos al azar); quieta con las animaciones apagadas.
+## La animación de espera: el caballo del logo (un vídeo por espera, en ciclo); quieta con las animaciones apagadas.
 func _wait_animation(with_bar: bool) -> KnightWait:
 	var k := KnightWait.new()
 	k.mark = _c("accent")
 	k.track = _c("track")
 	k.still = view != null and view.board.anim_mode == Board3D.Anim.NONE
 	k.set_side(minf(760.0, size.x * 0.7) if size.x > 0.0 else 740.0, with_bar)
+	# Uno por espera, en ciclo: esta vez este, la próxima el siguiente.
+	k.clip = wait_clip
+	wait_clip = KnightWait.next_clip(wait_clip)
+	_save_settings()
 	return k
 
 

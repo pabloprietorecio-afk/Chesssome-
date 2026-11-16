@@ -1,6 +1,6 @@
 extends SceneTree
-## Animación de las esperas del análisis (ui/knight_wait.gd): los vídeos del caballo, al azar y sin repetir el mismo
-## dos veces seguidas, encadenados con un fundido; quieta sin animaciones; y su uso en «Analizando jugada a jugada…»
+## Animación de las esperas del análisis (ui/knight_wait.gd): un vídeo del caballo por espera, que se repite con un
+## fundido; el siguiente la próxima vez, en ciclo; quieta sin animaciones; y su uso en «Analizando jugada a jugada…»
 ## con la barra de progreso.
 ## Uso: godot --headless --path godot -s tests/test_espera.gd
 
@@ -18,33 +18,26 @@ func _initialize() -> void:
 	var presets := FileAccess.get_file_as_string("res://export_presets.cfg")
 	_ok(presets.count("espera/*.ogv") == 2, "los vídeos van en el filtro de exportación de los dos perfiles")
 
-	# Al azar, sin repetir el mismo seguido, y salen todos.
-	var k := KnightWait.new()
-	var seen := {}
-	var repeated := false
-	for i in 60:
-		var n := k.pick()
-		if n == k._last:
-			repeated = true
-		k._last = n
-		seen[n] = true
-	_ok(not repeated and seen.size() == 3, "al azar, todos salen y nunca el mismo dos veces seguidas")
-	k.free()
+	# En ciclo: 0, 1, 2, 0…
+	_ok(KnightWait.next_clip(0) == 1 and KnightWait.next_clip(1) == 2 and KnightWait.next_clip(2) == 0, "los vídeos van en ciclo")
 
-	# Se reproduce y, al acabar uno, empieza otro distinto con un fundido.
+	# En una misma espera se ve uno solo: al acabar, vuelve a empezar el mismo, con un fundido.
 	var w := KnightWait.new()
+	w.clip = 1
 	w.set_side(400.0, true)
 	root.add_child(w)
 	await _frames(3)
-	var first := w.current()
-	_ok(w._players.size() == 2 and w._players[w._front].is_playing(), "empieza un vídeo")
+	_ok(w._players.size() == 2 and w._players[w._front].is_playing(), "empieza el vídeo")
+	_ok(w._players[w._front].stream.resource_path == KnightWait.CLIPS[1], "el que toca (el 2.º)")
 	var length := w._players[w._front].get_stream_length()
 	_ok(length > 3.0 and length < 6.0, "sabe cuánto dura (%.2f s) para fundir antes del final" % length)
 	w._play_next()
-	_ok(w.current() != first and w._fading, "el siguiente es otro y entra fundiéndose")
+	_ok(w._fading, "al acabar entra otra vez fundiéndose")
 	await create_timer(KnightWait.XFADE + 0.2).timeout
-	_ok(not w._fading and w._players[w._front].is_playing() and w._players[w._front].modulate.a > 0.99, "tras el fundido queda el nuevo")
-	_ok(not w._players[1 - w._front].is_playing(), "y el anterior se para")
+	var now := w._players[w._front]
+	_ok(not w._fading and now.is_playing() and now.modulate.a > 0.99 and now.stream_position < 1.0, "tras el fundido, el vídeo vuelve a empezar")
+	_ok(now.stream.resource_path == KnightWait.CLIPS[1], "y es el mismo: no cambia dentro de una espera")
+	_ok(not w._players[1 - w._front].is_playing(), "el reproductor anterior se para")
 	w.progress = 0.0
 	w.progress = 0.6
 	await create_timer(0.3).timeout
@@ -81,6 +74,13 @@ func _initialize() -> void:
 	_ok(demo._wait_anim != null and is_instance_valid(demo._wait_anim) and demo._wait_anim.is_inside_tree(), "«Analizando jugada a jugada…» lleva el caballo")
 	demo._detail_tick(2, 3)
 	_ok(is_equal_approx(demo._wait_anim.progress, 2.0 / 3.0), "y la barra va por 2 de 3")
+	# Cada espera, el siguiente vídeo.
+	var clips: Array = [demo._wait_anim.clip]
+	for i in 3:
+		var other: KnightWait = demo._wait_animation(false)
+		clips.append(other.clip)
+		other.free()
+	_ok(clips == [0, 1, 2, 0], "cada vez que se entra, el siguiente vídeo, en ciclo (%s)" % str(clips))
 	# Que el análisis acabe antes de salir (si no, el hilo sigue con todo ya liberado).
 	for i in 300:
 		if demo._review_thread == null:

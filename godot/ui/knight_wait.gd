@@ -1,8 +1,9 @@
 class_name KnightWait
 extends Control
 ## Animación de las esperas largas (el análisis de una partida): el caballo del logo en vídeos cortos que empiezan y
-## acaban en el logo (PixVerse, a partir del logo; tools/espera/videos.sh). Se encadenan al azar, sin repetir el
-## mismo dos veces seguidas, con un fundido corto entre uno y otro (los finales no coinciden al píxel). Van en una
+## acaban en el logo (PixVerse, a partir del logo; tools/espera/videos.sh). En cada espera se ve uno solo (`clip`),
+## que se repite con un fundido corto de su final a su principio (no coinciden al píxel); la app elige el siguiente
+## cada vez (en ciclo: decisión de Pablo, 17-11). Van en una
 ## tarjeta de esquinas redondeadas porque su fondo cambia de color durante el vídeo y no se puede fundir con el de
 ## la pantalla. Debajo, si se pide, una barra con lo que va de análisis.
 ## Con las animaciones apagadas (`still`), el logo quieto.
@@ -27,20 +28,19 @@ var progress := -1.0:
 		if still or _bar < 0.0:
 			_bar = value
 
+## Qué vídeo (índice de CLIPS) se ve en esta espera.
+var clip := 0
 var _side := 600.0
 var _players: Array[VideoStreamPlayer] = []
 var _front := 0
-var _last := -1
 var _fading := false
 var _bar := -1.0
-var _rng := RandomNumberGenerator.new()
 var _logo: TextureRect
 static var _mask: Shader
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_rng.randomize()
 
 
 func set_side(side: float, with_bar: bool) -> void:
@@ -70,24 +70,22 @@ func _ready() -> void:
 		p.modulate.a = 0.0
 		add_child(p)
 		_players.append(p)
+	clip = posmod(clip, CLIPS.size())
+	var stream: VideoStream = load(str(CLIPS[clip]))
+	for p: VideoStreamPlayer in _players:
+		p.stream = stream
 	_play_next(true)
 
 
-## Un vídeo al azar, distinto del último.
-func pick() -> int:
-	if CLIPS.size() <= 1:
-		return 0
-	var i := _rng.randi_range(0, CLIPS.size() - 2)
-	if i >= _last and _last >= 0:
-		i += 1
-	return i
+## El siguiente de un ciclo (para quien elige el vídeo de cada espera).
+static func next_clip(i: int) -> int:
+	return posmod(i + 1, CLIPS.size())
 
 
+## Vuelve a empezar el mismo vídeo en el otro reproductor, fundiéndolo sobre el final del que acaba.
 func _play_next(first: bool = false) -> void:
-	var i := pick()
-	_last = i
 	var back := _players[1 - _front] if not first else _players[_front]
-	back.stream = load(str(CLIPS[i]))
+	back.stop()
 	back.play()
 	move_child(back, -1)
 	if first:
@@ -103,11 +101,6 @@ func _play_next(first: bool = false) -> void:
 		old.modulate.a = 0.0
 		_front = 1 - _front
 		_fading = false)
-
-
-## Cuál suena ahora (para las pruebas).
-func current() -> int:
-	return _last
 
 
 func _process(delta: float) -> void:
