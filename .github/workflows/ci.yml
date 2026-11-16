@@ -95,6 +95,8 @@ jobs:
         working-directory: firebase/test
         run: |
           npm ci
+          # El emulador solo admite archivos dentro de su carpeta: una copia de las reglas (la prueba lee las de verdad).
+          cp ../database.rules.json .
           npx firebase emulators:exec --only database --project demo-chess "node --test"
 
   godot:
