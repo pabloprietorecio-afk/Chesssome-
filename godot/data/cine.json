@@ -16,6 +16,111 @@
 "title": "Gukesh wins! - The final minutes of the FIDE World Championship 2024",
 "start": 3
 },
+"film": {
+"duration": 437,
+"start": 3.5,
+"end": 219.0,
+"marks": "pending",
+"stops": [
+{
+"at": 138,
+"resume": null
+},
+{
+"at": 144.5,
+"resume": null
+},
+{
+"at": 214,
+"resume": null
+}
+],
+"sync": {
+"startPly": 108,
+"marks": [
+{
+"ply": 109,
+"at": 8.5
+},
+{
+"ply": 110,
+"at": 140.5
+},
+{
+"ply": 111,
+"at": 142.5
+},
+{
+"ply": 112,
+"at": 145.5
+},
+{
+"ply": 113,
+"at": 155.5
+},
+{
+"ply": 114,
+"at": 156.5
+},
+{
+"ply": 115,
+"at": 209.5
+},
+{
+"ply": 116,
+"at": 216.5
+}
+],
+"gaps": []
+},
+"frames": {
+"108": {
+"fen": "B7/8/4b3/4kp2/5Rp1/6P1/1r6/6K1 w - - 16 55",
+"from": "f6",
+"to": "e5"
+},
+"109": {
+"fen": "B7/8/4b3/4kp2/6p1/6P1/1r3R2/6K1 b - - 17 55",
+"from": "f4",
+"to": "f2"
+},
+"110": {
+"fen": "B7/8/4b3/4kp2/6p1/6P1/5r2/6K1 w - - 0 56",
+"from": "b2",
+"to": "f2"
+},
+"111": {
+"fen": "B7/8/4b3/4kp2/6p1/6P1/5K2/8 b - - 0 56",
+"from": "g1",
+"to": "f2"
+},
+"112": {
+"fen": "B7/8/8/3bkp2/6p1/6P1/5K2/8 w - - 1 57",
+"from": "e6",
+"to": "d5"
+},
+"113": {
+"fen": "8/8/8/3Bkp2/6p1/6P1/5K2/8 b - - 0 57",
+"from": "a8",
+"to": "d5"
+},
+"114": {
+"fen": "8/8/8/3k1p2/6p1/6P1/5K2/8 w - - 0 58",
+"from": "e5",
+"to": "d5"
+},
+"115": {
+"fen": "8/8/8/3k1p2/6p1/4K1P1/8/8 b - - 1 58",
+"from": "f2",
+"to": "e3"
+},
+"116": {
+"fen": "8/8/8/4kp2/6p1/4K1P1/8/8 w - - 2 59",
+"from": "d5",
+"to": "e5"
+}
+}
+},
 "lesson": {
 "id": "cine-ding-gukesh-2024-g14",
 "title": "El error que decidió un Mundial",
@@ -30,6 +135,7 @@
 "exercises": [
 {
 "kind": "move",
+"ply": 110,
 "fen": "B7/8/4b3/4kp2/6p1/6P1/1r3R2/6K1 b - - 17 55",
 "text": "Ding acaba de jugar 55.Tf2. Juegan las negras: ¿qué jugarías?",
 "hint": "Imagina el tablero sin las torres. Y después, sin los alfiles.",
@@ -217,6 +323,7 @@
 },
 {
 "kind": "move",
+"ply": 112,
 "fen": "B7/8/4b3/4kp2/6p1/6P1/5K2/8 b - - 0 56",
 "text": "Las blancas han recapturado con el rey. ¿Y ahora?",
 "hint": "Mira el alfil de a8: solo tiene una diagonal.",
@@ -320,6 +427,7 @@
 },
 {
 "kind": "move",
+"ply": 116,
 "fen": "8/8/8/3k1p2/6p1/4K1P1/8/8 b - - 1 58",
 "text": "Final de reyes y peones. Juegan las negras: ¿qué jugarías?",
 "hint": "Los dos reyes, frente a frente.",
@@ -539,6 +647,40 @@
 "title": "The LOUDEST BANG you will ever hear in chess | Gukesh beats Magnus Carlsen in Norway",
 "start": 271
 },
+"film": {
+"duration": 759,
+"start": 271,
+"end": 283,
+"marks": "pending",
+"stops": [
+{
+"at": 277.5,
+"resume": null
+}
+],
+"sync": {
+"startPly": 103,
+"marks": [
+{
+"ply": 104,
+"at": 281
+}
+],
+"gaps": []
+},
+"frames": {
+"103": {
+"fen": "5r2/3N4/6p1/3pp3/5nPP/1P4K1/5R2/4k3 b - - 4 52",
+"from": "f6",
+"to": "d7"
+},
+"104": {
+"fen": "5r2/3N4/6p1/3pp3/6PP/1P4K1/4nR2/4k3 w - - 5 53",
+"from": "f4",
+"to": "e2"
+}
+}
+},
 "lesson": {
 "id": "cine-gukesh-carlsen-2025-norway-r6-error",
 "title": "El error de Carlsen",
@@ -553,6 +695,7 @@
 "exercises": [
 {
 "kind": "move",
+"ply": 104,
 "fen": "5r2/3N4/6p1/3pp3/5nPP/1P4K1/5R2/4k3 b - - 4 52",
 "text": "Juegan las negras: Carlsen, con segundos en el reloj. ¿Qué jugarías?",
 "hint": "Tu torre de f8 está atacada.",
@@ -796,6 +939,76 @@
 "title": "The LOUDEST BANG you will ever hear in chess | Gukesh beats Magnus Carlsen in Norway",
 "start": 362
 },
+"film": {
+"duration": 759,
+"start": 362,
+"end": 378.8,
+"marks": "pending",
+"stops": [
+{
+"at": 371.4,
+"resume": null
+}
+],
+"sync": {
+"startPly": 118,
+"marks": [
+{
+"ply": 119,
+"at": 365.9
+},
+{
+"ply": 120,
+"at": 371.2
+},
+{
+"ply": 121,
+"at": 372.1
+},
+{
+"ply": 122,
+"at": 375.6
+},
+{
+"ply": 123,
+"at": 376.4
+}
+],
+"gaps": []
+},
+"frames": {
+"118": {
+"fen": "8/8/8/7P/N3p3/1P1p2K1/3k4/8 w - - 1 60",
+"from": "e3",
+"to": "d2"
+},
+"119": {
+"fen": "8/8/8/7P/4p3/1P1p2K1/1N1k4/8 b - - 2 60",
+"from": "a4",
+"to": "b2"
+},
+"120": {
+"fen": "8/8/8/7P/8/1P1pp1K1/1N1k4/8 w - - 0 61",
+"from": "e4",
+"to": "e3"
+},
+"121": {
+"fen": "8/8/8/7P/2N5/1P1pp1K1/3k4/8 b - - 1 61",
+"from": "b2",
+"to": "c4"
+},
+"122": {
+"fen": "8/8/8/7P/2N5/1P1pp1K1/4k3/8 w - - 2 62",
+"from": "d2",
+"to": "e2"
+},
+"123": {
+"fen": "8/8/8/7P/2N2K2/1P1pp3/4k3/8 b - - 3 62",
+"from": "g3",
+"to": "f4"
+}
+}
+},
 "lesson": {
 "id": "cine-gukesh-carlsen-2025-norway-r6",
 "title": "El golpe en la mesa",
@@ -810,6 +1023,7 @@
 "exercises": [
 {
 "kind": "move",
+"ply": 121,
 "fen": "8/8/8/7P/8/1P1pp1K1/1N1k4/8 w - - 0 61",
 "text": "Juegan las blancas: Gukesh. Carlsen acaba de empujar 60…e3. ¿Qué jugarías?",
 "hint": "Busca un jaque que, además, ataque un peón.",
@@ -1099,6 +1313,219 @@
 "title": "DING is the new KING",
 "start": 11
 },
+"film": {
+"duration": 263,
+"start": 11,
+"end": 215.1,
+"marks": "pending",
+"stops": [
+{
+"at": 21.4,
+"resume": null
+},
+{
+"at": 28.6,
+"resume": null
+},
+{
+"at": 113.5,
+"resume": null
+}
+],
+"sync": {
+"startPly": 116,
+"marks": [
+{
+"ply": 117,
+"at": 23.6
+},
+{
+"ply": 118,
+"at": 31.6
+},
+{
+"ply": 119,
+"at": 51.6
+},
+{
+"ply": 120,
+"at": 54.6
+},
+{
+"ply": 121,
+"at": 55.9
+},
+{
+"ply": 122,
+"at": 64.6
+},
+{
+"ply": 123,
+"at": 68.2
+},
+{
+"ply": 124,
+"at": 116.2
+},
+{
+"ply": 125,
+"at": 117.4
+},
+{
+"ply": 126,
+"at": 121.3
+},
+{
+"ply": 127,
+"at": 140
+},
+{
+"ply": 128,
+"at": 143.3
+},
+{
+"ply": 129,
+"at": 150.4
+},
+{
+"ply": 130,
+"at": 152.5
+},
+{
+"ply": 131,
+"at": 162.3
+},
+{
+"ply": 132,
+"at": 173.7
+},
+{
+"ply": 133,
+"at": 176.1
+},
+{
+"ply": 134,
+"at": 191.3
+},
+{
+"ply": 135,
+"at": 198.6
+},
+{
+"ply": 136,
+"at": 212.6
+}
+],
+"gaps": []
+},
+"frames": {
+"116": {
+"fen": "8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - - 0 59",
+"from": "a4",
+"to": "a3"
+},
+"117": {
+"fen": "8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - - 1 59",
+"from": "c4",
+"to": "c7"
+},
+"118": {
+"fen": "8/2Q3pk/6qp/8/1b1B3P/p1p3P1/5P1K/8 w - - 2 60",
+"from": "b1",
+"to": "g6"
+},
+"119": {
+"fen": "8/6pk/6qp/8/1bQB3P/p1p3P1/5P1K/8 b - - 3 60",
+"from": "c7",
+"to": "c4"
+},
+"120": {
+"fen": "8/6pk/6qp/8/1bQB3P/p5P1/2p2P1K/8 w - - 0 61",
+"from": "c3",
+"to": "c2"
+},
+"121": {
+"fen": "8/6pk/6qp/8/1bQ4P/p3B1P1/2p2P1K/8 b - - 1 61",
+"from": "d4",
+"to": "e3"
+},
+"122": {
+"fen": "8/6pk/3b2qp/8/2Q4P/p3B1P1/2p2P1K/8 w - - 2 62",
+"from": "b4",
+"to": "d6"
+},
+"123": {
+"fen": "8/6pk/3b2qp/8/2Q4P/p3B1P1/2p2PK1/8 b - - 3 62",
+"from": "h2",
+"to": "g2"
+},
+"124": {
+"fen": "8/6pk/3b2q1/7p/2Q4P/p3B1P1/2p2PK1/8 w - - 0 63",
+"from": "h6",
+"to": "h5"
+},
+"125": {
+"fen": "8/6pk/3b2q1/7p/2Q4P/p3B1P1/2p2P2/5K2 b - - 1 63",
+"from": "g2",
+"to": "f1"
+},
+"126": {
+"fen": "8/6pk/6q1/4b2p/2Q4P/p3B1P1/2p2P2/5K2 w - - 2 64",
+"from": "d6",
+"to": "e5"
+},
+"127": {
+"fen": "8/6pk/6q1/4b2p/2Q3PP/p3B3/2p2P2/5K2 b - - 0 64",
+"from": "g3",
+"to": "g4"
+},
+"128": {
+"fen": "8/6pk/6q1/4b3/2Q3pP/p3B3/2p2P2/5K2 w - - 0 65",
+"from": "h5",
+"to": "g4"
+},
+"129": {
+"fen": "8/6pk/6q1/4b2P/2Q3p1/p3B3/2p2P2/5K2 b - - 0 65",
+"from": "h4",
+"to": "h5"
+},
+"130": {
+"fen": "8/6pk/8/4bq1P/2Q3p1/p3B3/2p2P2/5K2 w - - 1 66",
+"from": "g6",
+"to": "f5"
+},
+"131": {
+"fen": "8/6pk/8/3Qbq1P/6p1/p3B3/2p2P2/5K2 b - - 2 66",
+"from": "c4",
+"to": "d5"
+},
+"132": {
+"fen": "8/6pk/8/3Qbq1P/8/p3B1p1/2p2P2/5K2 w - - 0 67",
+"from": "g4",
+"to": "g3"
+},
+"133": {
+"fen": "8/6pk/8/3Qbq1P/5P2/p3B1p1/2p5/5K2 b - - 0 67",
+"from": "f2",
+"to": "f4"
+},
+"134": {
+"fen": "8/6pk/8/3Qbq1P/5P2/4B1p1/p1p5/5K2 w - - 0 68",
+"from": "a3",
+"to": "a2"
+},
+"135": {
+"fen": "8/6pk/8/4bq1P/5P2/4B1p1/Q1p5/5K2 b - - 0 68",
+"from": "d5",
+"to": "a2"
+},
+"136": {
+"fen": "8/6pk/8/5q1P/5b2/4B1p1/Q1p5/5K2 w - - 0 69",
+"from": "e5",
+"to": "f4"
+}
+}
+},
 "lesson": {
 "id": "cine-nepomniachtchi-ding-2023-wch-tb4",
 "title": "El último error del Mundial",
@@ -1113,6 +1540,7 @@
 "exercises": [
 {
 "kind": "move",
+"ply": 117,
 "fen": "8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - - 0 59",
 "text": "Juega Nepo, con blancas y unos 20 segundos en el reloj. Si no pierde, habrá partidas relámpago. ¿Qué jugarías?",
 "hint": "Mira el peón de g7: es lo único que protege al rey negro.",
@@ -1349,6 +1777,7 @@
 },
 {
 "kind": "move",
+"ply": 118,
 "fen": "8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - - 1 59",
 "text": "Nepo ha jugado 59.Dc7 y amenaza Dxg7 mate. Juega Ding: ¿qué jugarías?",
 "hint": "Defiende g7, pero sin dejar tu dama fuera de juego.",
@@ -1570,6 +1999,7 @@
 },
 {
 "kind": "move",
+"ply": 124,
 "fen": "8/6pk/3b2qp/8/2Q4P/p3B1P1/2p2PK1/8 b - - 3 62",
 "text": "Nepo acaba de jugar 62.Rg2. Ding pensó casi un minuto. ¿Qué jugarías?",
 "hint": "Antes de correr con los peones, asegura tu rey.",
@@ -1952,6 +2382,296 @@
 "title": "Alireza Firouzja - D Gukesh, Commentary by IM Sagar Shah",
 "start": 1012
 },
+"film": {
+"duration": 1319,
+"start": 1012,
+"end": 1146.5,
+"marks": "pending",
+"stops": [
+{
+"at": 1026.5,
+"resume": null
+},
+{
+"at": 1088.4,
+"resume": null
+}
+],
+"sync": {
+"startPly": 108,
+"marks": [
+{
+"ply": 109,
+"at": 1017.5
+},
+{
+"ply": 110,
+"at": 1024.4
+},
+{
+"ply": 111,
+"at": 1028.9
+},
+{
+"ply": 112,
+"at": 1033.5
+},
+{
+"ply": 113,
+"at": 1038.4
+},
+{
+"ply": 114,
+"at": 1043.3
+},
+{
+"ply": 115,
+"at": 1048.8
+},
+{
+"ply": 116,
+"at": 1051.8
+},
+{
+"ply": 117,
+"at": 1057.3
+},
+{
+"ply": 118,
+"at": 1064.9
+},
+{
+"ply": 119,
+"at": 1065.6
+},
+{
+"ply": 120,
+"at": 1069.1
+},
+{
+"ply": 121,
+"at": 1074.5
+},
+{
+"ply": 122,
+"at": 1080.5
+},
+{
+"ply": 123,
+"at": 1084.1
+},
+{
+"ply": 124,
+"at": 1086.7
+},
+{
+"ply": 125,
+"at": 1092.2
+},
+{
+"ply": 126,
+"at": 1096
+},
+{
+"ply": 127,
+"at": 1104
+},
+{
+"ply": 128,
+"at": 1106.2
+},
+{
+"ply": 129,
+"at": 1109.3
+},
+{
+"ply": 130,
+"at": 1111.2
+},
+{
+"ply": 131,
+"at": 1114.1
+},
+{
+"ply": 132,
+"at": 1119.5
+},
+{
+"ply": 133,
+"at": 1124.8
+},
+{
+"ply": 134,
+"at": 1129.2
+},
+{
+"ply": 135,
+"at": 1133.5
+},
+{
+"ply": 136,
+"at": 1137.5
+},
+{
+"ply": 137,
+"at": 1144
+}
+],
+"gaps": []
+},
+"frames": {
+"108": {
+"fen": "8/1R6/5p1k/6bP/6K1/8/8/8 w - - 0 55",
+"from": "f7",
+"to": "f6"
+},
+"109": {
+"fen": "8/5R2/5p1k/6bP/6K1/8/8/8 b - - 1 55",
+"from": "b7",
+"to": "f7"
+},
+"110": {
+"fen": "8/5R2/5p1k/7P/6K1/8/3b4/8 w - - 2 56",
+"from": "g5",
+"to": "d2"
+},
+"111": {
+"fen": "8/8/5R1k/7P/6K1/8/3b4/8 b - - 0 56",
+"from": "f7",
+"to": "f6"
+},
+"112": {
+"fen": "8/6k1/5R2/7P/6K1/8/3b4/8 w - - 1 57",
+"from": "h6",
+"to": "g7"
+},
+"113": {
+"fen": "8/6k1/3R4/7P/6K1/8/3b4/8 b - - 2 57",
+"from": "f6",
+"to": "d6"
+},
+"114": {
+"fen": "8/6k1/3R4/7P/6K1/8/8/2b5 w - - 3 58",
+"from": "d2",
+"to": "c1"
+},
+"115": {
+"fen": "8/6k1/3R4/5K1P/8/8/8/2b5 b - - 4 58",
+"from": "g4",
+"to": "f5"
+},
+"116": {
+"fen": "8/6k1/3R4/5K1P/8/4b3/8/8 w - - 5 59",
+"from": "c1",
+"to": "e3"
+},
+"117": {
+"fen": "8/6k1/6R1/5K1P/8/4b3/8/8 b - - 6 59",
+"from": "d6",
+"to": "g6"
+},
+"118": {
+"fen": "8/7k/6R1/5K1P/8/4b3/8/8 w - - 7 60",
+"from": "g7",
+"to": "h7"
+},
+"119": {
+"fen": "8/7k/6RP/5K2/8/4b3/8/8 b - - 0 60",
+"from": "h5",
+"to": "h6"
+},
+"120": {
+"fen": "8/7k/6RP/5K2/8/8/8/2b5 w - - 1 61",
+"from": "e3",
+"to": "c1"
+},
+"121": {
+"fen": "8/6Rk/7P/5K2/8/8/8/2b5 b - - 2 61",
+"from": "g6",
+"to": "g7"
+},
+"122": {
+"fen": "8/6R1/7k/5K2/8/8/8/2b5 w - - 0 62",
+"from": "h7",
+"to": "h6"
+},
+"123": {
+"fen": "8/8/6Rk/5K2/8/8/8/2b5 b - - 1 62",
+"from": "g7",
+"to": "g6"
+},
+"124": {
+"fen": "8/7k/6R1/5K2/8/8/8/2b5 w - - 2 63",
+"from": "h6",
+"to": "h7"
+},
+"125": {
+"fen": "8/7k/5KR1/8/8/8/8/2b5 b - - 3 63",
+"from": "f5",
+"to": "f6"
+},
+"126": {
+"fen": "8/7k/5KR1/8/8/4b3/8/8 w - - 4 64",
+"from": "c1",
+"to": "e3"
+},
+"127": {
+"fen": "8/5K1k/6R1/8/8/4b3/8/8 b - - 5 64",
+"from": "f6",
+"to": "f7"
+},
+"128": {
+"fen": "8/b4K1k/6R1/8/8/8/8/8 w - - 6 65",
+"from": "e3",
+"to": "a7"
+},
+"129": {
+"fen": "8/b4K1k/R7/8/8/8/8/8 b - - 7 65",
+"from": "g6",
+"to": "a6"
+},
+"130": {
+"fen": "1b6/5K1k/R7/8/8/8/8/8 w - - 8 66",
+"from": "a7",
+"to": "b8"
+},
+"131": {
+"fen": "1b6/5K1k/1R6/8/8/8/8/8 b - - 9 66",
+"from": "a6",
+"to": "b6"
+},
+"132": {
+"fen": "8/2b2K1k/1R6/8/8/8/8/8 w - - 10 67",
+"from": "b8",
+"to": "c7"
+},
+"133": {
+"fen": "8/1Rb2K1k/8/8/8/8/8/8 b - - 11 67",
+"from": "b6",
+"to": "b7"
+},
+"134": {
+"fen": "8/1R3K1k/8/8/5b2/8/8/8 w - - 12 68",
+"from": "c7",
+"to": "f4"
+},
+"135": {
+"fen": "8/5K1k/8/8/1R3b2/8/8/8 b - - 13 68",
+"from": "b7",
+"to": "b4"
+},
+"136": {
+"fen": "8/5K1k/8/6b1/1R6/8/8/8 w - - 14 69",
+"from": "f4",
+"to": "g5"
+},
+"137": {
+"fen": "8/5K1k/8/6b1/8/8/8/1R6 b - - 15 69",
+"from": "b4",
+"to": "b1"
+}
+}
+},
 "lesson": {
 "id": "cine-firouzja-gukesh-2025-superbet-r6",
 "title": "La técnica de Firouzja",
@@ -1966,6 +2686,7 @@
 "exercises": [
 {
 "kind": "move",
+"ply": 111,
 "fen": "8/5R2/5p1k/7P/6K1/8/3b4/8 w - - 2 56",
 "text": "Juegan las blancas: Firouzja. Gukesh acaba de jugar 55…Ad2. ¿Qué jugarías?",
 "hint": "Al negro le queda un solo peón.",
@@ -2083,6 +2804,7 @@
 },
 {
 "kind": "move",
+"ply": 125,
 "fen": "8/7k/6R1/5K2/8/8/8/2b5 w - - 2 63",
 "text": "El rey negro ha vuelto a h7. Juegan las blancas: ¿qué jugarías?",
 "hint": "La torre sola no basta: hace falta el rey.",
@@ -2403,6 +3125,337 @@
 "title": "The most thrilling Nakamura vs Carlsen encounter",
 "start": 843
 },
+"film": {
+"duration": 1123,
+"start": 843,
+"end": 1065.2,
+"marks": "pending",
+"stops": [
+{
+"at": 933.4,
+"resume": null
+}
+],
+"sync": {
+"startPly": 68,
+"marks": [
+{
+"ply": 69,
+"at": 883.7
+},
+{
+"ply": 70,
+"at": 893.1
+},
+{
+"ply": 71,
+"at": 934.4
+},
+{
+"ply": 72,
+"at": 937.3
+},
+{
+"ply": 73,
+"at": 951
+},
+{
+"ply": 74,
+"at": 952
+},
+{
+"ply": 75,
+"at": 952.7
+},
+{
+"ply": 76,
+"at": 962
+},
+{
+"ply": 77,
+"at": 975.1
+},
+{
+"ply": 78,
+"at": 977.9
+},
+{
+"ply": 79,
+"at": 978.9
+},
+{
+"ply": 80,
+"at": 981.7
+},
+{
+"ply": 81,
+"at": 999.2
+},
+{
+"ply": 82,
+"at": 1001.1
+},
+{
+"ply": 83,
+"at": 1008.2
+},
+{
+"ply": 84,
+"at": 1013
+},
+{
+"ply": 85,
+"at": 1019.9
+},
+{
+"ply": 86,
+"at": 1021.1
+},
+{
+"ply": 87,
+"at": 1022.7
+},
+{
+"ply": 88,
+"at": 1023.7
+},
+{
+"ply": 89,
+"at": 1024.9
+},
+{
+"ply": 90,
+"at": 1031
+},
+{
+"ply": 91,
+"at": 1036.1
+},
+{
+"ply": 92,
+"at": 1041.3
+},
+{
+"ply": 93,
+"at": 1046.6
+},
+{
+"ply": 94,
+"at": 1048.5
+},
+{
+"ply": 95,
+"at": 1049.7
+},
+{
+"ply": 96,
+"at": 1052
+},
+{
+"ply": 97,
+"at": 1056.4
+},
+{
+"ply": 98,
+"at": 1057.6
+},
+{
+"ply": 99,
+"at": 1059
+},
+{
+"ply": 100,
+"at": 1059.9
+},
+{
+"ply": 101,
+"at": 1061.1
+},
+{
+"ply": 102,
+"at": 1062.7
+}
+],
+"gaps": []
+},
+"frames": {
+"68": {
+"fen": "3rr2k/1Q4p1/7p/P7/5n2/3p1P2/1P4PP/3R2K1 w - - 1 35",
+"from": "f8",
+"to": "e8"
+},
+"69": {
+"fen": "3rr2k/1Q4p1/7p/P7/5n2/3p1PP1/1P5P/3R2K1 b - - 0 35",
+"from": "g2",
+"to": "g3"
+},
+"70": {
+"fen": "3rr2k/1Q4p1/7p/P7/5n2/5PP1/1P1p3P/3R2K1 w - - 0 36",
+"from": "d3",
+"to": "d2"
+},
+"71": {
+"fen": "3rr2k/6p1/7p/P7/1Q3n2/5PP1/1P1p3P/3R2K1 b - - 1 36",
+"from": "b7",
+"to": "b4"
+},
+"72": {
+"fen": "4r2k/6p1/7p/P7/1Q1r1n2/5PP1/1P1p3P/3R2K1 w - - 2 37",
+"from": "d8",
+"to": "d4"
+},
+"73": {
+"fen": "4r2k/6p1/7p/P7/3r1n2/5PP1/1P1Q3P/3R2K1 b - - 0 37",
+"from": "b4",
+"to": "d2"
+},
+"74": {
+"fen": "4r2k/6p1/7p/P7/5n2/5PP1/1P1r3P/3R2K1 w - - 0 38",
+"from": "d4",
+"to": "d2"
+},
+"75": {
+"fen": "4r2k/6p1/7p/P7/5n2/5PP1/1P1R3P/6K1 b - - 0 38",
+"from": "d1",
+"to": "d2"
+},
+"76": {
+"fen": "4r2k/6p1/4n2p/P7/8/5PP1/1P1R3P/6K1 w - - 1 39",
+"from": "f4",
+"to": "e6"
+},
+"77": {
+"fen": "4r2k/6p1/4n2p/P7/1P6/5PP1/3R3P/6K1 b - - 0 39",
+"from": "b2",
+"to": "b4"
+},
+"78": {
+"fen": "4r1k1/6p1/4n2p/P7/1P6/5PP1/3R3P/6K1 w - - 1 40",
+"from": "h8",
+"to": "g8"
+},
+"79": {
+"fen": "4r1k1/6p1/4n2p/PP6/8/5PP1/3R3P/6K1 b - - 0 40",
+"from": "b4",
+"to": "b5"
+},
+"80": {
+"fen": "r5k1/6p1/4n2p/PP6/8/5PP1/3R3P/6K1 w - - 1 41",
+"from": "e8",
+"to": "a8"
+},
+"81": {
+"fen": "r5k1/6p1/4n2p/PP6/8/5PP1/R6P/6K1 b - - 2 41",
+"from": "d2",
+"to": "a2"
+},
+"82": {
+"fen": "r7/5kp1/4n2p/PP6/8/5PP1/R6P/6K1 w - - 3 42",
+"from": "g8",
+"to": "f7"
+},
+"83": {
+"fen": "r7/5kp1/4n2p/PP6/8/5PP1/R4K1P/8 b - - 4 42",
+"from": "g1",
+"to": "f2"
+},
+"84": {
+"fen": "r7/4k1p1/4n2p/PP6/8/5PP1/R4K1P/8 w - - 5 43",
+"from": "f7",
+"to": "e7"
+},
+"85": {
+"fen": "r7/4k1p1/1P2n2p/P7/8/5PP1/R4K1P/8 b - - 0 43",
+"from": "b5",
+"to": "b6"
+},
+"86": {
+"fen": "r7/4k1p1/1P5p/P1n5/8/5PP1/R4K1P/8 w - - 1 44",
+"from": "e6",
+"to": "c5"
+},
+"87": {
+"fen": "r7/4k1p1/1P5p/P1n5/8/4KPP1/R6P/8 b - - 2 44",
+"from": "f2",
+"to": "e3"
+},
+"88": {
+"fen": "r7/6p1/1P1k3p/P1n5/8/4KPP1/R6P/8 w - - 3 45",
+"from": "e7",
+"to": "d6"
+},
+"89": {
+"fen": "r7/6p1/1P1k3p/P1n5/5K2/5PP1/R6P/8 b - - 4 45",
+"from": "e3",
+"to": "f4"
+},
+"90": {
+"fen": "r7/8/1P1k2pp/P1n5/5K2/5PP1/R6P/8 w - - 0 46",
+"from": "g7",
+"to": "g6"
+},
+"91": {
+"fen": "r7/8/1P1k2pp/P1n5/5K1P/5PP1/R7/8 b - - 0 46",
+"from": "h2",
+"to": "h4"
+},
+"92": {
+"fen": "r7/8/1P4pp/P1nk4/5K1P/5PP1/R7/8 w - - 1 47",
+"from": "d6",
+"to": "d5"
+},
+"93": {
+"fen": "r7/8/1P4pp/P1nk4/6KP/5PP1/R7/8 b - - 2 47",
+"from": "f4",
+"to": "g4"
+},
+"94": {
+"fen": "r7/8/1Pk3pp/P1n5/6KP/5PP1/R7/8 w - - 3 48",
+"from": "d5",
+"to": "c6"
+},
+"95": {
+"fen": "r7/8/1Pk3pp/P1n4P/6K1/5PP1/R7/8 b - - 0 48",
+"from": "h4",
+"to": "h5"
+},
+"96": {
+"fen": "6r1/8/1Pk3pp/P1n4P/6K1/5PP1/R7/8 w - - 1 49",
+"from": "a8",
+"to": "g8"
+},
+"97": {
+"fen": "6r1/8/1Pk3pp/P1n4P/6K1/5PP1/2R5/8 b - - 2 49",
+"from": "a2",
+"to": "c2"
+},
+"98": {
+"fen": "6r1/8/1P4pp/Pkn4P/6K1/5PP1/2R5/8 w - - 3 50",
+"from": "c6",
+"to": "b5"
+},
+"99": {
+"fen": "6r1/8/1P4Pp/Pkn5/6K1/5PP1/2R5/8 b - - 0 50",
+"from": "h5",
+"to": "g6"
+},
+"100": {
+"fen": "8/8/1P4rp/Pkn5/6K1/5PP1/2R5/8 w - - 0 51",
+"from": "g8",
+"to": "g6"
+},
+"101": {
+"fen": "8/8/1P4rp/Pkn4K/8/5PP1/2R5/8 b - - 1 51",
+"from": "g4",
+"to": "h5"
+},
+"102": {
+"fen": "8/8/1P5p/Pkn3rK/8/5PP1/2R5/8 w - - 2 52",
+"from": "g6",
+"to": "g5"
+}
+}
+},
 "lesson": {
 "id": "cine-nakamura-carlsen-2024-norway-armageddon",
 "title": "Se le acabó el tiempo",
@@ -2417,6 +3470,7 @@
 "exercises": [
 {
 "kind": "move",
+"ply": 71,
 "fen": "3rr2k/1Q4p1/7p/P7/5n2/5PP1/1P1p3P/3R2K1 w - - 0 36",
 "text": "Juega Nakamura, con blancas y algo más de dos minutos. A Carlsen le quedan menos de 40 segundos. ¿Qué jugarías?",
 "hint": "Comerte el peón de d2 ahora no funciona: lo defiende la torre de d8. ¿Qué pieza blanca puede acercarse?",

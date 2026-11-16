@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -478,7 +478,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/godot/addons
           cp -r res/addons/* $GITHUB_WORKSPACE/godot/addons/
           cd $GITHUB_WORKSPACE
-          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg")\n' >> godot/project.godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
           tail -4 godot/project.godot
           ls godot/addons
 
@@ -498,8 +498,8 @@ jobs:
           cat godot/addons/admob/android/bin/package.gd
           cp godot/core/ads_admob.gdtxt godot/core/ads_admob.gd
           APP_ID=$(python3 -c "import json;print(json.load(open('godot/data/ads.json'))['app_id'])")
-          grep -q 'res://addons/espera_online/plugin.cfg")' godot/project.godot
-          sed -i 's|"res://addons/espera_online/plugin.cfg")|"res://addons/espera_online/plugin.cfg", "res://addons/admob/plugin.cfg")|' godot/project.godot
+          grep -q 'res://addons/youtube_cine/plugin.cfg")' godot/project.godot
+          sed -i 's|"res://addons/youtube_cine/plugin.cfg")|"res://addons/youtube_cine/plugin.cfg", "res://addons/admob/plugin.cfg")|' godot/project.godot
           printf '\n[admob]\n\ngeneral/android/app_id="%s"\n' "$APP_ID" >> godot/project.godot
           tail -8 godot/project.godot
           if [ "$APP_ID" = "ca-app-pub-3940256099942544~3347511713" ]; then echo "::warning::Los anuncios usan los IDs de PRUEBA de Google (godot/data/ads.json). No publicar así: no generan ingresos."; fi
@@ -515,6 +515,10 @@ jobs:
           mkdir -p $ROOT/com/pabloprieto/espera
           cp android_espera/*.java $ROOT/com/pabloprieto/espera/
           ls -la $ROOT/com/pabloprieto/espera
+          # Vídeo de los Finales de campeones dentro de la app (android_cine/LEEME.md).
+          mkdir -p $ROOT/com/pabloprieto/cine
+          cp android_cine/*.java $ROOT/com/pabloprieto/cine/
+          ls -la $ROOT/com/pabloprieto/cine
 
       - name: Importar el proyecto
         run: |
@@ -555,9 +559,10 @@ jobs:
           unzip -l $A > build/avisos-log/apk-contenido.txt
           if unzip -p $A 'classes*.dex' | grep -a -q "org/godotengine/plugin/notification"; then echo "OK plugin dentro del APK"; else echo "FALTA el plugin en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/espera"; then echo "OK EsperaOnline dentro del APK"; else echo "FALTA EsperaOnline en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/cine"; then echo "OK YouTubeCine dentro del APK"; else echo "FALTA YouTubeCine en el APK"; exit 1; fi
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
-          for f in "org.godotengine.plugin.v2.EsperaOnline" "com.pabloprieto.espera.EsperaService" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
+          for f in "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
             if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
           done
           # El icono de la notificación: sin él Android puede descartar el aviso.

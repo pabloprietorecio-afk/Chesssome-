@@ -8,8 +8,8 @@ la rama `cine-video`, commit 17a1575, donde se comprobó cada jugada con Stockfi
                                     cada idioma)
 
 Cada pregunta es un ejercicio «move»: vale cualquier jugada que mantiene el resultado (veredicto «keeps» del motor);
-el texto de cada respuesta lo compone la app (core/cine.gd) con el veredicto. Sin vídeo dentro de la app: al final se
-abre el vídeo oficial en YouTube.
+el texto de cada respuesta lo compone la app (core/cine.gd) con el veredicto. Cada clip lleva además «film»: las marcas
+del vídeo y el tablero sincronizado, para verlo dentro de la app con pausa en cada pregunta (fase 2).
 
 Uso: python3 tools/cine/build.py   (necesita python-chess: pip install chess)"""
 import json, os, re, sys
@@ -80,6 +80,52 @@ def strip_colon(text):
     return ' '.join(p for p in parts if not p.endswith(':'))
 
 
+END_TAIL = 2.5  # src/core/videoCine.ts (trimEnd): el clip acaba poco después de la última jugada del tablero
+
+
+def film_of(c):
+    """Lo que necesita el vídeo dentro de la app (fase 2): marcas del clip (inicio, fin, una pausa por pregunta) y el
+    tablero sincronizado (posición al empezar y segundo en que aparece cada media jugada), con las posiciones ya
+    calculadas. Las marcas las puso Pablo viendo los vídeos en la web; «marks» dice si alguien las ha dado por
+    verificadas. Sin inicio o sin alguna pausa, el clip no tiene vídeo con pausa (None)."""
+    if c.get('start') is None or any(st.get('at') is None for st in c['stops']):
+        return None
+    for st in c['stops']:
+        if len(st['questions']) != 1:
+            raise SystemExit('%s: la app espera una pregunta por pausa' % c['id'])
+    sync = c.get('sync') or {'startPly': c['stops'][0]['questions'][0]['ply'] - 1, 'marks': []}
+    marks = sync.get('marks', [])
+    end = c.get('end')
+    if end is not None and marks:
+        last = max(m['at'] for m in marks)
+        if last + END_TAIL < end:
+            end = round(last + END_TAIL, 2)
+    # Orden: inicio < pausas < fin, y ninguna jugada de una pregunta en el tablero antes de su pausa.
+    seq = [c['start']] + [st['at'] for st in c['stops']] + ([end] if end is not None else [])
+    if any(b <= a for a, b in zip(seq, seq[1:])):
+        raise SystemExit('%s: marcas fuera de orden %s' % (c['id'], seq))
+    for st in c['stops']:
+        qp = st['questions'][0]['ply']
+        for m in marks:
+            if m['ply'] >= qp and m['at'] < st['at']:
+                raise SystemExit('%s: la media jugada %d aparece antes de su pausa' % (c['id'], m['ply']))
+    last_ply = max([sync['startPly']] + [m['ply'] for m in marks] + [st['questions'][0]['ply'] for st in c['stops']])
+    frames = {}
+    tl = c['timeline']
+    for ply in range(sync['startPly'], last_ply + 1):
+        i = ply - tl['fromPly']
+        if not 0 <= i < len(tl['moves']):
+            raise SystemExit('%s: sin la media jugada %d' % (c['id'], ply))
+        mv = tl['moves'][i]
+        frames[str(ply)] = {'fen': mv['fenAfter'], 'from': mv['from'], 'to': mv['to']}
+    return {
+        'duration': c['video'].get('duration'), 'start': c['start'], 'end': end, 'marks': c.get('marks', 'pending'),
+        'stops': [{'at': st['at'], 'resume': st.get('resumeAt')} for st in c['stops']],
+        'sync': {'startPly': sync['startPly'], 'marks': marks, 'gaps': sync.get('gaps', [])},
+        'frames': frames,
+    }
+
+
 def build():
     pack = json.load(open(os.path.join(HERE, 'videocine.pack.json'), encoding='utf8'))
     texts = []
@@ -120,7 +166,7 @@ def build():
                     raise SystemExit('%s: ninguna jugada vale en la media jugada %d' % (c['id'], q['ply']))
                 lead = q.get('lead') or {}
                 exercises.append({
-                    'kind': 'move', 'fen': q['fen'], 'text': say(q['question']), 'hint': say(q.get('hint') or ''),
+                    'kind': 'move', 'ply': q['ply'], 'fen': q['fen'], 'text': say(q['question']), 'hint': say(q.get('hint') or ''),
                     'last': [lead['from'], lead['to']] if lead.get('from') else [],
                     'cine': {'target': q['target'], 'played': q['playedUci'], 'playedSan': es(q['played']['san']),
                              'playedCls': q['playedCls'], 'why': say(q['why'])},
@@ -148,10 +194,12 @@ def build():
         last_mv = c['timeline']['moves'][-1]
         exercises.append({'kind': 'info', 'fen': end_fen, 'text': say(c['outro']), 'last': [last_mv['from'], last_mv['to']], 'arrows': []})
         v = c['video']
+        film = film_of(c)
         clips.append({
             'id': c['id'], 'title': say(c['title']), 'subtitle': say(c['subtitle']), 'event': c['event'], 'year': c['year'],
             'white': c['white'], 'black': c['black'],
             'video': {'id': v['id'], 'channel': v['channel'], 'title': v['title'], 'start': int(c.get('start') or 0)},
+            'film': film,
             'lesson': {'id': 'cine-' + c['id'], 'title': c['title'], 'icon': 'film', 'orientation': orient,
                        'intro': [c['subtitle'], say(c['intro'])],
                        'takeaway': say(lesson.get('takeaway', '')), 'lessonTitle': lesson.get('title', ''),

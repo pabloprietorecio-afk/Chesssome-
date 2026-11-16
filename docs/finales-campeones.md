@@ -32,9 +32,39 @@ Pablo, 16 nov: el cine entra en la app por fases. Esta es la primera: sin vídeo
   `tools/i18n/trad/ui_cine.tsv`.
 - Prueba: `tests/test_cine.gd` (en la CI). Capturas: `tests/pantallas.tscn` (p34 a p41).
 
-## Lo que no hace (fase 2)
+## Fase 2: el vídeo dentro de la app (16 nov)
 
-- **Vídeo dentro de la app con pausa automática** antes de cada jugada: necesita un WebView nativo (Godot no lo
-  trae) y las marcas de tiempo de cada clip verificadas (hoy, las seis están «pending»).
-- YouTube: el vídeo se abre fuera, con un enlace; nada de anuncios propios en estas pantallas (regla III.G.1.d de
-  YouTube, ver `claude/chessome-cine.md`).
+Como funcionaba en la web (rama `cine-video`), con las marcas que puso Pablo viendo los vídeos:
+
+- **Arriba, el vídeo** (reproductor oficial de YouTube, a todo el ancho, 16:9). Se carga **parado** en el inicio
+  del clip: lo arranca el jugador con ▶ en el propio reproductor.
+- **Debajo, el tablero sigue las jugadas del vídeo** (marcas `sync`), sin enseñar nunca la jugada de la próxima
+  pregunta (tope por pausa, `CineFilm.sync_cap`).
+- **Justo antes de cada pregunta, el vídeo se para solo** y la pregunta sale en el tablero, en la misma posición.
+  «Ir a la pregunta» la trae sin esperar. Tras responder, «Seguir el vídeo» lo reanuda desde la pausa.
+- **Responder es opcional** (norma de YouTube): «Seguir el vídeo» también sin contestar, o ▶ en el reproductor; en
+  ese caso, «Volver a la pregunta». Si ya había respondido y pulsa ▶, sigue con normalidad (evento `answered`,
+  añadido en la app).
+- Al acabar el clip (2,5 s tras la última jugada del tablero, como en la web), se cierra el vídeo y sigue la
+  explicación de la partida. Si el vídeo da error, sigue la lección sin vídeo.
+
+### Piezas
+
+| Pieza | Dónde |
+| --- | --- |
+| Datos (marcas, pausas, tablero sincronizado y sus posiciones) | `film` de cada clip en `data/cine.json`, de `tools/cine/build.py` (comprueba orden y que nada se destripa) |
+| Director (cuándo parar), portado de `src/core/videoCine.ts` con las mismas constantes | `core/cine_film.gd` |
+| Puente con el reproductor nativo | `core/cine_player.gd` |
+| Reproductor nativo (WebView del sistema + API de iframe) | `android_cine/YouTubeCine.java`, registrado por `addons/youtube_cine` |
+| Pantalla | `demo/demo.gd`, sección «El vídeo del final dentro de la app» |
+| Pruebas | `tests/test_cine_film.gd` (las del director de la web, con sus números, y los seis clips reales), `tests/test_cine_video.gd` (recorrido entero con un reproductor simulado) |
+
+Sin el complemento (escritorio, pruebas) todo sigue como en la fase 1: «Ver el vídeo» abre YouTube fuera.
+
+### Por comprobar en el móvil
+
+- Que YouTube acepta el reproductor en el WebView con la URL base `https://com.pabloprieto.chessome` (si no, da
+  error y la lección sigue sin vídeo).
+- Que la pausa cae antes de la jugada (en la web, ±0,1 s) y que «Seguir el vídeo» reanuda sin otro toque.
+- Que el vídeo queda exactamente sobre su hueco (píxeles de la ventana de Godot) y se oculta con Opciones.
+- Antes de publicar: enlazar las Condiciones de YouTube y su política de privacidad (Políticas III.A).

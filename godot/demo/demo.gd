@@ -175,6 +175,13 @@ var course: Array = []
 var kids_lines := {}
 ## Nivel Kids (desde 8 años): textos muy sencillos con voz, solo el curso; salir pide la puerta para adultos.
 var kids := false
+## El vídeo de un final dentro de la app (fase 2 del cine; core/cine_film.gd y core/cine_player.gd). {} si no hay:
+## {lesson, data (film del clip), st (estado del director), plies (pregunta de cada pausa), ply (posición enseñada),
+## answered (pausas respondidas), err}. Sin el complemento de Android, nunca se activa.
+var film := {}
+var cine_player: CinePlayer = null
+## Hueco del vídeo, arriba, entre la barra y el tablero: el reproductor nativo se coloca encima.
+var video_slot: Control
 ## Anuncios entre actividades (core/ads.gd); sin el plugin de Android no hacen nada.
 var ads := Ads.new()
 ## Pantalla de inicio que ha elegido el jugador: «lista» o «rejilla» (ui/home_screens.gd). Kids tiene la suya.
@@ -1711,6 +1718,12 @@ func _build_chrome() -> void:
 	options_button = _round_button("sliders", _open_options)
 	bar.add_child(options_button)
 
+	# Hueco del vídeo de los finales (el reproductor de YouTube, nativo, va encima). Solo con un vídeo abierto.
+	video_slot = Control.new()
+	video_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	video_slot.visible = false
+	chrome.add_child(video_slot)
+
 	# Cielo sobre el tablero: mientras se resuelve, el tablero queda más cerca del pulgar; cuando llega la
 	# explicación completa, este hueco se cierra y el tablero sube (ver _layout).
 	top_gap = _spacer(0.0)
@@ -1872,6 +1885,9 @@ func _place_tip() -> void:
 	var room := slot_top - bar_bottom
 	var fits := room >= gesture_tip.size.y + 56.0
 	gesture_tip.visible = _tip_note or (gesture_hint and not view.view_locked and welcome == null and progress == null and fits)
+	if not film.is_empty():
+		# Con el vídeo arriba no hay sitio: la pista quedaría debajo del reproductor (que va encima de todo).
+		gesture_tip.visible = false
 	var y := slot_top - gesture_tip.size.y - 34.0
 	if not fits:
 		y = bar_bottom + 14.0
@@ -1902,12 +1918,19 @@ func _layout(animate: bool = false) -> void:
 	if chrome == null or board_slot == null or top_gap == null:
 		return
 	var canvas := get_viewport_rect().size
+	if video_slot != null and is_instance_valid(video_slot):
+		# A todo el ancho y en 16:9, con un respiro debajo (YouTube pide al menos 200 × 200 px).
+		video_slot.visible = not film.is_empty()
+		video_slot.custom_minimum_size = Vector2(0.0, roundf(canvas.x * 9.0 / 16.0) + 18.0) if video_slot.visible else Vector2.ZERO
 	var fixed := 0.0
 	for child in chrome.get_children():
 		if child != board_slot and child != top_gap and child != card_pad and child is Control:
 			fixed += (child as Control).get_combined_minimum_size().y
 	_fixed_height = fixed
 	var board_h := clampf(canvas.y - fixed - CARD_MIN, 320.0, maxf(canvas.x, 320.0))
+	if not film.is_empty():
+		# Con el vídeo arriba, el tablero cede algo de alto a la tarjeta (la pregunta tiene que verse entera).
+		board_h = minf(board_h, maxf(canvas.x * 0.84, 320.0))
 	board_slot.custom_minimum_size = Vector2(0.0, board_h)
 	var free := maxf(canvas.y - fixed - board_h, CARD_MIN)
 	var gap := minf(maxf(0.0, (free - _card_room()) * 0.86), _gap_limit)
@@ -4653,8 +4676,14 @@ func _start_lesson(id: String) -> void:
 	mode = "learn"
 	ex_stars = []
 	lesson_ex = -1
+	_film_close()
 	_close_progress()
+	_film_open()
 	_show_lesson_step()
+	if not film.is_empty():
+		# Se carga el vídeo parado en el inicio del clip, cuando el hueco ya tiene su sitio en la pantalla.
+		_layout()
+		_film_event.call_deferred({"type": "start", "mode": "film"})
 
 
 ## Enseña el paso actual de la lección: la introducción, un ejercicio o el final.
@@ -4833,6 +4862,8 @@ func _build_learn_card() -> void:
 	elif ex_state == "end":
 		head = "Lección terminada"
 		tone = _c("good")
+	elif ex_state == "film":
+		head = "Mira el vídeo"
 	title = _para(head, F_TITLE, tone, font_display)
 	if kids and voice_on and _has_voice(_voice_last):
 		# El título con el botón de volver a oír.
@@ -4844,7 +4875,13 @@ func _build_learn_card() -> void:
 		card_body.add_child(top)
 	else:
 		card_body.add_child(title)
+	if ex_state == "film":
+		card_body.add_child(_para(_film_card_text(), F_BODY, _c("ink"), font_regular))
+		return
 	if ex_state == "intro":
+		# Con el vídeo, primero qué hacer (pulsar ▶): con el vídeo arriba, la tarjeta tiene poco sitio.
+		if not film.is_empty():
+			card_body.add_child(_para(_film_card_text(), F_BODY, _c("accent_text"), font_medium))
 		for t: Variant in _lesson_text("intro"):
 			card_body.add_child(_para(str(t), F_BODY, _c("ink"), font_regular))
 		var chips := HFlowContainer.new()
@@ -4857,7 +4894,8 @@ func _build_learn_card() -> void:
 					questions += 1
 			chips.add_child(_chip(Loc.f("%d preguntas", questions), _c("field"), _c("ink"), "target"))
 			var clip := Cine.clip_of(str(lesson["id"]))
-			chips.add_child(_chip(Loc.f("Vídeo al final: %s", str((clip.get("video", {}) as Dictionary).get("channel", "YouTube"))), _c("field"), _c("quiet"), "play"))
+			var channel := str((clip.get("video", {}) as Dictionary).get("channel", "YouTube"))
+			chips.add_child(_chip(Loc.f("Vídeo: %s" if not film.is_empty() else "Vídeo al final: %s", channel), _c("field"), _c("quiet"), "play"))
 		else:
 			chips.add_child(_chip(Loc.f("%d ejercicios", exercises.size()), _c("field"), _c("ink"), "book"))
 		card_body.add_child(chips)
@@ -4958,7 +4996,8 @@ func _learn_why_toggle() -> void:
 
 func _build_learn_actions() -> void:
 	var last_lesson := _is_last_lesson()
-	var key := "learn:%s:%d:%s:%s:%s" % [ex_state, lesson_ex, str(last_lesson), str(kids), str(learn_why_open)]
+	var film_key := "" if film.is_empty() else "%s:%d:%s:%d" % [film["st"]["phase"], int(film["st"]["stop"]), film["st"]["missed"], int(film["st"]["error"])]
+	var key := "learn:%s:%d:%s:%s:%s:%s" % [ex_state, lesson_ex, str(last_lesson), str(kids), str(learn_why_open), film_key]
 	if key == _actions_mode:
 		return
 	_actions_mode = key
@@ -4973,9 +5012,22 @@ func _build_learn_actions() -> void:
 	go["trailing"] = true
 	var quiet := wide.duplicate()
 	var row: Array[Button] = []
+	var on_film := not film.is_empty()
 	match ex_state:
 		"intro":
 			row = [_learn_back_button(quiet), _button("next", "Empezar", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if on_film:
+				row = [_learn_back_button(quiet), _button("next", "Ir a la pregunta", _film_ask, _c("accent_soft"), _c("accent_text"), wide)]
+		"film":
+			var st_f: Dictionary = film.get("st", {}) if on_film else {}
+			if not on_film:
+				row = [_learn_back_button(quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			elif st_f["missed"] != "none":
+				row = [_learn_back_button(quiet), _button("back", "Volver a la pregunta", _film_back, _c("accent"), _c("accent_ink"), go)]
+			elif int(st_f["stop"]) + 1 < (film["plies"] as Array).size():
+				row = [_learn_back_button(quiet), _button("next", "Ir a la pregunta", _film_ask, _c("accent_soft"), _c("accent_text"), wide)]
+			else:
+				row = [_learn_back_button(quiet), _button("next", "Terminar el vídeo", _film_end_now, _c("accent_soft"), _c("accent_text"), wide)]
 		"info":
 			row = [_learn_back_button(quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
 			if _learn_why_ok():
@@ -4993,9 +5045,15 @@ func _build_learn_actions() -> void:
 				var help := wide.duplicate()
 				help["icon_color"] = tint[1]
 				row.append(_button("bulb", "Pista", _learn_hint, tint[0], _c("ink"), help))
-			row.append(_button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide))
+			if on_film and str(ex.get("kind", "")) == "move":
+				# Responder es opcional: se puede seguir viendo sin contestar.
+				row.append(_button("play", "Seguir el vídeo", _film_continue, _c("accent_soft"), _c("accent_text"), wide))
+			else:
+				row.append(_button("retry", "Reiniciar", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide))
 		"fail":
 			row = [_learn_back_button(quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if on_film and str(ex.get("kind", "")) == "move":
+				row[0] = _button("play", "Seguir el vídeo", _film_continue, _c("accent_soft"), _c("accent_text"), wide)
 			if _learn_why_ok():
 				if learn_why_open:
 					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("retry", "Reintentar", _show_lesson_step, _c("accent"), _c("accent_ink"), go)]
@@ -5006,6 +5064,8 @@ func _build_learn_actions() -> void:
 					row.insert(1, _button("why", "¿Por qué?", _learn_why_toggle, tint1[0], _c("ink"), why1))
 		"done":
 			row = [_button("retry", "Repetir", _show_lesson_step, _c("accent_soft"), _c("accent_text"), wide), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
+			if on_film and str(ex.get("kind", "")) == "move":
+				row[1] = _button("play", "Seguir el vídeo", _next_lesson_step, _c("accent"), _c("accent_ink"), go)
 			if _learn_why_ok():
 				if learn_why_open:
 					row = [_button("back", "Volver", _learn_why_toggle, _c("field"), _c("ink"), quiet), _button("next", "Siguiente", _next_lesson_step, _c("accent"), _c("accent_ink"), go)]
@@ -5201,6 +5261,10 @@ func _next_lesson_step() -> void:
 	learn_why_open = false
 	why_board = false
 	why_paras = []
+	if not film.is_empty() and str(ex.get("kind", "")) == "move":
+		# Con el vídeo: tras una pregunta, el vídeo sigue hasta la siguiente pausa (o hasta el final).
+		_film_continue()
+		return
 	lesson_ex += 1
 	_show_lesson_step()
 
@@ -5315,6 +5379,7 @@ func _set_home_style(i: int) -> void:
 
 ## Inicio: lo que se puede hacer en la app, con lo que estaba haciendo el jugador en primer lugar.
 func _open_home() -> void:
+	_film_close()
 	if sheet_kind != "":
 		_close_options()
 	_stop_voice()
@@ -5445,6 +5510,7 @@ const FAMILY_KIDS := {"doble": "Atacar dos piezas a la vez", "linea": "Piezas en
 ## «Entrenar»: primero se ve dónde está el jugador (el camino de niveles sobre un tablero) y los problemas por
 ## categoría, con cuántos ha visto de cada una. Desde aquí elige el entrenamiento recomendado o una categoría.
 func _open_train_hub() -> void:
+	_film_close()
 	if sheet_kind != "":
 		_close_options()
 	if not _has_player():
@@ -5553,6 +5619,7 @@ func _open_train_hub() -> void:
 ## Finales de campeones: momentos de partidas famosas. En cada uno, primero las preguntas («¿Qué jugarías?»), después
 ## la explicación y, al final, el vídeo oficial en YouTube (fuera de la app; dentro llegará en la fase 2).
 func _open_cine() -> void:
+	_film_close()
 	if kids:
 		_open_train_hub()
 		return
@@ -5564,7 +5631,8 @@ func _open_cine() -> void:
 	body.add_child(tile)
 	body.add_child(_spacer(20.0))
 	body.add_child(_centered(_para("Finales de campeones", F_TITLE + 12, _c("ink"), font_display)))
-	body.add_child(_centered(_para("Momentos que decidieron partidas famosas. Primero piensas qué jugarías; después ves por qué y, al final, el vídeo.", F_SUB, _c("quiet"), font_medium)))
+	var inside := CinePlayer.available()
+	body.add_child(_centered(_para("Momentos que decidieron partidas famosas. Ves el vídeo y se para justo antes de la jugada: ¿qué jugarías tú?" if inside else "Momentos que decidieron partidas famosas. Primero piensas qué jugarías; después ves por qué y, al final, el vídeo.", F_SUB, _c("quiet"), font_medium)))
 	var tints := ["rose", "peach", "butter", "mint", "sky", "lilac"]
 	var n := 0
 	for c: Dictionary in Cine.clips():
@@ -5577,7 +5645,7 @@ func _open_cine() -> void:
 		body.add_child(_option_button("film", str(tints[n % tints.size()]), str(c["title"]), line, _start_lesson.bind(id)))
 		n += 1
 	body.add_child(_spacer(20.0))
-	body.add_child(_centered(_para("Los vídeos son de los canales oficiales y se abren en YouTube.", F_FOOT, _c("quiet"), font_regular)))
+	body.add_child(_centered(_para("Vídeos de los canales oficiales, con el reproductor de YouTube." if inside else "Los vídeos son de los canales oficiales y se abren en YouTube.", F_FOOT, _c("quiet"), font_regular)))
 	body.add_child(_spacer(10.0, true))
 	footer.add_child(_button("back", "Entrenar", _open_train_hub, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 
@@ -5596,6 +5664,228 @@ func _open_cine_video() -> void:
 	var clip := Cine.clip_of(str(lesson.get("id", "")))
 	if not clip.is_empty():
 		OS.shell_open(Cine.video_url(clip))
+
+
+# ───────────── El vídeo del final dentro de la app (cine, fase 2) ─────────────
+# Arriba, el reproductor oficial de YouTube (nativo, encima de su hueco); debajo, el tablero, que sigue las jugadas
+# del vídeo sin pasar nunca de la próxima pregunta. El vídeo se para solo justo antes de cada pregunta
+# (core/cine_film.gd, portado de la rama cine-video). Responder es opcional: con ▶ en el reproductor se sigue viendo.
+# Sin el complemento de Android (o sin marcas), la lección es la de la fase 1 y el vídeo se abre fuera, al final.
+
+## Prepara el vídeo de la lección del cine abierta, si se puede verlo aquí.
+func _film_open() -> void:
+	if not Cine.is_lesson(str(lesson.get("id", ""))) or not CinePlayer.available():
+		return
+	var clip := Cine.clip_of(str(lesson["id"]))
+	var data: Variant = clip.get("film")
+	if not CineFilm.can_auto_pause(data):
+		return
+	var plies: Array = []
+	for e: Dictionary in lesson.get("exercises", []):
+		if str(e.get("kind", "")) == "move":
+			plies.append(int(e.get("ply", 0)))
+	if plies.size() != ((data as Dictionary)["stops"] as Array).size():
+		return
+	film = {"lesson": str(lesson["id"]), "data": data, "st": CineFilm.initial(), "plies": plies, "ply": -999, "answered": {}, "err": 0}
+	cine_player = CinePlayer.new(str((clip["video"] as Dictionary)["id"]), Loc.language)
+
+
+func _film_close() -> void:
+	if cine_player != null:
+		cine_player.close()
+	cine_player = null
+	if not film.is_empty():
+		film = {}
+		if video_slot != null and is_instance_valid(video_slot):
+			_layout()
+
+
+## Hueco del vídeo en píxeles de la ventana (donde se coloca la vista nativa).
+func _film_rect() -> Rect2i:
+	if video_slot == null or not is_instance_valid(video_slot):
+		return Rect2i()
+	var r := video_slot.get_global_rect()
+	r.size.y -= 18.0
+	var xf := get_viewport().get_final_transform() * video_slot.get_viewport().get_canvas_transform()
+	var p := xf * r.position
+	var q := xf * r.end
+	return Rect2i(Vector2i(roundi(p.x), roundi(p.y)), Vector2i(roundi(q.x - p.x), roundi(q.y - p.y)))
+
+
+## Cada fotograma: coloca u oculta el reproductor, le lee el tiempo y mueve el tablero.
+func _film_tick() -> void:
+	# Fuera de su lección (inicio, otra pantalla), el vídeo se cierra.
+	if mode != "learn" or str(lesson.get("id", "")) != str(film["lesson"]) or cine_player == null:
+		_film_close()
+		return
+	var covered := sheet_kind != "" or (confirm_node != null and is_instance_valid(confirm_node)) \
+			or (progress != null and is_instance_valid(progress)) or (welcome != null and is_instance_valid(welcome))
+	cine_player.show(not covered)
+	cine_player.place(_film_rect())
+	var snap := cine_player.snapshot()
+	if snap.is_empty():
+		return
+	var err := int(snap.get("error", 0))
+	if err != 0 and int(film["err"]) == 0:
+		film["err"] = err
+		_film_event({"type": "error", "code": err})
+		return
+	if not bool(snap.get("ready", false)):
+		return
+	_film_event({"type": "tick", "time": float(snap["time"]), "duration": float(snap["duration"]), "playing": int(snap["state"]) == 1, "now": float(Time.get_ticks_msec())})
+	if film.is_empty():
+		return
+	var st: Dictionary = film["st"]
+	if st["phase"] == "watching" or st["phase"] == "reveal":
+		_film_board(float(snap["time"]))
+
+
+## El tablero sigue al vídeo: la posición de cada segundo, con la jugada animada si es la siguiente.
+func _film_board(t: float) -> void:
+	var data: Dictionary = film["data"]
+	var fr := CineFilm.frame_at(data, t, CineFilm.sync_cap(film["plies"], film["st"]))
+	var ply := int(fr["ply"])
+	if ply == int(film["ply"]) or str(fr["fen"]) == "":
+		return
+	var prev := int(film["ply"])
+	film["ply"] = ply
+	view.interactive = false
+	view.board.set_arrows([])
+	if ply == prev + 1 and str(fr["from"]) != "" and view.show_move(str(fr["from"]) + str(fr["to"])):
+		return
+	view.set_fen(str(fr["fen"]))
+	if str(fr["from"]) != "":
+		view.board.mark_last_move(Chess.sq_index(str(fr["from"])), Chess.sq_index(str(fr["to"])))
+
+
+## Un evento para el director: ejecuta sus órdenes en el reproductor y cambia la pantalla si cambia la fase.
+func _film_event(e: Dictionary) -> void:
+	if film.is_empty():
+		return
+	var before: Dictionary = film["st"]
+	var r := CineFilm.direct(film["data"], before, e)
+	var now: Dictionary = r["state"]
+	film["st"] = now
+	if cine_player != null:
+		cine_player.run(r["commands"], _film_rect())
+	if now["phase"] != before["phase"] or int(now["stop"]) != int(before["stop"]) or now["missed"] != before["missed"] or int(now["error"]) != int(before["error"]):
+		_film_changed(before, now)
+
+
+func _film_changed(before: Dictionary, now: Dictionary) -> void:
+	var stop := int(now["stop"])
+	if before["phase"] == "asking" and ex_state in ["done", "fail"] and str(ex.get("kind", "")) == "move":
+		film["answered"][int(before["stop"])] = true
+	match str(now["phase"]):
+		"asking":
+			# Pausa: la pregunta de esta parada, en el tablero.
+			var idx := _film_question_index(stop)
+			if idx >= 0 and (lesson_ex != idx or not ex_state in ["play", "done", "fail"]):
+				lesson_ex = idx
+				film["ply"] = -999
+				_show_lesson_step()
+			elif int(now["error"]) != 0:
+				_refresh()
+		"reveal":
+			if now["missed"] == "resumed" and (film["answered"] as Dictionary).has(stop):
+				_film_event({"type": "answered"})
+				return
+			_film_watch()
+		"watching":
+			_film_watch()
+		"ended":
+			_film_finish()
+
+
+## Índice en la lección de la pregunta de la parada `stop` (-1 si no hay).
+func _film_question_index(stop: int) -> int:
+	var n := 0
+	var exercises: Array = lesson.get("exercises", [])
+	for i in exercises.size():
+		if str((exercises[i] as Dictionary).get("kind", "")) == "move":
+			if n == stop:
+				return i
+			n += 1
+	return -1
+
+
+## Mientras se ve el vídeo: la tarjeta dice qué pasa y el tablero sigue las jugadas.
+func _film_watch() -> void:
+	run_id += 1
+	_clear_explanation()
+	learn_why_open = false
+	ex = {}
+	ex_text = ""
+	ex_state = "film" if lesson_ex >= 0 else "intro"
+	film["ply"] = -999
+	view.interactive = false
+	view.board.set_goals([])
+	view.board.only_square = -1
+	_refresh()
+
+
+## Tras una pregunta, «Continuar»: el vídeo sigue desde la pausa.
+func _film_continue() -> void:
+	if film.is_empty():
+		return
+	var snap := cine_player.snapshot() if cine_player != null else {}
+	var t: Variant = float(snap["time"]) if bool(snap.get("ready", false)) else null
+	if ex_state in ["done", "fail"]:
+		film["answered"][int(film["st"]["stop"])] = true
+	if film["st"]["phase"] == "asking":
+		_film_event({"type": "reveal", "time": t})
+		if film["st"]["phase"] == "asking":
+			# Sin vídeo (error): directamente a la siguiente pregunta, o a la explicación.
+			if int(film["st"]["stop"]) + 1 < (film["plies"] as Array).size():
+				_film_event({"type": "next"})
+				lesson_ex = _film_question_index(int(film["st"]["stop"]))
+				_show_lesson_step()
+			else:
+				_film_finish()
+	else:
+		_film_watch()
+
+
+## «Ir a la pregunta» (sin esperar a la pausa), «Volver a la pregunta» (tras pasarla de largo) y «Terminar el vídeo».
+func _film_ask() -> void:
+	_film_event({"type": "ask", "now": float(Time.get_ticks_msec())})
+
+
+func _film_back() -> void:
+	_film_event({"type": "back", "now": float(Time.get_ticks_msec())})
+
+
+func _film_end_now() -> void:
+	_film_event({"type": "finish"})
+
+
+## Acaba el vídeo: se cierra el reproductor y sigue la lección con la explicación de la partida.
+func _film_finish() -> void:
+	var exercises: Array = lesson.get("exercises", [])
+	var first_info := exercises.size()
+	for i in exercises.size():
+		if str((exercises[i] as Dictionary).get("kind", "")) != "move":
+			first_info = i
+			break
+	_film_close()
+	lesson_ex = first_info
+	_show_lesson_step()
+
+
+## Texto de la tarjeta mientras se ve el vídeo.
+func _film_card_text() -> String:
+	var st: Dictionary = film["st"]
+	if int(st["error"]) != 0:
+		return "El vídeo no se puede ver aquí. Sigue con las preguntas; al final podrás abrirlo en YouTube."
+	if st["missed"] == "resumed":
+		return "Has seguido viendo el vídeo. Responder es opcional: si quieres pensarla, vuelve a la pregunta."
+	if st["missed"] == "skipped":
+		return "Has pasado de largo la pregunta. Responder es opcional: si quieres pensarla, vuelve a la pregunta."
+	if st["phase"] == "watching":
+		return "Pulsa ▶ en el vídeo: se parará solo justo antes de la jugada para preguntarte."
+	if int(st["stop"]) + 1 < (film["plies"] as Array).size():
+		return "Así siguió la partida. El vídeo se parará en la siguiente pregunta."
+	return "Así acabó la partida."
 
 
 func _train_family(fam: String) -> void:
@@ -7457,6 +7747,8 @@ func _sync_captures() -> void:
 
 func _process(delta: float) -> void:
 	ads.tick(delta)
+	if not film.is_empty():
+		_film_tick()
 	_sync_captures()
 	if mode == "game" and bool(game.get("online", false)) and game_state in ["play", "think", "press"]:
 		_online_idle_tick()
