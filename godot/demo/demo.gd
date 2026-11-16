@@ -8676,6 +8676,62 @@ func _prog_goal_text(g: Dictionary) -> String:
 	return ""
 
 
+## Una fila de «Tu día» con su botón «Ir» a la derecha, centrado en alto.
+func _with_go(row: Control, go: Callable) -> HBoxContainer:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 16)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(row)
+	var b := _button("next", "Ir", go, _c("accent_soft"), _c("accent_text"), {"font_size": F_SUB, "height": 88.0, "icon": 40.0, "pad_x": 26.0, "trailing": true, "radius": 44})
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(b)
+	return line
+
+
+## «Ir» de un reto de hoy: directo a lo que falta.
+func _prog_goal_go(kind: String) -> void:
+	match kind:
+		"problemas":
+			_train_family("")
+		"repaso":
+			_go_review()
+		"leccion":
+			for l: Dictionary in _course_lessons():
+				if not course_done.has(str(l["id"])):
+					_start_lesson(str(l["id"]))
+					return
+			_open_course()
+		"partida":
+			_open_game_setup()
+
+
+## Directo a repasar: el fallo más antiguo que aún no se ha resuelto ni repasado (sin esperar a que toque en el
+## entrenamiento). Si no queda ninguno, el entrenamiento de siempre.
+func _go_review() -> void:
+	if not _has_player():
+		_train_family("")
+		return
+	var tries: Array = player["tries"]
+	var solved := {}
+	for t: Dictionary in tries:
+		if bool(t["correct"]):
+			solved[str(t["id"])] = true
+	for t: Dictionary in tries:
+		var id := str(t["id"])
+		if bool(t["correct"]) or solved.has(id) or reviewed.has(id) or not _index_of.has(id):
+			continue
+		train_family = ""
+		train_level = -1
+		mode = "train"
+		_close_progress()
+		_since_review = 0
+		_start(int(_index_of[id]), true)
+		return
+	_train_family("")
+
+
 ## «Tu día»: racha, objetivos de hoy, reto de la semana, lo hecho hoy e insignias.
 func _open_day() -> void:
 	var s := _prog()
@@ -8717,7 +8773,9 @@ func _open_day() -> void:
 		var def: Array = PROG_GOAL_ICON[str(g["tipo"])]
 		var done := bool(g["hecho"])
 		var progress_text := "¡Hecho!" if done else (Loc.f("%d de %d", [int(g["actual"]), int(g["meta"])]) if int(g["meta"]) > 1 else "Todavía no")
-		(made[1] as VBoxContainer).add_child(_profile_row("check" if done else str(def[0]), "mint" if done else str(def[1]), _prog_goal_text(g), progress_text))
+		var row := _profile_row("check" if done else str(def[0]), "mint" if done else str(def[1]), _prog_goal_text(g), progress_text)
+		# Lo que falta, a un toque: «Ir» lleva directo a ese reto.
+		(made[1] as VBoxContainer).add_child(row if done else _with_go(row, _prog_goal_go.bind(str(g["tipo"]))))
 
 	# Reto de la semana.
 	var w: Dictionary = s["semana"]
@@ -8729,7 +8787,8 @@ func _open_day() -> void:
 		body.add_child(wmade[0])
 		var fam := str(Assessment.FAMILY_NAME.get(str(w["familia"]), str(w["familia"])))
 		var wtext := Loc.t("¡Cumplido!") if bool(w["completo"]) else Loc.f("%d de %d problemas resueltos", [mini(int(w["hecho"]), int(w["meta"])), int(w["meta"])])
-		(wmade[1] as VBoxContainer).add_child(_profile_row("check" if bool(w["completo"]) else "flag", "mint" if bool(w["completo"]) else "rose", fam, wtext))
+		var wrow := _profile_row("check" if bool(w["completo"]) else "flag", "mint" if bool(w["completo"]) else "rose", fam, wtext)
+		(wmade[1] as VBoxContainer).add_child(wrow if bool(w["completo"]) else _with_go(wrow, _train_family.bind(str(w["familia"]))))
 
 	# Aviso diario (solo si hay plugin de notificaciones).
 	if not kids and (_aviso_available() or not use_settings):
