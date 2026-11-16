@@ -273,10 +273,8 @@ var detail: Array = []
 var detail_done := false
 var detail_at := -1
 var _detail_progress: Label
-## Mini tablero de las pantallas de espera del análisis (ui/analysis_board.gd) y las jugadas propias que va
-## analizando el detalle, en el mismo orden que GameDetail.analyze.
-var _wait_board: AnalysisBoard
-var _detail_plies: Array = []
+## Animación de las pantallas de espera del análisis: el caballo del logo (ui/knight_wait.gd).
+var _wait_anim: KnightWait
 var practice_queue: Array = []
 const GAMES_PATH := "user://chessome_partidas.json"
 var game_state := ""
@@ -9320,10 +9318,8 @@ func _open_review() -> void:
 	var page := _page("review")
 	var body: VBoxContainer = page["body"]
 	body.add_child(_spacer(8.0, true))
-	# Mientras tanto, la partida en un mini tablero, en bucle.
-	_wait_board = _analysis_board(false)
-	body.add_child(_wait_board)
-	_wait_board.replay(game_history.duplicate(), game_moves.duplicate())
+	_wait_anim = _wait_animation(false)
+	body.add_child(_wait_anim)
 	body.add_child(_spacer(56.0))
 	body.add_child(_centered(_para("Analizando la partida…", F_TITLE, _c("ink"), font_display)))
 	body.add_child(_spacer(8.0, true))
@@ -9538,16 +9534,10 @@ func _open_detail() -> void:
 	var page := _page("review")
 	var body: VBoxContainer = page["body"]
 	body.add_child(_spacer(8.0, true))
-	# Mientras tanto, en un mini tablero, la jugada que se está analizando y una barra con lo que va.
-	_detail_plies = []
-	for i in game_moves.size():
-		if i < game_history.size() and Chess.from_fen(str(game_history[i])).turn == game_color:
-			_detail_plies.append(i)
-	_wait_board = _analysis_board(true)
-	body.add_child(_wait_board)
-	if not _detail_plies.is_empty():
-		_wait_board.show_position(str(game_history[int(_detail_plies[0])]))
-	_wait_board.progress = 0.0
+	# El caballo y, debajo, una barra con lo que va.
+	_wait_anim = _wait_animation(true)
+	_wait_anim.progress = 0.0
+	body.add_child(_wait_anim)
 	body.add_child(_spacer(56.0))
 	body.add_child(_centered(_para("Analizando jugada a jugada…", F_TITLE, _c("ink"), font_display)))
 	_detail_progress = _centered(_para("", F_BODY, _c("quiet"), font_medium))
@@ -9567,26 +9557,18 @@ func _detail_work(fens: Array, moves: Array, color: int, my_run: int) -> void:
 func _detail_tick(done: int, total: int) -> void:
 	if _detail_progress != null and is_instance_valid(_detail_progress):
 		_detail_progress.text = Loc.f("Jugada %d de %d", [done, total])
-	if _wait_board != null and is_instance_valid(_wait_board) and done >= 1 and done <= _detail_plies.size():
-		var ply := int(_detail_plies[done - 1])
-		if ply < game_history.size() and ply < game_moves.size():
-			_wait_board.show_move(str(game_history[ply]), str(game_moves[ply]))
-		_wait_board.progress = float(done) / float(maxi(total, 1))
+	if _wait_anim != null and is_instance_valid(_wait_anim):
+		_wait_anim.progress = float(done) / float(maxi(total, 1))
 
 
-## El mini tablero de espera, con los colores del tema y desde el lado del jugador.
-func _analysis_board(with_bar: bool) -> AnalysisBoard:
-	var b := AnalysisBoard.new()
-	var lilac := _tint("lilac")
-	b.light = _c("surface").lerp(lilac[1], 0.08)
-	b.dark = _c("surface").lerp(lilac[1], 0.3)
-	b.frame = _c("surface")
-	b.mark = _c("accent")
-	b.track = _c("track")
-	b.flipped = game_color == 1
-	b.still = view != null and view.board.anim_mode == Board3D.Anim.NONE
-	b.set_side(minf(780.0, size.x * 0.72) if size.x > 0.0 else 760.0, with_bar)
-	return b
+## La animación de espera: el caballo del logo (vídeos al azar); quieta con las animaciones apagadas.
+func _wait_animation(with_bar: bool) -> KnightWait:
+	var k := KnightWait.new()
+	k.mark = _c("accent")
+	k.track = _c("track")
+	k.still = view != null and view.board.anim_mode == Board3D.Anim.NONE
+	k.set_side(minf(760.0, size.x * 0.7) if size.x > 0.0 else 740.0, with_bar)
+	return k
 
 
 func _detail_ready(found: Array, my_run: int) -> void:

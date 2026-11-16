@@ -1,55 +1,72 @@
 extends SceneTree
-## Mini tablero de las pantallas de espera del análisis (ui/analysis_board.gd) y su uso en «Analizando jugada a
-## jugada…»: enseña la jugada que se analiza y la barra avanza con el progreso.
+## Animación de las esperas del análisis (ui/knight_wait.gd): los vídeos del caballo, al azar y sin repetir el mismo
+## dos veces seguidas, encadenados con un fundido; quieta sin animaciones; y su uso en «Analizando jugada a jugada…»
+## con la barra de progreso.
 ## Uso: godot --headless --path godot -s tests/test_espera.gd
 
 var fallos := 0
 var hechos := 0
-const START := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 func _initialize() -> void:
-	var b := AnalysisBoard.new()
-	root.add_child(b)
-	b.set_side(400.0, true)
-	b.show_position(START)
-	_ok(str(b._board[0]) == "r" and str(b._board[60]) == "K" and str(b._board[36]) == "", "lee la posición del FEN (a8 = 0, e1 = 60)")
-	_ok(b._cell_of(60) == Vector2(4, 7), "blancas abajo: e1 en la fila de abajo")
-	b.flipped = true
-	_ok(b._cell_of(60) == Vector2(3, 0), "negras abajo: e1 arriba y la columna al revés")
-	b.flipped = false
-	# Una jugada: al principio la pieza sigue en su casilla y se desliza; al acabar, la posición de después.
-	b.show_move(START, "e2e4")
-	_ok(b._from == AnalysisBoard._square("e2") and b._to == AnalysisBoard._square("e4") and b._glide < 1.0, "la jugada marca sus casillas y empieza a deslizarse")
-	await create_timer(0.5).timeout
-	_ok(str(b._board[AnalysisBoard._square("e4")]) == "P" and str(b._board[AnalysisBoard._square("e2")]) == "", "al acabar, el peón está en e4")
-	# El enroque mueve también la torre.
-	var castle := "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
-	b.show_move(castle, "e1g1")
-	await create_timer(0.5).timeout
-	_ok(str(b._board[AnalysisBoard._square("g1")]) == "K" and str(b._board[AnalysisBoard._square("f1")]) == "R", "enroque: rey en g1 y torre en f1")
-	# Sin animaciones: de golpe.
-	b.still = true
-	b.show_move(START, "g1f3")
-	_ok(str(b._board[AnalysisBoard._square("f3")]) == "N" and b._glide >= 1.0, "sin animaciones, la posición cambia de golpe")
-	b.still = false
-	# Una jugada imposible no rompe nada: queda la posición.
-	b.show_move(START, "e2e5")
-	_ok(b._from == -1 and str(b._board[AnalysisBoard._square("e2")]) == "P", "una jugada imposible deja la posición tal cual")
-	# Barra.
-	b.progress = 0.0
-	b.progress = 0.5
-	await create_timer(0.3).timeout
-	_ok(b._bar > 0.0 and b._bar <= 0.5, "la barra avanza poco a poco hacia el progreso")
-	b.queue_free()
+	# Los vídeos existen y se cargan (Godot no los importa: tienen que estar tal cual y en el filtro de exportación).
+	var loaded := 0
+	for path: String in KnightWait.CLIPS:
+		if FileAccess.file_exists(path) and load(path) is VideoStream:
+			loaded += 1
+	_ok(loaded == KnightWait.CLIPS.size() and loaded == 3, "los tres vídeos del caballo se cargan (%d)" % loaded)
+	var presets := FileAccess.get_file_as_string("res://export_presets.cfg")
+	_ok(presets.count("espera/*.ogv") == 2, "los vídeos van en el filtro de exportación de los dos perfiles")
 
-	# En la app: «Analizando jugada a jugada…» enseña cada jugada propia que se analiza.
+	# Al azar, sin repetir el mismo seguido, y salen todos.
+	var k := KnightWait.new()
+	var seen := {}
+	var repeated := false
+	for i in 60:
+		var n := k.pick()
+		if n == k._last:
+			repeated = true
+		k._last = n
+		seen[n] = true
+	_ok(not repeated and seen.size() == 3, "al azar, todos salen y nunca el mismo dos veces seguidas")
+	k.free()
+
+	# Se reproduce y, al acabar uno, empieza otro distinto con un fundido.
+	var w := KnightWait.new()
+	w.set_side(400.0, true)
+	root.add_child(w)
+	await _frames(3)
+	var first := w.current()
+	_ok(w._players.size() == 2 and w._players[w._front].is_playing(), "empieza un vídeo")
+	var length := w._players[w._front].get_stream_length()
+	_ok(length > 3.0 and length < 6.0, "sabe cuánto dura (%.2f s) para fundir antes del final" % length)
+	w._play_next()
+	_ok(w.current() != first and w._fading, "el siguiente es otro y entra fundiéndose")
+	await create_timer(KnightWait.XFADE + 0.2).timeout
+	_ok(not w._fading and w._players[w._front].is_playing() and w._players[w._front].modulate.a > 0.99, "tras el fundido queda el nuevo")
+	_ok(not w._players[1 - w._front].is_playing(), "y el anterior se para")
+	w.progress = 0.0
+	w.progress = 0.6
+	await create_timer(0.3).timeout
+	_ok(w._bar > 0.0 and w._bar <= 0.6, "la barra avanza poco a poco")
+	w.queue_free()
+
+	# Sin animaciones: el logo quieto, sin vídeo.
+	var s := KnightWait.new()
+	s.still = true
+	s.set_side(400.0, false)
+	root.add_child(s)
+	await _frames(2)
+	_ok(s._players.is_empty() and s._logo != null and s._logo.texture != null, "sin animaciones, el logo quieto")
+	s.queue_free()
+
+	# En la app: «Analizando jugada a jugada…» con el caballo y la barra.
 	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
 	demo.use_settings = false
 	root.add_child(demo)
 	await _frames(4)
 	var moves := ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5"]
-	var pos := Chess.from_fen(START)
+	var pos := Chess.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	var fens: Array = [pos.fen()]
 	for u: String in moves:
 		pos.apply(pos.find_uci(u))
@@ -60,11 +77,10 @@ func _initialize() -> void:
 	demo.mode = "game"
 	demo.detail_done = false
 	demo._open_detail()
-	_ok(demo._wait_board != null and is_instance_valid(demo._wait_board) and demo._wait_board.flipped, "hay mini tablero, desde el lado del jugador (negras)")
-	_ok(demo._detail_plies == [1, 3, 5], "las jugadas propias, en el orden del análisis")
+	await _frames(2)
+	_ok(demo._wait_anim != null and is_instance_valid(demo._wait_anim) and demo._wait_anim.is_inside_tree(), "«Analizando jugada a jugada…» lleva el caballo")
 	demo._detail_tick(2, 3)
-	_ok(demo._wait_board._from == AnalysisBoard._square("b8") and demo._wait_board._to == AnalysisBoard._square("c6"), "el aviso de progreso enseña la jugada que se analiza (…Cc6)")
-	_ok(is_equal_approx(demo._wait_board.progress, 2.0 / 3.0), "y la barra va por 2 de 3")
+	_ok(is_equal_approx(demo._wait_anim.progress, 2.0 / 3.0), "y la barra va por 2 de 3")
 	# Que el análisis acabe antes de salir (si no, el hilo sigue con todo ya liberado).
 	for i in 300:
 		if demo._review_thread == null:
