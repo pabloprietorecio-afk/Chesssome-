@@ -532,7 +532,7 @@ jobs:
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/espera"; then echo "OK EsperaOnline dentro del APK"; else echo "FALTA EsperaOnline en el APK"; exit 1; fi
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
-          for f in "org.godotengine.plugin.v2.EsperaOnline" "com.pabloprieto.espera.EsperaService" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS"; do
+          for f in "org.godotengine.plugin.v2.EsperaOnline" "com.pabloprieto.espera.EsperaService" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
             if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
           done
           # El icono de la notificación: sin él Android puede descartar el aviso.

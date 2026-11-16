@@ -352,7 +352,9 @@ var _gap_limit := INF
 ## Alto de todo lo que no es tablero, cielo ni tarjeta (barra, botones y márgenes), según el último reparto.
 var _fixed_height := 0.0
 var _ai_status: Label
-var _saved_anim := int(Board3D.Anim.FAST)
+var _saved_anim := int(Board3D.Anim.FULL)
+## Si el jugador eligió las animaciones él mismo (si no, valen las de por defecto, aunque cambien).
+var _anim_chosen := false
 var _saved_lock := false
 
 var view: BoardView3D
@@ -1239,7 +1241,9 @@ func _load_settings() -> void:
 	music_on = bool(cfg.get_value("sonido", "musica", true))
 	gesture_hint = bool(cfg.get_value("vista", "pista_de_gestos", gesture_hint))
 	_saved_lock = bool(cfg.get_value("vista", "giro_fijado", false))
-	_saved_anim = clampi(int(cfg.get_value("tablero", "animaciones", _saved_anim)), 0, 3)
+	_anim_chosen = bool(cfg.get_value("tablero", "animaciones_elegidas", false))
+	if _anim_chosen:
+		_saved_anim = clampi(int(cfg.get_value("tablero", "animaciones", _saved_anim)), 0, 3)
 
 
 func _save_settings() -> void:
@@ -1253,6 +1257,7 @@ func _save_settings() -> void:
 	cfg.set_value("app", "vista_por_defecto_2", true)
 	cfg.set_value("app", "contorno_por_defecto", true)
 	cfg.set_value("tablero", "animaciones", int(view.board.anim_mode) if view != null else _saved_anim)
+	cfg.set_value("tablero", "animaciones_elegidas", _anim_chosen)
 	cfg.set_value("pantalla", "oscuro", dark)
 	cfg.set_value("online", "foto", online_photo)
 	cfg.set_value("online", "nombre", online_name)
@@ -3670,6 +3675,7 @@ func _set_sound(on: bool) -> void:
 func _set_anim(mode: int) -> void:
 	view.board.anim_mode = mode as Board3D.Anim
 	_saved_anim = mode
+	_anim_chosen = true
 	_save_settings()
 	_sync_sheet()
 
@@ -5829,7 +5835,21 @@ func _space_tile(r: String, waiting: int) -> Button:
 	pad.minimum_size_changed.connect(fit)
 	fit.call()
 	b.set_meta("label", r if r != "" else "otro")
+	if live and (view == null or view.board.anim_mode != Board3D.Anim.NONE):
+		_wiggle(b)
 	return b
+
+
+## Sacudida ligera y suave, de vez en cuando, para que se vea dónde hay alguien esperando (Pablo, 16 nov). Gira un
+## poco alrededor del centro (los contenedores no tocan el giro); con «Sin animaciones», nada.
+func _wiggle(c: Control) -> void:
+	c.resized.connect(func() -> void: c.pivot_offset = c.size * 0.5)
+	c.pivot_offset = c.size * 0.5
+	var tw := c.create_tween().set_loops()
+	tw.tween_interval(0.5 + randf() * 0.4)
+	for deg: float in [1.6, -1.3, 0.9, -0.5, 0.2, 0.0]:
+		tw.tween_property(c, "rotation_degrees", deg, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_interval(2.2)
 
 
 ## Mientras se ve la lista de espacios, se mira cada 3 s quién espera en cada uno.
@@ -5878,7 +5898,7 @@ func _open_online_rules(space: String) -> void:
 		["g_buena", "mint", "Respeto", "Juega con deportividad. Los gestos son para animar, no para molestar."],
 		["sliders", "sky", "Tu nombre", "Sin insultos, sin datos personales y sin hacerte pasar por otra persona."],
 		["bot", "peach", "Sin ayudas", "Nada de programas, motores ni otra persona que te diga las jugadas."],
-		["clock", "butter", "No hagas perder el tiempo", "Si no puedes seguir, ríndete en lugar de dejar al rival esperando."],
+		["clock", "butter", "No hagas perder el tiempo", "Si no puedes seguir, ríndete en lugar de dejar al rival esperando. Si te toca, no juegas y no contestas a «¿Sigues ahí?», tu rival puede ganar la partida por abandono."],
 		["report", "rose", "Denuncias", "Puedes denunciar o bloquear a un rival desde su nombre, en la partida. Revisamos las denuncias y podemos impedir jugar online a quien no cumpla."],
 		["eye", "lilac", "Lo que se comparte", "Tu rival ve tu nombre, tu nivel, tu icono y tu foto si la enseñas. Las partidas se borran del servidor al terminar."],
 	]
@@ -6068,17 +6088,117 @@ func _online_ended(reason: String, winner: int) -> void:
 		game_back = 0
 		_online_pending = []
 		view.set_fen(str(game_history[game_history.size() - 1]))
+	_close_idle_popups()
 	if reason == "tiempo":
 		# Se le acabó el tiempo a uno (lo calculan los dos con las horas del servidor).
 		_game_flag(1 - winner)
 		_sfx("leccion" if winner == game_color else "error")
 		return
 	game_state = "over"
+	if reason == "ausencia" and winner != game_color:
+		game_won = -1
+		game_result = "No contestabas y tu rival ha ganado por abandono."
+		view.interactive = false
+		_sfx("error")
+		_refresh()
+		return
 	game_won = 1
-	game_result = "Tu rival ha abandonado la partida: ¡has ganado!"
+	game_result = "Tu rival no contestaba: has ganado por abandono." if reason == "ausencia" else "Tu rival ha abandonado la partida: ¡has ganado!"
 	view.interactive = false
 	_sfx("leccion")
 	_refresh()
+
+
+## «¿Sigues ahí?»: a quien le toca y lleva idle_limit_ms sin jugar se le pregunta (con vibración); si no contesta,
+## a su rival se le ofrece ganar por abandono pasado el tiempo de respuesta y un margen. Cerrar la pregunta tocando
+## fuera también vale como «Sigo aquí»; cerrar la oferta, como «Seguir esperando».
+var _idle_ask_node: Control = null
+var _idle_offer_node: Control = null
+var _idle_snooze_until := 0
+
+
+func _online_idle_tick() -> void:
+	if online.phase != "playing":
+		return
+	var limit := Online.idle_limit_ms(online.base_ms)
+	var mover := online.on_move()
+	if _idle_ask_node != null and not is_instance_valid(_idle_ask_node):
+		# Se cerró tocando fuera: estaba ahí.
+		_idle_ask_node = null
+		online.still_here()
+	if _idle_offer_node != null and not is_instance_valid(_idle_offer_node):
+		_idle_offer_node = null
+		_idle_snooze_until = Time.get_ticks_msec() + 60000
+	if mover == game_color:
+		_close_idle_offer()
+		var idle := online.idle_ms(game_color)
+		if idle > limit and _idle_ask_node == null:
+			_ask_still_here()
+		elif idle <= limit and _idle_ask_node != null:
+			_close_idle_ask()
+	else:
+		_close_idle_ask()
+		var idle2 := online.idle_ms(mover)
+		if idle2 > limit + Online.IDLE_ANSWER_MS + Online.IDLE_GRACE_MS and _idle_offer_node == null and Time.get_ticks_msec() >= _idle_snooze_until:
+			_offer_idle_win(idle2)
+		elif idle2 <= limit and _idle_offer_node != null:
+			_close_idle_offer()
+
+
+func _ask_still_here() -> void:
+	if confirm_node != null and is_instance_valid(confirm_node):
+		return
+	var column := _popup("¿Sigues ahí?", Loc.f("Tu rival espera tu jugada. Si no contestas en %d segundos, podrá dar la partida por ganada.", int(Online.IDLE_ANSWER_MS / 1000.0)))
+	column.add_child(_button("check", "Sigo aquí", _still_here, _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
+	_idle_ask_node = confirm_node
+	Input.vibrate_handheld(400)
+	_sfx("error")
+
+
+func _still_here() -> void:
+	_close_idle_ask()
+	online.still_here()
+
+
+func _offer_idle_win(idle: float) -> void:
+	if confirm_node != null and is_instance_valid(confirm_node):
+		return
+	var minutes := int(idle / 60000.0)
+	var how_long := Loc.f("%d min", minutes) if minutes >= 1 else Loc.f("%d s", int(idle / 1000.0))
+	var column := _popup("Tu rival no contesta", Loc.f("Lleva %s sin jugar y no ha contestado a «¿Sigues ahí?». Puedes ganar la partida por abandono o seguir esperando.", how_long))
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	column.add_child(_button("check", "Ganar por abandono", _claim_idle_win, _c("accent"), _c("accent_ink"), opts))
+	column.add_child(_button("clock", "Seguir esperando", _keep_waiting, _c("field"), _c("ink"), opts))
+	_idle_offer_node = confirm_node
+	Input.vibrate_handheld(200)
+
+
+func _claim_idle_win() -> void:
+	_close_idle_offer()
+	online.claim_abandon(1 - game_color)
+
+
+func _keep_waiting() -> void:
+	_close_idle_offer()
+	_idle_snooze_until = Time.get_ticks_msec() + 60000
+
+
+func _close_idle_ask() -> void:
+	if _idle_ask_node != null and is_instance_valid(_idle_ask_node) and confirm_node == _idle_ask_node:
+		_close_confirm()
+	_idle_ask_node = null
+
+
+func _close_idle_offer() -> void:
+	if _idle_offer_node != null and is_instance_valid(_idle_offer_node) and confirm_node == _idle_offer_node:
+		_close_confirm()
+	_idle_offer_node = null
+
+
+func _close_idle_popups() -> void:
+	_close_idle_ask()
+	_close_idle_offer()
+	_idle_snooze_until = 0
 
 
 ## Pide el nombre para jugar online: un campo de texto y «Guardar».
@@ -6744,6 +6864,47 @@ func _rival_line() -> String:
 	return text
 
 
+## Fila de debajo del reloj en las partidas online: insignia del rival, gestos, «¡Tu tiempo!» y opciones.
+func _rival_tools() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var side := 120.0
+	var parts: Array[Control] = []
+	var badge := _rival_badge(side)
+	parts.append(badge)
+	var sky := _tint("sky")
+	parts.append(_round_button("g_saludo", _gesture_menu, side, sky[0], sky[1], false))
+	var peach := _tint("peach")
+	parts.append(_round_button("g_tiempo", _hurry_rival, side, peach[0], peach[1], false))
+	if online.rival_uid != "":
+		parts.append(_round_button("more", _rival_menu, side, _c("field"), _c("ink"), false))
+	for p: Control in parts:
+		# Repartidos a lo ancho, cada uno centrado en su hueco.
+		var cell := CenterContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(p)
+		row.add_child(cell)
+	return row
+
+
+## «¡Tu tiempo!»: avisa al rival de que le toca. Solo tiene sentido cuando le toca a él; como mucho, uno cada
+## 10 segundos.
+var _hurry_at := -100000
+
+
+func _hurry_rival() -> void:
+	if online.on_move() == game_color:
+		_board_bubble("g_tiempo", "Ahora te toca a ti.", "peach", false)
+		return
+	var now := Time.get_ticks_msec()
+	if now - _hurry_at < 10000:
+		_board_bubble("g_tiempo", "Ya se lo has dicho. Espera un poco.", "peach", false)
+		return
+	_hurry_at = now
+	online.send_gesture("tiempo")
+
+
 ## Los gestos, en una ventana (en las partidas con reloj, que no tienen sitio para su fila).
 func _gesture_menu() -> void:
 	var column := _popup("Gestos", "")
@@ -6810,6 +6971,8 @@ func _gesture_row() -> HBoxContainer:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac"}
 	for g: String in Online.GESTURES:
+		if g == "tiempo":
+			continue
 		var tint := _tint(str(tints[g]))
 		var b := _round_button("g_" + g, _send_gesture.bind(g), 112.0, tint[0], tint[1], false)
 		b.tooltip_text = str(Online.GESTURE_TEXT[g])
@@ -6823,13 +6986,24 @@ func _send_gesture(kind: String) -> void:
 	online.send_gesture(kind)
 
 
-## Globo con el gesto, encima del tablero: arriba los del rival, abajo los míos. Aparece, se queda un momento y
-## se desvanece subiendo.
+## Globo con el gesto, encima del tablero: arriba los del rival, abajo los míos.
 func _online_gesture(mine: bool, kind: String) -> void:
-	if mode != "game" or not bool(game.get("online", false)) or board_slot == null or not is_instance_valid(board_slot):
+	if mode != "game" or not bool(game.get("online", false)):
 		return
-	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac"}
-	var tint := _tint(str(tints.get(kind, "sky")))
+	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac", "tiempo": "peach"}
+	var who := Loc.t("Tú") if mine else Loc.t("Rival")
+	_board_bubble("g_" + kind, "%s: %s" % [who, Loc.t(str(Online.GESTURE_TEXT.get(kind, "")))], str(tints.get(kind, "sky")), not mine)
+	if not mine:
+		_sfx("acierto")
+		if kind == "tiempo":
+			Input.vibrate_handheld(250)
+
+
+## Globo encima del tablero (arriba o abajo): aparece, se queda `stay` segundos y se desvanece subiendo.
+func _board_bubble(icon_name: String, text: String, tint_name: String, top: bool, stay: float = 2.0) -> void:
+	if board_slot == null or not is_instance_valid(board_slot):
+		return
+	var tint := _tint(tint_name)
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	var paper := _c("surface")
@@ -6846,8 +7020,8 @@ func _online_gesture(mine: bool, kind: String) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_icon("g_" + kind, 76.0, tint[1]))
-	var l := _text("%s: %s" % ["Tú" if mine else "Rival", str(Online.GESTURE_TEXT.get(kind, ""))], F_BODY, _c("ink"), font_semibold)
+	row.add_child(_icon(icon_name, 76.0, tint[1]))
+	var l := _text(text, F_BODY, _c("ink"), font_semibold)
 	l.autowrap_mode = TextServer.AUTOWRAP_OFF
 	l.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -6860,7 +7034,7 @@ func _online_gesture(mine: bool, kind: String) -> void:
 			return
 		panel.reset_size()
 		var w := panel.get_combined_minimum_size()
-		var y := rect.position.y + rect.size.y * (0.12 if not mine else 0.78)
+		var y := rect.position.y + rect.size.y * (0.12 if top else 0.78)
 		panel.position = Vector2((size.x - w.x) * 0.5, y - w.y * 0.5)
 		panel.pivot_offset = w * 0.5
 	place.call_deferred()
@@ -6870,12 +7044,10 @@ func _online_gesture(mine: bool, kind: String) -> void:
 	tw.tween_property(panel, "scale", Vector2(1.06, 1.06), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(panel, "modulate:a", 1.0, 0.15)
 	tw.tween_property(panel, "scale", Vector2.ONE, 0.1)
-	tw.tween_interval(2.0)
+	tw.tween_interval(stay)
 	tw.tween_property(panel, "modulate:a", 0.0, 0.6)
 	tw.parallel().tween_property(panel, "position:y", -40.0, 0.6).as_relative()
 	tw.tween_callback(panel.queue_free)
-	if not mine:
-		_sfx("acierto")
 
 
 ## Partida online: mirar jugadas anteriores sin perder la partida. delta −99 vuelve al directo.
@@ -7117,6 +7289,8 @@ func _sync_captures() -> void:
 
 func _process(delta: float) -> void:
 	_sync_captures()
+	if mode == "game" and bool(game.get("online", false)) and game_state in ["play", "think", "press"]:
+		_online_idle_tick()
 	if mode != "game" or not game_clocked or not (game_state in ["play", "think", "press"]):
 		return
 	if bool(game.get("online", false)):
@@ -7129,11 +7303,19 @@ func _process(delta: float) -> void:
 		_game_flag(side)
 		return
 	if game_state == "press" and press_reminder and not _press_warned and Time.get_ticks_msec() - _press_since > int(PRESS_REMINDER * 1000.0):
-		_press_warned = true
-		game_note = "¡Pulsa el reloj! Tu tiempo sigue corriendo."
-		Input.vibrate_handheld(300)
-		_refresh()
+		_press_nag()
 	_show_clocks()
+
+
+## Han pasado PRESS_REMINDER segundos sin pulsar el reloj: globo sobre el tablero, vibración y sonido. Con la
+## tarjeta de reloj no se ve la nota de la partida, así que el globo es lo que avisa.
+func _press_nag() -> void:
+	_press_warned = true
+	game_note = "¡Pulsa el reloj! Tu tiempo sigue corriendo."
+	_board_bubble("clock", "¡Pulsa el reloj! Tu tiempo sigue corriendo.", "peach", false, 3.0)
+	Input.vibrate_handheld(300)
+	_sfx("error")
+	_refresh()
 
 
 ## Reloj online: lo que dicen las horas del servidor. Si se me acaba el tiempo, pierdo; si se le acaba al rival,
@@ -7157,10 +7339,7 @@ func _online_clock_tick(delta: float) -> void:
 		_flag_claimed = true
 		online.claim_time(side)
 	if game_state == "press" and press_reminder and not _press_warned and Time.get_ticks_msec() - _press_since > int(PRESS_REMINDER * 1000.0):
-		_press_warned = true
-		game_note = "¡Pulsa el reloj! Tu tiempo sigue corriendo."
-		Input.vibrate_handheld(300)
-		_refresh()
+		_press_nag()
 	_show_clocks()
 
 
@@ -7631,27 +7810,10 @@ func _build_game_card() -> void:
 		var is_online := bool(game.get("online", false))
 		var who := str(online_rival.get("nombre", "")) if is_online else Loc.t(str(Bot.LEVELS[clampi(int(game.get("level", 0)), 0, Bot.LEVELS.size() - 1)]["name"]))
 		chess_clock.labels = ["TÚ", who.to_upper().left(14) if who != "" else "RIVAL"]
-		if not is_online:
-			card_body.add_child(chess_clock)
-			_show_clocks()
-			return
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(chess_clock)
-		var side := VBoxContainer.new()
-		side.add_theme_constant_override("separation", 12)
-		side.alignment = BoxContainer.ALIGNMENT_CENTER
-		side.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var badge := _rival_badge(84.0)
-		badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		side.add_child(badge)
-		var sky := _tint("sky")
-		side.add_child(_round_button("g_saludo", _gesture_menu, 84.0, sky[0], sky[1], false))
-		if online.rival_uid != "":
-			side.add_child(_round_button("more", _rival_menu, 84.0, _c("field"), _c("ink"), false))
-		row.add_child(side)
-		card_body.add_child(row)
+		card_body.add_child(chess_clock)
+		if is_online:
+			# Debajo del reloj y grandes (Pablo, 16 nov): la insignia del rival, los gestos, «¡Tu tiempo!» y «…».
+			card_body.add_child(_rival_tools())
 		_show_clocks()
 		return
 	if game_clocked and game_state != "over":

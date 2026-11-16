@@ -62,3 +62,22 @@ No se ha activado. Con Godot no hay SDK de Firebase: haría falta un complemento
 Integrity exige la app en Google Play Console (con la huella SHA-256 de la firma) y, al activar la obligación, los APK de
 prueba sin token de depuración dejarían de poder jugar online. Se deja para cuando la app esté en Google Play; el APK con
 Gradle ya permite añadir el complemento.
+
+## «¿Sigues ahí?» y ganar por abandono (16 nov)
+
+Problema: quien deja la app sin rendirse obliga al rival a esperar hasta que se le acabe el reloj (30 minutos en
+«30 min») o para siempre en «Sin reloj».
+
+- **Cuándo se pregunta**: a quien le toca y lleva sin jugar la quinta parte de su tiempo, entre 1 y 5 minutos
+  (5+3 → 1 min, 10+5 → 2, 15+10 → 3, 20 → 4, 30 → 5); sin reloj, 3 minutos (`Online.idle_limit_ms`).
+- **Qué ve**: una ventana «¿Sigues ahí?» con vibración. «Sigo aquí» (o tocar fuera) escribe
+  `partidas/<id>/sigo/<uid>` con la hora del servidor y la cuenta vuelve a empezar.
+- **El rival**: si pasan 30 s más (y 15 s de margen por la red) sin jugada ni «Sigo aquí», le sale «Tu rival no
+  contesta» con «Ganar por abandono» o «Seguir esperando» (vuelve a ofrecerlo al minuto). Ganar escribe
+  `fin = {tipo: "abandono", pierde, de, t}`; los dos lo leen y la partida se borra a los 30 s.
+- **Si vuelve tarde** (la partida ya se borró): si le tocaba y llevaba más del límite sin contestar, su app lo
+  cuenta como derrota por abandono; si no, como que se fue el rival.
+- Cada móvil mide con su propio reloj desde que ve empezar el turno (no hacen falta horas del servidor para cada
+  jugada, y vale también sin reloj).
+- Como «tiempo», «abandono» lo apunta la app de quien gana: sin Cloud Functions se podría falsear (igual que hoy).
+- Reglas: `sigo/$uid` (solo el propio, `now`, antes del fin), `fin.tipo` «tiempo» o «abandono», gesto «tiempo».

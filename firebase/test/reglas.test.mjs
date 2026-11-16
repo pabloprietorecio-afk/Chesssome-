@@ -113,6 +113,27 @@ test('fin por tiempo: lo apunta uno y después no se juega', async () => {
   await assertSucceeds(remove(ref(db('b'), 'partidas/p1')));
 });
 
+test('«Sigo aquí», fin por abandono y gesto «¡Tu tiempo!»', async () => {
+  await env.clearDatabase();
+  await game('p1', '0+0');
+  await assertSucceeds(set(ref(db('a'), 'partidas/p1/jugadas/0'), 'e2e4'));
+  // «Sigo aquí»: cada uno el suyo, con la hora del servidor, y nadie de fuera.
+  await assertSucceeds(set(ref(db('b'), 'partidas/p1/sigo/b'), ts()));
+  await assertSucceeds(set(ref(db('b'), 'partidas/p1/sigo/b'), ts()));
+  await assertFails(set(ref(db('b'), 'partidas/p1/sigo/a'), ts()));
+  await assertFails(set(ref(db('b'), 'partidas/p1/sigo/b'), 123));
+  await assertFails(set(ref(db('c'), 'partidas/p1/sigo/c'), ts()));
+  // Gesto nuevo.
+  await assertSucceeds(push(ref(db('a'), 'partidas/p1/gestos'), { de: 'a', g: 'tiempo', t: ts() }));
+  await assertFails(push(ref(db('a'), 'partidas/p1/gestos'), { de: 'a', g: 'prisa', t: ts() }));
+  // A gana por abandono de B; después, ni jugadas ni «sigo».
+  await assertFails(set(ref(db('a'), 'partidas/p1/fin'), { tipo: 'otro', pierde: 1, de: 'a', t: ts() }));
+  await assertSucceeds(set(ref(db('a'), 'partidas/p1/fin'), { tipo: 'abandono', pierde: 1, de: 'a', t: ts() }));
+  await assertFails(set(ref(db('b'), 'partidas/p1/jugadas/1'), 'e7e5'));
+  await assertFails(set(ref(db('b'), 'partidas/p1/sigo/b'), ts()));
+  await assertSucceeds(remove(ref(db('a'), 'partidas/p1')));
+});
+
 test('denuncias: se escriben, no se leen', async () => {
   await env.clearDatabase();
   await assertSucceeds(push(ref(db('a'), 'denuncias'), { de: 'a', contra: 'b', nombre: 'Pepe', partida: 'p1', motivo: 'trampas', t: ts() }));

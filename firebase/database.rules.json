@@ -68,11 +68,17 @@
             ".validate": "newData.val() === now"
           }
         },
+        "sigo": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('partidas').child($id).child('listo').exists() && !root.child('partidas').child($id).child('fin').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
+            ".validate": "newData.val() === now"
+          }
+        },
         "fin": {
           ".write": "auth != null && !data.exists() && root.child('partidas').child($id).child('listo').exists() && (root.child('partidas').child($id).child('creador').val() === auth.uid || root.child('partidas').child($id).child('rival').val() === auth.uid)",
           ".validate": "newData.hasChildren(['tipo', 'pierde', 'de', 't'])",
           "tipo": {
-            ".validate": "newData.val() === 'tiempo'"
+            ".validate": "newData.val() === 'tiempo' || newData.val() === 'abandono'"
           },
           "pierde": {
             ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
@@ -131,7 +137,7 @@
               ".validate": "newData.val() === auth.uid"
             },
             "g": {
-              ".validate": "newData.isString() && newData.val().matches(/^(saludo|aplauso|genial|arriba|abajo|buena)$/)"
+              ".validate": "newData.isString() && newData.val().matches(/^(saludo|aplauso|genial|arriba|abajo|buena|tiempo)$/)"
             },
             "t": {
               ".validate": "newData.val() === now"

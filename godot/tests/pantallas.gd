@@ -93,6 +93,31 @@ func _ready() -> void:
 	await _frames(4)
 	await _shot("p15_online_atras")
 	print("ONLINE atrás=%d pendientes=%d" % [demo.game_back, demo._online_pending.size()])
+	# Online con reloj: el reloj ocupa la tarjeta y debajo van la insignia, los gestos, «¡Tu tiempo!» y «…».
+	demo.online.rhythm = "5+3"
+	demo.online.base_ms = 300000.0
+	demo.online.inc_ms = 3000.0
+	demo.online.rival_uid = "rival-de-prueba"
+	demo.online_rival = {"nivel": 4, "icono": "piece_bishop", "nombre": "Lucía"}
+	demo._online_started(0)
+	await get_tree().create_timer(0.6).timeout
+	await _shot("p15b_online_reloj")
+	demo._online_gesture(false, "tiempo")
+	demo._board_bubble("clock", "¡Pulsa el reloj! Tu tiempo sigue corriendo.", "peach", false, 3.0)
+	await get_tree().create_timer(0.5).timeout
+	await _shot("p15c_online_avisos")
+	demo._ask_still_here()
+	await _frames(6)
+	await _shot("p15d_sigues_ahi")
+	demo._close_idle_ask()
+	demo._offer_idle_win(215000.0)
+	await _frames(6)
+	await _shot("p15e_rival_no_contesta")
+	demo._close_idle_offer()
+	demo.online.rival_uid = ""
+	demo.online.rhythm = ""
+	demo.online.base_ms = 0.0
+	demo.online.inc_ms = 0.0
 	# Piezas comidas: arriba, las que ha comido el rival; abajo, las tuyas y la ventaja.
 	var cpos := Chess.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	var cfens: Array = [cpos.fen()]

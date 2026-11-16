@@ -91,6 +91,29 @@ func _init() -> void:
 	_ok(not sp.has("0+0"), "sin las de bloqueados ni las de quien me ha bloqueado")
 	_ok(sp.size() == 2, "sin la mía, las viejas ni las de ritmo raro (%s)" % str(sp))
 	_ok(Online.spaces_of(null, "yo", 0.0, {}).is_empty(), "sin partidas en espera")
+	# «¿Sigues ahí?»: el límite depende del ritmo
+	_ok(Online.idle_limit_ms(0.0) == 180000.0, "sin reloj: 3 minutos")
+	_ok(Online.idle_limit_ms(300000.0) == 60000.0 and Online.idle_limit_ms(600000.0) == 120000.0, "5+3 → 1 min, 10+5 → 2 min")
+	_ok(Online.idle_limit_ms(1800000.0) == 300000.0 and Online.idle_limit_ms(10800000.0) == 300000.0, "30 min o más → 5 min")
+	_ok(Online.idle_limit_ms(60000.0) == 60000.0, "1 minuto → al menos 1 min")
+	var o: Online = Online.new()
+	o.phase = "playing"
+	o.uid = "a"
+	o.rival_uid = "b"
+	o.my_color = 0
+	o.base_ms = 0.0
+	o._applied = 1
+	o._track_turn()
+	_ok(o.on_move() == 1 and o.idle_ms(0) == 0.0, "sin reloj, tras mi jugada le toca al rival")
+	o._turn_at = Time.get_ticks_msec() - 200000
+	_ok(o.idle_ms(1) >= 200000.0, "lleva más de 3 minutos sin jugar")
+	o._check_extras({"creador": "a", "rival": "b", "sigo": {"b": 123456}})
+	_ok(o.idle_ms(1) < 1000.0, "«Sigo aquí» del rival: vuelve a contar desde cero")
+	var got := []
+	o.ended.connect(func(reason: String, winner: int) -> void: got.append([reason, winner]))
+	o._check_fin({"fin": {"tipo": "abandono", "pierde": 1, "de": "a", "t": 1}})
+	_ok(got == [["ausencia", 0]] and o.phase == "ended", "fin por abandono: gana el que lo reclama")
+	o.free()
 	print("%d comprobaciones, %d fallos" % [hechos, fallos])
 	if fallos == 0:
 		print("TODO OK")

@@ -77,6 +77,7 @@ const ICONS = {
   g_arriba: ['thumbs-up', 'duotone'],
   g_abajo: ['thumbs-down', 'duotone'],
   g_buena: ['handshake', 'duotone'],
+  g_tiempo: ['alarm', 'duotone'],
   bot: ['robot', 'duotone'],
   // Partidas online: espacios por ritmo, jugadores esperando, normas, denunciar y bloquear.
   infinity: ['infinity', 'duotone'],

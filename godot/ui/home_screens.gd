@@ -441,12 +441,23 @@ static func build_list(d: Variant, items: Array) -> void:
 	pill_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pill_row.add_child(pill_text)
 	pill.add_child(_fill(pill_row, u(18.0), 0.0, u(18.0), 0.0))
-	pill.custom_minimum_size = Vector2(pill_row.get_combined_minimum_size().x + u(36.0), u(44.0))
 	pill.set_anchors_preset(Control.PRESET_CENTER)
-	pill.offset_left = -pill.custom_minimum_size.x * 0.5
-	pill.offset_right = pill.custom_minimum_size.x * 0.5
+	pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	pill.offset_top = -u(22.0)
 	pill.offset_bottom = u(22.0)
+	# El ancho sale del texto, y se rehace si el texto cambia de medida después (fuente que llega tarde, idioma):
+	# calculado una sola vez al construir, en algún móvil la palabra se salía de la píldora.
+	var fit_pill := func() -> void:
+		if not is_instance_valid(pill) or not is_instance_valid(pill_row):
+			return
+		var w := pill_row.get_combined_minimum_size().x + u(36.0)
+		pill.custom_minimum_size = Vector2(w, u(44.0))
+		pill.offset_left = -w * 0.5
+		pill.offset_right = w * 0.5
+	pill_row.minimum_size_changed.connect(fit_pill)
+	pill_text.resized.connect(fit_pill)
+	fit_pill.call()
+	fit_pill.call_deferred()
 	foot.add_child(pill)
 	var flag: Button = d._flag_button()
 	flag.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
@@ -1000,18 +1011,34 @@ static func _grid_card(d: Variant, def: Array, width: float, height: float) -> B
 	var pad_x := u(12.0)
 	var column := _vbox(0.0)
 	card.add_child(_fill(column, pad_x, u(10.0), pad_x, u(8.0)))
-	var top := _hbox(0.0)
+	var top := _hbox(u(8.0))
 	# En tarjetas bajas (pantallas cortas), la tesela encoge.
 	var tile_side := clampf(height - u(90.0), u(30.0), u(42.0))
-	top.add_child(_tile(d, str(def[0]), colors[1], colors[2], tile_side, tile_side * 0.62, tile_side * 0.31))
-	top.add_child(_gap(0.0, 0.0, true))
-	var arrow: TextureRect = d._icon("caret", u(14.0), quiet)
+	var tile := _tile(d, str(def[0]), colors[1], colors[2], tile_side, tile_side * 0.62, tile_side * 0.31)
+	tile.size_flags_vertical = Control.SIZE_SHRINK_END
+	top.add_child(tile)
+	# El título, al lado de la tesela y apoyado en su borde de abajo (Pablo, 16 nov): en una línea si cabe; si no,
+	# en dos, un poco más pequeño.
+	var arrow_w := u(14.0)
+	var title_w := width - pad_x * 2.0 - tile_side - u(8.0) * 2.0 - arrow_w
+	var title_box := _vbox(0.0)
+	title_box.alignment = BoxContainer.ALIGNMENT_END
+	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var title_text := Loc.t(str(def[2]))
+	if d.font_display == null or _text_w(d.font_display, title_text, int(u(16.0) * 0.86)) <= title_w:
+		title_box.add_child(_fit(d, title_text, u(16.0), ink, d.font_display, title_w))
+	else:
+		var two := _wrap(d, title_text, u(14.5), ink, d.font_display, 2, u(16.5))
+		two.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		title_box.add_child(two)
+	top.add_child(title_box)
+	var arrow: TextureRect = d._icon("caret", arrow_w, quiet)
 	arrow.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	top.add_child(arrow)
 	column.add_child(top)
-	column.add_child(_gap(0.0, u(6.0)))
+	column.add_child(_gap(0.0, u(7.0)))
 	var text_w := width - pad_x * 2.0
-	column.add_child(_fit(d, str(def[2]), u(16.0), ink, d.font_display, text_w))
 	column.add_child(_fit(d, str(def[3]), u(13.0), _mix(ink, quiet, 0.45), d.font_medium, text_w))
 	column.add_child(_gap(0.0, u(1.0)))
 	column.add_child(_wrap(d, str(def[4]), u(12.0), quiet, d.font_regular, 2, u(14.0)))

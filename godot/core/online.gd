@@ -41,11 +41,18 @@ const SCAN := 3.0
 const FRESH_MS := 30000.0
 ## Tras el final se deja un rato la partida (para los gestos de «buena partida»); después se borra.
 const CLEANUP := 30.0
+## «¿Sigues ahí?» (Pablo, 16 nov): a quien le toca y no juega se le pregunta pasado idle_limit_ms (relativo al
+## ritmo); tiene IDLE_ANSWER_MS para contestar y, con IDLE_GRACE_MS más de margen por la red, su rival puede dar la
+## partida por ganada. Así nadie espera hasta que se acabe un reloj de 30 minutos (o para siempre, sin reloj).
+const IDLE_ANSWER_MS := 30000.0
+const IDLE_GRACE_MS := 15000.0
+const IDLE_UNTIMED_MS := 180000.0
 const MONTHS := {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
 
 ## Gestos del chat: solo estos, sin texto libre.
-const GESTURES := ["saludo", "aplauso", "genial", "arriba", "abajo", "buena"]
-const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡Genial!", "arriba": "Bien", "abajo": "Vaya", "buena": "Buena partida"}
+## «tiempo» («¡Tu tiempo!»): para meter prisa al rival cuando le toca; tiene su propio botón, no va en la fila.
+const GESTURES := ["saludo", "aplauso", "genial", "arriba", "abajo", "buena", "tiempo"]
+const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡Genial!", "arriba": "Bien", "abajo": "Vaya", "buena": "Buena partida", "tiempo": "¡Tu tiempo!"}
 ## Espacios fijos (ritmos); además, cada uno puede abrir el suyo (personalizado).
 const SPACES := ["0+0", "5+3", "10+5", "15+10", "20+0", "30+0"]
 ## Ritmo válido (igual que en las reglas de la base de datos): «0+0» o de 1 a 180 minutos y de 0 a 60 segundos.
@@ -101,6 +108,12 @@ var _rng := RandomNumberGenerator.new()
 var _role := ""
 var _seen := false
 var _applied := 0
+## Turno: cuándo empezó (reloj local, ms) el turno de quien mueve ahora y su clave (para ver cuándo cambia).
+var _turn_key := ""
+var _turn_at := 0
+## «Sigo aquí» de cada jugador: lo último que se leyó de la base de datos y cuándo se vio cambiar (reloj local).
+var _sigo := {}
+var _sigo_at := {}
 var _lobby_cleaned := false
 var _hb_t := 0.0
 var _scan_t := 0.0
@@ -516,6 +529,10 @@ func _reset() -> void:
 	_role = ""
 	_seen = false
 	_applied = 0
+	_turn_key = ""
+	_turn_at = 0
+	_sigo = {}
+	_sigo_at = {}
 	_lobby_cleaned = false
 	_hb_t = 0.0
 	_scan_t = 0.0
@@ -734,8 +751,14 @@ func _on_tree() -> void:
 	if doc == null:
 		# La partida desapareció: si estaba en juego y no había terminado, el rival se fue.
 		if _seen and phase == "playing":
+			# Si me tocaba y llevaba sin contestar más de lo que el rival tiene que esperar, lo más probable es que la
+			# diera por ganada (y la borrase) mientras yo no estaba; si no, se fue él.
+			var gone := on_move() == my_color and idle_ms(my_color) > idle_limit_ms(base_ms) + IDLE_ANSWER_MS
 			phase = "ended"
-			ended.emit("abandoned", my_color)
+			if gone:
+				ended.emit("ausencia", 1 - my_color)
+			else:
+				ended.emit("abandoned", my_color)
 			_stop_stream()
 		elif _doc_seen and phase == "waiting":
 			_reopen()
@@ -764,6 +787,9 @@ func _on_tree() -> void:
 		started.emit(color)
 	if phase != "playing":
 		return
+	_check_fin(doc)
+	if phase != "playing":
+		return
 	var moves := moves_of(doc)
 	while _applied < moves.size():
 		var i := _applied
@@ -775,6 +801,7 @@ func _on_tree() -> void:
 			return
 	if base_ms > 0.0:
 		_check_clock(doc)
+	_track_turn()
 
 
 func _send_listo() -> void:
@@ -797,25 +824,93 @@ func _check_clock(doc: Variant) -> void:
 	if changed:
 		clock_changed.emit()
 	var loser := int(c["flag"])
-	var fin: Variant = (doc as Dictionary).get("fin")
-	if fin is Dictionary and str((fin as Dictionary).get("tipo", "")) == "tiempo":
-		loser = int((fin as Dictionary).get("pierde", -1))
 	if loser == 0 or loser == 1:
 		_end_on_time(loser)
 
 
+## Lo que diga «fin»: derrota por tiempo o por abandono («ausencia»), la apuntase quien la apuntase.
+func _check_fin(doc: Variant) -> void:
+	var fin: Variant = (doc as Dictionary).get("fin")
+	if not fin is Dictionary:
+		return
+	var loser := int((fin as Dictionary).get("pierde", -1))
+	if loser != 0 and loser != 1:
+		return
+	match str((fin as Dictionary).get("tipo", "")):
+		"tiempo":
+			_end_on_time(loser)
+		"abandono":
+			_end_with(loser, "ausencia")
+
+
 func _end_on_time(loser: int) -> void:
+	_end_with(loser, "tiempo")
+
+
+func _end_with(loser: int, reason: String) -> void:
 	if _ended_sent or phase != "playing":
 		return
 	_ended_sent = true
 	phase = "ended"
-	ended.emit("tiempo", 1 - loser)
+	ended.emit(reason, 1 - loser)
+	if not is_inside_tree():
+		return
 	var id := game_id
 	var gen := _gen
 	await get_tree().create_timer(CLEANUP).timeout
 	if gen == _gen:
 		_stop_stream()
 		await request(HTTPClient.METHOD_DELETE, "partidas/" + id)
+
+
+## Cuánto puede estar sin jugar quien mueve antes de «¿Sigues ahí?»: la quinta parte del tiempo de cada uno, entre
+## 1 y 5 minutos (5+3 → 1 min, 10+5 → 2, 15+10 → 3, 20 → 4, 30 → 5); sin reloj, 3 minutos.
+static func idle_limit_ms(base: float) -> float:
+	if base <= 0.0:
+		return IDLE_UNTIMED_MS
+	return clampf(base * 0.2, 60000.0, 300000.0)
+
+
+## A quién le toca (0 blancas, 1 negras). Con reloj, a quien le corre el reloj (si he jugado y no he pulsado, sigo
+## siendo yo); sin reloj, por el número de jugadas.
+func on_move() -> int:
+	if base_ms > 0.0 and not _clock.is_empty():
+		return int(clock_now()["side"])
+	return _applied % 2
+
+
+## Apunta cuándo empieza cada turno (con el reloj de este móvil).
+func _track_turn() -> void:
+	var key := "%d/%d" % [on_move(), int(_clock.get("presses", 0)) if base_ms > 0.0 else _applied]
+	if key != _turn_key:
+		_turn_key = key
+		_turn_at = Time.get_ticks_msec()
+
+
+## Cuánto lleva sin jugar ni decir «Sigo aquí» quien mueve (0 si no le toca a `side`).
+func idle_ms(side: int) -> float:
+	if phase != "playing" or side < 0 or on_move() != side or _turn_key == "":
+		return 0.0
+	var who := uid if side == my_color else rival_uid
+	var since := maxi(_turn_at, int(_sigo_at.get(who, _turn_at)))
+	return float(Time.get_ticks_msec() - since)
+
+
+## «Sigo aquí»: se apunta con la hora del servidor; el rival lo ve y vuelve a esperar.
+func still_here() -> void:
+	if phase != "playing" or game_id == "":
+		return
+	_sigo_at[uid] = Time.get_ticks_msec()
+	await request(HTTPClient.METHOD_PUT, "partidas/%s/sigo/%s" % [game_id, uid], {".sv": "timestamp"})
+
+
+## Mi rival no juega ni contesta: gano por abandono. Se apunta en «fin» (si las reglas aún no lo admiten, la
+## partida se borra igual y su app lo entiende al volver).
+func claim_abandon(loser: int) -> void:
+	if phase != "playing" or (loser != 0 and loser != 1):
+		return
+	await request(HTTPClient.METHOD_PUT, "partidas/%s/fin" % game_id, {"tipo": "abandono", "pierde": loser, "de": uid, "t": {".sv": "timestamp"}})
+	_end_with(loser, "ausencia")
 
 
 ## Reloj ahora mismo (ms): {left: [blancas, negras], side: a quién le corre}. Si mi pulsación va de camino, mi reloj
@@ -855,6 +950,13 @@ func _check_extras(doc: Variant) -> void:
 			_rival_json = text
 			rival = p
 			rival_profile.emit(p)
+	var sigo: Variant = d.get("sigo")
+	if sigo is Dictionary:
+		for k: Variant in (sigo as Dictionary).keys():
+			var v: Variant = (sigo as Dictionary)[k]
+			if _sigo.get(str(k)) != v:
+				_sigo[str(k)] = v
+				_sigo_at[str(k)] = Time.get_ticks_msec()
 	var gestos: Variant = d.get("gestos")
 	if gestos is Dictionary:
 		var keys: Array = (gestos as Dictionary).keys()
@@ -879,6 +981,7 @@ func play(uci: String, press: bool = false) -> bool:
 		return false
 	var n := _applied
 	_applied = maxi(_applied, n + 1)
+	_track_turn()
 	var r: Dictionary
 	if press and base_ms > 0.0:
 		_my_press = {"n": n, "at": _server_now()}
@@ -896,6 +999,7 @@ func press() -> bool:
 		return false
 	var n := _applied - 1
 	_my_press = {"n": n, "at": _server_now()}
+	_track_turn()
 	var r := await request(HTTPClient.METHOD_PUT, "partidas/%s/pulsos/%d" % [game_id, n], {".sv": "timestamp"})
 	if int(r["status"]) == 200:
 		_calibrate(r["json"], float(r["sent"]), float(r["recv"]))
