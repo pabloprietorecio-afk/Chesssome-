@@ -197,33 +197,85 @@
    0,
    6
   ],
-  "piece_pawn": [
+  "caret": [
    1,
    6
   ],
-  "piece_knight": [
+  "fire": [
    2,
    6
   ],
-  "piece_bishop": [
+  "crown": [
    3,
    6
   ],
-  "piece_rook": [
+  "bell": [
    4,
    6
   ],
-  "piece_queen": [
+  "users": [
    5,
    6
   ],
-  "piece_king": [
+  "baby": [
    6,
    6
   ],
-  "token_pawn": [
+  "calendar": [
    7,
    6
+  ],
+  "nav_home": [
+   0,
+   7
+  ],
+  "nav_bars": [
+   1,
+   7
+  ],
+  "nav_games": [
+   2,
+   7
+  ],
+  "nav_gear": [
+   3,
+   7
+  ],
+  "rows": [
+   4,
+   7
+  ],
+  "tiles": [
+   5,
+   7
+  ],
+  "piece_pawn": [
+   6,
+   7
+  ],
+  "piece_knight": [
+   7,
+   7
+  ],
+  "piece_bishop": [
+   0,
+   8
+  ],
+  "piece_rook": [
+   1,
+   8
+  ],
+  "piece_queen": [
+   2,
+   8
+  ],
+  "piece_king": [
+   3,
+   8
+  ],
+  "token_pawn": [
+   4,
+   8
   ]
  }
 }

@@ -10,11 +10,11 @@ CAMEL = re.compile(r'^[a-z]+[A-Z][A-Za-z]*$')
 TECH = re.compile(r'\.(woff2|png|jpg|json|ogg|wav|bin|gd|tscn)\b|^[@#]|^[A-Z][a-zA-Z]+(Rect|Container|Button|Label)$|Stockfish|^%[sd]?\s*%[sd]$')
 # Palabras sueltas en minúscula que sí se ven (se meten en frases con «%s»).
 WORDS = ['alfil', 'caballo', 'dama', 'peón', 'rey', 'torre', 'sí', 'no', 'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-         'jul', 'ago', 'sep', 'oct', 'nov', 'dic', 'blancas', 'negras', 'inicio']
+         'jul', 'ago', 'sep', 'oct', 'nov', 'dic', 'blancas', 'negras', 'inicio', 'juego']
 # Lo que no se ve o no se traduce (cabeceras HTTP, rutas de Firebase, la marca, mensajes para desarrolladores…).
 EXCLUDE = re.compile(r'^(Content-Type|Accept|grant_type|auth=|orderBy|partidas/|abiertas/|AIza|\^\[|A CHESS$|WAY$|'
                      r'Falta el índice|.*\\x\{|No se puede cargar|Icono desconocido|Jan$|Feb$|Mar$|Apr$|May$|Jun$|Jul$|Aug$|'
-                     r'Sep$|Oct$|Nov$|Dec$|coño$|Lichess$|OK$|A Chess Way$)')
+                     r'Sep$|Oct$|Nov$|Dec$|coño$|Lichess$|OK$|A Chess Way$|A Chess$|Way$)')
 def wanted(s):
     if EXCLUDE.search(s):
         return False

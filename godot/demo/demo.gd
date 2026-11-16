@@ -175,6 +175,8 @@ var course: Array = []
 var kids_lines := {}
 ## Nivel Kids (desde 8 años): textos muy sencillos con voz, solo el curso; salir pide la puerta para adultos.
 var kids := false
+## Pantalla de inicio que ha elegido el jugador: «lista» o «rejilla» (ui/home_screens.gd). Kids tiene la suya.
+var home_style := "lista"
 var voice_on := true
 ## Voz del nivel Kids: texto exacto → id del audio (data/voz.json; los OGG en res://voz/, de Kokoro).
 var voice_index := {}
@@ -1197,6 +1199,9 @@ func _load_settings() -> void:
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	kids = bool(cfg.get_value("app", "kids", false))
+	home_style = str(cfg.get_value("app", "inicio", home_style))
+	if not home_style in HomeScreens.STYLES:
+		home_style = HomeScreens.STYLES[0]
 	avatar = str(cfg.get_value("app", "icono", ""))
 	online_photo = bool(cfg.get_value("online", "foto", false))
 	online_name = str(cfg.get_value("online", "nombre", ""))
@@ -1229,6 +1234,7 @@ func _save_settings() -> void:
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "kids", kids)
+	cfg.set_value("app", "inicio", home_style)
 	cfg.set_value("app", "idioma", language)
 	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("app", "icono", avatar)
@@ -3369,6 +3375,9 @@ func _build_sheet() -> void:
 		box.add_child(_switch_row("phone", "butter", "Seguir al móvil", "La vista acompaña la inclinación y el giro del teléfono.", view.tilt_enabled, _set_tilt))
 	box.add_child(_caption("Tema"))
 	box.add_child(_segments(["Claro", "Oscuro"], 1 if dark else 0, _set_theme_index, ["sun", "moon"]))
+	if not kids:
+		box.add_child(_caption("Pantalla de inicio"))
+		box.add_child(_segments(HomeScreens.NAMES, maxi(HomeScreens.STYLES.find(home_style), 0), _set_home_style, ["rows", "tiles"]))
 	var tint := _tint("lilac")
 	var how := _button("book", "Cómo se usa A Chess Way", _open_welcome, tint[0], tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 54.0})
 	var how_pad := _pad(0, 18, 0, 0)
@@ -5071,11 +5080,81 @@ func _after_course() -> void:
 
 # ---------------------------------------------------------------- pantalla de inicio
 
+## Raíz de una pantalla de inicio propia (las de ui/home_screens.gd): como _page("home"), pero vacía.
+func _home_root() -> Control:
+	_close_progress()
+	if sheet_kind != "":
+		_close_options()
+	progress_kind = "home"
+	progress_scroll = null
+	progress = Control.new()
+	progress.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(progress)
+	return progress
+
+
+## Lo que ofrece el inicio, en orden: [icono, tono, título, detalle, qué abre].
+func _home_items() -> Array:
+	var lessons := _course_lessons()
+	var done := 0
+	for l: Dictionary in lessons:
+		if course_done.has(str(l["id"])):
+			done += 1
+	var items: Array = []
+	if not kids and _has_player():
+		items.append(["flag", "butter", "Reto del día", _prog_home_text(), _open_day])
+	if not kids and _has_player():
+		var lvl := Assessment.level_of(float(player["rating"]["r"]))
+		if bool(player.get("done", false)):
+			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel.", _home_train])
+		else:
+			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
+	if kids and not pool.is_empty():
+		items.append(["target", "peach", "Entrenar", "Problemas para pensar, a tu nivel.", _home_train])
+	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
+	if kids and not course.is_empty():
+		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
+	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 5 niveles.", _open_game_setup])
+	if not kids:
+		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
+	if not kids and not _has_player():
+		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
+	if not kids and _has_player():
+		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué fallas y qué toca.", _open_progress.bind("progress")])
+	if not kids and not course.is_empty():
+		items.append(["party", "sky", "Modo Kids", "Desde 8 años, con voz.", _set_kids.bind(true)])
+	if not kids and not course.is_empty():
+		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
+	return items
+
+
+## Opciones → «Pantalla de inicio».
+func _set_home_style(i: int) -> void:
+	var style: String = HomeScreens.STYLES[clampi(i, 0, HomeScreens.STYLES.size() - 1)]
+	if style == home_style:
+		return
+	home_style = style
+	_save_settings()
+	# Con el inicio debajo de Opciones, se cambia a la vista: se cierra la hoja y aparece la pantalla elegida.
+	if progress_kind == "home" and not kids:
+		_open_home()
+	else:
+		_sync_sheet()
+
+
 ## Inicio: lo que se puede hacer en la app, con lo que estaba haciendo el jugador en primer lugar.
 func _open_home() -> void:
 	if sheet_kind != "":
 		_close_options()
 	_stop_voice()
+	# Fuera del nivel Kids, el inicio es una de las dos pantallas que elige el jugador.
+	if not kids:
+		if home_style == "rejilla":
+			HomeScreens.build_grid(self)
+		else:
+			HomeScreens.build_list(self, _home_items())
+		_place_tip()
+		return
 	var page := _page("home")
 	var body: VBoxContainer = page["body"]
 	var footer: VBoxContainer = page["footer"]
@@ -5127,36 +5206,7 @@ func _open_home() -> void:
 		body.add_child(_spacer(22.0))
 		body.add_child(rank_row)
 	body.add_child(_spacer(36.0))
-	var lessons := _course_lessons()
-	var done := 0
-	for l: Dictionary in lessons:
-		if course_done.has(str(l["id"])):
-			done += 1
-	var items: Array = []
-	if not kids and _has_player():
-		items.append(["flag", "butter", "Reto del día", _prog_home_text(), _open_day])
-	if not kids and _has_player():
-		var lvl := Assessment.level_of(float(player["rating"]["r"]))
-		if bool(player.get("done", false)):
-			items.append(["target", "peach", "Entrenar", "Problemas a tu nivel.", _home_train])
-		else:
-			items.append(["cap", "peach", "Seguir con el test de nivel", "Lo dejaste a medias.", _home_test])
-	if kids and not pool.is_empty():
-		items.append(["target", "peach", "Entrenar", "Problemas para pensar, a tu nivel.", _home_train])
-	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
-	if kids and not course.is_empty():
-		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
-	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 5 niveles.", _open_game_setup])
-	if not kids:
-		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
-	if not kids and not _has_player():
-		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
-	if not kids and _has_player():
-		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué fallas y qué toca.", _open_progress.bind("progress")])
-	if not kids and not course.is_empty():
-		items.append(["party", "sky", "Modo Kids", "Desde 8 años, con voz.", _set_kids.bind(true)])
-	if not kids and not course.is_empty():
-		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
+	var items := _home_items()
 	for def: Array in items:
 		body.add_child(_option_button(str(def[0]), str(def[1]), str(def[2]), str(def[3]), def[4], true))
 		body.add_child(_spacer(20.0))
@@ -7462,11 +7512,11 @@ func _prog_home_text() -> String:
 		if bool(g["hecho"]):
 			done += 1
 	var streak := Progress.streak_now(s, day)
-	var text := "Hoy %d de %d" % [done, goals.size()] if not goals.is_empty() else "Tu objetivo de hoy"
+	var text := Loc.t("Hoy %d de %d") % [done, goals.size()] if not goals.is_empty() else Loc.t("Tu objetivo de hoy")
 	if bool((s["reto"] as Dictionary)["completo"]):
-		text = "¡Cumplido hoy!"
+		text = Loc.t("¡Cumplido hoy!")
 	if streak >= 2:
-		text += " · racha de %d días" % streak
+		text += Loc.t(" · racha de %d días") % streak
 	return text
 
 
