@@ -341,6 +341,8 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
 //   godot/iconos_app/adaptativo_fondo_432.png  capa de fondo del icono adaptativo (a sangre)
 //   godot/iconos_app/adaptativo_frente_432.png capa del caballo; Android también la usa en la pantalla de arranque
 //   godot/iconos_app/adaptativo_mono_432.png   capa monocroma (iconos temáticos de Android 13+)
+//   godot/iconos_app/arranque_432.png          caballo en tinta para la pantalla de arranque, sobre el papel crema
+//                                              de la intro (ui/intro.gd): del arranque se pasa a la intro sin salto
 // En el icono adaptativo solo se ve el círculo central de 66/108 del lado: el caballo cabe dentro con margen.
 
 {
@@ -381,6 +383,9 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
     return [...col, a];
   });
   write('adaptativo_mono_432.png', A, (px, py) => [1, 1, 1, knightAt(px, py, A / 2, A / 2, H).cover]);
+  // Arranque: Android lo enseña en 288 dp con una máscara redonda de 192 dp (2/3 del lado); el caballo cabe dentro.
+  const INK = [0.2, 0.18, 0.16];
+  write('arranque_432.png', A, (px, py) => [...INK, knightAt(px, py, A / 2, A / 2, 0.36 * A).cover]);
   // Icono clásico: tesela «squircle» como la del inicio, con el caballo al 59 % del alto.
   const L = 192, c = L / 2, r = 0.47 * L, n = 5;
   write('lanzador_192.png', L, (px, py) => {
@@ -392,5 +397,5 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
     col = lerp3(col, CREAM, cover);
     return [...col, tile];
   });
-  console.log('iconos_app: lanzador 192, adaptativo 432 (fondo, frente, mono)');
+  console.log('iconos_app: lanzador 192, adaptativo 432 (fondo, frente, mono), arranque 432');
 }

@@ -2,7 +2,8 @@ class_name Intro
 extends Control
 ## Intro animada del arranque: el maestro pensando su jugada (vídeo de 4 s, sin sonido) sobre papel crema y, al
 ## final, «A Chess Way» escrito a mano (Caveat, OFL). Un toque la salta. Opciones → «Intro»: siempre, una vez, nunca.
-## El vídeo es Ogg Theora (lo único que lee Godot); se mide y se prueba en tests/test_intro.gd.
+## El vídeo es Ogg Theora (lo único que lee Godot); se mide y se prueba en tests/test_intro.gd. Tiene que estar en el
+## filtro de exportación (intro/*.ogv): Godot no lo importa y, si falta, la intro no sale. La CI lo comprueba.
 
 signal finished
 
@@ -32,7 +33,9 @@ static func available() -> bool:
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Ya dentro del árbol, set_anchors_preset conserva el tamaño que tenía (0 × 0): hay que mover también los
+	# márgenes. Fue el fallo de la primera versión en el móvil.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var paper := ColorRect.new()
 	paper.color = PAPER
@@ -63,6 +66,9 @@ func _ready() -> void:
 	resized.connect(_layout)
 	_layout()
 	_player.play()
+	# Del arranque de Android (caballo en tinta sobre este mismo papel) a la intro, sin salto.
+	_player.modulate.a = 0.0
+	create_tween().tween_property(_player, "modulate:a", 1.0, 0.35)
 	var tw := create_tween()
 	tw.tween_interval(WRITE_FROM)
 	tw.tween_callback(_write)
@@ -89,6 +95,8 @@ func _fade_strip(top: bool) -> ColorRect:
 
 func _layout() -> void:
 	var w := size.x
+	if w < 1.0:
+		return
 	var vh := roundf(w * ASPECT)
 	var text_size := _label.get_minimum_size()
 	_label.size = text_size
