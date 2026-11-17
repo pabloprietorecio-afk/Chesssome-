@@ -219,6 +219,8 @@ const BRAVO_PATH := "res://voz/humana/muy_bien.ogg"
 var game := {}
 var game_color := 0
 var game_pick_color := 0
+## Modalidad elegida en la página de partida: false = ajedrez clásico, true = War Chess (core/war_chess.gd).
+var game_war := false
 var game_bot: Bot
 ## Partida online (core/online.gd): el cliente de Firebase, si se está buscando rival, y el aviso de la pantalla.
 var online: Online
@@ -1078,6 +1080,8 @@ func _ready() -> void:
 	view.tapped.connect(_on_view_tapped)
 	view.view_gesture.connect(_on_view_gesture)
 	add_child(view)
+	view.armor_text = Loc.t("Blindar")
+	view.armor_font = font_semibold
 	view.set_piece_set(_shown_set())
 	view.set_sound_enabled(sound_on)
 	view.set_view_locked(_saved_lock)
@@ -2044,6 +2048,7 @@ func _tone_color(e: Dictionary) -> Color:
 
 ## Pone los textos y los botones que corresponden a la fase del problema.
 func _refresh(animate: bool = true) -> void:
+	_war_sync_seen()
 	if card_body == null or not is_instance_valid(card_body):
 		return
 	var total := puzzles.size()
@@ -6056,6 +6061,10 @@ func _start_level(lv: int) -> void:
 	game_sublevels[str(Bot.group_of(lv))] = lv
 	_save_settings()
 	var cfg := {"variant": "", "level": lv, "title": Loc.f("Partida · %s", Bot.level_name(lv)), "text": "", "kids": "", "unit": "", "clock": []}
+	if game_war and not kids:
+		cfg["variant"] = "war"
+		cfg["title"] = Loc.f("War Chess · %s", Bot.level_name(lv))
+		cfg["text"] = WAR_RULES
 	_start_game(cfg, -1)
 
 
@@ -6073,6 +6082,14 @@ func _open_game_setup() -> void:
 	body.add_child(_centered(_para("Juega una partida", F_TITLE + 12, _c("ink"), font_display)))
 	body.add_child(_centered(_para("Pon en práctica lo que has aprendido.", F_SUB, _c("quiet"), font_medium)))
 	body.add_child(_spacer(30.0))
+	if not kids:
+		body.add_child(_text("MODALIDAD", F_CAP, _c("quiet"), font_semibold))
+		body.add_child(_spacer(12.0))
+		body.add_child(_segments(["Clásica", "War Chess"], 1 if game_war else 0, _set_game_war, ["piece_knight", "shield"]))
+		if game_war:
+			body.add_child(_spacer(10.0))
+			body.add_child(_para(WAR_RULES, F_FOOT + 2, _c("quiet"), font_regular))
+		body.add_child(_spacer(30.0))
 	body.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
 	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color, ["sun", "moon", "why"]))
@@ -6120,6 +6137,20 @@ func _open_game_setup() -> void:
 
 func _set_game_color(i: int) -> void:
 	game_pick_color = i
+	_reopen_game_setup()
+
+
+## Reglas de War Chess, en corto (página de partida y comienzo de la partida). Ver docs/war-chess.md.
+const WAR_RULES := "War Chess: se juega como el ajedrez, pero en lugar de mover puedes blindar una pieza (no el rey): selecciónala y toca «Blindar». Atacar una pieza blindada no la captura: le rompe el blindaje y la atacante se queda en su casilla. Cada pieza se blinda una vez y pierde el blindaje si se mueve. Un peón blindado es una trinchera: solo otro peón la rompe de un golpe; las piezas necesitan dos. No se puede blindar dos turnos seguidos ni repetir una posición por tercera vez."
+
+
+## Nombre en español de la pieza (para Loc.t): «caballo», «dama»…
+static func _piece_noun(p: int) -> String:
+	return str(["", "peón", "caballo", "alfil", "torre", "dama", "rey"][p & 7])
+
+
+func _set_game_war(i: int) -> void:
+	game_war = i == 1 and not kids
 	_reopen_game_setup()
 
 
@@ -7577,6 +7608,18 @@ func _board_bubble(icon_name: String, text: String, tint_name: String, top: bool
 func _on_view_tapped(kind: String) -> void:
 	if kind == "locked" and mode == "game" and game_back > 0 and game_state in ["play", "think", "press"]:
 		_game_browse(-99)
+	elif kind == "illegal" and mode == "game" and game_state == "play" and view.board.chess is WarChess \
+			and (view.board.chess as WarChess).repetition_filters():
+		# Puede que el jugador intentara justo la jugada que repetiría la posición: se le dice por qué no vale.
+		game_note = "En War Chess no se puede repetir una posición por tercera vez."
+		_refresh()
+
+
+## War Chess: el tablero sabe qué posiciones han salido ya en la partida (regla de la tercera repetición).
+func _war_sync_seen() -> void:
+	if mode != "game" or game_back > 0 or view == null or not (view.board.chess is WarChess) or game_history.is_empty():
+		return
+	(view.board.chess as WarChess).seen = WarChess.count_positions(game_history)
 
 
 func _game_browse(delta: int) -> void:
@@ -7650,6 +7693,9 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	var fen := str(cfg.get("fen", ""))
 	if fen == "":
 		fen = Board3D.START_FEN
+	if str(cfg.get("variant", "")) == "war" and not WarChess.is_war_fen(fen):
+		fen = WarChess.start_fen(fen)
+	view.armor_text = Loc.t("Blindar")
 	view.board.set_arrows([])
 	view.board.set_goals([])
 	view.board.only_square = -1
@@ -7696,12 +7742,14 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 func _game_move(uci: String) -> void:
 	if game_state != "play":
 		return
-	var before := Chess.from_fen(str(game_history[game_history.size() - 1]))
+	var before := WarChess.parse(str(game_history[game_history.size() - 1]))
 	var m := before.find_uci(uci)
 	game_history.append(view.board.chess.fen())
 	game_moves.append(uci)
 	view.board.set_arrows([])
 	game_note = ""
+	if WarChess.is_break_move(m) and (view.board.chess as WarChess).is_armored(Chess.move_to(m)):
+		game_note = Loc.f("Has agrietado el blindaje del peón de %s: un golpe más y cae.", Chess.sq_name(Chess.move_to(m)))
 	var is_online := bool(game.get("online", false))
 	if is_online:
 		# Con reloj y pulsado automático, la jugada y la pulsación van juntas; a mano, la pulsación va después.
@@ -7957,12 +8005,19 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	if game_clocked:
 		game_clock[1 - game_color] += game_inc_ms
 	game_note = "Ha movido el rival. ¡Te toca!" if kids else Loc.f("El rival ha jugado %s.", san)
+	if WarChess.is_armor_move(m):
+		game_note = Loc.f("El rival ha blindado su %s de %s.", [Loc.t(_piece_noun(pos.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))])
+	elif WarChess.is_break_move(m):
+		if (view.board.chess as WarChess).is_armored(Chess.move_to(m)):
+			game_note = Loc.f("El rival ha agrietado el blindaje de tu peón en %s: aguanta un golpe más.", Chess.sq_name(Chess.move_to(m)))
+		else:
+			game_note = Loc.f("El rival ha roto el blindaje de tu %s en %s.", [Loc.t(_piece_noun(pos.b[Chess.move_to(m)])), Chess.sq_name(Chess.move_to(m))])
 	if _game_check_end(pos, m):
 		return
 	game_state = "play"
 	game_clock_side = game_color
 	view.interactive = true
-	if str(game.get("variant", "")) == "" and view.board.chess.in_check():
+	if str(game.get("variant", "")) != "peones" and view.board.chess.in_check():
 		game_note = _kid_line("inCheck") if kids else Loc.f("El rival ha jugado %s: tu rey está en jaque.", san)
 		_say([_kid_line("inCheck")])
 	_refresh()
@@ -7997,7 +8052,13 @@ func _game_check_end(before: Chess, m: int) -> bool:
 		if winner < 0:
 			return false
 	else:
-		if pos.legal_moves().is_empty():
+		if pos is WarChess:
+			_war_sync_seen()
+		if pos is WarChess and (pos as WarChess).repetition_locked() and not pos.in_check():
+			# War Chess: solo le quedan jugadas que repetirían la posición por tercera vez: pierde (como en Arimaa).
+			winner = 1 - pos.turn
+			why = "repite"
+		elif pos.legal_moves().is_empty():
 			winner = 1 - pos.turn if pos.in_check() else -1
 			why = "mate" if pos.in_check() else "ahogado"
 		elif pos.half >= 100:
@@ -8021,6 +8082,7 @@ func _game_check_end(before: Chess, m: int) -> bool:
 		"corona": ["¡Has coronado! Has ganado.", "El rival ha coronado: gana él."],
 		"piezas": ["¡Has capturado todas sus piezas!", "El rival ha capturado todas tus piezas."],
 		"bloqueo": ["El rival se ha quedado sin jugadas: ¡has ganado!", "Te has quedado sin jugadas: gana el rival."],
+		"repite": ["Al rival solo le quedaban jugadas que repetían la posición por tercera vez: ¡has ganado!", "Solo te quedaban jugadas que repetían la posición por tercera vez: gana el rival."],
 	}
 	var draws := {"ahogado": "Ahogado: el rey no está en jaque y no puede mover. Tablas.", "50": "Cincuenta jugadas sin capturas ni movimientos de peón: tablas.", "repeticion": "La misma posición tres veces: tablas.", "material": "No queda material para dar mate: tablas."}
 	if game_won != 0:
@@ -8044,7 +8106,9 @@ func _game_check_end(before: Chess, m: int) -> bool:
 func _game_repeated(times: int) -> bool:
 	var counts := {}
 	for f: Variant in game_history:
-		var key := " ".join(str(f).split(" ").slice(0, 4))
+		# Colocación, turno, enroques y al paso; en War Chess, también los blindajes (séptimo campo).
+		var parts := str(f).split(" ")
+		var key := " ".join(parts.slice(0, 4)) + (" " + parts[6] if parts.size() > 6 else "")
 		counts[key] = int(counts.get(key, 0)) + 1
 		if int(counts[key]) >= times:
 			return true
@@ -8099,6 +8163,13 @@ func _game_hint() -> void:
 	helper.exact = true
 	var m := helper.choose(view.board.chess.copy())
 	if m < 0:
+		return
+	if WarChess.is_armor_move(m):
+		# Blindarse no tiene flecha: se señala la pieza con la chapa del escudo.
+		view.board.set_arrows([])
+		view.board.set_badge(Chess.move_from(m), "", Color("e0453f"), UiIcons.texture("shield"))
+		game_note = Loc.f("Pista: blinda tu %s de %s.", [Loc.t(_piece_noun(view.board.chess.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))])
+		_refresh()
 		return
 	view.board.set_arrows([{"from": Chess.move_from(m), "to": Chess.move_to(m), "tone": "info"}])
 	game_note = _kid_line("gameHint") if kids else Loc.f("Pista: %s.", SanEs.san(view.board.chess, m))
@@ -8362,6 +8433,13 @@ func _build_game_card() -> void:
 		var clock: Array = game.get("clock", [0, 0])
 		chips.add_child(_chip("%d+%d" % [int(clock[0]), int(clock[1])], _c("field"), _c("quiet"), "clock"))
 	chips.add_child(_chip("Blancas" if game_color == 0 else "Negras", _c("field"), _c("quiet"), "sun" if game_color == 0 else "moon"))
+	if view.board.chess is WarChess:
+		var war := view.board.chess as WarChess
+		var tr := _tint("rose")
+		chips.add_child(_chip(Loc.f("Blindajes: tú %d · rival %d", [war.armors_left(game_color), war.armors_left(1 - game_color)]), tr[0], tr[1], "shield"))
+		if war.turn == game_color and war.armor_rested() and game_state == "play":
+			# Acabas de blindar: este turno no puedes volver a hacerlo.
+			chips.add_child(_chip("Blindar: el turno que viene", _c("field"), _c("quiet"), "clock"))
 	var where := ""
 	if game_back > 0 and game_state != "over":
 		where = Loc.f("Viendo la jugada %d de %d · toca el tablero para volver", [game_history.size() - 1 - game_back, game_history.size() - 1])

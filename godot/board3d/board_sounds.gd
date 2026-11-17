@@ -14,9 +14,12 @@ const FILES := {
 	"capture": ["captura_1", "captura_2"],
 	"check": ["jaque"],
 	"fall": ["caida_rey"],
+	# War Chess: golpe a una pieza blindada y blindarse.
+	"armor_hit": ["golpe_metal_1", "golpe_metal_2"],
+	"armor_up": ["blindaje"],
 }
 ## Nivel de cada momento, en decibelios. El roce va bajo: es un sonido continuo y cansa antes que un golpe.
-const LEVEL_DB := {"slide": -12.0, "place": -7.0, "capture": -4.0, "check": -5.0, "fall": -3.0}
+const LEVEL_DB := {"slide": -12.0, "place": -7.0, "capture": -4.0, "check": -5.0, "fall": -3.0, "armor_hit": -4.0, "armor_up": -6.0}
 const VOICES := 5
 
 var enabled := true

@@ -146,6 +146,7 @@ func _ready() -> void:
 	neon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(neon)
 	_build_promotion_panel()
+	_build_armor_button()
 	get_viewport().size_changed.connect(_sync_surface)
 	_sync_surface()
 
@@ -228,6 +229,7 @@ func set_board_theme(theme_name: String, backdrop: Color = Color(0, 0, 0, 0)) ->
 		board.set_backdrop(backdrop)
 	board.set_theme(theme_name)
 	_style_promotion(theme_name == "dark")
+	_style_armor_button(theme_name == "dark")
 
 
 ## Acabado del tablero y de las piezas: "madera", "marmol" o "metal" (realistas, con texturas fotográficas)
@@ -611,6 +613,7 @@ func _on_promotion_chosen(piece_type: int) -> void:
 # ---------------------------------------------------------------- la vista sigue al móvil
 
 func _process(delta: float) -> void:
+	_sync_armor_button()
 	if not tilt_enabled or view_locked or not _touches.is_empty():
 		# Con un dedo en la pantalla la vista se queda quieta: el tablero no puede moverse bajo el dedo.
 		_tilt_ref_set = false
@@ -644,3 +647,158 @@ func _process(delta: float) -> void:
 	_tilt_yaw = lerpf(_tilt_yaw, want_yaw, k)
 	if absf(_tilt_pitch - board.cam_pitch) > 0.02 or absf(_tilt_yaw - board.cam_yaw) > 0.02:
 		board.set_view(_tilt_pitch, _tilt_yaw)
+
+
+# ---------------------------------------------------------------- War Chess: botón «Blindar»
+# Al seleccionar una pieza que puede blindarse aparece, flotando sobre ella, una pastilla con el escudo. Tocarla
+# es la jugada (gasta el turno). No va en la barra de acciones (no cambia el diseño de la pantalla) ni en un
+# toque doble sobre la pieza (blindarse sin querer costaría un turno).
+
+## Texto del botón (lo pone la pantalla, en el idioma de la app).
+var armor_text := "Blindar":
+	set(value):
+		armor_text = value
+		if _armor_button != null:
+			_armor_button.text = value
+## Fuente del botón (la de la app); sin ella, la del tema.
+var armor_font: Font:
+	set(value):
+		armor_font = value
+		if _armor_button != null and value != null:
+			_armor_button.add_theme_font_override("font", value)
+var _armor_button: Button
+var _armor_for := -1
+var _armor_dark := false
+
+
+func _build_armor_button() -> void:
+	_armor_button = Button.new()
+	_armor_button.text = armor_text
+	_armor_button.visible = false
+	_armor_button.focus_mode = Control.FOCUS_NONE
+	_armor_button.icon = UiIcons.texture("shield")
+	_armor_button.expand_icon = false
+	_armor_button.add_theme_constant_override("icon_max_width", 58)
+	_armor_button.add_theme_constant_override("h_separation", 14)
+	_armor_button.add_theme_font_size_override("font_size", 40)
+	_armor_button.custom_minimum_size = Vector2(0.0, 98.0)
+	_armor_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_armor_button.pressed.connect(_on_armor_pressed)
+	add_child(_armor_button)
+	_style_armor_button(false)
+
+
+func _style_armor_button(dark: bool) -> void:
+	if _armor_button == null:
+		return
+	_armor_dark = dark
+	var red := Color("e0453f") if not dark else Color("ff6a5f")
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = (Color("151d36") if dark else Color.WHITE)
+		if state == "pressed":
+			sb.bg_color = Color("3a1a1c") if dark else Color("ffe4e1")
+		sb.bg_color.a = 0.97
+		sb.set_corner_radius_all(49)
+		sb.content_margin_left = 26.0
+		sb.content_margin_right = 34.0
+		sb.content_margin_top = 12.0
+		sb.content_margin_bottom = 12.0
+		sb.border_color = red
+		sb.set_border_width_all(4)
+		sb.shadow_color = Color(0.0, 0.0, 0.0, 0.45) if dark else Color(0.3, 0.06, 0.06, 0.28)
+		sb.shadow_size = 18
+		sb.shadow_offset = Vector2(0.0, 6.0)
+		_armor_button.add_theme_stylebox_override(state, sb)
+	var fg := Color("edeff7") if dark else Color("1b2540")
+	for c: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		_armor_button.add_theme_color_override(c, fg)
+	for c: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
+		_armor_button.add_theme_color_override(c, red)
+
+
+## Enseña, coloca o esconde el botón según la pieza seleccionada.
+func _sync_armor_button() -> void:
+	if _armor_button == null:
+		return
+	var sq := board.selected
+	var wanted := interactive and sq >= 0 and board.armor_option >= 0 and not _dragging \
+			and not _promo_panel.visible and _touches.size() < 2 and not _multi
+	if not wanted:
+		if _armor_button.visible:
+			_armor_button.visible = false
+		_armor_for = -1
+		return
+	var cam := board.camera
+	if cam == null or not cam.is_inside_tree():
+		return
+	_armor_button.reset_size()
+	var w := _armor_button.get_combined_minimum_size()
+	var at := _armor_place(sq, w)
+	_armor_button.position = at
+	_armor_button.pivot_offset = w * 0.5
+	if _armor_for != sq:
+		# Aparece con un pequeño salto, una vez por selección.
+		_armor_for = sq
+		_armor_button.visible = true
+		_armor_button.scale = Vector2(0.7, 0.7)
+		_armor_button.modulate.a = 0.0
+		var tw := _armor_button.create_tween().set_parallel(true)
+		tw.tween_property(_armor_button, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_armor_button, "modulate:a", 1.0, 0.1)
+
+
+## Sitio para el botón: encima de la pieza, debajo, a la derecha o a la izquierda; el primero que no tape ninguna
+## casilla a la que pueda ir la pieza (ni la propia pieza) y, a ser posible, ninguna otra pieza. Si no, el que menos.
+func _armor_place(sq: int, w: Vector2) -> Vector2:
+	var cam := board.camera
+	var h := board._piece_height(board.chess.b[sq] & 7)
+	var head := view_to_local(cam.unproject_position(Board3D.sq_pos(sq) + Vector3(0.0, h + 0.2, 0.0)))
+	var foot := view_to_local(cam.unproject_position(Board3D.sq_pos(sq)))
+	var c := view_to_local(cam.unproject_position(Board3D.sq_pos(sq) + Vector3(0.0, h * 0.5, 0.0)))
+	# Media casilla en pantalla (aproximada), para saber qué tapa un rectángulo.
+	var half := view_to_local(cam.unproject_position(Board3D.sq_pos(sq) + Vector3(0.5, 0.0, 0.0))).distance_to(foot)
+	var spots: Array[Vector2] = [
+		Vector2(head.x - w.x * 0.5, head.y - w.y - 6.0),
+		Vector2(foot.x - w.x * 0.5, foot.y + half + 10.0),
+		Vector2(c.x + half + 10.0, c.y - w.y * 0.5),
+		Vector2(c.x - half - 10.0 - w.x, c.y - w.y * 0.5),
+	]
+	# Lo que no debe tapar: la pieza y sus casillas de destino (peso 4) y, si se puede, otras piezas (peso 1).
+	var avoid: Array[Vector2] = [foot]
+	var weight: Array[int] = [4]
+	for m in board._targets:
+		avoid.append(view_to_local(cam.unproject_position(Board3D.sq_pos(Chess.move_to(m)))))
+		weight.append(4)
+	for o in 64:
+		if o != sq and board.chess.b[o] != 0:
+			avoid.append(view_to_local(cam.unproject_position(Board3D.sq_pos(o))))
+			weight.append(1)
+	var best := spots[0]
+	var best_hits := 1 << 30
+	var inside := Rect2(Vector2(8.0, 8.0), size - Vector2(16.0, 16.0))
+	for spot in spots:
+		if not inside.encloses(Rect2(spot, w)):
+			continue
+		var r := Rect2(spot, w).grow(half * 0.35)
+		var hits := 0
+		for i in avoid.size():
+			if r.has_point(avoid[i]):
+				hits += weight[i]
+		if hits < best_hits:
+			best_hits = hits
+			best = spot
+			if hits == 0:
+				break
+	best.x = clampf(best.x, 10.0, maxf(10.0, size.x - w.x - 10.0))
+	best.y = clampf(best.y, 8.0, maxf(8.0, size.y - w.y - 8.0))
+	return best
+
+
+func _on_armor_pressed() -> void:
+	var m := board.armor_option
+	if not interactive or m < 0:
+		return
+	_armor_button.visible = false
+	_armor_for = -1
+	_commit(m, false)

@@ -11,6 +11,8 @@ Aun así, aquí queda la procedencia de cada una. Licencias comprobadas el 13 de
 | `captura_1.wav`, `captura_2.wav` | Captura | `wood_hit_08` y `wood_hit_04` del mismo paquete | rubberduck | [OpenGameArt](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) |
 | `caida_rey.wav` | El rey cae en el mate | `wood_falling_01` del mismo paquete: un objeto de madera que cae y rebota | rubberduck | [OpenGameArt](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) |
 | `jaque.wav` | Aviso de jaque | Dos golpes de timbal de «VSCO 2: Community Edition» (`Timpani4_Hit_v3` y `Timpani2_Hit_v3`), a un semitono, el segundo más fuerte | Versilian Studios (grabado por Sam Gossner y Simon Dalzell) | [GitHub](https://github.com/sgossner/VSCO-2-CE) |
+| `golpe_metal_1.wav`, `golpe_metal_2.wav` | War Chess: golpe a una pieza blindada | `metal_hit_03` y `metal_hit_01` de «100 CC0 metal and wood SFX» | rubberduck | [OpenGameArt](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) |
+| `blindaje.wav` | War Chess: una pieza se blinda | `metal_sheet_01` del mismo paquete | rubberduck | [OpenGameArt](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) |
 
 Lo único que se hace con las grabaciones es recortarlas, darles entrada y salida suaves, ajustar el nivel y,
 en el jaque, poner un golpe de timbal detrás de otro. No hay síntesis. El proceso está en

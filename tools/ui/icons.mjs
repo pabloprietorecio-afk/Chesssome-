@@ -35,6 +35,7 @@ const ICONS = {
   retry: ['arrow-counter-clockwise', 'bold'],
   next: ['arrow-right', 'bold'],
   why: ['question', 'duotone'],
+  shield: ['shield', 'duotone'],
   line: ['path', 'duotone'],
   chart: ['chart-bar', 'duotone'],
   tap: ['hand-tap', 'duotone'],

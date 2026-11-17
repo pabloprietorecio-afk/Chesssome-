@@ -95,6 +95,12 @@ def main():
     # Caída del rey: un objeto de madera que cae y rebota.
     save(os.path.join(out, "caida_rey.wav"), hit(os.path.join(wood, "wood_falling_01.ogg"), 0.62, -2.0, tail=0.12))
 
+    # War Chess. Golpe a una pieza blindada: metal contra metal, uno con cuerpo grave y otro más agudo y corto
+    # (la app elige uno). Blindarse: una chapa de metal que se coloca.
+    save(os.path.join(out, "golpe_metal_1.wav"), hit(os.path.join(wood, "metal_hit_03.ogg"), 0.34, -3.0, tail=0.08))
+    save(os.path.join(out, "golpe_metal_2.wav"), hit(os.path.join(wood, "metal_hit_01.ogg"), 0.26, -3.0, tail=0.06))
+    save(os.path.join(out, "blindaje.wav"), hit(os.path.join(wood, "metal_sheet_01.ogg"), 0.36, -6.0, tail=0.1))
+
     # Jaque: dos golpes de timbal a un semitono de distancia, el segundo más fuerte (la amenaza de siempre:
     # dos notas pegadas que suben). Son las grabaciones tal cual, una detrás de otra.
     low = load(os.path.join(timp, "Timpani4_Hit_v3_rr1_Sum.wav"))

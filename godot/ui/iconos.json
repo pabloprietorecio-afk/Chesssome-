@@ -29,284 +29,288 @@
    6,
    0
   ],
-  "line": [
+  "shield": [
    7,
    0
   ],
-  "chart": [
+  "line": [
    0,
+   1
+  ],
+  "chart": [
+   1,
    1
   ],
   "tap": [
-   1,
+   2,
    1
   ],
   "sliders": [
-   2,
+   3,
    1
   ],
   "pin": [
-   3,
+   4,
    1
   ],
   "pin_on": [
-   4,
+   5,
    1
   ],
   "view": [
-   5,
+   6,
    1
   ],
   "search": [
-   6,
+   7,
    1
   ],
   "spark": [
-   7,
-   1
+   0,
+   2
   ],
   "copy": [
-   0,
+   1,
    2
   ],
   "open": [
-   1,
+   2,
    2
   ],
   "close": [
-   2,
+   3,
    2
   ],
   "check": [
-   3,
+   4,
    2
   ],
   "wrong": [
-   4,
+   5,
    2
   ],
   "sound": [
-   5,
+   6,
    2
   ],
   "phone": [
-   6,
+   7,
    2
   ],
   "sun": [
-   7,
-   2
+   0,
+   3
   ],
   "moon": [
-   0,
+   1,
    3
   ],
   "film": [
-   1,
+   2,
    3
   ],
   "palette": [
-   2,
+   3,
    3
   ],
   "outline": [
-   3,
+   4,
    3
   ],
   "info": [
-   4,
+   5,
    3
   ],
   "whatif": [
-   5,
+   6,
    3
   ],
   "book": [
-   6,
+   7,
    3
   ],
   "back": [
-   7,
-   3
+   0,
+   4
   ],
   "party": [
-   0,
+   1,
    4
   ],
   "target": [
-   1,
+   2,
    4
   ],
   "zoom": [
-   2,
+   3,
    4
   ],
   "play": [
-   3,
+   4,
    4
   ],
   "first": [
-   4,
+   5,
    4
   ],
   "home": [
-   5,
+   6,
    4
   ],
   "cap": [
-   6,
+   7,
    4
   ],
   "clock": [
-   7,
-   4
+   0,
+   5
   ],
   "flag": [
-   0,
+   1,
    5
   ],
   "trend": [
-   1,
+   2,
    5
   ],
   "g_saludo": [
-   2,
+   3,
    5
   ],
   "g_aplauso": [
-   3,
+   4,
    5
   ],
   "g_genial": [
-   4,
+   5,
    5
   ],
   "g_arriba": [
-   5,
+   6,
    5
   ],
   "g_abajo": [
-   6,
+   7,
    5
   ],
   "g_buena": [
-   7,
-   5
+   0,
+   6
   ],
   "g_tiempo": [
-   0,
+   1,
    6
   ],
   "bot": [
-   1,
+   2,
    6
   ],
   "infinity": [
-   2,
+   3,
    6
   ],
   "fast": [
-   3,
+   4,
    6
   ],
   "slow": [
-   4,
+   5,
    6
   ],
   "rules": [
-   5,
+   6,
    6
   ],
   "report": [
-   6,
+   7,
    6
   ],
   "block": [
-   7,
-   6
+   0,
+   7
   ],
   "more": [
-   0,
+   1,
    7
   ],
   "caret": [
-   1,
+   2,
    7
   ],
   "fire": [
-   2,
+   3,
    7
   ],
   "crown": [
-   3,
+   4,
    7
   ],
   "bell": [
-   4,
+   5,
    7
   ],
   "users": [
-   5,
+   6,
    7
   ],
   "baby": [
-   6,
+   7,
    7
   ],
   "calendar": [
-   7,
-   7
+   0,
+   8
   ],
   "nav_home": [
-   0,
+   1,
    8
   ],
   "nav_bars": [
-   1,
+   2,
    8
   ],
   "nav_games": [
-   2,
+   3,
    8
   ],
   "nav_gear": [
-   3,
+   4,
    8
   ],
   "rows": [
-   4,
-   8
-  ],
-  "tiles": [
    5,
    8
   ],
-  "piece_pawn": [
+  "tiles": [
    6,
    8
   ],
-  "piece_knight": [
+  "piece_pawn": [
    7,
    8
   ],
-  "piece_bishop": [
+  "piece_knight": [
    0,
    9
   ],
-  "piece_rook": [
+  "piece_bishop": [
    1,
    9
   ],
-  "piece_queen": [
+  "piece_rook": [
    2,
    9
   ],
-  "piece_king": [
+  "piece_queen": [
    3,
    9
   ],
-  "token_pawn": [
+  "piece_king": [
    4,
+   9
+  ],
+  "token_pawn": [
+   5,
    9
   ]
  }

@@ -6,14 +6,22 @@ extends RefCounted
 const LETTER := ["", "", "C", "A", "T", "D", "R"]
 
 
-## La jugada `m` (legal en `pos`) escrita: «Cf3», «exd5», «O-O», «e8=D+», «Dh7#».
+## La jugada `m` (legal en `pos`) escrita: «Cf3», «exd5», «O-O», «e8=D+», «Dh7#». En War Chess, «[Cf3]» (blindarse)
+## y «Ax[f7]» (romper el blindaje de f7).
 static func san(pos: Chess, m: int) -> String:
 	var from := Chess.move_from(m)
 	var to := Chess.move_to(m)
 	var flag := Chess.move_flag(m)
 	var t := Chess.type_of(pos.b[from])
 	var out := ""
-	if flag == Chess.F_CASTLE_K:
+	if flag == WarChess.F_ARMOR or flag == WarChess.F_BREAK:
+		# War Chess: blindarse «[Cf3]» (entre corchetes, como un escudo); romper un blindaje «Ax[f7]».
+		var who := Loc.piece_letter(t) if t != Chess.PAWN else ""
+		if flag == WarChess.F_ARMOR:
+			out = "[" + who + Chess.sq_name(to) + "]"
+		else:
+			out = (who if t != Chess.PAWN else Chess.sq_name(from).substr(0, 1)) + "x[" + Chess.sq_name(to) + "]"
+	elif flag == Chess.F_CASTLE_K:
 		out = "O-O"
 	elif flag == Chess.F_CASTLE_Q:
 		out = "O-O-O"
