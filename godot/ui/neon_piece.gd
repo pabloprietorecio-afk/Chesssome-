@@ -1,8 +1,8 @@
 class_name NeonPiece
 extends Control
-## El contorno de la pieza que el jugador acaba de tocar, en grande y encima del tablero, como un neón naranja
-## (idea de Pablo, 17-11: a veces se mueve la pieza que no era). Solo el contorno: el tablero se sigue viendo por
-## dentro y los toques pasan a través.
+## El contorno de la pieza que el jugador acaba de tocar, en grande y encima del tablero (idea de Pablo, 17-11: a veces
+## se mueve la pieza que no era). Solo el contorno, fino y en gris azulado a media opacidad (Pablo, 17-11: el neón
+## naranja se veía demasiado): el tablero se sigue viendo por dentro y los toques pasan a través.
 ##
 ## Se dibuja con un campo de distancias de cada silueta (ui/neon_piezas.bin, de tools/ui/icons.mjs a partir de
 ## nuestras piezas 3D): una línea brillante justo en el borde y un resplandor que se apaga hacia fuera, nítidos a
@@ -16,8 +16,8 @@ const SPREAD := 26.0
 const SIZE := 0.74
 const PIECE_INDEX := {Chess.PAWN: 0, Chess.KNIGHT: 1, Chess.BISHOP: 2, Chess.ROOK: 3, Chess.QUEEN: 4, Chess.KING: 5}
 
-## Naranja de neón (más vivo que el naranja pastel de los botones, para que se lea sobre casillas claras y oscuras).
-var neon := Color("ff5a08")
+## Gris azulado, discreto: se lee sobre las casillas claras y las oscuras sin llamar la atención.
+var neon := Color("707f9e")
 ## Sin animaciones: aparece y desaparece de golpe.
 var still := false
 ## Tipo de pieza que se enseña (Chess.PAWN…Chess.KING) o 0.
@@ -56,14 +56,12 @@ func show_piece(type: int) -> void:
 		modulate.a = 1.0
 		scale = Vector2.ONE
 		return
-	# Como un tubo de neón al encenderse: un parpadeo rápido y luego fijo.
+	# Aparece suave, sin parpadeo.
 	modulate.a = 0.0
-	scale = Vector2(0.94, 0.94)
+	scale = Vector2(0.97, 0.97)
 	_tween = create_tween()
-	_tween.tween_property(self, "modulate:a", 1.0, 0.06)
-	_tween.tween_property(self, "modulate:a", 0.35, 0.05)
-	_tween.tween_property(self, "modulate:a", 1.0, 0.07)
-	_tween.parallel().tween_property(self, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tween.tween_property(self, "modulate:a", 1.0, 0.14)
+	_tween.parallel().tween_property(self, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 ## Apaga el contorno.
@@ -111,36 +109,26 @@ static func texture() -> Texture2D:
 	return _atlas
 
 
-## Del campo de distancias al neón: línea caliente (casi blanca en el centro) en el borde y resplandor naranja
-## que se apaga hacia fuera (y un poco hacia dentro).
+## Del campo de distancias al contorno: una línea fina en el borde y un halo suave que se apaga hacia fuera.
 static func _neon_shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
 		_shader.code = """
 shader_type canvas_item;
-uniform vec4 neon : source_color = vec4(1.0, 0.42, 0.06, 1.0);
+uniform vec4 neon : source_color = vec4(0.44, 0.5, 0.62, 1.0);
 uniform float spread = 26.0;
-uniform float line_px = 3.4;
-uniform float glow_px = 7.5;
+uniform float line_px = 2.6;
+uniform float glow_px = 5.0;
+uniform float strength = 0.5;
 void fragment() {
 	float d = (texture(TEXTURE, UV).a - 0.5) * 2.0 * spread;
 	float ad = abs(d);
 	float aa = max(fwidth(d), 0.001);
-	// Tubo: línea naranja intensa con el centro más claro (no blanco: sobre las casillas claras se perdería).
+	// Una línea fina en el borde y un halo muy suave alrededor, todo a media opacidad: se nota sin tapar el tablero.
 	float core = 1.0 - smoothstep(line_px - aa, line_px + aa, ad);
-	float hot = 1.0 - smoothstep(0.0, line_px * 0.6 + aa, ad);
-	// Resplandor naranja hacia fuera (y menos hacia dentro) y una sombra oscura muy suave justo fuera del tubo, para
-	// que se lea sobre las casillas claras.
 	float glow = exp(-ad / (d > 0.0 ? glow_px * 0.45 : glow_px));
-	float shade = d < 0.0 ? exp(-max(ad - line_px, 0.0) / 3.0) * (1.0 - core) : 0.0;
-	vec3 tube = mix(neon.rgb, vec3(1.0, 0.72, 0.38), hot * 0.75);
-	// Capas: la sombra debajo y el neón (tubo y resplandor) encima.
-	float g = max(core, glow * 0.72);
-	vec3 lit = mix(neon.rgb, tube, core);
-	float s = shade * 0.2;
-	float a = g + s * (1.0 - g);
-	vec3 rgb = a > 0.0 ? (lit * g + vec3(0.22, 0.08, 0.0) * s * (1.0 - g)) / a : lit;
-	COLOR = vec4(rgb, a * COLOR.a);
+	float a = max(core, glow * 0.3) * strength;
+	COLOR = vec4(neon.rgb, a * COLOR.a);
 }
 """
 	return _shader

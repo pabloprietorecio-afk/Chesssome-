@@ -1,5 +1,5 @@
 extends SceneTree
-## Al tocar una pieza: su contorno en grande sobre el tablero, como un neón naranja (ui/neon_piece.gd), y la pieza
+## Al tocar una pieza: su contorno en grande sobre el tablero, en gris azulado discreto (ui/neon_piece.gd), y la pieza
 ## se levanta y se agranda un poco, como si la cogieran con los dedos (board_3d.gd, _lift). Las pistas, que también
 ## seleccionan piezas, no encienden el neón.
 ## Uso: godot --headless --path godot -s tests/test_neon.gd

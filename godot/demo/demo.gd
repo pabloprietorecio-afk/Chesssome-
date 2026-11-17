@@ -10224,15 +10224,24 @@ func _review_lesson(id: String) -> void:
 	_start_lesson(id)
 
 
-## Problemas de esos temas, los más cercanos al nivel del jugador (hasta 5): índices en `puzzles`.
+## Problemas de esos temas cerca del nivel del jugador (hasta 5): índices en `puzzles`. Primero los que no ha visto,
+## después los que falló y aún no ha resuelto y, solo si no queda otra, los ya resueltos. Antes salían siempre los
+## mismos cinco (los más cercanos a su nivel): tras cada partida con un mate fallado se repetían los mismos mates del
+## pasillo (un usuario, 17-11). Un poco de azar en la distancia para que no salgan siempre en el mismo orden.
 func _practice_for(themes: Array) -> Array:
 	var target := float(player["rating"]["r"]) - 150.0 if _has_player() else 800.0
+	var last := {}
+	if _has_player():
+		for t: Dictionary in player["tries"]:
+			last[str(t["id"])] = bool(t["correct"]) or bool(last.get(str(t["id"]), false))
 	var found: Array = []
 	for i in puzzles.size():
 		if themes.has(str(puzzles[i].get("theme", ""))):
-			found.append([absf(float(puzzles[i].get("rating", 0)) - target), i])
-	found.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	return found.slice(0, 5).map(func(x: Array) -> int: return int(x[1]))
+			var id := str(puzzles[i].get("id", ""))
+			var tier := 0 if not last.has(id) else (2 if bool(last[id]) else 1)
+			found.append([tier, absf(float(puzzles[i].get("rating", 0)) - target) + _rng.randf() * 80.0, i])
+	found.sort_custom(func(a: Array, b: Array) -> bool: return [a[0], a[1]] < [b[0], b[1]])
+	return found.slice(0, 5).map(func(x: Array) -> int: return int(x[2]))
 
 
 func _review_practice(themes: Array) -> void:
