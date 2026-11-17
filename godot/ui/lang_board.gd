@@ -1,7 +1,7 @@
 class_name LangBoard
 extends Control
-## Torre de marfil en 3D sobre una tesela con los colores de la bandera del idioma (ui/idiomas/<código>.bin, que
-## genera tests/gen_idiomas_torre.gd con nuestra torre clásica). Si faltara la imagen, se dibuja a mano el tablero que
+## Caballo en 3D pintado con la bandera del idioma, que sigue por el fondo de la tesela (ui/idiomas/<código>.bin, que
+## genera tests/gen_idiomas_caballo.gd con nuestro caballo clásico). Si faltara la imagen, se dibuja a mano el tablero que
 ## hacía de bandera:
 ## Tablero de ajedrez que hace de bandera del idioma: un tablero de 8 × 8 con marco de madera en el que las
 ## casillas llevan los colores de la bandera (las claras, tal cual; las oscuras, más oscuras), así se ve a la vez

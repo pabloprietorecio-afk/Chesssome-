@@ -1,33 +1,50 @@
 extends SceneTree
-## Genera ui/idiomas/<código>.bin: una torre de marfil en 3D (nuestra pieza clásica) sobre una tesela de esquinas
+## Genera ui/idiomas/<código>.bin: nuestro caballo clásico en 3D pintado con la bandera del idioma, que sigue por el fondo de una tesela de esquinas
 ## redondeadas con los colores de la bandera de cada idioma. Es una herramienta, no una prueba.
-## Uso: xvfb-run -a godot --path godot --rendering-driver vulkan --rendering-method mobile -s tests/gen_idiomas_torre.gd
+## Uso: xvfb-run -a godot --path godot --rendering-driver vulkan --rendering-method mobile -s tests/gen_idiomas_caballo.gd
 ## Variable TORRE_SOLO=1: solo guarda la torre en /tmp/torre.png.
 
 const S := 512
 const RADIUS := 0.266
 
 
+var piece := "knight"
+var out_dir := "res://ui/idiomas"
+
+
 func _initialize() -> void:
-	var rook := await _render_rook()
-	rook.save_png("/tmp/torre.png")
-	if OS.get_environment("TORRE_SOLO") != "":
-		quit()
-		return
-	DirAccess.make_dir_recursive_absolute("res://ui/idiomas")
+	if OS.get_environment("PIEZA") != "":
+		piece = OS.get_environment("PIEZA")
+	if OS.get_environment("SALIDA") != "":
+		out_dir = OS.get_environment("SALIDA")
+	DirAccess.make_dir_recursive_absolute(out_dir)
 	for code: String in Loc.LANGUAGES:
+		var rook := await _render_rook(_flag_image(code))
 		var tile := _tile(code, rook)
 		var png := tile.save_png_to_buffer()
-		var f := FileAccess.open("res://ui/idiomas/%s.bin" % code, FileAccess.WRITE)
+		var f := FileAccess.open(out_dir.path_join("%s.bin" % code), FileAccess.WRITE)
 		f.store_buffer(png)
 		f.close()
-		tile.save_png("/tmp/tile_%s.png" % code)
+		tile.save_png("/tmp/tile_%s_%s.png" % [piece, code])
 		print("hecho ", code)
 	quit()
 
 
 ## La torre clásica sobre fondo transparente, con luz suave de estudio y material de marfil.
-func _render_rook() -> Image:
+## La bandera del idioma a pantalla completa (la misma que el fondo de la tesela).
+func _flag_image(code: String) -> Image:
+	var n := 512
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			img.set_pixel(x, y, LangBoard.flag_color(code, (x + 0.5) / n, (y + 0.5) / n))
+	img.generate_mipmaps()
+	return img
+
+
+## La pieza pintada con la bandera: el color sale de la bandera en el punto de la pantalla (proyección frontal),
+## así continúa la del fondo, y la luz le da el relieve. Fondo transparente.
+func _render_rook(flag: Image) -> Image:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(1024, 1024)
 	vp.transparent_bg = true
@@ -55,22 +72,26 @@ func _render_rook() -> Image:
 	fill.light_energy = 0.3
 	fill.rotation_degrees = Vector3(-10.0, 140.0, 0.0)
 	vp.add_child(fill)
-	var scene: Node = (load("res://sets/clasico/rook.glb") as PackedScene).instantiate()
+	var scene: Node = (load("res://sets/clasico/%s.glb" % piece) as PackedScene).instantiate()
 	vp.add_child(scene)
 	await process_frame
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.97, 0.93, 0.85)
-	mat.roughness = 0.42
-	mat.metallic_specular = 0.55
-	mat.clearcoat_enabled = true
-	mat.clearcoat = 0.35
-	mat.clearcoat_roughness = 0.35
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.93, 0.8)
-	mat.emission_energy_multiplier = 0.1
-	mat.rim_enabled = true
-	mat.rim = 0.3
-	mat.rim_tint = 0.5
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+uniform sampler2D flag : source_color, filter_linear_mipmap;
+void fragment() {
+	ALBEDO = texture(flag, SCREEN_UV).rgb;
+	ROUGHNESS = 0.38;
+	SPECULAR = 0.55;
+	RIM = 0.25;
+	RIM_TINT = 0.6;
+	CLEARCOAT = 0.3;
+	CLEARCOAT_ROUGHNESS = 0.3;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("flag", ImageTexture.create_from_image(flag))
 	var box := AABB()
 	var first := true
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
@@ -79,12 +100,22 @@ func _render_rook() -> Image:
 		var b := mi.global_transform * mi.get_aabb()
 		box = b if first else box.merge(b)
 		first = false
+	if piece == "knight":
+		(scene as Node3D).rotation_degrees.y = float(OS.get_environment("GIRO")) if OS.get_environment("GIRO") != "" else -70.0
+		box = AABB()
+		first = true
+		await process_frame
+		for n in scene.find_children("*", "MeshInstance3D", true, false):
+			var mi := n as MeshInstance3D
+			var b := mi.global_transform * mi.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
 	var cam := Camera3D.new()
 	cam.fov = 18.0
 	vp.add_child(cam)
 	var c := box.get_center()
 	var h := maxf(box.size.y, box.size.x)
-	var dist := h * 0.5 / tan(deg_to_rad(cam.fov * 0.5)) * 1.42
+	var dist := h * 0.5 / tan(deg_to_rad(cam.fov * 0.5)) * 1.12
 	var pitch := deg_to_rad(13.0)
 	cam.look_at_from_position(c + Vector3(0.0, sin(pitch), cos(pitch)) * dist, c)
 	for i in 6:
@@ -92,6 +123,7 @@ func _render_rook() -> Image:
 	await RenderingServer.frame_post_draw
 	var img := vp.get_texture().get_image()
 	img.convert(Image.FORMAT_RGBA8)
+	vp.queue_free()
 	return img
 
 
@@ -104,12 +136,12 @@ func _tile(code: String, rook: Image) -> Image:
 			var u := (float(x) + 0.5) / float(S)
 			var c := LangBoard.flag_color(code, u, v)
 			# Brillo de la tesela: más clara arriba, algo más honda abajo (como el icono de la app).
-			var g := lerpf(1.07, 0.9, v)
+			var g := lerpf(0.96, 0.8, v)
 			c = Color(minf(c.r * g, 1.0), minf(c.g * g, 1.0), minf(c.b * g, 1.0), 1.0)
 			c.a = _rounded_alpha(float(x) + 0.5, float(y) + 0.5, corner)
 			img.set_pixel(x, y, c)
 	# Sombra de la torre: su silueta, borrosa, algo más abajo.
-	var fit := int(S * 0.98)
+	var fit := S
 	var r := rook.duplicate() as Image
 	r.resize(fit, fit, Image.INTERPOLATE_LANCZOS)
 	var shadow := Image.create(S, S, false, Image.FORMAT_RGBA8)
