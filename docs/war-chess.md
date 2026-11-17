@@ -103,3 +103,34 @@ en War Chess.
 - `godot/demo/demo.gd` — modalidad en «Jugar una partida», notas del rival, pista, etiqueta de blindajes.
 - Pruebas: `tests/test_war.gd` (reglas, notación, rival, tablero) y `tests/test_war_app.gd` (la app entera).
   Capturas: `tests/war_shots.tscn` (en la CI, junto a las del tablero).
+
+## Simulación (17 nov, 01:30): ¿cambia algo o solo alarga un turno?
+
+`tests/sim_war.gd`: el rival contra sí mismo, nivel Medio 2 (profundidad 3, 0,1 s por jugada), 14 partidas de War
+Chess y 14 de ajedrez clásico con las mismas semillas (las dos primeras jugadas de cada bando, al azar).
+
+| | Clásica | War Chess |
+|---|---|---|
+| Medias jugadas por partida (media / mediana) | 111 / 104 | 119 / 113,5 |
+| Final | 12 mates, 2 repeticiones | 12 mates, 1 repetición, 1 al límite de 240 |
+| Blindajes por partida | — | 6,6 (49 con la pieza atacada, 44 sin amenaza) |
+| Golpes a blindajes | — | 28 en 14 partidas |
+| Tras el golpe, la pieza cae en la jugada siguiente | — | 9 de 28 (32 %) |
+| Tras el golpe, la pieza se salva | — | 19 de 28 (68 %) |
+| Piezas que acaban blindadas sin haber recibido un golpe | — | 11 |
+
+Lectura (con cautela: es un rival flojo, sin búsqueda que entienda bien la regla, y pocas partidas):
+
+- **Alarga poco**: unas 8 medias jugadas más (≈ 7 %).
+- **En un tercio de los golpes, el blindaje solo retrasó la captura un turno.** En los otros dos tercios la pieza
+  se salvó: el dueño usó la jugada que le da el golpe para apartarla o defenderla.
+- **La cuenta de tiempos es neutra**: blindarse cuesta un tiempo al que se defiende y romperlo cuesta uno al que
+  ataca. En la práctica, blindarse es como «retirarse sin moverse». Su valor real aparece cuando la pieza **no
+  puede o no debe moverse**: clavada, bloqueando un peón pasado, tapando un jaque o defendiendo a otra. Es una
+  hipótesis: la simulación no mide estos casos todavía.
+- Casi la mitad de los blindajes se hacen sin amenaza y muchos no reciben nunca un golpe: tiempos perdidos (sobre
+  todo por la poca profundidad del rival).
+
+Ideas para que la regla pese más (por probar): límite de 3 blindajes por bando; que golpear un blindaje deje a la
+atacante «aturdida» un turno (no puede volver a atacar); o la alternativa de Pablo (quitarse el blindaje gasta un
+turno), que encarece blindarse y lo convierte en un compromiso.
