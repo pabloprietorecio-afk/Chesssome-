@@ -136,7 +136,7 @@ func _tile(code: String, rook: Image) -> Image:
 			var u := (float(x) + 0.5) / float(S)
 			var c := LangBoard.flag_color(code, u, v)
 			# Brillo de la tesela: más clara arriba, algo más honda abajo (como el icono de la app).
-			var g := lerpf(0.96, 0.8, v)
+			var g := lerpf(0.9, 0.74, v)
 			c = Color(minf(c.r * g, 1.0), minf(c.g * g, 1.0), minf(c.b * g, 1.0), 1.0)
 			c.a = _rounded_alpha(float(x) + 0.5, float(y) + 0.5, corner)
 			img.set_pixel(x, y, c)
@@ -145,11 +145,11 @@ func _tile(code: String, rook: Image) -> Image:
 	var r := rook.duplicate() as Image
 	r.resize(fit, fit, Image.INTERPOLATE_LANCZOS)
 	var shadow := Image.create(S, S, false, Image.FORMAT_RGBA8)
-	shadow.blit_rect(r, Rect2i(0, 0, fit, fit), Vector2i((S - fit) / 2, (S - fit) / 2 + int(S * 0.025)))
-	_shade(img, shadow, S / 14, 0.5)
+	shadow.blit_rect(r, Rect2i(0, 0, fit, fit), Vector2i((S - fit) / 2, (S - fit) / 2 + int(S * 0.04)))
+	_shade(img, shadow, S / 12, 0.8)
 	var edge := Image.create(S, S, false, Image.FORMAT_RGBA8)
 	edge.blit_rect(r, Rect2i(0, 0, fit, fit), Vector2i((S - fit) / 2, (S - fit) / 2))
-	_shade(img, edge, S / 70, 0.7)
+	_shade(img, edge, S / 60, 0.95)
 	img.blend_rect(r, Rect2i(0, 0, fit, fit), Vector2i((S - fit) / 2, (S - fit) / 2))
 	# El rectángulo redondeado vuelve a recortar lo que se hubiera salido.
 	for y in S:
