@@ -218,6 +218,10 @@ var _sfx_cache := {}
 const MUSIC_DB := -15.0
 const MUSIC_DUCK_DB := -26.0
 const BRAVO_PATH := "res://voz/humana/muy_bien.ogg"
+## Modo Kids oculto (decisión de Pablo, 18 nov: la primera versión en Google Play es para mayores de 13 años). El
+## código sigue aquí; sus voces, mundos, música y fondo no van en el paquete (export_presets.cfg, exclude_filter).
+## Para volver a enseñarlo: true aquí y quitar esas exclusiones.
+const KIDS_ENABLED := false
 ## Partida contra el rival (core/bot.gd): ajustes ({variant, level, fen, title, text, kids, unit}), color del
 ## jugador, posiciones tras cada jugada (para deshacer y para las repeticiones), estado ("play", "think", "over"),
 ## resultado (1 gana, 0 tablas, −1 pierde) y lo que se cuenta en la tarjeta.
@@ -1253,7 +1257,7 @@ func _load_settings() -> void:
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	lang_asked = bool(cfg.get_value("app", "idioma_preguntado", false))
-	kids = bool(cfg.get_value("app", "kids", false))
+	kids = bool(cfg.get_value("app", "kids", false)) and KIDS_ENABLED
 	home_style = str(cfg.get_value("app", "inicio", home_style))
 	intro_mode = str(cfg.get_value("app", "intro", intro_mode))
 	if not intro_mode in INTRO_MODES:
@@ -3500,7 +3504,7 @@ func _build_sheet() -> void:
 		box.add_child(_button("home", "Inicio", _open_home, home_tint[0], home_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 56.0}))
 	box.add_child(_caption("Idioma"))
 	box.add_child(_language_row())
-	if not course.is_empty():
+	if KIDS_ENABLED and not course.is_empty():
 		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
 		if kids:
 			box.add_child(_switch_row("sound", "sky", "Voz", "Lee en voz alta las lecciones y lo que pasa en cada jugada.", voice_on, _set_voice))
@@ -4148,7 +4152,7 @@ func _open_welcome() -> void:
 	var go := _button("next", "Empezar", _close_welcome, _c("accent"), _c("accent_ink"), {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")})
 	go.mouse_filter = Control.MOUSE_FILTER_STOP
 	column.add_child(go)
-	if not kids and not course.is_empty():
+	if KIDS_ENABLED and not kids and not course.is_empty():
 		column.add_child(_spacer(18.0))
 		var tint := _tint("butter")
 		var kid := _button("party", "Modo Kids · desde 8 años", _start_kids, tint[0], _c("ink"), {"font_size": F_SUB, "height": 112.0, "icon": 56.0, "icon_color": tint[1]})
@@ -5503,7 +5507,7 @@ func _home_items() -> Array:
 		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
 	if not kids and _has_player():
 		items.append(["trend", "lilac", "Mi nivel y mi plan", "En qué fallas y qué toca.", _open_progress.bind("progress")])
-	if not kids and not course.is_empty():
+	if KIDS_ENABLED and not kids and not course.is_empty():
 		items.append(["party", "sky", "Modo Kids", "Desde 8 años, con voz.", _set_kids.bind(true)])
 	if not kids and not course.is_empty():
 		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])

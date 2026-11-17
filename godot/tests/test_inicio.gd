@@ -23,8 +23,9 @@ func _initialize() -> void:
 	await _frames(3)
 	var names := _labels(demo.progress)
 	_ok(demo.progress_kind == "home", "la lista es la pantalla de inicio")
-	for want: String in ["Mi nivel", "Reto del día", "Entrenar", "Jugar una partida", "Partida online", "Mi nivel y mi plan", "Modo Kids", "Aprende desde cero", "Opciones"]:
+	for want: String in ["Mi nivel", "Reto del día", "Entrenar", "Jugar una partida", "Partida online", "Mi nivel y mi plan", "Aprende desde cero", "Opciones"]:
 		_ok(names.has(want), "lista: está «%s»" % want)
+	_ok(names.has("Modo Kids") == demo.KIDS_ENABLED, "lista: «Modo Kids» solo si está activado")
 	_ok(_all_wired(demo.progress), "lista: todo lo que se pulsa lleva a algún sitio")
 
 	# A la rejilla, como lo hace Opciones.
@@ -32,9 +33,10 @@ func _initialize() -> void:
 	await _frames(3)
 	names = _labels(demo.progress)
 	_ok(demo.home_style == "rejilla" and demo.progress_kind == "home", "al elegir «Rejilla» se ve la rejilla")
-	for want: String in ["Mi nivel", "Racha", "Avisos", "Portada", "Reto del día", "Entrenar", "Jugar una partida", "Partida online", "Aprende desde cero", "Modo Kids", "Reto de la semana", "Progreso", "Mis partidas", "Opciones"]:
+	for want: String in ["Mi nivel", "Racha", "Avisos", "Portada", "Reto del día", "Entrenar", "Jugar una partida", "Partida online", "Aprende desde cero", "Reto de la semana", "Progreso", "Mis partidas", "Opciones"]:
 		_ok(names.has(want), "rejilla: está «%s»" % want)
-	_ok(not names.has("Mi nivel y mi plan"), "rejilla: «Mi nivel y mi plan» deja su sitio a «Aprende desde cero»")
+	_ok(names.has("Modo Kids") == demo.KIDS_ENABLED, "rejilla: «Modo Kids» solo si está activado")
+	_ok(names.has("Mi nivel y mi plan") != demo.KIDS_ENABLED, "rejilla: «Mi nivel y mi plan» ocupa el sitio de «Modo Kids» cuando está oculto")
 	var games := int(GameLog.game_rating(demo._log())["n"])
 	_ok(names.has("Nivel de juego") == (games > 0), "rejilla: la pastilla del nivel de juego sale solo si hay partidas")
 	_ok(_all_wired(demo.progress), "rejilla: todo lo que se pulsa lleva a algún sitio")

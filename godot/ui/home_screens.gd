@@ -1024,7 +1024,11 @@ static func _grid_items(d: Variant) -> Array:
 			done += 1
 	var lesson_text := Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else Loc.t("%d lecciones, paso a paso.") % lessons.size()
 	items.append(["chick", "lilac", "Aprende desde cero", "Cómo se mueve cada pieza", lesson_text, Callable(d, "_open_course")])
-	items.append(["baby", "ice", "Modo Kids", "Desde 8 años, con voz", "Una forma divertida de aprender.", Callable(d, "_set_kids").bind(true)])
+	if d.KIDS_ENABLED:
+		items.append(["baby", "ice", "Modo Kids", "Desde 8 años, con voz", "Una forma divertida de aprender.", Callable(d, "_set_kids").bind(true)])
+	elif has_player:
+		# Sin Kids, su hueco es para «Mi nivel y mi plan» (si no, la rejilla queda coja).
+		items.append(["trend", "ice", "Mi nivel y mi plan", "En qué fallas", "Y qué te toca practicar ahora.", Callable(d, "_open_progress").bind("progress")])
 	return items
 
 
