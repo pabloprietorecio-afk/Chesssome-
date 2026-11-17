@@ -35,13 +35,14 @@ const LEVELS := [
 	{"name": "Difícil", "sub": 2, "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1807.0, "rd": 44.0},
 	{"name": "Muy difícil", "sub": 1, "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1912.0, "rd": 46.0},
 	# Escalones nuevos (objetivo entre paréntesis; el Elo, cuando esté medido). Ronda 1 de la calibración:
-	# tools/calibrar/pruebas/ronda1-17nov.json (Difícil 1 con profundidad 5 salía más fuerte que Difícil 2).
-	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.54, "think": 0.6},  # (≈240)
+	# tools/calibrar/pruebas/ronda1-17nov.json (Difícil 1 con profundidad 5 salía más fuerte que Difícil 2) y
+	# ronda2-17nov.json (Medio 1 con profundidad 3 y poco ruido, ya casi como Medio 2).
+	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.57, "think": 0.6},  # (por debajo de Muy fácil 2)
 	{"name": "Muy fácil", "sub": 2, "depth": 1, "noise": 250, "random": 0.47, "think": 0.6},  # (≈360)
 	{"name": "Fácil", "sub": 1, "depth": 1, "noise": 130, "random": 0.22, "think": 0.8},  # (≈630)
-	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 110, "random": 0.2, "think": 1.0},  # (≈880)
+	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 100, "random": 0.18, "think": 1.0},  # (entre Fácil 1 y 3)
 	{"name": "Fácil", "sub": 3, "depth": 2, "noise": 75, "random": 0.1, "think": 1.0},  # (≈965)
-	{"name": "Medio", "sub": 1, "depth": 3, "noise": 70, "random": 0.03, "think": 1.5},  # (justo encima de Fácil 4)
+	{"name": "Medio", "sub": 1, "depth": 3, "noise": 110, "random": 0.05, "think": 1.5},  # (≈1200: justo encima de Fácil 4)
 	{"name": "Medio", "sub": 2, "depth": 3, "noise": 45, "random": 0.01, "think": 1.5},  # (entre Medio 1 y 3)
 	{"name": "Difícil", "sub": 1, "depth": 4, "noise": 0, "random": 0.0, "think": 2.5},  # (entre Medio 3 y Difícil 2)
 ]
