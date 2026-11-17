@@ -3844,8 +3844,106 @@ func _flag_button() -> Button:
 	board.offset_right = -10.0
 	board.offset_bottom = -10.0
 	b.add_child(board)
-	b.pressed.connect(_open_language.bind(false))
+	b.pressed.connect(_open_language_dialog)
 	return b
+
+
+## Ventana emergente con los diez idiomas, centrada sobre un fondo semitransparente. Tocar fuera la cierra.
+var lang_dialog: Control
+
+
+func _open_language_dialog() -> void:
+	_close_language_dialog()
+	_lang_from_options = false
+	lang_dialog = Control.new()
+	lang_dialog.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lang_dialog.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(lang_dialog)
+	var scrim := ColorRect.new()
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.03, 0.05, 0.14, 0.42 if dark else 0.3)
+	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	scrim.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and (e as InputEventMouseButton).pressed) or (e is InputEventScreenTouch and (e as InputEventScreenTouch).pressed):
+			_close_language_dialog())
+	lang_dialog.add_child(scrim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lang_dialog.add_child(center)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	var paper := _c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.975)
+	sb.set_corner_radius_all(64)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 36
+	sb.shadow_offset = Vector2(0.0, 14.0)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.custom_minimum_size = Vector2(minf(size.x - 100.0, 900.0), 0.0)
+	center.add_child(panel)
+	var pad := _pad(44, 36, 44, 44)
+	panel.add_child(pad)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 20)
+	pad.add_child(column)
+
+	var header := HBoxContainer.new()
+	var heading := _para("Idioma", F_TITLE, _c("ink"), font_display)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(heading)
+	header.add_child(_round_button("close", _close_language_dialog, 100.0, _c("field"), _c("ink"), false))
+	column.add_child(header)
+
+	# Si el móvil es bajo, la lista se desplaza dentro de la ventana.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0.0, minf(1180.0, maxf(size.y - 560.0, 600.0)))
+	column.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 16)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(grid)
+	for code: String in Loc.LANGUAGES:
+		var chosen := code == language
+		var colors := _choice_colors(chosen)
+		var b := _button("", str(Loc.NAMES[code]), _pick_language_dialog.bind(code), colors[0], colors[1], {"vertical": true, "font_size": F_SUB, "height": 214.0, "radius": 44, "border": colors[2], "font": font_semibold if chosen else font_medium})
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# El nombre del idioma no se traduce: cada uno se ve en su idioma.
+		for l in b.find_children("*", "Label", true, false):
+			(l as Label).auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		var mark := LangBoard.new()
+		mark.code = code
+		mark.custom_minimum_size = Vector2(108.0, 108.0)
+		mark.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var inner := b.get_child(0)
+		inner.add_child(mark)
+		inner.move_child(mark, 0)
+		grid.add_child(b)
+
+	panel.pivot_offset = panel.get_combined_minimum_size() * 0.5
+	panel.scale = Vector2(0.92, 0.92)
+	lang_dialog.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(lang_dialog, "modulate:a", 1.0, 0.15)
+
+
+func _close_language_dialog() -> void:
+	if lang_dialog != null and is_instance_valid(lang_dialog):
+		lang_dialog.visible = false
+		lang_dialog.queue_free()
+	lang_dialog = null
+
+
+func _pick_language_dialog(code: String) -> void:
+	_close_language_dialog()
+	_set_language(code)
 
 
 ## Fila de Opciones con el idioma actual: su tablerito y su nombre. Abre la hoja de idiomas.
@@ -3969,7 +4067,6 @@ func _open_welcome() -> void:
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.mouse_filter = Control.MOUSE_FILTER_STOP
 	welcome.add_child(back)
-	welcome.add_child(_flag_button())
 	var inset := _insets()
 	var pad := _pad(60, int(maxf(inset.x, 60.0)) + 20, 60, int(inset.y) + 44)
 	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -4030,6 +4127,8 @@ func _open_welcome() -> void:
 		var kid := _button("party", "Modo Kids · desde 8 años", _start_kids, tint[0], _c("ink"), {"font_size": F_SUB, "height": 112.0, "icon": 56.0, "icon_color": tint[1]})
 		kid.mouse_filter = Control.MOUSE_FILTER_STOP
 		column.add_child(kid)
+	# La bandera va la última para quedar por encima del contenedor de la pantalla, que si no se come el toque.
+	welcome.add_child(_flag_button())
 	_place_tip()
 
 
