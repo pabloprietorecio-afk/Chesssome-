@@ -6140,7 +6140,7 @@ func _set_game_color(i: int) -> void:
 
 
 ## Reglas de War Chess, en corto (página de partida y comienzo de la partida). Ver docs/war-chess.md.
-const WAR_RULES := "War Chess: se juega como el ajedrez, pero en lugar de mover puedes blindar una pieza (no el rey): selecciónala y toca «Blindar». Atacar una pieza blindada no la captura: le rompe el blindaje y la atacante se queda en su casilla. Cada pieza se blinda una vez y pierde el blindaje si se mueve."
+const WAR_RULES := "War Chess: se juega como el ajedrez, pero en lugar de mover puedes blindar una pieza (no el rey): selecciónala y toca «Blindar». Atacar una pieza blindada no la captura: le rompe el blindaje y la atacante se queda en su casilla. Cada pieza se blinda una vez y pierde el blindaje si se mueve. El blindaje de un peón aguanta dos golpes de pieza (uno de otro peón). No se puede blindar dos turnos seguidos."
 
 
 ## Nombre en español de la pieza (para Loc.t): «caballo», «dama»…
@@ -7735,6 +7735,8 @@ func _game_move(uci: String) -> void:
 	game_moves.append(uci)
 	view.board.set_arrows([])
 	game_note = ""
+	if WarChess.is_break_move(m) and (view.board.chess as WarChess).is_armored(Chess.move_to(m)):
+		game_note = Loc.f("Has agrietado el blindaje del peón de %s: un golpe más y cae.", Chess.sq_name(Chess.move_to(m)))
 	var is_online := bool(game.get("online", false))
 	if is_online:
 		# Con reloj y pulsado automático, la jugada y la pulsación van juntas; a mano, la pulsación va después.
@@ -7993,7 +7995,10 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	if WarChess.is_armor_move(m):
 		game_note = Loc.f("El rival ha blindado su %s de %s.", [Loc.t(_piece_noun(pos.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))])
 	elif WarChess.is_break_move(m):
-		game_note = Loc.f("El rival ha roto el blindaje de tu %s en %s.", [Loc.t(_piece_noun(pos.b[Chess.move_to(m)])), Chess.sq_name(Chess.move_to(m))])
+		if (view.board.chess as WarChess).is_armored(Chess.move_to(m)):
+			game_note = Loc.f("El rival ha agrietado el blindaje de tu peón en %s: aguanta un golpe más.", Chess.sq_name(Chess.move_to(m)))
+		else:
+			game_note = Loc.f("El rival ha roto el blindaje de tu %s en %s.", [Loc.t(_piece_noun(pos.b[Chess.move_to(m)])), Chess.sq_name(Chess.move_to(m))])
 	if _game_check_end(pos, m):
 		return
 	game_state = "play"
@@ -8411,6 +8416,9 @@ func _build_game_card() -> void:
 		var war := view.board.chess as WarChess
 		var tr := _tint("rose")
 		chips.add_child(_chip(Loc.f("Blindajes: tú %d · rival %d", [war.armors_left(game_color), war.armors_left(1 - game_color)]), tr[0], tr[1], "shield"))
+		if war.turn == game_color and war.armor_rested() and game_state == "play":
+			# Acabas de blindar: este turno no puedes volver a hacerlo.
+			chips.add_child(_chip("Blindar: el turno que viene", _c("field"), _c("quiet"), "clock"))
 	var where := ""
 	if game_back > 0 and game_state != "over":
 		where = Loc.f("Viendo la jugada %d de %d · toca el tablero para volver", [game_history.size() - 1 - game_back, game_history.size() - 1])

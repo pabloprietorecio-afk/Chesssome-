@@ -365,7 +365,7 @@ func _quiesce(pos: Chess, alpha: int, beta: int, ply: int, left: int) -> int:
 func _key(pos: Chess) -> int:
 	if pos is WarChess:
 		var w := pos as WarChess
-		return hash([pos.b, pos.turn, pos.castle, pos.ep, w.armored, w.spent])
+		return hash([pos.b, pos.turn, pos.castle, pos.ep, w.armored, w.spent, w.cracked, w.armored_last])
 	return hash([pos.b, pos.turn, pos.castle, pos.ep])
 
 

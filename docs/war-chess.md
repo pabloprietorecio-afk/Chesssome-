@@ -17,6 +17,19 @@ Lo que pidió Pablo:
   entorpezca el juego).
 - Cada pieza se puede blindar una vez.
 
+### Ajustes del 17 nov (01:45, decididos por Pablo)
+
+- **Peón atrincherado**: el blindaje de un peón aguanta **dos golpes** de cualquier pieza que no sea un peón (el rey
+  incluido); un peón lo rompe a la primera. El daño se acumula: tras el primer golpe, el siguiente lo rompe venga de
+  quien venga. Cada golpe, también el primero, reinicia la cuenta de 50 jugadas. Las demás piezas siguen con un
+  golpe. Objetivo: que el que defiende gane un tiempo cuando le atacan «desde arriba» y premiar el ataque con peones
+  (romper peones con peones).
+- **Sin blindajes seguidos**: un bando no puede blindar en dos turnos seguidos suyos. Si acabas de blindar, la
+  etiqueta lo dice («Blindar: el turno que viene») y el botón no aparece.
+- Se ve así: el peón atrincherado lleva **dos escudos** superpuestos (el número de escudos = golpes que aguanta). El
+  primer golpe de una pieza hace saltar el de atrás, agrietado, y el de delante da un respingo y se queda.
+- FEN: `war:<blindadas>:<gastadas>:<agrietadas>:<último>` (se siguen leyendo los de tres campos).
+
 ### Decisiones tomadas al implementarla (cambiables)
 
 | Duda | Decisión | Por qué |
@@ -130,6 +143,31 @@ Lectura (con cautela: es un rival flojo, sin búsqueda que entienda bien la regl
   hipótesis: la simulación no mide estos casos todavía.
 - Casi la mitad de los blindajes se hacen sin amenaza y muchos no reciben nunca un golpe: tiempos perdidos (sobre
   todo por la poca profundidad del rival).
+
+### Segunda simulación, con el peón atrincherado y sin blindajes seguidos (17 nov, 02:10)
+
+Mismo rival y método; 14 partidas de cada (semillas 1000–1006 y 2000–2006, las mismas en las dos modalidades).
+
+| | Clásica | War Chess v1 | War Chess v2 |
+|---|---|---|---|
+| Medias jugadas (media / mediana) | 102 / 95 | 119 / 113,5 * | 93 / 84,5 |
+| Final | 12 mates, 2 repeticiones | 12 mates, 1 repetición, 1 al límite * | 10 mates, 4 repeticiones |
+| Blindajes por partida | — | 6,6 | 3,9 (22 de 55, de peones) |
+| Blindajes con la pieza atacada | — | 53 % | 67 % |
+| Golpes que rompen / que solo agrietan | — | 28 / — | 13 / 2 |
+| Pieza capturada justo tras romperle el blindaje | — | 9 de 28 | 6 de 13 |
+
+\* v1: semillas 1000–1013, ver arriba.
+
+Lectura (muestra pequeña, mucho ruido entre partidas):
+
+- **Ya no alarga**: con las dos reglas nuevas, las partidas duran lo mismo o algo menos que las clásicas.
+- **Se blinda menos y mejor**: casi la mitad de blindajes que antes, y dos de cada tres con la pieza amenazada.
+  «Sin blindajes seguidos» corta el blindar por blindar.
+- **Los peones se blindan mucho (40 %) y las piezas casi nunca los golpean** (solo 2 grietas): un peón blindado
+  es, en la práctica, intocable para las piezas. Su efecto está en la estructura, no en los golpes.
+- **Más repeticiones** (4 de 14 frente a 2 de 14). Puede ser ruido o el primer síntoma de fortalezas. A vigilar con
+  más partidas o con un rival más fuerte.
 
 Ideas para que la regla pese más (por probar): límite de 3 blindajes por bando; que golpear un blindaje deje a la
 atacante «aturdida» un turno (no puede volver a atacar); o la alternativa de Pablo (quitarse el blindaje gasta un

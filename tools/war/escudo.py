@@ -6,6 +6,7 @@ metal, un cheurón de acero, un umbo de latón y remaches (sin cruces ni símbol
 Salida: PNG con extensión .bin (Godot no los importa ni los comprime):
   godot/board3d/escudo.bin       escudo entero
   godot/board3d/escudo_roto.bin  el mismo con grietas
+El peón atrincherado (dos golpes) se dibuja con dos escudos superpuestos: no necesita otro dibujo.
 Uso: python3 tools/war/escudo.py [vista_previa.png]
 """
 import math

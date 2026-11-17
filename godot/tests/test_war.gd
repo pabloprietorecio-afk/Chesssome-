@@ -9,6 +9,7 @@ var hechos := 0
 
 func _init() -> void:
 	_reglas()
+	_peones()
 	_jaques()
 	_notacion()
 	_rival()
@@ -41,7 +42,8 @@ func _juega(c: Chess, uci: String) -> bool:
 func _reglas() -> void:
 	var c := _pos(Board3D.START_FEN)
 	_comprueba(WarChess.is_war_fen(c.fen()), "el FEN lleva el campo de War Chess")
-	_comprueba(c.fen().ends_with(" war:-:-"), "al empezar no hay blindajes (%s)" % c.fen())
+	_comprueba(c.fen().ends_with(" war:-:-:-:-"), "al empezar no hay blindajes (%s)" % c.fen())
+	_comprueba(WarChess.from_war_fen(Board3D.START_FEN + " war:e2:e2").is_armored(Chess.sq_index("e2")), "se leen los FEN antiguos de tres campos")
 	# 20 jugadas normales y 15 blindajes (todas las piezas menos el rey).
 	_comprueba(c.legal_moves().size() == 35, "35 jugadas al empezar (%d)" % c.legal_moves().size())
 	_comprueba(c.find_uci("e1e1") < 0, "el rey no puede blindarse")
@@ -54,10 +56,12 @@ func _reglas() -> void:
 	_comprueba(again.is_armored(1) and again.spent[1] == 1 and again.fen() == c.fen(), "el FEN guarda y recupera los blindajes")
 	_comprueba(_juega(c, "e7e5"), "negras e5")
 	_comprueba(c.find_uci("b1b1") < 0, "una pieza blindada no se vuelve a blindar")
+	_comprueba(c.armor_rested() and c.find_uci("g1g1") < 0 and c.find_uci("e2e2") < 0, "no se puede blindar dos turnos seguidos")
 	# Al mover, pierde el blindaje y no puede volver a blindarse.
 	_comprueba(_juega(c, "b1c3"), "Cc3")
 	_comprueba(not c.is_armored(18) and c.spent[18] == 1 and not c.is_armored(1), "el caballo se mueve sin blindaje y con el blindaje gastado")
 	_comprueba(_juega(c, "a7a6"), "a6")
+	_comprueba(not c.armor_rested() and c.find_uci("g1g1") >= 0, "tras una jugada normal se vuelve a poder blindar")
 	_comprueba(c.find_uci("c3c3") < 0, "el caballo ya no puede blindarse")
 	# Romper un blindaje: la atacante no se mueve.
 	var d := _pos("4k3/8/8/3p4/4P3/8/8/4K3 b - - 0 1")
@@ -94,6 +98,37 @@ func _reglas() -> void:
 	# Al paso: no se puede contra un peón blindado (solo con blindajes que viajan); sin blindaje, normal.
 	var h := _pos("4k3/3p4/8/4P3/8/8/8/4K3 b - - 0 1")
 	_comprueba(_juega(h, "d7d5") and h.find_uci("e5d6") >= 0, "al paso normal")
+
+
+func _peones() -> void:
+	# Peón atrincherado: una pieza necesita dos golpes; el rey también.
+	var c := _pos("4k3/8/8/3p4/8/8/3R4/4K3 b - - 0 1")
+	var d5 := Chess.sq_index("d5")
+	_comprueba(_juega(c, "d5d5") and c.hits_left(d5) == 2, "peón blindado: aguanta dos golpes de pieza")
+	_comprueba(c.hits_left(d5, Chess.sq_index("d2")) == 2, "la torre necesita dos golpes")
+	c.half = 30
+	_comprueba(_juega(c, "d2d5"), "primer golpe de la torre")
+	_comprueba(c.is_armored(d5) and c.cracked[d5] == 1 and c.hits_left(d5) == 1, "el blindaje se agrieta pero sigue")
+	_comprueba(c.half == 0, "el golpe que agrieta reinicia la cuenta de 50")
+	_comprueba(c.b[Chess.sq_index("d2")] == Chess.ROOK, "la torre sigue en d2")
+	var again := WarChess.from_war_fen(c.fen())
+	_comprueba(again.cracked[d5] == 1 and again.is_armored(d5), "el FEN guarda la grieta (%s)" % c.fen())
+	_comprueba(_juega(c, "e8e7") and _juega(c, "d2d5"), "segundo golpe")
+	_comprueba(not c.is_armored(d5) and c.cracked[d5] == 0 and c.b[d5] == Chess.PAWN + Chess.BLACK_BIT, "el segundo golpe rompe el blindaje")
+	# Un peón lo rompe a la primera.
+	var p := _pos("4k3/8/8/3p4/4P3/8/8/4K3 b - - 0 1")
+	_comprueba(_juega(p, "d5d5") and p.hits_left(d5, Chess.sq_index("e4")) == 1, "contra un peón, un solo golpe")
+	_comprueba(_juega(p, "e4d5") and not p.is_armored(d5), "exd5 rompe el blindaje del peón a la primera")
+	# Grieta de una pieza y golpe final de otra.
+	var q := _pos("4k3/8/8/3p4/4P3/8/3R4/4K3 b - - 0 1")
+	_comprueba(_juega(q, "d5d5") and _juega(q, "d2d5") and q.cracked[d5] == 1, "la torre agrieta")
+	_comprueba(_juega(q, "e8d8") and _juega(q, "e4d5") and not q.is_armored(d5), "el peón remata la grieta")
+	# Las piezas que no son peones siguen con un solo golpe.
+	var n := _pos("4k3/8/8/3n4/8/8/3R4/4K3 b - - 0 1")
+	_comprueba(_juega(n, "d5d5") and _juega(n, "d2d5") and not n.is_armored(d5), "un caballo blindado cae de un golpe")
+	# El rey golpeando un peón blindado: dos golpes.
+	var k := _pos("8/8/8/3pK3/8/8/8/k7 b - - 0 1")
+	_comprueba(_juega(k, "d5d5") and k.hits_left(d5, Chess.sq_index("e5")) == 2, "el rey también necesita dos golpes")
 
 
 func _jaques() -> void:
@@ -208,4 +243,15 @@ func _tablero() -> void:
 	_comprueba(took < 1500, "la animación del golpe es corta (%d ms)" % took)
 	_comprueba((board._pieces[e4] as Node3D).position.distance_to(Board3D.sq_pos(e4)) < 0.01, "la atacante vuelve a su casilla")
 	_comprueba((board._pieces[d5] as Node3D).position.distance_to(Board3D.sq_pos(d5)) < 0.01, "la golpeada queda en su casilla")
+	# Peón atrincherado en el tablero: escudo reforzado; el golpe de una pieza lo agrieta y el escudo se queda.
+	board.set_fen(WarChess.start_fen("4k3/8/8/3p4/8/8/3R4/4K3 b - - 0 1"))
+	_comprueba(view.show_move("d5d5"), "peón blindado")
+	_comprueba(str((board._shields[d5] as Sprite3D).get_meta("kind")) == "pawn" and (board._shields[d5] as Node).get_node_or_null("Detras") != null, "con dos escudos (dos golpes)")
+	_comprueba(view.show_move("d2d5"), "Td5 golpea")
+	_comprueba(board._shields.has(d5), "el escudo aguanta")
+	for i in 40:
+		await process_frame
+	_comprueba(str((board._shields[d5] as Sprite3D).get_meta("kind")) == "normal" and (board._shields[d5] as Node).get_node_or_null("Detras") == null, "y queda uno solo")
+	_comprueba(view.show_move("e8e7") and view.show_move("d2d5"), "segundo golpe")
+	_comprueba(not board._shields.has(d5), "el escudo se va")
 	view.queue_free()

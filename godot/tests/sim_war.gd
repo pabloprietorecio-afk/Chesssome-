@@ -40,7 +40,7 @@ func _play(mode: String, level: int, seed_value: int, think: float) -> void:
 	var plies := 0
 	var result := "limite"
 	var stats := {"armor": 0, "armor_threat": 0, "armor_calm": 0, "breaks": 0, "break_then_captured": 0,
-		"break_then_saved": 0, "armored_never_hit": 0, "armor_in_mate": 0}
+		"break_then_saved": 0, "armored_never_hit": 0, "armor_in_mate": 0, "cracks": 0, "pawn_armor": 0}
 	# Para cada golpe: casilla de la pieza que perdió el blindaje y la jugada en la que ocurrió.
 	var pending: Array = []
 	while plies < MAX_PLIES:
@@ -70,13 +70,18 @@ func _play(mode: String, level: int, seed_value: int, think: float) -> void:
 			var w := c as WarChess
 			if WarChess.is_armor_move(m):
 				stats["armor"] += 1
+				if Chess.type_of(c.b[Chess.move_from(m)]) == Chess.PAWN:
+					stats["pawn_armor"] += 1
 				if c.attacked(Chess.move_from(m), 1 - c.turn):
 					stats["armor_threat"] += 1
 				else:
 					stats["armor_calm"] += 1
 			elif WarChess.is_break_move(m):
-				stats["breaks"] += 1
-				pending.append([Chess.move_to(m), plies, w.b[Chess.move_to(m)]])
+				if w.hits_left(Chess.move_to(m), Chess.move_from(m)) >= 2:
+					stats["cracks"] += 1
+				else:
+					stats["breaks"] += 1
+					pending.append([Chess.move_to(m), plies, w.b[Chess.move_to(m)]])
 		# ¿La pieza que perdió el blindaje cae justo después? Golpe en la media jugada p; el dueño contesta en p+1
 		# (puede apartarla, defenderla o volver a… no: ya no puede blindarla); el rival captura o no en p+2.
 		var still: Array = []

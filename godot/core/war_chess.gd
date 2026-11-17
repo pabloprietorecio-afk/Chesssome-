@@ -7,11 +7,19 @@ extends Chess
 ## atacante se queda en su casilla. El blindaje se pierde al mover la pieza (ARMOR_TRAVELS = false): es una
 ## posición fortificada, no una armadura que se lleva a todas partes.
 ##
+## Peones atrincherados (17 nov): el blindaje de un peón aguanta dos golpes de cualquier pieza que no sea un peón
+## (el rey incluido). El primer golpe lo agrieta (`cracked`) y el segundo, venga de quien venga, lo rompe. Un peón
+## rompe a la primera el blindaje de otro peón. Cada golpe, también el que solo agrieta, reinicia la cuenta de 50.
+##
+## Sin blindajes seguidos (17 nov): un bando no puede blindar en dos turnos seguidos suyos (`armored_last`).
+##
 ## Jugadas nuevas (mismo formato de int que Chess): blindarse = origen y destino iguales con la marca F_ARMOR
 ## (en UCI «e2e2»); romper un blindaje = de la atacante a la blindada con la marca F_BREAK (en UCI como una
 ## captura, «c4f7», sin coronación aunque sea un peón que llega a la última fila).
 ##
-## El estado va en un séptimo campo del FEN: «war:<blindadas>:<gastadas>», casillas separadas por puntos o «-».
+## El estado va en un séptimo campo del FEN: «war:<blindadas>:<gastadas>:<agrietadas>:<último>», casillas separadas
+## por puntos o «-»; <último> = bandos cuya última jugada fue blindar («w», «b», «wb» o «-»). Se leen también los
+## FEN antiguos de tres campos.
 ## Así sirve todo lo que guarda posiciones como texto (historial, deshacer, partidas guardadas).
 
 const F_ARMOR := 5
@@ -24,11 +32,16 @@ const ARMOR_TRAVELS := false
 var armored := PackedByteArray()
 ## 1 = la pieza de esa casilla ya ha gastado su blindaje (lo tenga aún o se lo hayan roto).
 var spent := PackedByteArray()
+## 1 = blindaje de peón agrietado: el siguiente golpe lo rompe.
+var cracked := PackedByteArray()
+## Bit 1 = la última jugada de las blancas fue blindar; bit 2 = la de las negras.
+var armored_last := 0
 
 
 func _init() -> void:
 	armored.resize(64)
 	spent.resize(64)
+	cracked.resize(64)
 
 
 ## Posición de War Chess a partir de un FEN (con o sin el campo «war:…»).
@@ -47,6 +60,9 @@ static func from_war_fen(text: String) -> WarChess:
 		if f.size() >= 3:
 			c._read_squares(f[1], c.armored)
 			c._read_squares(f[2], c.spent)
+		if f.size() >= 5:
+			c._read_squares(f[3], c.cracked)
+			c.armored_last = (1 if f[4].contains("w") else 0) | (2 if f[4].contains("b") else 0)
 	return c
 
 
@@ -67,7 +83,7 @@ static func start_fen(fen: String) -> String:
 	var parts := fen.strip_edges().split(" ", false)
 	while parts.size() < 6:
 		parts.append(["w", "-", "-", "0", "1"][parts.size() - 1])
-	return " ".join(parts.slice(0, 6)) + " " + TAG + ":-:-"
+	return " ".join(parts.slice(0, 6)) + " " + TAG + ":-:-:-:-"
 
 
 func _read_squares(text: String, into: PackedByteArray) -> void:
@@ -89,7 +105,8 @@ func _write_squares(from: PackedByteArray) -> String:
 
 
 func war_field() -> String:
-	return "%s:%s:%s" % [TAG, _write_squares(armored), _write_squares(spent)]
+	var last := ("w" if armored_last & 1 else "") + ("b" if armored_last & 2 else "")
+	return "%s:%s:%s:%s:%s" % [TAG, _write_squares(armored), _write_squares(spent), _write_squares(cracked), last if last != "" else "-"]
 
 
 func fen() -> String:
@@ -106,6 +123,8 @@ func copy() -> Chess:
 	c.full = full
 	c.armored = armored.duplicate()
 	c.spent = spent.duplicate()
+	c.cracked = cracked.duplicate()
+	c.armored_last = armored_last
 	return c
 
 
@@ -113,14 +132,31 @@ func is_armored(s: int) -> bool:
 	return s >= 0 and s < 64 and b[s] != 0 and armored[s] != 0
 
 
-## ¿Puede blindarse ahora la pieza de `s`? (Del bando que mueve, no el rey, sin blindaje gastado.)
+## ¿Puede blindarse ahora la pieza de `s`? (Del bando que mueve, no el rey, sin blindaje gastado, y sin haber
+## blindado en su turno anterior.)
 func can_armor(s: int) -> bool:
-	if s < 0 or s > 63:
+	if s < 0 or s > 63 or armor_rested():
 		return false
 	var p := b[s]
 	if p == 0 or Chess.color_of(p) != turn or Chess.type_of(p) == KING:
 		return false
 	return spent[s] == 0
+
+
+## ¿Blindó el bando que mueve en su turno anterior? (Entonces ahora no puede.)
+func armor_rested() -> bool:
+	return armored_last & (1 << turn) != 0
+
+
+## Golpes que aguanta aún el blindaje de `s` si lo ataca la pieza de `by` (0 si no está blindada).
+func hits_left(s: int, by: int = -1) -> int:
+	if not is_armored(s):
+		return 0
+	if Chess.type_of(b[s]) != PAWN or cracked[s] != 0:
+		return 1
+	if by >= 0 and Chess.type_of(b[by]) == PAWN:
+		return 1
+	return 2
 
 
 ## Blindajes que le quedan por usar a un bando.
@@ -173,13 +209,23 @@ func apply(m: int) -> void:
 	var from := Chess.move_from(m)
 	var to := Chess.move_to(m)
 	var flag := Chess.move_flag(m)
+	var mover_bit := 1 << turn
+	if flag == F_ARMOR:
+		armored_last |= mover_bit
+	else:
+		armored_last &= ~mover_bit
 	if flag == F_ARMOR or flag == F_BREAK:
 		if flag == F_ARMOR:
 			armored[from] = 1
 			spent[from] = 1
 			half += 1
 		else:
-			armored[to] = 0
+			if hits_left(to, from) >= 2:
+				# Peón atrincherado golpeado por una pieza: el blindaje se agrieta pero aguanta.
+				cracked[to] = 1
+			else:
+				armored[to] = 0
+				cracked[to] = 0
 			# Un golpe cambia la posición tanto como una captura: la cuenta de las 50 jugadas vuelve a cero.
 			half = 0
 		ep = -1
@@ -189,6 +235,7 @@ func apply(m: int) -> void:
 		return
 	var arm := armored[from]
 	var used := spent[from]
+	var crack := cracked[from]
 	var rook_from := -1
 	var rook_to := -1
 	if flag == F_CASTLE_K:
@@ -202,12 +249,15 @@ func apply(m: int) -> void:
 	super.apply(m)
 	armored[from] = 0
 	spent[from] = 0
+	cracked[from] = 0
 	armored[to] = arm if ARMOR_TRAVELS else 0
 	spent[to] = used
+	cracked[to] = crack if ARMOR_TRAVELS and Chess.move_promo(m) == 0 else 0
 	if flag == F_EN_PASSANT:
 		var victim := (to & 7) + 8 * (from >> 3)
 		armored[victim] = 0
 		spent[victim] = 0
+		cracked[victim] = 0
 	if rook_from >= 0:
 		armored[rook_from] = 0
 		spent[rook_from] = 0

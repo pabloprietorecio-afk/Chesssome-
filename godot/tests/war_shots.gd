@@ -33,6 +33,17 @@ func _run() -> void:
 		await _shot("war_06_blindarse_%02d" % i)
 	await _frames(10)
 	await _shot("war_07_blindado")
+	# Peón atrincherado: escudo reforzado; el golpe de la torre lo agrieta y aguanta.
+	board.anim_mode = Board3D.Anim.NONE
+	board.set_fen("4k3/8/4n3/3p4/8/8/3R4/4K3 w - - 0 1 war:d5.e6:d5.e6:-:-")
+	await _frames(6)
+	await _shot("war_09_peon_reforzado")
+	board.anim_mode = Board3D.Anim.FULL
+	view.show_move("d2d5")
+	for i in 8:
+		await _shot("war_10_agrieta_%02d" % i)
+	await _frames(10)
+	await _shot("war_11_agrietado")
 	# Tema oscuro.
 	view.set_board_theme("dark", Color("0f1529"))
 	bg.color = Color("0f1529")

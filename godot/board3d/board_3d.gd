@@ -2480,6 +2480,36 @@ func _shield_texture(cracked: bool) -> Texture2D:
 	return _shield_cracked_tex if cracked else _shield_tex
 
 
+## Cuántos escudos se dibujan junto a la pieza de `s`: tantos como golpes de pieza aguanta (2 = peón atrincherado
+## sin grieta; 1 = el resto). Se lee de un vistazo: el número de escudos es el número de golpes que faltan.
+func _shield_kind(s: int) -> String:
+	var war := chess as WarChess
+	if war != null and Chess.type_of(chess.b[s]) == Chess.PAWN and war.cracked[s] == 0:
+		return "pawn"
+	return "normal"
+
+
+## Pone o quita el segundo escudo (detrás, algo desplazado y más oscuro) según el tipo.
+func _set_shield_kind(sp: Sprite3D, kind: String) -> void:
+	sp.set_meta("kind", kind)
+	var back: Sprite3D = sp.get_node_or_null("Detras")
+	if kind == "pawn" and back == null:
+		back = _make_shield()
+		back.name = "Detras"
+		back.render_priority = 1
+		back.modulate = Color(0.78, 0.78, 0.8)
+		sp.add_child(back)
+	elif kind != "pawn" and back != null:
+		back.queue_free()
+		back = null
+	if back != null:
+		back.position = _back_offset()
+
+
+func _back_offset() -> Vector3:
+	return _cam_right * 0.085 + _cam_up * 0.07 - _cam_back * 0.02
+
+
 ## Dónde va el escudo de la pieza de `s`: a su derecha según se mira, a media altura y un poco hacia la cámara,
 ## para que no tape la pieza ni la de al lado.
 func _shield_pos(s: int) -> Vector3:
@@ -2518,10 +2548,15 @@ func _sync_shields(animate: bool) -> void:
 			_shields.erase(s)
 			_drop_shield(old, animate)
 	for s: int in want:
+		var kind := _shield_kind(s)
 		if _shields.has(s):
+			var have: Sprite3D = _shields[s]
+			if is_instance_valid(have) and str(have.get_meta("kind", "")) != kind and not have.has_meta("busy"):
+				_set_shield_kind(have, kind)
 			continue
 		var sp := _make_shield()
 		_pieces_root.add_child(sp)
+		_set_shield_kind(sp, kind)
 		_shields[s] = sp
 		sp.position = _shield_pos(s)
 		if animate and anim_mode != Anim.NONE:
@@ -2534,6 +2569,9 @@ func _place_shields() -> void:
 		var sp: Sprite3D = _shields[s]
 		if is_instance_valid(sp):
 			sp.position = _shield_pos(s)
+			var back: Sprite3D = sp.get_node_or_null("Detras")
+			if back != null:
+				back.position = _back_offset()
 
 
 ## El escudo se va sin más (la pieza se ha movido o se ha cambiado la posición): se encoge y se desvanece.
@@ -2585,9 +2623,11 @@ func _play_war(m: int) -> void:
 	var to := Chess.move_to(m)
 	var armoring := WarChess.is_armor_move(m)
 	var old_shield: Sprite3D = _shields.get(to) if not armoring else null
-	if old_shield != null:
-		_shields.erase(to)
 	chess.apply(m)
+	# Peón atrincherado golpeado por una pieza: el blindaje se agrieta pero sigue (el escudo se queda).
+	var holds := not armoring and (chess as WarChess).is_armored(to)
+	if old_shield != null and not holds:
+		_shields.erase(to)
 	if selected >= 0 and _pieces.has(selected):
 		_set_glow(_pieces[selected], 0.0)
 		_rest(_pieces[selected], selected)
@@ -2605,18 +2645,21 @@ func _play_war(m: int) -> void:
 		if _running <= 0:
 			_settle()
 		return
-	_break_armor(from, to, old_shield)
+	_break_armor(from, to, old_shield, holds)
 
 
 ## La atacante embiste un poco y vuelve; al tocar, golpe metálico, el escudo se agrieta y sale despedido y la
 ## pieza atacada se sacude sobre su casilla. Corto: unos 0,4 s en «Completas».
-func _break_armor(from: int, to: int, shield: Sprite3D) -> void:
+func _break_armor(from: int, to: int, shield: Sprite3D, holds: bool = false) -> void:
 	var attacker: Node3D = _pieces.get(from)
 	var victim: Node3D = _pieces.get(to)
 	var mode := anim_mode
 	if mode == Anim.NONE:
 		if shield != null:
-			shield.queue_free()
+			if holds:
+				_set_shield_kind(shield, "normal")
+			else:
+				shield.queue_free()
 		_sfx("armor_hit")
 		_settle()
 		return
@@ -2647,7 +2690,39 @@ func _break_armor(from: int, to: int, shield: Sprite3D) -> void:
 			var fade := (1.0 - t) * (1.0 - t)
 			_pose(victim, pos + side * sin(t * TAU * 3.0) * amp * fade, Vector3.UP, 0.0, 1.0 - 0.06 * fade * (1.0 if t < 0.35 else 0.0)), 0.0, 1.0, shake)
 	if shield != null and is_instance_valid(shield):
-		_shatter_shield(shield, lunge, mode == Anim.MINIMAL, k)
+		if holds:
+			_crack_shield(shield, lunge, mode == Anim.MINIMAL, k)
+		else:
+			_shatter_shield(shield, lunge, mode == Anim.MINIMAL, k)
+
+
+## El peón atrincherado aguanta: el escudo de atrás se agrieta y sale despedido; el de delante da un respingo y se
+## queda (ahora aguanta un golpe).
+func _crack_shield(sp: Sprite3D, delay: float, minimal: bool, k: float) -> void:
+	var back: Sprite3D = sp.get_node_or_null("Detras")
+	sp.set_meta("kind", "normal")
+	if back != null:
+		var at := back.global_position
+		sp.remove_child(back)
+		_pieces_root.add_child(back)
+		back.global_position = at
+		back.render_priority = 2
+		_shatter_shield(back, delay, minimal, k)
+	if minimal:
+		return
+	var start := sp.position
+	var size := sp.pixel_size
+	sp.set_meta("busy", true)
+	var tw := sp.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.tween_callback(func() -> void: sp.modulate = Color(1.4, 1.4, 1.4, 1.0))
+	tw.tween_property(sp, "position", start - _cam_right * 0.05, 0.05 * k).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(sp, "pixel_size", size * 1.12, 0.05 * k)
+	tw.tween_property(sp, "position", start, 0.16 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(sp, "pixel_size", size, 0.16 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(sp, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.16 * k)
+	tw.tween_callback(func() -> void: sp.remove_meta("busy"))
 
 
 ## El escudo golpeado: destello, se agrieta y sale despedido girando hacia fuera mientras se desvanece.
