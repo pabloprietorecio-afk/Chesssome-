@@ -8968,6 +8968,8 @@ func _aviso_on_ready() -> void:
 
 
 func _aviso_on_permission(_permission: String, granted: bool) -> void:
+	if granted and bool((_prog()["aviso"] as Dictionary)["activo"]):
+		_aviso_preview()
 	if not granted:
 		(_prog()["aviso"] as Dictionary)["activo"] = false
 		_prog_save()
@@ -9026,17 +9028,32 @@ func _aviso_set_time(hour: int, minute: int) -> void:
 	_aviso_refresh()
 
 
+## El complemento propio que pinta el aviso diario con el diseño de A Chess Way (o null si este APK no lo trae). El
+## código Java va en el mismo APK que este script: si está el complemento, tiene scheduleReminder (y has_method no
+## sirve con los métodos Java de un singleton).
+func _aviso_own() -> Object:
+	return Engine.get_singleton("EsperaOnline") if Engine.has_singleton("EsperaOnline") else null
+
+
 ## Vuelve a programar el próximo aviso (se cancela el anterior): tras cada cosa que hace el jugador y al salir de la app.
 func _aviso_refresh() -> void:
 	if kids or _aviso_node == null or not _aviso_ready:
 		return
 	_aviso_node.cancel(AVISO_ID)
+	var own := _aviso_own()
+	if own != null:
+		own.call("cancelReminder")
 	var settings := _aviso_settings()
 	if not bool(settings["enabled"]):
 		return
 	var n := _prog_now()
 	var plan := Reminder.plan(_prog(), settings, int(n[0]), int(n[1]))
 	if plan.is_empty():
+		return
+	# Con el diseño de A Chess Way (degradado gris, logo grande y «Entrenar»; android_espera/AvisoReceiver.java). Si
+	# el APK no lo trae, el aviso estándar del complemento de notificaciones.
+	if own != null:
+		own.call("scheduleReminder", {"at": int(plan["at"]), "title": str(plan["title"]), "text": str(plan["body"]), "pill": Loc.t("Entrenar"), "channel": Loc.t("Aviso diario")})
 		return
 	var data = (load(AVISO_PLUGIN + "model/NotificationData.gd") as GDScript).new()
 	data.set_id(AVISO_ID).set_channel_id(AVISO_CHANNEL).set_title(str(plan["title"])).set_content(str(plan["body"]))
@@ -9049,8 +9066,18 @@ func _aviso_set(on: bool) -> void:
 	_prog_save()
 	if on and _aviso_node != null and not _aviso_node.has_post_notifications_permission():
 		_aviso_node.request_post_notifications_permission()
+	elif on:
+		_aviso_preview()
 	_aviso_refresh()
 	_open_day()
+
+
+## Al activar el aviso (con permiso), uno de muestra en ese momento: así se ve cómo es y que funciona.
+func _aviso_preview() -> void:
+	var own := _aviso_own()
+	if own == null or kids:
+		return
+	own.call("showReminderNow", {"title": Loc.t("Tu reto de hoy"), "text": Loc.f("Así te avisaremos a las %s si aún no has cumplido tu reto.", _aviso_hour_text()), "pill": Loc.t("Entrenar"), "channel": Loc.t("Aviso diario")})
 
 
 ## La hora del aviso como se escribe en cada idioma: «21:00» y, en inglés, «9 PM» o «9:30 PM».

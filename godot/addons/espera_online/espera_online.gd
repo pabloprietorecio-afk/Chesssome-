@@ -29,10 +29,17 @@ class AndroidExport extends EditorExportPlugin:
 		return "\n".join([
 			'<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
 			'<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />',
+
 		])
 
 	func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
 		return "\n".join([
 			'<meta-data android:name="org.godotengine.plugin.v2.EsperaOnline" android:value="com.pabloprieto.espera.EsperaOnline" />',
 			'<service android:name="com.pabloprieto.espera.EsperaService" android:exported="false" android:foregroundServiceType="dataSync" />',
+			# Aviso diario con el diseño propio: la alarma y el reinicio del móvil (android_espera/AvisoReceiver.java). El
+			# permiso RECEIVE_BOOT_COMPLETED no se declara aquí (si lo declara también otro complemento, el manifiesto
+			# saldría con el elemento repetido): sin él, tras reiniciar se vuelve a armar al abrir la app.
+			'<receiver android:name="com.pabloprieto.espera.AvisoReceiver" android:exported="false">',
+			'<intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>',
+			'</receiver>',
 		])

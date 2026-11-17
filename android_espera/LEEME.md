@@ -24,6 +24,20 @@ latido (y caducaría a los 30 s) y nadie avisaría si entra alguien. Este comple
   nombre) y desaparece solo al minuto, cuando quien entró deja de esperarte. Botón «Jugar ahora».
 - Textos en el idioma de la app (los pasa `core/online.gd`), también los nombres de los canales.
 
+## Aviso diario con diseño propio (17-11)
+
+- `AvisoVista.java`: el diseño de los avisos de A Chess Way, como los de WakeAgenda (`CustomNotificationViews.kt`):
+  tarjeta con degradado gris (`res/drawable/aviso_fondo.xml`), el logo del caballo en grande, título, texto y una
+  pastilla blanca con la acción en naranja (`res/layout/aviso_notif.xml` y `aviso_notif_grande.xml`, la desplegada,
+  más grande). Android 12+ mantiene la cabecera del sistema. Lo usan el aviso diario y «¡Rival encontrado!».
+- `AvisoReceiver.java`: el aviso diario. La app lo programa con `scheduleReminder({at, title, text, pill, channel})`
+  (y `cancelReminder()`) cada vez que cambia algo; se guarda en SharedPreferences y se arma una alarma del sistema
+  (`setAndAllowWhileIdle`: puede llegar unos minutos tarde). Al actualizar la app se vuelve a armar; tras reiniciar
+  el móvil, solo si algún complemento declara RECEIVE_BOOT_COMPLETED (este no, para no repetirlo en el manifiesto);
+  si no, al abrir la app. `showReminderNow` enseña uno de muestra (al activar el aviso).
+- El complemento de notificaciones (Notification Scheduler) sigue pidiendo el permiso de avisos y crea el canal;
+  ya no programa el aviso diario cuando está este complemento.
+
 ## Archivos
 
 - `EsperaOnline.java`: el complemento de Godot (v2), `Engine.get_singleton("EsperaOnline")`: `start(datos)`,

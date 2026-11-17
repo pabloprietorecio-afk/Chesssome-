@@ -369,12 +369,16 @@ public class EsperaService extends Service {
 		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		String text = name != null && foundNamed != null && foundNamed.contains("{nombre}") ? foundNamed.replace("{nombre}", name) : foundText;
 		Notification.Builder b = builder(CHANNEL_FOUND);
-		b.setContentTitle(foundTitle).setContentText(text).setAutoCancel(true);
-		b.setStyle(new Notification.BigTextStyle().bigText(text));
+		b.setAutoCancel(true);
 		b.setCategory(Notification.CATEGORY_EVENT);
 		b.setVisibility(Notification.VISIBILITY_PUBLIC);
 		b.setWhen(System.currentTimeMillis()).setShowWhen(true);
-		b.addAction(new Notification.Action.Builder(null, orElse(playLabel, foundTitle), openApp()).build());
+		// Con el diseño de A Chess Way (degradado gris, logo grande y la pastilla «Jugar ahora»); si faltaran sus
+		// recursos, el aviso estándar con su botón.
+		if (!AvisoVista.apply(this, b, foundTitle, text, orElse(playLabel, foundTitle))) {
+			b.setStyle(new Notification.BigTextStyle().bigText(text));
+			b.addAction(new Notification.Action.Builder(null, orElse(playLabel, foundTitle), openApp()).build());
+		}
 		if (Build.VERSION.SDK_INT >= 26) {
 			// Quien entró espera un minuto: pasado ese tiempo, el aviso se quita solo.
 			b.setTimeoutAfter(FOUND_VALID_MS);

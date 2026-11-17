@@ -15,6 +15,7 @@ import org.godotengine.godot.plugin.UsedByGodot;
  *                 partida en espera y, cuando entra alguien, avisa con «¡Rival encontrado!».
  *   stop()        lo para (al volver a la app).
  *   state()       "" (nada), "waiting", "found" (entró alguien) o "cancelled" (se tocó «Dejar de esperar»).
+ *   scheduleReminder(datos) / cancelReminder()   el aviso diario con el diseño propio (AvisoReceiver, AvisoVista).
  * Lo copia el CI en la plantilla de Gradle (android_espera/LEEME.md).
  */
 public class EsperaOnline extends GodotPlugin {
@@ -78,6 +79,43 @@ public class EsperaOnline extends GodotPlugin {
 		}
 		activity.stopService(new Intent(activity, EsperaService.class));
 		EsperaService.cancelFound(activity);
+	}
+
+	/**
+	 * Aviso diario con el diseño de A Chess Way (AvisoReceiver). datos: at (segundos desde 1970), title, text, pill
+	 * (texto de la pastilla, p. ej. «Entrenar») y channel (nombre del canal en el idioma de la app).
+	 */
+	@UsedByGodot
+	public void scheduleReminder(Dictionary data) {
+		Activity activity = getActivity();
+		if (activity == null) {
+			return;
+		}
+		Object at = data.get("at");
+		long seconds = at instanceof Number ? ((Number) at).longValue() : 0L;
+		AvisoReceiver.schedule(activity.getApplicationContext(), seconds * 1000L, text(data, "title"), text(data, "text"), text(data, "pill"), text(data, "channel"));
+	}
+
+	@UsedByGodot
+	public void cancelReminder() {
+		Activity activity = getActivity();
+		if (activity != null) {
+			AvisoReceiver.cancel(activity.getApplicationContext());
+		}
+	}
+
+	/** Para probar el diseño: enseña el aviso diario ya. */
+	@UsedByGodot
+	public void showReminderNow(Dictionary data) {
+		Activity activity = getActivity();
+		if (activity != null) {
+			AvisoReceiver.show(activity.getApplicationContext(), text(data, "title"), text(data, "text"), text(data, "pill"), text(data, "channel"));
+		}
+	}
+
+	private static String text(Dictionary data, String key) {
+		Object v = data.get(key);
+		return v == null ? "" : v.toString();
 	}
 
 	@UsedByGodot

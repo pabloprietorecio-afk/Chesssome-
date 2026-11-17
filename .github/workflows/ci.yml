@@ -565,14 +565,14 @@ jobs:
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/cine"; then echo "OK YouTubeCine dentro del APK"; else echo "FALTA YouTubeCine en el APK"; exit 1; fi
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
-          for f in "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
+          for f in "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
             if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
           done
           # El icono de la notificación: sin él Android puede descartar el aviso.
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           if $AAPT2 dump resources $A | grep -q "ic_default_notification"; then echo "OK icono de la notificación"; else echo "FALTA el icono ic_default_notification"; exit 1; fi
-          for r in ic_stat_achessway ic_large_achessway; do
-            if $AAPT2 dump resources $A | grep -q "drawable/$r"; then echo "OK icono de aviso: $r"; else echo "FALTA el icono de aviso $r"; exit 1; fi
+          for r in drawable/ic_stat_achessway drawable/ic_large_achessway drawable/aviso_fondo drawable/aviso_pastilla layout/aviso_notif layout/aviso_notif_grande id/aviso_titulo id/aviso_pastilla; do
+            if $AAPT2 dump resources $A | grep -q "$r"; then echo "OK recurso de aviso: $r"; else echo "FALTA el recurso de aviso $r"; exit 1; fi
           done
           # Icono propio y arranque sin el logo de Godot (solo informativo: nombres de recursos de la plantilla).
           $AAPT2 dump resources $A | grep -iE "mipmap/|splash|boot" | head -30 || true
