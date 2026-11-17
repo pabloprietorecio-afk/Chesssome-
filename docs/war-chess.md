@@ -1,10 +1,20 @@
 # War Chess
 
-Modalidad experimental (rama `war-chess`). Se juega exactamente igual que el ajedrez y se le van añadiendo
-reglas una a una. Por ahora solo contra el ordenador: **no** hay War Chess online ni en Kids, y sus partidas no
-cuentan para el nivel de juego ni para los retos (como las demás variantes).
+Modalidad experimental (en `main` desde el 17 nov; antes, rama `war-chess`). Se juega exactamente igual que el
+ajedrez y se le van añadiendo reglas una a una. Contra el ordenador y **online** (desde el 17 nov); **no** en Kids. Sus
+partidas no cuentan para el nivel de juego ni para los retos, ni se guardan en «Mis partidas» (como las demás
+variantes).
 
-Dónde: **Jugar una partida → Modalidad → War Chess**.
+Dónde: **Jugar una partida → ventana «Tu partida» → Modalidad → War Chess** y **Partida online → Modalidad → War Chess**.
+
+## Online (17 nov)
+
+- Espacios propios: el ritmo lleva una «w» delante (`w5+3`, `w0+0`…), así que una partida clásica y una de War Chess
+  nunca se emparejan. Las versiones antiguas de la app no ven esos espacios (su expresión del ritmo no admite la «w»).
+- El blindaje viaja como una jugada de la casilla a sí misma (`g1g1`); los dos móviles aplican las mismas reglas
+  (`WarChess`). Al rival le sale qué ha blindado o roto, como contra el ordenador.
+- **Hace falta publicar las reglas de Firebase** (`firebase/database.rules.json`: el ritmo admite `^w?…`). Hasta
+  entonces, abrir un espacio de War Chess da «No se pudo abrir la partida (código 401/401)».
 
 ## Regla 1 — Blindaje (17 nov 2026)
 

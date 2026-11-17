@@ -16,6 +16,12 @@ reglas: `firebase/database.rules.json`, prueba de las reglas: `firebase/test/`, 
   jugadores bloqueados no se emparejan (ni tú con ellos ni ellos contigo).
 - La web de pruebas usaba otro nodo (`abiertas`): ya no se empareja con la app (la web se ha dejado de lado).
 
+## War Chess online (17 nov)
+
+- «Partida online» tiene **Modalidad: Clásica / War Chess**. Los espacios de War Chess son los mismos ritmos con una «w»
+  delante (`w5+3`); se cuentan y emparejan aparte. Ver `docs/war-chess.md`.
+- Las reglas de la base de datos admiten la «w» en `ritmo` (`espera` y `partidas`): **hay que publicarlas** (abajo).
+
 ## Reloj online
 
 - Todas las partidas con tiempo llevan reloj. Pulsarlo a mano es opcional (ajuste «Pulsar el reloj» de Opciones, el
