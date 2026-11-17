@@ -319,14 +319,6 @@ var _press_since := 0
 var _press_warned := false
 ## Respuesta correcta de la puerta para adultos abierta (−1 si no hay ninguna).
 var _gate_answer := -1
-## Bloqueo para salir de Kids: "" (sin elegir: la multiplicación de antes), "movil" (el bloqueo de pantalla del
-## teléfono) o "piezas" (código de 4 piezas, ui/piece_lock.gd; se guarda su huella, no el código).
-var kids_lock := ""
-var kids_code_hash := ""
-var kids_fails := 0
-var kids_wait_until := 0.0
-var _device_then := Callable()
-const KIDS_SALT := "achessway-kids:"
 var _gate_then: Callable
 ## Lecciones terminadas: id → estrellas (1–3).
 var course_done := {}
@@ -1261,10 +1253,6 @@ func _load_settings() -> void:
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
 	lang_asked = bool(cfg.get_value("app", "idioma_preguntado", false))
-	kids_lock = str(cfg.get_value("kids", "bloqueo", ""))
-	kids_code_hash = str(cfg.get_value("kids", "codigo", ""))
-	kids_fails = int(cfg.get_value("kids", "fallos", 0))
-	kids_wait_until = float(cfg.get_value("kids", "espera_hasta", 0.0))
 	kids = bool(cfg.get_value("app", "kids", false))
 	home_style = str(cfg.get_value("app", "inicio", home_style))
 	intro_mode = str(cfg.get_value("app", "intro", intro_mode))
@@ -1327,10 +1315,6 @@ func _save_settings() -> void:
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
 	cfg.set_value("app", "idioma_preguntado", lang_asked)
-	cfg.set_value("kids", "bloqueo", kids_lock)
-	cfg.set_value("kids", "codigo", kids_code_hash)
-	cfg.set_value("kids", "fallos", kids_fails)
-	cfg.set_value("kids", "espera_hasta", kids_wait_until)
 	cfg.set_value("app", "kids", kids)
 	cfg.set_value("app", "inicio", home_style)
 	cfg.set_value("app", "intro", intro_mode)
@@ -3518,9 +3502,6 @@ func _build_sheet() -> void:
 	box.add_child(_language_row())
 	if not course.is_empty():
 		box.add_child(_switch_row("party", "butter", "Modo Kids", "Desde 8 años: solo el curso, con frases muy sencillas y voz. Para salir hace falta un adulto.", kids, _set_kids))
-		if not kids and kids_lock != "":
-			var lt := _tint("lilac")
-			box.add_child(_button("shield", "Cambiar el bloqueo de Kids", _reset_kids_lock, lt[0], lt[1], {"font_size": F_SUB, "height": 104.0, "icon": 48.0}))
 		if kids:
 			box.add_child(_switch_row("sound", "sky", "Voz", "Lee en voz alta las lecciones y lo que pasa en cada jugada.", voice_on, _set_voice))
 			box.add_child(_switch_row("party", "rose", "Música", "Una melodía infantil de fondo, en bucle. Baja sola cuando habla la voz.", music_on, _set_music))
@@ -10664,10 +10645,6 @@ func _voice_path(text: String) -> String:
 
 ## «Modo Kids» desde la bienvenida: directo al curso, sin pregunta de experiencia ni test.
 func _start_kids() -> void:
-	if _kids_lock_needed():
-		_open_lock_owner(_start_kids)
-		return
-	_close_progress()
 	kids = true
 	welcome_seen = true
 	_save_settings()
@@ -10686,11 +10663,6 @@ func _set_kids(on: bool) -> void:
 	if on == kids:
 		return
 	if on:
-		if _kids_lock_needed():
-			_close_options()
-			_open_lock_owner(_set_kids.bind(true))
-			return
-		_close_progress()
 		kids = true
 		_sync_piece_set()
 		_actions_mode = ""
@@ -10727,15 +10699,6 @@ func _set_voice(on: bool) -> void:
 
 ## Puerta para adultos: una multiplicación que un niño de 8 años no suele saber, con tres respuestas.
 func _open_gate(then: Callable) -> void:
-	if kids_lock == "piezas" and kids_code_hash != "":
-		_open_lock_enter(then)
-	elif kids_lock == "movil" and _aviso_own() != null:
-		_ask_device(then)
-	else:
-		_open_math_gate(then)
-
-
-func _open_math_gate(then: Callable) -> void:
 	var a := _rng.randi_range(6, 9)
 	var b := _rng.randi_range(6, 9)
 	_gate_answer = a * b
@@ -10765,202 +10728,6 @@ func _open_math_gate(then: Callable) -> void:
 	body.add_child(_spacer(8.0, true))
 	footer.add_child(_button("party", "Seguir en modo Kids", _close_gate, _tint("peach")[0], _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 44.0, "font": font_medium}))
 	_say([_kid_line("gate")])
-
-
-
-# ---------------------------------------------------------------- bloqueo de Kids
-
-## Hay que elegir el bloqueo antes de entrar en Kids (con el adulto delante), si aún no se ha elegido.
-func _kids_lock_needed() -> bool:
-	return use_settings and kids_lock == ""
-
-
-func _reset_kids_lock() -> void:
-	kids_lock = ""
-	kids_code_hash = ""
-	kids_fails = 0
-	kids_wait_until = 0.0
-	_save_settings()
-	_popup_ok("Bloqueo de Kids", "Borrado. La próxima vez que se entre en el modo Kids, se elegirá de nuevo.")
-	_sync_sheet()
-
-
-## Primera vez que se entra en Kids: ¿de quién es el móvil? Del adulto → su bloqueo de pantalla; del niño (que se
-## sabe el suyo) → un código de piezas que solo sepa el adulto.
-func _open_lock_owner(then: Callable) -> void:
-	var page := _page("lock")
-	var body: VBoxContainer = page["body"]
-	var footer: VBoxContainer = page["footer"]
-	body.add_child(_spacer(8.0, true))
-	var tile := _icon_tile("shield", "lilac", 156.0, 98.0)
-	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	body.add_child(tile)
-	body.add_child(_spacer(24.0))
-	body.add_child(_centered(_para("Antes de empezar", F_TITLE + 12, _c("ink"), font_display)))
-	body.add_child(_spacer(8.0))
-	body.add_child(_centered(_para("Para salir del modo Kids hará falta un adulto. ¿De quién es este móvil?", F_HEAD, _c("quiet"), font_medium)))
-	body.add_child(_spacer(44.0))
-	var t1 := _tint("sky")
-	var mine := _button("phone", "Es mío (adulto)", _lock_choose_device.bind(then), t1[0], _c("ink"), {"font_size": F_HEAD, "height": 140.0, "icon": 60.0, "icon_color": t1[1]})
-	mine.mouse_filter = Control.MOUSE_FILTER_STOP
-	body.add_child(mine)
-	body.add_child(_spacer(8.0))
-	body.add_child(_centered(_para("Se usará el bloqueo de pantalla del móvil (huella, cara o PIN).", F_FOOT, _c("quiet"), font_regular)))
-	body.add_child(_spacer(26.0))
-	var t2 := _tint("butter")
-	var kid := _button("party", "Es del niño", _open_lock_create.bind(then, ""), t2[0], _c("ink"), {"font_size": F_HEAD, "height": 140.0, "icon": 60.0, "icon_color": t2[1]})
-	kid.mouse_filter = Control.MOUSE_FILTER_STOP
-	body.add_child(kid)
-	body.add_child(_spacer(8.0))
-	body.add_child(_centered(_para("Elegirás un código de 4 piezas que solo sepas tú.", F_FOOT, _c("quiet"), font_regular)))
-	body.add_child(_spacer(8.0, true))
-	footer.add_child(_button("close", "Cancelar", _cancel_lock, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
-
-
-## Aviso en ventana con un botón «Entendido».
-func _popup_ok(head: String, text: String, opaque: bool = false) -> void:
-	var column := _popup(head, text, opaque)
-	var t := _tint("sky")
-	column.add_child(_button("check", "Entendido", _close_confirm, t[0], _c("ink"), {"font_size": F_BODY, "height": 112.0, "icon": 52.0, "icon_color": t[1]}))
-
-
-func _cancel_lock() -> void:
-	_close_progress()
-	if welcome == null or not is_instance_valid(welcome):
-		_open_home()
-
-
-func _lock_choose_device(then: Callable) -> void:
-	var bridge := _aviso_own()
-	if bridge != null and bool(bridge.call("deviceSecure")):
-		kids_lock = "movil"
-		_save_settings()
-		then.call()
-		return
-	# Sin bloqueo de pantalla (o fuera de Android) no hay nada que pedir: código de piezas.
-	_open_lock_create(then, "")
-	_popup_ok("Este móvil no tiene bloqueo de pantalla", "Elige un código de 4 piezas para salir del modo Kids.")
-
-
-## Página con el tablero 3D del código. Devuelve {"lock": PieceLock, "status": Label, "body", "footer"}.
-func _lock_page(head: String, text: String) -> Dictionary:
-	var page := _page("lock")
-	var body: VBoxContainer = page["body"]
-	var footer: VBoxContainer = page["footer"]
-	body.add_child(_spacer(4.0, true))
-	body.add_child(_centered(_para(head, F_TITLE + 6, _c("ink"), font_display)))
-	body.add_child(_spacer(6.0))
-	body.add_child(_centered(_para(text, F_BODY, _c("quiet"), font_medium)))
-	body.add_child(_spacer(10.0))
-	var lock := PieceLock.new()
-	lock.custom_minimum_size = Vector2(0.0, 720.0)
-	lock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(lock)
-	var status := _centered(_para(" ", F_BODY, _c("quiet"), font_semibold))
-	body.add_child(status)
-	body.add_child(_spacer(4.0, true))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	footer.add_child(row)
-	var bt := _tint("peach")
-	var del := _button("back", "Borrar", lock.back, bt[0], _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 44.0, "icon_color": bt[1]})
-	del.mouse_filter = Control.MOUSE_FILTER_STOP
-	del.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(del)
-	return {"lock": lock, "status": status, "body": body, "footer": footer, "row": row}
-
-
-func _open_lock_create(then: Callable, first: String) -> void:
-	var p := _lock_page("Elige 4 piezas" if first == "" else "Repite el código",
-		"Será el código para salir del modo Kids. Se pueden repetir piezas." if first == "" else "Toca las mismas 4 piezas, en el mismo orden.")
-	var lock: PieceLock = p["lock"]
-	var status: Label = p["status"]
-	var cancel := _button("close", "Cancelar", _cancel_lock, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 40.0, "font": font_medium})
-	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	(p["row"] as HBoxContainer).add_child(cancel)
-	lock.completed.connect(func(code: String) -> void:
-		if first == "":
-			await _wait(0.35)
-			_open_lock_create(then, code)
-		elif code == first:
-			kids_lock = "piezas"
-			kids_code_hash = (KIDS_SALT + code).sha256_text()
-			kids_fails = 0
-			kids_wait_until = 0.0
-			_save_settings()
-			then.call()
-			_popup_ok("Código guardado", "Apúntalo en un sitio seguro. Si lo olvidas, solo se puede quitar borrando los datos de la app en los ajustes de Android, y se pierde el progreso.", true)
-		else:
-			status.text = Loc.t("No coincide. Vuelve a elegirlo.")
-			lock.set_enabled(false)
-			lock.clear(true)
-			await _wait(1.1)
-			_open_lock_create(then, ""))
-
-
-## Salir de Kids con el código de piezas. Tras 3 fallos, espera de 1 minuto, que se dobla con cada fallo más
-## (se guarda la hora: cerrar la app no la salta).
-func _open_lock_enter(then: Callable) -> void:
-	var p := _lock_page("Para mayores", "Toca las 4 piezas del código para salir del modo Kids.")
-	var lock: PieceLock = p["lock"]
-	var status: Label = p["status"]
-	var stay := _button("party", "Seguir en modo Kids", _close_gate, _tint("butter")[0], _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 44.0, "font": font_medium})
-	stay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	(p["row"] as HBoxContainer).add_child(stay)
-	var tick := Timer.new()
-	tick.wait_time = 1.0
-	progress.add_child(tick)
-	var refresh := func() -> void:
-		var left := int(ceil(kids_wait_until - Time.get_unix_time_from_system()))
-		if left > 0:
-			lock.set_enabled(false)
-			status.text = Loc.f("Demasiados intentos. Espera %d:%02d.", [left / 60, left % 60])
-		elif not lock.enabled:
-			lock.set_enabled(true)
-			status.text = " "
-	tick.timeout.connect(refresh)
-	tick.start()
-	refresh.call()
-	lock.completed.connect(func(code: String) -> void:
-		if (KIDS_SALT + code).sha256_text() == kids_code_hash:
-			kids_fails = 0
-			kids_wait_until = 0.0
-			_save_settings()
-			_close_progress()
-			then.call()
-			return
-		kids_fails += 1
-		if kids_fails >= 3:
-			kids_wait_until = Time.get_unix_time_from_system() + 60.0 * pow(2.0, kids_fails - 3)
-		_save_settings()
-		status.text = Loc.t("Ese no es el código.")
-		lock.set_enabled(false)
-		lock.clear(true)
-		await _wait(0.9)
-		if is_instance_valid(lock):
-			lock.set_enabled(true)
-			refresh.call())
-	_say([_kid_line("gate")])
-
-
-## Salir de Kids con el bloqueo de pantalla del móvil (Android lo pide; la app solo sabe si ha ido bien).
-func _ask_device(then: Callable) -> void:
-	var bridge := _aviso_own()
-	_device_then = then
-	if not bridge.is_connected("device_auth", _on_device_auth):
-		bridge.connect("device_auth", _on_device_auth)
-	if not bool(bridge.call("confirmDevice", Loc.t("Salir del modo Kids"), Loc.t("Desbloquea para continuar"))):
-		# Ya no hay bloqueo de pantalla: se pide crear un código de piezas (solo puede llegar aquí un adulto que
-		# sepa quitar el bloqueo del móvil).
-		_device_then = Callable()
-		_open_math_gate(then)
-
-
-func _on_device_auth(ok: bool) -> void:
-	var then := _device_then
-	_device_then = Callable()
-	if ok and then.is_valid():
-		then.call()
 
 
 func _on_gate(v: int) -> void:

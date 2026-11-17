@@ -1,18 +1,12 @@
 package com.pabloprieto.espera;
 
 import android.app.Activity;
-import android.app.KeyguardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-
-import java.util.HashSet;
-import java.util.Set;
 
 import org.godotengine.godot.Dictionary;
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
-import org.godotengine.godot.plugin.SignalInfo;
 import org.godotengine.godot.plugin.UsedByGodot;
 
 /**
@@ -22,8 +16,6 @@ import org.godotengine.godot.plugin.UsedByGodot;
  *   stop()        lo para (al volver a la app).
  *   state()       "" (nada), "waiting", "found" (entró alguien) o "cancelled" (se tocó «Dejar de esperar»).
  *   scheduleReminder(datos) / cancelReminder()   el aviso diario con el diseño propio (AvisoReceiver, AvisoVista).
- *   deviceSecure() / confirmDevice(título, texto)   salir del modo Kids con el bloqueo de pantalla del móvil: Android
- *                 lo pide y la app solo recibe la señal device_auth(true/false).
  * Lo copia el CI en la plantilla de Gradle (android_espera/LEEME.md).
  */
 public class EsperaOnline extends GodotPlugin {
@@ -146,54 +138,5 @@ public class EsperaOnline extends GodotPlugin {
 	@UsedByGodot
 	public void clearState() {
 		EsperaService.state = "";
-	}
-
-	// ------------------------------------------------------------ bloqueo de pantalla (salir del modo Kids)
-
-	private static final int REQ_DEVICE = 47021;
-	private static final SignalInfo DEVICE_AUTH = new SignalInfo("device_auth", Boolean.class);
-
-	@Override
-	public Set<SignalInfo> getPluginSignals() {
-		Set<SignalInfo> signals = new HashSet<>();
-		signals.add(DEVICE_AUTH);
-		return signals;
-	}
-
-	@UsedByGodot
-	public boolean deviceSecure() {
-		Activity activity = getActivity();
-		if (activity == null) {
-			return false;
-		}
-		KeyguardManager km = (KeyguardManager) activity.getSystemService(Context.KEYGUARD_SERVICE);
-		return km != null && km.isDeviceSecure();
-	}
-
-	/** Abre la pantalla de desbloqueo del sistema (huella, cara, PIN o patrón). false si el móvil no tiene bloqueo. */
-	@UsedByGodot
-	public boolean confirmDevice(String title, String text) {
-		final Activity activity = getActivity();
-		if (activity == null) {
-			return false;
-		}
-		KeyguardManager km = (KeyguardManager) activity.getSystemService(Context.KEYGUARD_SERVICE);
-		if (km == null || !km.isDeviceSecure()) {
-			return false;
-		}
-		@SuppressWarnings("deprecation")
-		final Intent intent = km.createConfirmDeviceCredentialIntent(title, text);
-		if (intent == null) {
-			return false;
-		}
-		runOnUiThread(() -> activity.startActivityForResult(intent, REQ_DEVICE));
-		return true;
-	}
-
-	@Override
-	public void onMainActivityResult(int requestCode, int resultCode, Intent data) {
-		if (requestCode == REQ_DEVICE) {
-			emitSignal(DEVICE_AUTH, resultCode == Activity.RESULT_OK);
-		}
 	}
 }
