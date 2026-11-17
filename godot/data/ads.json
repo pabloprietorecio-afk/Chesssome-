@@ -1,7 +1,7 @@
 {
-  "_nota": "IDs de PRUEBA de Google (documentados en docs/enable_test_ads.md del plugin). Sustituir por los de la cuenta de AdMob antes de publicar: la CI avisa si siguen siendo los de prueba.",
-  "app_id": "ca-app-pub-3940256099942544~3347511713",
-  "interstitial": "ca-app-pub-3940256099942544/1033173712",
+  "_nota": "IDs reales de AdMob (cuenta de Pablo, app A Chess Way). Los de prueba de Google empiezan por ca-app-pub-3940256099942544.",
+  "app_id": "ca-app-pub-6179885431224418~4555610992",
+  "interstitial": "ca-app-pub-6179885431224418/1737875968",
   "first_s": 600,
   "gap_s": 480,
   "max_per_session": 6
