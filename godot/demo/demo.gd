@@ -162,6 +162,11 @@ var _rating_shown: Array = []
 var reviewed := {}
 var is_review := false
 var _since_review := 0
+## «Repasar mis fallos» (Entrenar): una sesión solo con fallos sin resolver, del más antiguo al más reciente. En la
+## sesión, cada fallo sale una vez (`_review_session_seen`); el que se salta sin resolver vuelve la próxima vez.
+var review_session := false
+var _review_session_seen := {}
+var _review_session_total := 0
 ## Cada cuántos problemas nuevos toca un repaso, y cuántos problemas tienen que haber pasado desde el fallo.
 const REVIEW_EVERY := 3
 const REVIEW_GAP := 4
@@ -2320,7 +2325,8 @@ func _build_card() -> void:
 		else:
 			if is_review:
 				var review_tint := _tint("lilac")
-				chips.add_child(_chip("Repaso de un fallo", review_tint[0], review_tint[1], "retry"))
+				var review_label := Loc.f("Repaso %d de %d", [_review_session_seen.size(), maxi(_review_session_total, _review_session_seen.size())]) if review_session else Loc.t("Repaso de un fallo")
+				chips.add_child(_chip(review_label, review_tint[0], review_tint[1], "retry"))
 			if done and _rating_shown.size() == 2:
 				var up := float(_rating_shown[1]) >= float(_rating_shown[0])
 				var chip_tint := _tint("mint" if up else "peach")
@@ -4478,6 +4484,7 @@ func _skip_test() -> void:
 	player["tries"] = kept
 	player["done"] = true
 	mode = "train"
+	review_session = false
 	_close_progress()
 	_save_player()
 	_next_training()
@@ -4501,6 +4508,9 @@ func _finish_test() -> void:
 
 ## Siguiente problema del entrenamiento: según el nivel y los puntos flojos; agotados los nuevos, un repaso.
 func _next_training() -> void:
+	if review_session:
+		_review_session_next(_pending_fails())
+		return
 	# Práctica pedida desde el análisis de una partida: esos problemas primero.
 	if not practice_queue.is_empty():
 		_start(int(practice_queue.pop_front()))
@@ -5597,6 +5607,18 @@ func _open_train_hub() -> void:
 	body.add_child(go)
 	body.add_child(_centered(_para("Mezcla las categorías y refuerza lo que más fallas." if not kids else "Problemas de todo tipo, a tu nivel.", F_FOOT, _c("quiet"), font_regular)))
 	body.add_child(_spacer(10.0))
+	# Repasar los fallos cuando uno quiera (un usuario, 17-11: «¿dónde se repasan los fallos antiguos?»). Además
+	# siguen saliendo solos en el entrenamiento (uno cada pocos problemas) y en el reto de «Tu día».
+	var fails := _pending_fails().size()
+	var fails_text := Loc.t("No te queda ninguno: los que falles aparecerán aquí.")
+	if fails == 1:
+		fails_text = Loc.t("1 problema sin resolver.")
+	elif fails > 1:
+		fails_text = Loc.f("%d problemas sin resolver, del más antiguo al más reciente.", fails)
+	body.add_child(_text("TUS FALLOS", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_spacer(8.0))
+	body.add_child(_option_button("retry", "lilac", "Repasar mis fallos", fails_text, _start_review_session))
+	body.add_child(_spacer(18.0))
 	if not kids and not Cine.clips().is_empty():
 		body.add_child(_text("FINALES DE CAMPEONES", F_CAP, _c("quiet"), font_semibold))
 		body.add_child(_spacer(8.0))
@@ -5977,6 +5999,7 @@ func _start_level_puzzle(id: String, lv: int) -> void:
 	mode = "train"
 	train_family = ""
 	train_level = lv
+	review_session = false
 	_close_progress()
 	_start(int(_index_of[id]))
 
@@ -8995,26 +9018,86 @@ func _prog_goal_go(kind: String) -> void:
 ## Directo a repasar: el fallo más antiguo que aún no se ha resuelto ni repasado (sin esperar a que toque en el
 ## entrenamiento). Si no queda ninguno, el entrenamiento de siempre.
 func _go_review() -> void:
-	if not _has_player():
+	var ids := _pending_fails()
+	if ids.is_empty():
 		_train_family("")
 		return
+	train_family = ""
+	train_level = -1
+	mode = "train"
+	review_session = false
+	_close_progress()
+	_since_review = 0
+	_start(int(_index_of[str(ids[0])]), true)
+
+
+## Fallos pendientes de repaso (ids), del más antiguo al más reciente: problemas fallados que nunca se han resuelto
+## ni repasado.
+func _pending_fails() -> Array:
+	if not _has_player():
+		return []
 	var tries: Array = player["tries"]
 	var solved := {}
 	for t: Dictionary in tries:
 		if bool(t["correct"]):
 			solved[str(t["id"])] = true
+	var out: Array = []
+	var taken := {}
 	for t: Dictionary in tries:
 		var id := str(t["id"])
-		if bool(t["correct"]) or solved.has(id) or reviewed.has(id) or not _index_of.has(id):
+		if bool(t["correct"]) or solved.has(id) or reviewed.has(id) or taken.has(id) or not _index_of.has(id):
 			continue
-		train_family = ""
-		train_level = -1
-		mode = "train"
-		_close_progress()
-		_since_review = 0
-		_start(int(_index_of[id]), true)
+		taken[id] = true
+		out.append(id)
+	return out
+
+
+## «Repasar mis fallos»: todos los pendientes seguidos, del más antiguo al más reciente, con todas las ayudas y la
+## explicación completa (como cualquier repaso: no mueve el nivel).
+func _start_review_session() -> void:
+	var ids := _pending_fails()
+	if ids.is_empty():
+		_popup(Loc.t("No te quedan fallos"), Loc.t("Los problemas que falles aparecerán aquí para repasarlos."))
 		return
-	_train_family("")
+	mode = "train"
+	train_family = ""
+	train_level = -1
+	practice_queue.clear()
+	review_session = true
+	_review_session_seen = {}
+	_review_session_total = ids.size()
+	_close_progress()
+	_review_session_next(ids)
+
+
+func _review_session_next(ids: Array) -> void:
+	for id: String in ids:
+		if not _review_session_seen.has(id):
+			_review_session_seen[id] = true
+			_since_review = 0
+			_start(int(_index_of[id]), true)
+			return
+	_review_session_end()
+
+
+## Fin de la sesión: cuántos quedan (los saltados sin resolver) y a dónde seguir.
+func _review_session_end() -> void:
+	review_session = false
+	var left := _pending_fails().size()
+	var text := Loc.t("Has repasado todos tus fallos. Los que falles a partir de ahora aparecerán aquí.") if left == 0 else Loc.f("Has pasado por todos. Te quedan %d sin resolver: saldrán la próxima vez.", left)
+	var column := _popup(Loc.t("Fallos repasados"), text)
+	var opts := {"font_size": F_SUB, "height": 104.0, "icon": 48.0}
+	var tint := _tint("mint")
+	var more := _button("play", "Seguir entrenando", func() -> void:
+		_close_confirm()
+		_train_family(""), tint[0], tint[1], opts)
+	more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(more)
+	var back := _button("back", "Volver a Entrenar", func() -> void:
+		_close_confirm()
+		_open_train_hub(), _c("field"), _c("ink"), opts)
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(back)
 
 
 ## «Tu día»: racha, objetivos de hoy, reto de la semana, lo hecho hoy e insignias.
@@ -10611,6 +10694,7 @@ func _leave_progress() -> void:
 
 func _start_training() -> void:
 	mode = "train"
+	review_session = false
 	_close_progress()
 	_next_training()
 
