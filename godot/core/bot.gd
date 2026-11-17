@@ -17,7 +17,8 @@ const INF_SCORE := 1000000
 
 ## name (el grupo: los cinco niveles de siempre), sub (escalón dentro del grupo, del más fácil al más difícil),
 ## depth, noise (centipeones), random (probabilidad de una jugada al azar), think (segundos como mucho);
-## elo y rd: fuerza medida (.github/workflows/calibrar-bot.yml + tools/calibrar/ajustar.py) en partidas contra
+## elo y rd: fuerza medida (15-17 nov 2026; .github/workflows/calibrar-bot.yml + tools/calibrar/ajustar.py con todas las
+## tandas de tools/calibrar/resultados; docs/calibracion-rival.md) en partidas contra
 ## Stockfish 16 con UCI_Elo 1320, 1600 y 2000 (ritmo 60 s + 0,6 s) y entre niveles vecinos, en un servidor de
 ## GitHub: escala de Stockfish, anclada a CCRL 40/4 (motores, no personas). rd = la mitad del margen (±2 errores
 ## típicos). Por debajo de 1320 (el Elo más bajo de Stockfish) la escala sale solo de las partidas entre niveles: es
@@ -29,22 +30,22 @@ const INF_SCORE := 1000000
 ## (17 nov, decisión de Pablo: 13 en total, Medio 1 hacia 1200) van detrás. El orden para el jugador lo dan
 ## «name» y «sub» (GROUPS, group_levels).
 const LEVELS := [
-	{"name": "Muy fácil", "sub": 3, "depth": 1, "noise": 200, "random": 0.35, "think": 0.6, "elo": 457.0, "rd": 248.0},
-	{"name": "Fácil", "sub": 4, "depth": 2, "noise": 60, "random": 0.06, "think": 1.0, "elo": 1133.0, "rd": 76.0},
-	{"name": "Medio", "sub": 3, "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1589.0, "rd": 57.0},
-	{"name": "Difícil", "sub": 2, "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1807.0, "rd": 44.0},
-	{"name": "Muy difícil", "sub": 1, "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1912.0, "rd": 46.0},
-	# Escalones nuevos (objetivo entre paréntesis; el Elo, cuando esté medido). Ronda 1 de la calibración:
-	# tools/calibrar/pruebas/ronda1-17nov.json (Difícil 1 con profundidad 5 salía más fuerte que Difícil 2) y
-	# ronda2-17nov.json (Medio 1 con profundidad 3 y poco ruido, ya casi como Medio 2).
-	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.57, "think": 0.6},  # (por debajo de Muy fácil 2)
-	{"name": "Muy fácil", "sub": 2, "depth": 1, "noise": 250, "random": 0.47, "think": 0.6},  # (≈360)
-	{"name": "Fácil", "sub": 1, "depth": 1, "noise": 130, "random": 0.22, "think": 0.8},  # (≈630)
-	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 100, "random": 0.18, "think": 1.0},  # (entre Fácil 1 y 3)
-	{"name": "Fácil", "sub": 3, "depth": 2, "noise": 75, "random": 0.1, "think": 1.0},  # (≈965)
-	{"name": "Medio", "sub": 1, "depth": 3, "noise": 110, "random": 0.05, "think": 1.5},  # (≈1200: justo encima de Fácil 4)
-	{"name": "Medio", "sub": 2, "depth": 3, "noise": 45, "random": 0.01, "think": 1.5},  # (entre Medio 1 y 3)
-	{"name": "Difícil", "sub": 1, "depth": 4, "noise": 0, "random": 0.0, "think": 2.5},  # (entre Medio 3 y Difícil 2)
+	{"name": "Muy fácil", "sub": 3, "depth": 1, "noise": 200, "random": 0.35, "think": 0.6, "elo": 447.0, "rd": 40.5},
+	{"name": "Fácil", "sub": 4, "depth": 2, "noise": 60, "random": 0.06, "think": 1.0, "elo": 1164.0, "rd": 38.5},
+	{"name": "Medio", "sub": 3, "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1626.0, "rd": 39.0},
+	{"name": "Difícil", "sub": 2, "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1828.0, "rd": 37.5},
+	{"name": "Muy difícil", "sub": 1, "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1920.0, "rd": 45.5},
+	# Escalones nuevos (17 nov), ajustados en tres rondas de calibración: tools/calibrar/pruebas/ronda1-17nov.json
+	# (Difícil 1 con profundidad 5 salía más fuerte que Difícil 2), ronda2-17nov.json (Medio 1 con profundidad 3 y
+	# poco ruido, casi como Medio 2) y la ronda 3, la definitiva (Medio 1 ≈ 1200, lo que pidió Pablo).
+	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.57, "think": 0.6, "elo": 132.0, "rd": 51.0},
+	{"name": "Muy fácil", "sub": 2, "depth": 1, "noise": 250, "random": 0.47, "think": 0.6, "elo": 276.0, "rd": 40.0},
+	{"name": "Fácil", "sub": 1, "depth": 1, "noise": 130, "random": 0.22, "think": 0.8, "elo": 672.0, "rd": 44.5},
+	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 100, "random": 0.18, "think": 1.0, "elo": 867.0, "rd": 48.0},
+	{"name": "Fácil", "sub": 3, "depth": 2, "noise": 75, "random": 0.1, "think": 1.0, "elo": 1009.0, "rd": 41.0},
+	{"name": "Medio", "sub": 1, "depth": 3, "noise": 110, "random": 0.05, "think": 1.5, "elo": 1229.0, "rd": 36.5},
+	{"name": "Medio", "sub": 2, "depth": 3, "noise": 45, "random": 0.01, "think": 1.5, "elo": 1442.0, "rd": 45.5},
+	{"name": "Difícil", "sub": 1, "depth": 4, "noise": 0, "random": 0.0, "think": 2.5, "elo": 1733.0, "rd": 42.0},
 ]
 ## Los cinco grupos, de más fácil a más difícil.
 const GROUPS := ["Muy fácil", "Fácil", "Medio", "Difícil", "Muy difícil"]

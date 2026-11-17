@@ -1,0 +1,8 @@
+{
+  "a": 10,
+  "b": "1",
+  "partidas": 32,
+  "puntos_a": 18.5,
+  "reloj_stockfish": "60+0.6",
+  "nota": "Tanda de la calibración del 17-11, ronda 3 (run 43999764358); reconstruida de la línea HECHO del registro (sin el detalle de cada partida)."
+}

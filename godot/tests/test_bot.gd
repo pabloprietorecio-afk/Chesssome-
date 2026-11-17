@@ -50,7 +50,16 @@ func _init() -> void:
 	for g in 5:
 		_comprueba(Bot.group_levels(g)[-1] == g, "el nivel de siempre %d es el último escalón de su grupo" % g)
 	_comprueba(Bot.level_name(10) == "Medio 1" and Bot.level_name(2) == "Medio 3" and Bot.level_name(4) == "Muy difícil", "nombres: «Medio 1», «Medio 3», «Muy difícil»")
-	_comprueba(Bot.level_elo(2) == 1590 and Bot.level_elo(1) == 1130, "Elo medido, redondeado a la decena")
+	_comprueba(Bot.level_elo(2) == 1630 and Bot.level_elo(10) == 1230, "Elo medido, redondeado a la decena")
+	# Todos medidos y, dentro de cada grupo y entre grupos, de menos a más.
+	var ladder: Array = []
+	for g in Bot.GROUPS.size():
+		for lv: int in Bot.group_levels(g):
+			ladder.append(float(Bot.LEVELS[lv].get("elo", -1.0)))
+	var rising := not ladder.has(-1.0)
+	for k in range(1, ladder.size()):
+		rising = rising and float(ladder[k]) > float(ladder[k - 1])
+	_comprueba(rising, "los 13 niveles medidos, de menos a más fuerte: %s" % str(ladder))
 	# Guerra de peones.
 	var peones := Chess.from_fen("8/pppppppp/8/8/8/8/PPPPPPPP/8 w - - 0 1")
 	var e4 := peones.find_uci("e2e4")
