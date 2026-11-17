@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video test_dia test_retos test_espera test_niveles; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video test_dia test_retos test_espera test_niveles test_war test_war_app; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -203,7 +203,7 @@ jobs:
           # Lo que la app lee como archivo suelto tiene que ir dentro del APK.
           MISSING=0
           FIRST=$(python3 -c "import json; print(json.load(open('godot/data/demo_puzzles.json'))['puzzles'][0]['id'])")
-          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/explain/$FIRST.json assets/sets/fichas/iconos.bin assets/ui/iconos.bin assets/ui/iconos.json assets/ui/emblema.bin assets/data/curso.json; do
+          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/explain/$FIRST.json assets/sets/fichas/iconos.bin assets/ui/iconos.bin assets/ui/iconos.json assets/ui/emblema.bin assets/data/curso.json assets/board3d/escudo.bin assets/board3d/escudo_roto.bin; do
             if unzip -l $A | grep -q " $f$"; then echo "OK $f"; else echo "FALTA $f"; MISSING=1; fi
           done
           [ "$MISSING" = 0 ]
@@ -356,6 +356,9 @@ jobs:
           export SHOTS_DIR=$GITHUB_WORKSPACE/build/shots
           timeout 3600 xvfb-run -a -s "-screen 0 540x1200x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 540x1200 res://tests/shots.tscn > shots.log 2>&1 || true
           grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR|^   at:" shots.log | head -80 || true
+          # War Chess: escudos, casilla roja, botón «Blindar» y fotogramas del golpe.
+          timeout 600 xvfb-run -a -s "-screen 0 540x1200x24" ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --path godot --audio-driver Dummy --rendering-driver vulkan --rendering-method mobile --fixed-fps 30 --resolution 540x1200 res://tests/war_shots.tscn > war_shots.log 2>&1 || true
+          grep -E "^SHOT|SCRIPT ERROR|SHADER ERROR|Parse Error|^ERROR" war_shots.log | head -40 || true
           ls -la build/shots
 
       - name: Publicar capturas en la rama ci-shots
@@ -589,7 +592,7 @@ jobs:
           [ -n "$T" ] && [ "$T" -ge 35 ] || { echo "targetSdkVersion=$T: Play exige 35 o más"; exit 1; }
           # Sonido de la intro (importado por Godot: va como .oggvorbisstr dentro de .godot/imported).
           if grep -q "intro_sonido.ogg" build/avisos-log/apk-contenido.txt; then echo "OK sonido de la intro"; else echo "FALTA el sonido de la intro"; exit 1; fi
-          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/data/ads.json assets/ui/iconos.json assets/intro/intro.ogv assets/espera/caballo_1.ogv assets/espera/caballo_2.ogv assets/espera/caballo_3.ogv; do
+          for f in assets/data/demo_puzzles.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/data/ads.json assets/ui/iconos.json assets/intro/intro.ogv assets/espera/caballo_1.ogv assets/espera/caballo_2.ogv assets/espera/caballo_3.ogv assets/board3d/escudo.bin assets/board3d/escudo_roto.bin; do
             if grep -q " $f$" build/avisos-log/apk-contenido.txt; then echo "OK $f"; else echo "FALTA $f"; exit 1; fi
           done
 

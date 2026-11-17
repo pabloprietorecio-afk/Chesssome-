@@ -28,6 +28,8 @@ uniform vec4 c_hint_dark : source_color = vec4(0.16, 0.09, 0.05, 1.0);
 uniform vec4 c_hint_light : source_color = vec4(0.98, 0.93, 0.8, 1.0);
 // R: 1 = origen de la última jugada, 2 = destino, 3 = seleccionada, 4 = rey en jaque.
 // G: 1 = destino libre (punto), 2 = destino con captura (anillo).  B: 255 = casilla ocupada.
+// War Chess. A: 255 normal, 128 = pieza blindada (tinte rojo suave). G = 3: ataque que solo rompe un blindaje.
+uniform vec4 c_armor : source_color = vec4(0.93, 0.2, 0.2, 1.0);
 uniform sampler2D state : filter_nearest, repeat_disable;
 
 varying vec3 lp;
@@ -83,6 +85,12 @@ void fragment() {
 	int mark = int(st.g * 255.0 + 0.5);
 	float d = length(f - vec2(0.5));
 	float aa = fwidth(d) * 1.2 + 0.002;
+	if (st.a < 0.75) {
+		// Blindada: rojo suave en toda la casilla, algo más intenso hacia el borde (se lee bajo la pieza).
+		col = mix(col, c_armor.rgb, 0.24 + 0.16 * smoothstep(0.2, 0.62, d));
+		// También restando verde y azul: en las casillas muy claras la mezcla sola casi no se nota.
+		col *= vec3(1.0, 0.86, 0.86);
+	}
 	if (hi == 1) {
 		col = mix(col, c_last.rgb, 0.42);
 	} else if (hi == 2) {
@@ -100,13 +108,19 @@ void fragment() {
 	float hint_alpha = dark ? 0.6 : 0.42;
 	if (mark == 1) {
 		col = mix(col, hint, (1.0 - smoothstep(0.15 - aa, 0.15 + aa, d)) * hint_alpha);
+	} else if (mark == 3) {
+		// Anillo rojo y discontinuo: el ataque rompe el blindaje, no captura.
+		float ring3 = smoothstep(0.36 - aa, 0.36 + aa, d) * (1.0 - smoothstep(0.47 - aa, 0.47 + aa, d));
+		vec2 v3 = f - vec2(0.5);
+		float dash = step(0.0, sin(atan(v3.y, v3.x) * 8.0));
+		col = mix(col, c_armor.rgb * 0.75, ring3 * dash * 0.85);
 	} else if (mark == 2) {
 		float ring = smoothstep(0.38 - aa, 0.38 + aa, d) * (1.0 - smoothstep(0.47 - aa, 0.47 + aa, d));
 		col = mix(col, hint, ring * (hint_alpha + 0.1));
 	}
 	ALBEDO = col;
 	// Los resaltados y las marcas son pintura sobre el material: ahí no brilla como metal.
-	float paint = (hi > 0 || mark > 0) ? 0.5 : 1.0;
+	float paint = (hi > 0 || mark > 0 || st.a < 0.75) ? 0.5 : 1.0;
 	METALLIC = metallic * paint;
 	ROUGHNESS = rough + joint * 0.25;
 	SPECULAR = 0.5;

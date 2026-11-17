@@ -155,6 +155,8 @@ var pan := Vector2.ZERO
 var last_from := -1
 var last_to := -1
 var selected := -1
+## War Chess: la jugada de blindar la pieza seleccionada, si puede (−1 si no).
+var armor_option := -1
 
 var _targets := PackedInt32Array()
 var _pieces := {}
@@ -1194,7 +1196,8 @@ func _pose_flat(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash:
 func set_fen(fen: String) -> void:
 	set_badge(-1, "")
 	_kill_tweens()
-	chess = Chess.from_fen(fen)
+	chess = WarChess.parse(fen)
+	armor_option = -1
 	last_from = -1
 	last_to = -1
 	selected = -1
@@ -1206,11 +1209,13 @@ func set_fen(fen: String) -> void:
 		_pieces_root.remove_child(n)
 		n.queue_free()
 	_pieces.clear()
+	_shields.clear()
 	_dying.clear()
 	for s in 64:
 		if chess.b[s] != 0:
 			_pieces[s] = _make_piece(chess.b[s], s)
 	_refresh_state()
+	_sync_shields(false)
 
 
 func set_orientation(o: int) -> void:
@@ -1247,9 +1252,15 @@ func _refresh_state() -> void:
 		hi[chess.king_sq(chess.turn)] = 4
 	for m in _targets:
 		var to := Chess.move_to(m)
-		mark[to] = 2 if chess.b[to] != 0 or Chess.move_flag(m) == Chess.F_EN_PASSANT else 1
+		if WarChess.is_break_move(m):
+			mark[to] = 3
+		else:
+			mark[to] = 2 if chess.b[to] != 0 or Chess.move_flag(m) == Chess.F_EN_PASSANT else 1
+	var war := chess as WarChess
 	for s in 64:
-		_state_img.set_pixel(s & 7, s >> 3, Color8(hi[s], mark[s], 255 if chess.b[s] != 0 else 0, 255))
+		# A: 255 normal; 128 = pieza blindada (War Chess): la casilla se tiñe de rojo.
+		var armored := war != null and war.is_armored(s)
+		_state_img.set_pixel(s & 7, s >> 3, Color8(hi[s], mark[s], 255 if chess.b[s] != 0 else 0, 128 if armored else 255))
 	_state_tex.update(_state_img)
 	# Con fichas, el rey en jaque se tiñe: la ficha tapa casi toda la casilla resaltada.
 	var alert_sq := chess.king_sq(chess.turn) if is_tokens() and chess.in_check() else -1
@@ -1381,6 +1392,7 @@ func apply_camera() -> void:
 	_cam_right = right
 	_cam_up = up
 	_cam_back = back
+	_place_shields()
 	# Encuadre: la cámara se coloca a la menor distancia a la que caben, dentro de la vista y con su margen,
 	# las esquinas del marco y la altura de las piezas. En un móvil en vertical manda el ancho: el tablero
 	# va de lado a lado. Si la vista es baja (o se gira el tablero), manda el alto y la cámara se aleja.
@@ -1683,6 +1695,12 @@ func _pose_sway(t: float, node: Node3D, pos: Vector3, amount: float) -> void:
 
 ## Estrellitas que saltan donde un recortable come a otro.
 func _burst(at: Vector3) -> void:
+	_ensure_star_tex()
+	for i in 7:
+		_burst_star(at, i)
+
+
+func _ensure_star_tex() -> void:
 	if _star_tex == null:
 		var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
 		for y in 64:
@@ -1693,23 +1711,25 @@ func _burst(at: Vector3) -> void:
 				var a := clampf((edge - v.length()) * 10.0, 0.0, 1.0)
 				img.set_pixel(x, y, Color(1.0, 0.86, 0.25, a))
 		_star_tex = ImageTexture.create_from_image(img)
-	for i in 7:
-		var star := Sprite3D.new()
-		star.texture = _star_tex
-		star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		star.no_depth_test = true
-		star.shaded = false
-		star.pixel_size = 0.0045
-		star.render_priority = 2
-		star.position = at + Vector3(0.0, 0.3, 0.0)
-		_pieces_root_for_fx().add_child(star)
-		var ang := TAU * float(i) / 7.0 + randf() * 0.5
-		var out := (_cam_right * cos(ang) + _cam_up * sin(ang)) * randf_range(0.5, 0.85)
-		var tw := create_tween().set_parallel(true)
-		tw.tween_property(star, "position", star.position + out, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(star, "modulate:a", 0.0, 0.38).set_ease(Tween.EASE_IN)
-		tw.tween_property(star, "pixel_size", 0.0015, 0.38)
-		tw.chain().tween_callback(star.queue_free)
+
+
+func _burst_star(at: Vector3, i: int) -> void:
+	var star := Sprite3D.new()
+	star.texture = _star_tex
+	star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	star.no_depth_test = true
+	star.shaded = false
+	star.pixel_size = 0.0045
+	star.render_priority = 2
+	star.position = at + Vector3(0.0, 0.3, 0.0)
+	_pieces_root_for_fx().add_child(star)
+	var ang := TAU * float(i) / 7.0 + randf() * 0.5
+	var out := (_cam_right * cos(ang) + _cam_up * sin(ang)) * randf_range(0.5, 0.85)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(star, "position", star.position + out, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(star, "modulate:a", 0.0, 0.38).set_ease(Tween.EASE_IN)
+	tw.tween_property(star, "pixel_size", 0.0015, 0.38)
+	tw.chain().tween_callback(star.queue_free)
 
 
 func _pieces_root_for_fx() -> Node:
@@ -1790,10 +1810,15 @@ func select(s: int) -> void:
 	var prev := selected
 	selected = s
 	_targets = PackedInt32Array()
+	armor_option = -1
 	if s >= 0:
 		for m in chess.legal_moves():
 			if Chess.move_from(m) == s:
-				_targets.append(m)
+				# Blindarse no es ir a una casilla: lo ofrece un botón aparte (BoardView3D), no un toque.
+				if WarChess.is_armor_move(m):
+					armor_option = m
+				else:
+					_targets.append(m)
 	for q: int in [prev, s]:
 		if q >= 0 and _pieces.has(q):
 			var node: Node3D = _pieces[q]
@@ -1950,6 +1975,9 @@ func play_move(m: int, dropped: bool = false) -> void:
 	set_badge(-1, "")
 	finish_animations()
 	_stop_idle()
+	if WarChess.is_armor_move(m) or WarChess.is_break_move(m):
+		_play_war(m)
+		return
 	var from := Chess.move_from(m)
 	var to := Chess.move_to(m)
 	var flag := Chess.move_flag(m)
@@ -1996,6 +2024,8 @@ func play_move(m: int, dropped: bool = false) -> void:
 		if rook != null:
 			_pieces[rook_to] = rook
 	_refresh_state()
+	# War Chess: la pieza que se mueve deja su blindaje (o lo lleva, si las reglas lo dicen).
+	_sync_shields(anim_mode != Anim.NONE)
 	if mover == null:
 		_settle()
 		return
@@ -2413,3 +2443,260 @@ func _pose_topple(t: float, node: Node3D, pos: Vector3, axis: Vector3) -> void:
 func _pose_flip(t: float, node: Node3D, pos: Vector3, axis: Vector3) -> void:
 	var h: float = TOKEN["height"]
 	_pose(node, pos + Vector3(0.0, h * t + 0.5 * sin(PI * t), 0.0), axis, PI * t)
+
+
+# ---------------------------------------------------------------- War Chess: blindaje
+# Una pieza blindada lleva un escudo a su lado (godot/board3d/escudo.bin, tools/war/escudo.py) y su casilla se tiñe
+# de rojo (canal A del estado, ver _refresh_state). Blindarse: el escudo cae a su lado y la pieza se afianza.
+# Romper un blindaje: la atacante embiste y vuelve a su casilla; el escudo se agrieta y sale despedido y la pieza
+# atacada da una sacudida corta, con un golpe metálico. Todo dura menos de medio segundo y no bloquea el juego:
+# la posición ya está actualizada antes de que empiece la animación.
+
+const SHIELD_FILE := "res://board3d/escudo.bin"
+const SHIELD_CRACKED_FILE := "res://board3d/escudo_roto.bin"
+## Alto del escudo en el tablero (una casilla mide 1).
+const SHIELD_HEIGHT := 0.44
+
+var _shields := {}
+var _shield_tex: Texture2D
+var _shield_cracked_tex: Texture2D
+
+
+static func _bin_texture(path: String) -> Texture2D:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.is_empty():
+		return null
+	var img := Image.new()
+	if img.load_png_from_buffer(bytes) != OK:
+		return null
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+func _shield_texture(cracked: bool) -> Texture2D:
+	if _shield_tex == null:
+		_shield_tex = _bin_texture(SHIELD_FILE)
+		_shield_cracked_tex = _bin_texture(SHIELD_CRACKED_FILE)
+	return _shield_cracked_tex if cracked else _shield_tex
+
+
+## Dónde va el escudo de la pieza de `s`: a su derecha según se mira, a media altura y un poco hacia la cámara,
+## para que no tape la pieza ni la de al lado.
+func _shield_pos(s: int) -> Vector3:
+	var p := chess.b[s] if s >= 0 and s < 64 else 0
+	var h := _piece_height(p & 7) if p != 0 else 0.6
+	var y := clampf(h * 0.42, 0.2, 0.62)
+	return sq_pos(s) + _cam_right * 0.3 + _cam_back * 0.12 + Vector3(0.0, y, 0.0)
+
+
+func _make_shield() -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = _shield_texture(false)
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.no_depth_test = true
+	sp.render_priority = 2
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+	sp.pixel_size = SHIELD_HEIGHT / 224.0
+	return sp
+
+
+## Escudos según la posición: aparecen los nuevos y se van los que ya no están. `animate`: con un pequeño gesto.
+func _sync_shields(animate: bool) -> void:
+	if not _built or _pieces_root == null:
+		return
+	var war := chess as WarChess
+	var want := {}
+	if war != null:
+		for s in 64:
+			if war.is_armored(s):
+				want[s] = true
+	for s: int in _shields.keys():
+		if not want.has(s):
+			var old: Sprite3D = _shields[s]
+			_shields.erase(s)
+			_drop_shield(old, animate)
+	for s: int in want:
+		if _shields.has(s):
+			continue
+		var sp := _make_shield()
+		_pieces_root.add_child(sp)
+		_shields[s] = sp
+		sp.position = _shield_pos(s)
+		if animate and anim_mode != Anim.NONE:
+			_raise_shield(sp, s)
+
+
+## Coloca los escudos (al girar o mover la cámara).
+func _place_shields() -> void:
+	for s: int in _shields:
+		var sp: Sprite3D = _shields[s]
+		if is_instance_valid(sp):
+			sp.position = _shield_pos(s)
+
+
+## El escudo se va sin más (la pieza se ha movido o se ha cambiado la posición): se encoge y se desvanece.
+func _drop_shield(sp: Sprite3D, animate: bool) -> void:
+	if not is_instance_valid(sp):
+		return
+	if not animate or anim_mode == Anim.NONE:
+		sp.queue_free()
+		return
+	var tw := sp.create_tween().set_parallel(true)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.16)
+	tw.tween_property(sp, "pixel_size", sp.pixel_size * 0.6, 0.16)
+	tw.chain().tween_callback(sp.queue_free)
+
+
+## El escudo aparece: baja desde un poco más arriba, se encaja con un rebote y la pieza se afianza.
+func _raise_shield(sp: Sprite3D, s: int) -> void:
+	var rest := _shield_pos(s)
+	var size := sp.pixel_size
+	if anim_mode == Anim.MINIMAL:
+		sp.modulate.a = 0.0
+		var t0 := sp.create_tween()
+		t0.tween_property(sp, "modulate:a", 1.0, 0.12)
+		return
+	var fast := anim_mode == Anim.FAST
+	var k := 0.7 if fast else 1.0
+	sp.position = rest + Vector3(0.0, 0.32, 0.0)
+	sp.modulate.a = 0.0
+	sp.pixel_size = size * 1.35
+	var tw := _tw()
+	tw.set_parallel(true)
+	tw.tween_property(sp, "modulate:a", 1.0, 0.1 * k)
+	tw.tween_property(sp, "position", rest, 0.2 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "pixel_size", size, 0.2 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# La pieza se agacha un poco al recibir el escudo, como quien se cubre.
+	var node: Node3D = _pieces.get(s)
+	if node != null:
+		var pos := sq_pos(s)
+		var tp := _tw()
+		tp.tween_interval(0.12 * k)
+		tp.tween_method(func(t: float) -> void:
+			_pose(node, pos, Vector3.UP, 0.0, 1.0 - 0.08 * sin(t * PI)), 0.0, 1.0, 0.2 * k)
+	_sfx("armor_up", 0.12 * k)
+
+
+## Jugadas propias de War Chess: blindarse y romper un blindaje. La posición cambia ya; la animación va detrás.
+func _play_war(m: int) -> void:
+	var from := Chess.move_from(m)
+	var to := Chess.move_to(m)
+	var armoring := WarChess.is_armor_move(m)
+	var old_shield: Sprite3D = _shields.get(to) if not armoring else null
+	if old_shield != null:
+		_shields.erase(to)
+	chess.apply(m)
+	if selected >= 0 and _pieces.has(selected):
+		_set_glow(_pieces[selected], 0.0)
+		_rest(_pieces[selected], selected)
+	selected = -1
+	armor_option = -1
+	_drag_sq = -1
+	_targets = PackedInt32Array()
+	last_from = from
+	last_to = to
+	_refresh_state()
+	if armoring:
+		_sync_shields(true)
+		if anim_mode == Anim.NONE or anim_mode == Anim.MINIMAL:
+			_sfx("armor_up")
+		if _running <= 0:
+			_settle()
+		return
+	_break_armor(from, to, old_shield)
+
+
+## La atacante embiste un poco y vuelve; al tocar, golpe metálico, el escudo se agrieta y sale despedido y la
+## pieza atacada se sacude sobre su casilla. Corto: unos 0,4 s en «Completas».
+func _break_armor(from: int, to: int, shield: Sprite3D) -> void:
+	var attacker: Node3D = _pieces.get(from)
+	var victim: Node3D = _pieces.get(to)
+	var mode := anim_mode
+	if mode == Anim.NONE:
+		if shield != null:
+			shield.queue_free()
+		_sfx("armor_hit")
+		_settle()
+		return
+	var k := 0.7 if mode == Anim.FAST else 1.0
+	var a := sq_pos(from)
+	var b := sq_pos(to)
+	var lunge := 0.0
+	if mode != Anim.MINIMAL and attacker != null:
+		# Embestida: hasta un tercio del camino (como mucho 0,8 casillas), y vuelta.
+		var dist := a.distance_to(b)
+		var reach := a.lerp(b, minf(0.8, dist * 0.34) / maxf(dist, 0.001))
+		lunge = 0.13 * k
+		var ta := _tw()
+		ta.tween_method(func(t: float) -> void:
+			_pose(attacker, a.lerp(reach, t) + Vector3(0.0, sin(t * PI) * 0.08, 0.0), Vector3.UP, 0.0), 0.0, 1.0, lunge).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		ta.tween_method(func(t: float) -> void:
+			_pose(attacker, reach.lerp(a, t), Vector3.UP, 0.0), 0.0, 1.0, 0.18 * k).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_sfx("armor_hit", lunge)
+	if victim != null:
+		var pos := sq_pos(to)
+		var side := _cam_right
+		var tv := _tw()
+		tv.tween_interval(lunge)
+		# Sacudida corta: tres vaivenes que se apagan en 0,22 s, con un leve hundimiento al recibir el golpe.
+		var shake := 0.22 * (0.8 if mode == Anim.MINIMAL else 1.0) * k
+		var amp := 0.05 if mode == Anim.MINIMAL else 0.075
+		tv.tween_method(func(t: float) -> void:
+			var fade := (1.0 - t) * (1.0 - t)
+			_pose(victim, pos + side * sin(t * TAU * 3.0) * amp * fade, Vector3.UP, 0.0, 1.0 - 0.06 * fade * (1.0 if t < 0.35 else 0.0)), 0.0, 1.0, shake)
+	if shield != null and is_instance_valid(shield):
+		_shatter_shield(shield, lunge, mode == Anim.MINIMAL, k)
+
+
+## El escudo golpeado: destello, se agrieta y sale despedido girando hacia fuera mientras se desvanece.
+func _shatter_shield(sp: Sprite3D, delay: float, minimal: bool, k: float) -> void:
+	var start := sp.position
+	var size := sp.pixel_size
+	var tw := sp.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(sp):
+			sp.texture = _shield_texture(true)
+			sp.modulate = Color(1.6, 1.6, 1.6, 1.0))
+	if minimal:
+		tw.tween_property(sp, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.18)
+		tw.tween_callback(sp.queue_free)
+		return
+	# Chispas en el punto del golpe; el escudo se hincha un instante, ya agrietado, para que se vea la grieta.
+	tw.tween_callback(_sparks.bind(start))
+	tw.tween_property(sp, "pixel_size", size * 1.3, 0.05 * k).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(sp, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.08 * k)
+	tw.tween_interval(0.05 * k)
+	var out := start + _cam_right * 0.5 + Vector3(0.0, 0.42, 0.0)
+	tw.set_parallel(true)
+	tw.tween_property(sp, "position", out, 0.3 * k).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "rotation:z", -1.8, 0.3 * k).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "pixel_size", size * 0.7, 0.3 * k)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.3 * k).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(sp.queue_free)
+
+
+## Unas chispas cortas, de metal, donde el escudo recibe el golpe.
+func _sparks(at: Vector3) -> void:
+	_ensure_star_tex()
+	for i in 8:
+		var spark := Sprite3D.new()
+		spark.texture = _star_tex
+		spark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		spark.no_depth_test = true
+		spark.shaded = false
+		spark.pixel_size = 0.0034
+		spark.render_priority = 3
+		spark.modulate = Color(1.0, 0.95, 0.75)
+		spark.position = at
+		_pieces_root_for_fx().add_child(spark)
+		var ang := TAU * float(i) / 8.0 + randf() * 0.5
+		var out := (_cam_right * cos(ang) + _cam_up * sin(ang)) * randf_range(0.24, 0.46)
+		var tw := spark.create_tween().set_parallel(true)
+		tw.tween_property(spark, "position", at + out, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(spark, "modulate:a", 0.0, 0.22).set_ease(Tween.EASE_IN)
+		tw.tween_property(spark, "pixel_size", 0.001, 0.22)
+		tw.chain().tween_callback(spark.queue_free)

@@ -13,6 +13,10 @@ extends RefCounted
 
 const VALUE := [0, 100, 310, 330, 500, 900, 0]
 const MATE := 100000
+## War Chess: valor de un blindaje aún sin usar (centipeones). Una pieza blindada no suma nada por estarlo: lo que
+## vale el blindaje (que un ataque no la capture) ya lo ve la búsqueda. Con un premio fijo por blindar, el rival se
+## pasaba la partida blindando piezas.
+const ARMOR_OPTION := 6
 const INF_SCORE := 1000000
 
 ## name (el grupo: los cinco niveles de siempre), sub (escalón dentro del grupo, del más fácil al más difícil),
@@ -238,7 +242,7 @@ func _search(pos: Chess, depth: int, alpha: int, beta: int, ply: int) -> int:
 	if _stopped:
 		return 0
 	var me := pos.turn
-	var in_check := variant == "" and pos.in_check()
+	var in_check := variant != "peones" and pos.in_check()
 	# Extensión por jaque: una posición con el rey atacado no se corta aquí (si no, los mates se ven tarde).
 	if in_check and ply < 24:
 		depth += 1
@@ -286,7 +290,7 @@ func _search(pos: Chess, depth: int, alpha: int, beta: int, ply: int) -> int:
 			alpha = score
 		if alpha >= beta:
 			# Jugada tranquila que corta: se recuerda para probarla pronto en posiciones hermanas.
-			if pos.b[Chess.move_to(m)] == 0:
+			if _quiet(pos, m):
 				var k: Array = _killers.get(ply, [])
 				if not k.has(m):
 					k.push_front(m)
@@ -315,7 +319,7 @@ func _quiesce(pos: Chess, alpha: int, beta: int, ply: int, left: int) -> int:
 	if (nodes & 255) == 0 and Time.get_ticks_msec() > _deadline:
 		_stopped = true
 	var me := pos.turn
-	if variant == "" and left > 0 and pos.in_check():
+	if variant != "peones" and left > 0 and pos.in_check():
 		var any := false
 		var best := -INF_SCORE
 		for m in _order(pos, pos.pseudo_moves(), -1, ply):
@@ -338,7 +342,10 @@ func _quiesce(pos: Chess, alpha: int, beta: int, ply: int, left: int) -> int:
 		alpha = stand
 	var caps := PackedInt32Array()
 	for m in pos.pseudo_moves():
-		if pos.b[Chess.move_to(m)] != 0 or Chess.move_promo(m) == Chess.QUEEN or Chess.move_flag(m) == Chess.F_EN_PASSANT:
+		var fl := Chess.move_flag(m)
+		if fl == WarChess.F_ARMOR or fl == WarChess.F_BREAK:
+			continue
+		if pos.b[Chess.move_to(m)] != 0 or Chess.move_promo(m) == Chess.QUEEN or fl == Chess.F_EN_PASSANT:
 			caps.append(m)
 	for m in _order(pos, caps, -1, ply):
 		var c := pos.after(m)
@@ -356,7 +363,18 @@ func _quiesce(pos: Chess, alpha: int, beta: int, ply: int, left: int) -> int:
 
 ## Clave de la posición para la tabla de transposiciones (casillas, turno, enroques y al paso).
 func _key(pos: Chess) -> int:
+	if pos is WarChess:
+		var w := pos as WarChess
+		return hash([pos.b, pos.turn, pos.castle, pos.ep, w.armored, w.spent])
 	return hash([pos.b, pos.turn, pos.castle, pos.ep])
+
+
+## Jugada tranquila: ni captura, ni golpe a un blindaje (blindarse sí lo es).
+static func _quiet(pos: Chess, m: int) -> bool:
+	var fl := Chess.move_flag(m)
+	if fl == WarChess.F_ARMOR:
+		return true
+	return fl != WarChess.F_BREAK and pos.b[Chess.move_to(m)] == 0
 
 
 ## Orden de prueba: la de la tabla, capturas (la pieza más valiosa con la atacante más barata), coronaciones,
@@ -366,9 +384,15 @@ func _order(pos: Chess, moves: PackedInt32Array, first: int = -1, ply: int = 0) 
 	var killers: Array = _killers.get(ply, [])
 	for m in moves:
 		var victim := pos.b[Chess.move_to(m)]
+		var fl := Chess.move_flag(m)
 		var k := 0
 		if m == first:
 			k = 1000000
+		elif fl == WarChess.F_BREAK:
+			# Romper un blindaje: después de las capturas (no gana material por sí solo).
+			k = 85000 + VALUE[victim & 7] / 10
+		elif fl == WarChess.F_ARMOR:
+			k = mini(int(_history.get(m, 0)), 70000)
 		elif victim != 0:
 			k = 100000 + VALUE[victim & 7] * 10 - VALUE[pos.b[Chess.move_from(m)] & 7] / 10
 		elif Chess.move_promo(m) == Chess.QUEEN:
@@ -486,4 +510,11 @@ func evaluate(pos: Chess) -> int:
 	for c in 2:
 		if bishops[c] >= 2:
 			score[c] += 30
+	if pos is WarChess:
+		# War Chess: un blindaje sin usar es una opción que aún queda (gastarlo sin motivo cuesta un poco).
+		var w := pos as WarChess
+		for s in 64:
+			var p := pos.b[s]
+			if p != 0 and (p & 7) != Chess.KING and w.spent[s] == 0:
+				score[Chess.color_of(p)] += ARMOR_OPTION
 	return score[pos.turn] - score[1 - pos.turn]
