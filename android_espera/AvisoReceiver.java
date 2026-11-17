@@ -114,15 +114,16 @@ public class AvisoReceiver extends BroadcastReceiver {
 		}
 		b.setSmallIcon(AvisoVista.smallIcon(c));
 		b.setColor(AvisoVista.BRAND);
-		android.graphics.Bitmap large = AvisoVista.largeIcon(c);
-		if (large != null) {
-			b.setLargeIcon(large);
-		}
 		b.setContentIntent(AvisoVista.openApp(c));
 		b.setAutoCancel(true);
 		b.setCategory(Notification.CATEGORY_REMINDER);
 		b.setWhen(System.currentTimeMillis()).setShowWhen(true);
-		AvisoVista.apply(c, b, title, text, pill);
+		if (!AvisoVista.apply(c, b, title, text, pill)) {
+			android.graphics.Bitmap large = AvisoVista.largeIcon(c);
+			if (large != null) {
+				b.setLargeIcon(large);
+			}
+		}
 		nm.notify(ID, b.build());
 	}
 }

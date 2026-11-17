@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aviso de A Chess Way, desplegado (AvisoVista.java): degradado gris, el logo del caballo en grande, título,
-     texto y una pastilla con la acción. Solo vistas que admite RemoteViews. -->
+<!-- Aviso de A Chess Way, desplegado (AvisoVista.java): degradado gris, el logo del caballo más grande, título, texto
+     y la pastilla con la acción debajo del texto (a la derecha le quitaba el ancho al texto). Solo vistas que admite
+     RemoteViews. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/aviso_raiz"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/aviso_fondo"
-    android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="12dp">
+    android:padding="14dp">
 
     <ImageView
         android:id="@+id/aviso_logo"
-        android:layout_width="76dp"
-        android:layout_height="76dp"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:background="@drawable/aviso_marco_logo"
-        android:padding="5dp"
+        android:padding="4dp"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_large_achessway" />
 
@@ -33,32 +33,32 @@
             android:ellipsize="end"
             android:maxLines="2"
             android:textColor="#FFFFFFFF"
-            android:textSize="19sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/aviso_texto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:ellipsize="end"
-            android:maxLines="5"
+            android:maxLines="4"
             android:textColor="#F2FFFFFF"
             android:textSize="15sp" />
-    </LinearLayout>
 
-    <TextView
-        android:id="@+id/aviso_pastilla"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:background="@drawable/aviso_pastilla"
-        android:maxLines="1"
-        android:paddingStart="14dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="14dp"
-        android:paddingBottom="8dp"
-        android:textColor="#FFF26A1E"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        <TextView
+            android:id="@+id/aviso_pastilla"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/aviso_pastilla"
+            android:maxLines="1"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"
+            android:textColor="#FFF26A1E"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </LinearLayout>

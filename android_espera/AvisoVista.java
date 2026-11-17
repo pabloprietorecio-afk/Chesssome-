@@ -67,6 +67,9 @@ final class AvisoVista {
 		b.setCustomHeadsUpContentView(small);
 		b.setCustomBigContentView(views(c, big, title, text, pill));
 		b.setColor(BRAND);
+		// Sin «large icon»: el logo ya va en la tarjeta, y con él Android reserva una columna a la derecha que deja
+		// el texto sin sitio (en el móvil de Pablo, 17-11, no se veían ni el título ni el texto).
+		b.setLargeIcon((Bitmap) null);
 		return true;
 	}
 
