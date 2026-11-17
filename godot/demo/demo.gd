@@ -348,6 +348,8 @@ var language := "es"
 ## La hoja de idiomas se abrió desde Opciones (al elegir se vuelve a Opciones) o desde el tablerito del inicio.
 var _lang_from_options := false
 var welcome_seen := false
+## Se ha enseñado ya la ventana de idioma de la primera vez (sale sola una vez, sobre la bienvenida).
+var lang_asked := false
 var app_version := ""
 ## Reto del día, racha, reto semanal e insignias (core/progress.gd), cargado la primera vez que hace falta.
 var prog := {}
@@ -1111,6 +1113,9 @@ func _ready() -> void:
 	_idle()
 	if not welcome_seen:
 		_open_welcome()
+		# La primera vez que se abre la app, lo primero es elegir el idioma (ya viene marcado el del móvil).
+		if not lang_asked:
+			_open_language_dialog()
 	else:
 		# Cada vez que se abre la app: la pantalla de inicio, con todo lo que se puede hacer.
 		_open_home()
@@ -1247,6 +1252,7 @@ func _load_settings() -> void:
 	dark = bool(cfg.get_value("pantalla", "oscuro", dark))
 	sound_on = bool(cfg.get_value("sonido", "activo", sound_on))
 	welcome_seen = bool(cfg.get_value("app", "bienvenida_vista", false))
+	lang_asked = bool(cfg.get_value("app", "idioma_preguntado", false))
 	kids = bool(cfg.get_value("app", "kids", false))
 	home_style = str(cfg.get_value("app", "inicio", home_style))
 	intro_mode = str(cfg.get_value("app", "intro", intro_mode))
@@ -1308,6 +1314,7 @@ func _save_settings() -> void:
 	cfg.set_value("online", "bloqueados", online_blocked)
 	cfg.set_value("sonido", "activo", sound_on)
 	cfg.set_value("app", "bienvenida_vista", welcome_seen)
+	cfg.set_value("app", "idioma_preguntado", lang_asked)
 	cfg.set_value("app", "kids", kids)
 	cfg.set_value("app", "inicio", home_style)
 	cfg.set_value("app", "intro", intro_mode)
@@ -3936,6 +3943,10 @@ func _open_language_dialog() -> void:
 
 func _close_language_dialog() -> void:
 	if lang_dialog != null and is_instance_valid(lang_dialog):
+		if not lang_asked:
+			lang_asked = true
+			if use_settings:
+				_save_settings()
 		lang_dialog.visible = false
 		lang_dialog.queue_free()
 	lang_dialog = null

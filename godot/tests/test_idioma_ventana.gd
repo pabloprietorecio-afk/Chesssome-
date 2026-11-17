@@ -31,6 +31,7 @@ func _initialize() -> void:
 			flag = c
 	_ok(flag != null, "la bandera es un botón hijo directo de la bienvenida")
 	_ok(w.get_child(w.get_child_count() - 1) == flag, "la bandera está por encima del resto")
+	_ok(not demo.lang_asked, "al principio, la ventana de la primera vez aún no se ha enseñado")
 	flag.pressed.emit()
 	for i in 4:
 		await process_frame
@@ -42,6 +43,7 @@ func _initialize() -> void:
 		await process_frame
 	_ok(demo.language == "en", "elegir English cambia el idioma")
 	_ok(demo.lang_dialog == null, "la ventana se cierra al elegir")
+	_ok(demo.lang_asked, "cerrada la ventana, ya no vuelve a salir sola")
 	_ok(demo.welcome != null and is_instance_valid(demo.welcome), "la bienvenida se rehace en el nuevo idioma")
 	print("TODO OK" if fails == 0 else "FALLOS: %d" % fails)
 	quit(fails)
