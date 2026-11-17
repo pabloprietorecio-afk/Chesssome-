@@ -34,7 +34,12 @@ latido (y caducaría a los 30 s) y nadie avisaría si entra alguien. Este comple
   (y `cancelReminder()`) cada vez que cambia algo; se guarda en SharedPreferences y se arma una alarma del sistema
   (`setAndAllowWhileIdle`: puede llegar unos minutos tarde). Al actualizar la app se vuelve a armar; tras reiniciar
   el móvil, solo si algún complemento declara RECEIVE_BOOT_COMPLETED (este no, para no repetirlo en el manifiesto);
-  si no, al abrir la app. `showReminderNow` enseña uno de muestra (al activar el aviso).
+  si no, al abrir la app. `showReminderNow` enseña uno de muestra (al activar el aviso) y devuelve "ok", "off"
+  (avisos de la app apagados en Android), "channel" (canal apagado) o "error: …"; la app lo dice si no es "ok".
+  `reminderAt()`: cuándo está programado (segundos; 0 = nada).
+- Número del aviso 4202, distinto del 4201 del complemento de notificaciones: la app sigue llamando a su
+  `cancel(4201)` al reprogramar, y con el mismo número la muestra desaparecía al instante (fallo del 17-11 por la
+  mañana: «no sale ningún tipo de notificación»).
 - El complemento de notificaciones (Notification Scheduler) sigue pidiendo el permiso de avisos y crea el canal;
   ya no programa el aviso diario cuando está este complemento.
 

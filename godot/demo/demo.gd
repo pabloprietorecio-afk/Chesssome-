@@ -8896,6 +8896,10 @@ func _open_day() -> void:
 		# La hora, con el reloj de WakeAgenda (21:00 si no se elige otra).
 		if aviso_on:
 			(amade[1] as VBoxContainer).add_child(_option_button("clock", "peach", "Hora del aviso", Loc.f("%s · toca para cambiar", _aviso_hour_text()), _aviso_pick_time))
+			var next := _aviso_next_text()
+			if next != "":
+				body.add_child(_spacer(10.0))
+				body.add_child(_para(next, F_FOOT, _c("quiet"), font_regular))
 
 	# Lo hecho hoy.
 	var lines := Progress.summary_lines(s, day)
@@ -8969,6 +8973,7 @@ func _aviso_on_ready() -> void:
 
 func _aviso_on_permission(_permission: String, granted: bool) -> void:
 	if granted and bool((_prog()["aviso"] as Dictionary)["activo"]):
+		_aviso_refresh()
 		_aviso_preview()
 	if not granted:
 		(_prog()["aviso"] as Dictionary)["activo"] = false
@@ -9028,6 +9033,22 @@ func _aviso_set_time(hour: int, minute: int) -> void:
 	_aviso_refresh()
 
 
+## «Próximo aviso: hoy a las 21:00» (o mañana, o dentro de unos días), con el mismo cálculo que lo programa; vacío si
+## no hay ninguno (p. ej. reto cumplido y aviso apagado).
+func _aviso_next_text() -> String:
+	var n := _prog_now()
+	var plan := Reminder.plan(_prog(), _aviso_settings(), int(n[0]), int(n[1]))
+	if plan.is_empty():
+		return ""
+	var days := Progress.day_number(int(plan["at"]), int(n[1])) - Progress.day_number(int(n[0]), int(n[1]))
+	var hour := _aviso_hour_text()
+	if days <= 0:
+		return Loc.f("Próximo aviso: hoy a las %s.", hour)
+	if days == 1:
+		return Loc.f("Próximo aviso: mañana a las %s.", hour)
+	return Loc.f("Próximo aviso: dentro de %d días, a las %s.", [days, hour])
+
+
 ## El complemento propio que pinta el aviso diario con el diseño de A Chess Way (o null si este APK no lo trae). El
 ## código Java va en el mismo APK que este script: si está el complemento, tiene scheduleReminder (y has_method no
 ## sirve con los métodos Java de un singleton).
@@ -9064,11 +9085,13 @@ func _aviso_refresh() -> void:
 func _aviso_set(on: bool) -> void:
 	(_prog()["aviso"] as Dictionary)["activo"] = on
 	_prog_save()
-	if on and _aviso_node != null and not _aviso_node.has_post_notifications_permission():
+	var ask: bool = on and _aviso_node != null and not bool(_aviso_node.has_post_notifications_permission())
+	if ask:
 		_aviso_node.request_post_notifications_permission()
-	elif on:
-		_aviso_preview()
 	_aviso_refresh()
+	# La muestra, después de reprogramar (reprogramar quita el aviso anterior).
+	if on and not ask:
+		_aviso_preview()
 	_open_day()
 
 
@@ -9077,7 +9100,14 @@ func _aviso_preview() -> void:
 	var own := _aviso_own()
 	if own == null or kids:
 		return
-	own.call("showReminderNow", {"title": Loc.t("Tu reto de hoy"), "text": Loc.f("Así te avisaremos a las %s si aún no has cumplido tu reto.", _aviso_hour_text()), "pill": Loc.t("Entrenar"), "channel": Loc.t("Aviso diario")})
+	var status := str(own.call("showReminderNow", {"title": Loc.t("Tu reto de hoy"), "text": Loc.f("Así te avisaremos a las %s si aún no has cumplido tu reto.", _aviso_hour_text()), "pill": Loc.t("Entrenar"), "channel": Loc.t("Aviso diario")}))
+	# Si Android no deja enseñarlo, se dice por qué (si no, el jugador solo vería que no llega nada).
+	if status == "off":
+		_prog_toast(Loc.t("No llegan los avisos"), Loc.t("Los avisos de la app están desactivados en los ajustes de Android."), false)
+	elif status == "channel":
+		_prog_toast(Loc.t("No llegan los avisos"), Loc.t("El aviso diario está desactivado en los ajustes de Android."), false)
+	elif status != "ok":
+		_prog_toast(Loc.t("No llegan los avisos"), status, false)
 
 
 ## La hora del aviso como se escribe en cada idioma: «21:00» y, en inglés, «9 PM» o «9:30 PM».

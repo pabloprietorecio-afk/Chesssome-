@@ -22,7 +22,11 @@ public class AvisoReceiver extends BroadcastReceiver {
 	static final String ACTION_FIRE = "com.pabloprieto.espera.AVISO_DIARIO";
 	/** El mismo canal que creaba el complemento de notificaciones (core: AVISO_CHANNEL). */
 	static final String CHANNEL = "chessome_diario";
-	static final int ID = 4201;
+	/**
+	 * Distinto del que usaba el complemento de notificaciones (4201): la app sigue llamando a su cancel(4201) cada
+	 * vez que reprograma, y con el mismo número quitaba al instante el aviso recién enseñado (17-11).
+	 */
+	static final int ID = 4202;
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
@@ -72,11 +76,33 @@ public class AvisoReceiver extends BroadcastReceiver {
 		return PendingIntent.getBroadcast(c, ID, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 	}
 
-	static void show(Context c, String title, String text, String pill, String channelName) {
+	/**
+	 * Enseña el aviso. Devuelve "ok", "off" (avisos de la app desactivados en Android), "channel" (canal del aviso
+	 * desactivado) o "error: …", para que la app pueda decir qué pasa.
+	 */
+	static String show(Context c, String title, String text, String pill, String channelName) {
 		NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
 		if (nm == null) {
-			return;
+			return "error: sin NotificationManager";
 		}
+		if (Build.VERSION.SDK_INT >= 24 && !nm.areNotificationsEnabled()) {
+			return "off";
+		}
+		if (Build.VERSION.SDK_INT >= 26) {
+			NotificationChannel existing = nm.getNotificationChannel(CHANNEL);
+			if (existing != null && existing.getImportance() == NotificationManager.IMPORTANCE_NONE) {
+				return "channel";
+			}
+		}
+		try {
+			post(c, nm, title, text, pill, channelName);
+		} catch (RuntimeException e) {
+			return "error: " + e;
+		}
+		return "ok";
+	}
+
+	private static void post(Context c, NotificationManager nm, String title, String text, String pill, String channelName) {
 		Notification.Builder b;
 		if (Build.VERSION.SDK_INT >= 26) {
 			if (nm.getNotificationChannel(CHANNEL) == null) {

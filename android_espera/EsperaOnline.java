@@ -104,13 +104,25 @@ public class EsperaOnline extends GodotPlugin {
 		}
 	}
 
-	/** Para probar el diseño: enseña el aviso diario ya. */
+	/** Enseña el aviso diario ya (el de muestra al activarlo). Devuelve "ok", "off", "channel" o "error: …". */
 	@UsedByGodot
-	public void showReminderNow(Dictionary data) {
+	public String showReminderNow(Dictionary data) {
 		Activity activity = getActivity();
-		if (activity != null) {
-			AvisoReceiver.show(activity.getApplicationContext(), text(data, "title"), text(data, "text"), text(data, "pill"), text(data, "channel"));
+		if (activity == null) {
+			return "error: sin actividad";
 		}
+		return AvisoReceiver.show(activity.getApplicationContext(), text(data, "title"), text(data, "text"), text(data, "pill"), text(data, "channel"));
+	}
+
+	/** Para comprobar: cuándo está programado el próximo aviso (segundos desde 1970; 0 = ninguno). */
+	@UsedByGodot
+	public int reminderAt() {
+		Activity activity = getActivity();
+		if (activity == null) {
+			return 0;
+		}
+		long ms = activity.getSharedPreferences(AvisoReceiver.PREFS, android.content.Context.MODE_PRIVATE).getLong("at", 0L);
+		return (int) (ms / 1000L);
 	}
 
 	private static String text(Dictionary data, String key) {

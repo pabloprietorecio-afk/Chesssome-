@@ -68,6 +68,8 @@ func _initialize() -> void:
 	var s: Dictionary = demo._aviso_settings()
 	_ok(int(s["hour"]) == 7 and int(s["minute"]) == 30 and demo._aviso_hour_text() == "7:30", "«Aceptar» guarda las 7:30")
 	_ok(_has_text(demo.progress, Loc.f("A las %s, solo si aún no has cumplido tu reto.", "7:30")), "y «Tu día» lo dice")
+	var next: String = demo._aviso_next_text()
+	_ok(next.contains("7:30") and _has_text(demo.progress, next), "y cuándo llega el próximo aviso (%s)" % next)
 	# El aviso se programa a esa hora (Reminder.plan).
 	var now := int(Time.get_unix_time_from_system())
 	var plan := Reminder.plan(demo._prog(), s, now, 0)
