@@ -58,6 +58,14 @@ func _init() -> void:
 		_ok(not Online.rhythm_ok(r), "ritmo no válido «%s»" % r)
 	_ok(Online.rhythm_parts("15+10") == [15, 10] and Online.rhythm_parts("basura") == [0, 0], "partes del ritmo")
 	_ok(Online.SPACES.all(func(r: String) -> bool: return Online.rhythm_ok(r)), "los espacios fijos son válidos")
+	# War Chess: los mismos ritmos con una «w» delante, en espacios aparte.
+	for r in ["w0+0", "w5+3", "w180+60"]:
+		_ok(Online.rhythm_ok(r) and Online.is_war(r), "espacio de War Chess " + r)
+	for r in ["ww5+3", "W5+3", "x5+3", "w", "w0+3", "5+3w"]:
+		_ok(not Online.rhythm_ok(r), "espacio no válido «%s»" % r)
+	_ok(Online.rhythm_parts("w15+10") == [15, 10] and Online.rhythm_label("w20+0") == Online.rhythm_label("20+0"), "un espacio de War Chess tiene el reloj de su ritmo")
+	_ok(Online.space_of("5+3", true) == "w5+3" and Online.space_of("w5+3", false) == "5+3" and Online.space_of("w5+3", true) == "w5+3", "espacio de un ritmo en cada modalidad")
+	_ok(not Online.is_war("5+3") and Online.space_label("5+3") == "5+3" and Online.space_label("w5+3") == "War Chess · 5+3", "nombre del espacio")
 
 	# Reloj por las pulsaciones (5+3: 300 000 ms y 3 000 por jugada); el rival entra en t = 1 000 000
 	var base := 300000.0
@@ -84,12 +92,14 @@ func _init() -> void:
 		"20261116-100006-gggggg": {"creador": "u5", "latido": 995000, "ritmo": "0+0", "no": {"yo": true}},
 		"20261116-100007-hhhhhh": {"creador": "u6", "latido": 995000, "ritmo": "99999+0"},
 		"20261116-100008-iiiiii": {"creador": "u7", "latido": 995000},
+		"20261116-100009-jjjjjj": {"creador": "u8", "latido": 995000, "ritmo": "w5+3"},
 	}
 	var sp := Online.spaces_of(rows, "yo", 1000000.0, {"malo": "Malo"})
 	_ok(sp.get("5+3", []) == ["20261116-100000-aaaaaa", "20261116-100001-bbbbbb"], "5+3: dos esperando, la más antigua primero")
 	_ok(sp.get("7+2", []) == ["20261116-100002-cccccc"], "espacio personalizado")
 	_ok(not sp.has("0+0"), "sin las de bloqueados ni las de quien me ha bloqueado")
-	_ok(sp.size() == 2, "sin la mía, las viejas ni las de ritmo raro (%s)" % str(sp))
+	_ok(sp.get("w5+3", []) == ["20261116-100009-jjjjjj"], "las de War Chess, en su propio espacio (no en 5+3)")
+	_ok(sp.size() == 3, "sin la mía, las viejas ni las de ritmo raro (%s)" % str(sp))
 	_ok(Online.spaces_of(null, "yo", 0.0, {}).is_empty(), "sin partidas en espera")
 	# «¿Sigues ahí?»: el límite depende del ritmo
 	_ok(Online.idle_limit_ms(0.0) == 180000.0, "sin reloj: 3 minutos")

@@ -234,6 +234,8 @@ var online_name := ""
 ## Espacios online (ritmos): el último elegido, el personalizado [minutos, segundos], los que esperan en cada uno
 ## (última consulta: {ritmo: n}) y si ya se ha consultado. Normas aceptadas (versión) y bloqueados (uid → nombre).
 var online_space := "0+0"
+## Modalidad de la lista de espacios online: War Chess (espacios «w5+3») o la clásica.
+var online_war := false
 var online_custom := [7, 2]
 var online_spaces := {}
 var online_spaces_ok := false
@@ -1257,6 +1259,7 @@ func _load_settings() -> void:
 	online_space = str(cfg.get_value("online", "ritmo", "0+0"))
 	if not Online.rhythm_ok(online_space):
 		online_space = "0+0"
+	online_war = bool(cfg.get_value("online", "war", false))
 	var oc: Variant = cfg.get_value("online", "personalizado", [7, 2])
 	if oc is Array and (oc as Array).size() == 2:
 		online_custom = [int(oc[0]), int(oc[1])]
@@ -1294,6 +1297,7 @@ func _save_settings() -> void:
 	cfg.set_value("online", "foto", online_photo)
 	cfg.set_value("online", "nombre", online_name)
 	cfg.set_value("online", "ritmo", online_space)
+	cfg.set_value("online", "war", online_war)
 	cfg.set_value("online", "personalizado", online_custom)
 	cfg.set_value("online", "normas", online_rules_ok)
 	cfg.set_value("online", "bloqueados", online_blocked)
@@ -3658,7 +3662,7 @@ func _set_world(i: int) -> void:
 	if sheet_kind != "":
 		_sync_sheet()
 	else:
-		_open_game_setup()
+		_game_options_changed()
 
 
 ## «Simple» es el tablero plano visto desde arriba: solo se amplía, no se gira ni se inclina. Al salir de él, el
@@ -5349,7 +5353,7 @@ func _home_items() -> Array:
 	# En el nivel Kids el curso es lo principal y va primero; fuera de él, es la última opción.
 	if kids and not course.is_empty():
 		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
-	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 5 niveles.", _open_game_setup])
+	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 13 niveles.", _open_game_setup.bind(true)])
 	if not kids:
 		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
 	if not kids and not _has_player():
@@ -6069,7 +6073,10 @@ func _start_level(lv: int) -> void:
 
 
 ## Elegir rival: color y cinco niveles (cada uno con sus subniveles).
-func _open_game_setup() -> void:
+## Elegir rival. Las opciones de la partida (modalidad, piezas, ritmo; en Kids, piezas y mundo) van en una ventana
+## emergente con «OK» (Pablo, 17-11), que sale sola al entrar desde el inicio (`ask`); en la página queda una ficha
+## con lo elegido para volver a abrirla. Debajo, los cinco niveles (cada uno con sus subniveles).
+func _open_game_setup(ask: bool = false) -> void:
 	if sheet_kind != "":
 		_close_options()
 	var page := _page("game_setup")
@@ -6082,37 +6089,9 @@ func _open_game_setup() -> void:
 	body.add_child(_centered(_para("Juega una partida", F_TITLE + 12, _c("ink"), font_display)))
 	body.add_child(_centered(_para("Pon en práctica lo que has aprendido.", F_SUB, _c("quiet"), font_medium)))
 	body.add_child(_spacer(30.0))
-	if not kids:
-		body.add_child(_text("MODALIDAD", F_CAP, _c("quiet"), font_semibold))
-		body.add_child(_spacer(12.0))
-		body.add_child(_segments(["Clásica", "War Chess"], 1 if game_war else 0, _set_game_war, ["piece_knight", "shield"]))
-		if game_war:
-			body.add_child(_spacer(10.0))
-			body.add_child(_para(WAR_RULES, F_FOOT + 2, _c("quiet"), font_regular))
-		body.add_child(_spacer(30.0))
-	body.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
+	body.add_child(_text("TU PARTIDA", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
-	body.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color, ["sun", "moon", "why"]))
-	if kids:
-		body.add_child(_spacer(30.0))
-		body.add_child(_text("MUNDO", F_CAP, _c("quiet"), font_semibold))
-		body.add_child(_spacer(12.0))
-		body.add_child(_world_tiles())
-	if not kids:
-		body.add_child(_spacer(30.0))
-		body.add_child(_text("RITMO", F_CAP, _c("quiet"), font_semibold))
-		body.add_child(_spacer(12.0))
-		body.add_child(_segments(TIME_CONTROLS.slice(0, 4).map(func(t: Array) -> String: return str(t[0])), game_tc_pick, _set_time_control))
-		body.add_child(_spacer(10.0))
-		body.add_child(_segments(TIME_CONTROLS.slice(4).map(func(t: Array) -> String: return str(t[0])), game_tc_pick - 4, _set_time_control_from.bind(4)))
-		if int(TIME_CONTROLS[game_tc_pick][1]) < 0:
-			body.add_child(_spacer(14.0))
-			body.add_child(_stepper("Minutos por jugador", custom_minutes, _step_minutes))
-			body.add_child(_stepper("Segundos más por jugada", custom_increment, _step_increment))
-		var tc := _time_control()
-		var about := "Sin prisa: piensa lo que necesites. Puedes deshacer y pedir pistas." if tc[0] == 0 else Loc.f("%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes.", [tc[0], Loc.t(" y %d segundos más por jugada") % tc[1] if tc[1] > 0 else ""])
-		body.add_child(_spacer(10.0))
-		body.add_child(_para(about, F_FOOT + 2, _c("quiet"), font_regular))
+	body.add_child(_option_button("shield" if game_war and not kids else "sliders", "lilac", _game_options_summary(), Loc.t("Toca para cambiar"), _open_game_options))
 	body.add_child(_spacer(30.0))
 	body.add_child(_text("RIVAL", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
@@ -6133,11 +6112,110 @@ func _open_game_setup() -> void:
 	frow.add_child(_button("close", "Cancelar", _close_game_setup, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 40.0, "font": font_medium}))
 	for c: Node in frow.get_children():
 		(c as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if ask:
+		_open_game_options()
+
+
+## «War Chess · Blancas · 5+0» (en Kids, piezas y mundo).
+func _game_options_summary() -> String:
+	var parts: Array = []
+	if not kids:
+		parts.append(Loc.t("War Chess" if game_war else "Clásica"))
+	parts.append(Loc.t(str(["Blancas", "Negras", "Al azar"][clampi(game_pick_color, 0, 2)])))
+	if kids:
+		parts.append(Loc.t(str(WORLD_NAMES[maxi(0, WORLDS.find(kids_world))])))
+	else:
+		var tc := _time_control()
+		parts.append(Loc.t("Sin reloj") if tc[0] == 0 else ("%d+%d" % [tc[0], tc[1]]))
+	return " · ".join(parts)
+
+
+var _game_opts_box: VBoxContainer
+var _game_opts_scroll: ScrollContainer
+
+
+## La ventana de las opciones de la partida (semitransparente, con «OK»). Los cambios valen al momento; al cerrarla
+## (con «OK» o tocando fuera) la página se rehace con lo elegido.
+func _open_game_options() -> void:
+	var column := _popup(Loc.t("Tu partida"), "")
+	_game_opts_scroll = ScrollContainer.new()
+	_game_opts_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(_game_opts_scroll)
+	_game_opts_box = VBoxContainer.new()
+	_game_opts_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_game_opts_scroll.add_child(_game_opts_box)
+	_fill_game_options()
+	column.add_child(_spacer(6.0))
+	var ok := _button("check", "OK", _close_confirm, _c("accent"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58})
+	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(ok)
+	_confirm_on_close = func() -> void:
+		_game_opts_box = null
+		_game_opts_scroll = null
+		if progress != null and is_instance_valid(progress) and progress_kind == "game_setup":
+			_reopen_game_setup()
+
+
+func _fill_game_options() -> void:
+	if _game_opts_box == null or not is_instance_valid(_game_opts_box):
+		return
+	for c in _game_opts_box.get_children():
+		_game_opts_box.remove_child(c)
+		c.queue_free()
+	var box := _game_opts_box
+	if not kids:
+		box.add_child(_text("MODALIDAD", F_CAP, _c("quiet"), font_semibold))
+		box.add_child(_spacer(12.0))
+		box.add_child(_segments(["Clásica", "War Chess"], 1 if game_war else 0, _set_game_war, ["piece_knight", "shield"]))
+		if game_war:
+			box.add_child(_spacer(10.0))
+			box.add_child(_para(WAR_RULES, F_FOOT, _c("quiet"), font_regular))
+		box.add_child(_spacer(26.0))
+	box.add_child(_text("TUS PIEZAS", F_CAP, _c("quiet"), font_semibold))
+	box.add_child(_spacer(12.0))
+	box.add_child(_segments(["Blancas", "Negras", "Al azar"], game_pick_color, _set_game_color, ["sun", "moon", "why"]))
+	if kids:
+		box.add_child(_spacer(26.0))
+		box.add_child(_text("MUNDO", F_CAP, _c("quiet"), font_semibold))
+		box.add_child(_spacer(12.0))
+		box.add_child(_world_tiles())
+	else:
+		box.add_child(_spacer(26.0))
+		box.add_child(_text("RITMO", F_CAP, _c("quiet"), font_semibold))
+		box.add_child(_spacer(12.0))
+		box.add_child(_segments(TIME_CONTROLS.slice(0, 4).map(func(t: Array) -> String: return str(t[0])), game_tc_pick, _set_time_control))
+		box.add_child(_spacer(10.0))
+		box.add_child(_segments(TIME_CONTROLS.slice(4).map(func(t: Array) -> String: return str(t[0])), game_tc_pick - 4, _set_time_control_from.bind(4)))
+		if int(TIME_CONTROLS[game_tc_pick][1]) < 0:
+			box.add_child(_spacer(14.0))
+			box.add_child(_stepper("Minutos por jugador", custom_minutes, _step_minutes))
+			box.add_child(_stepper("Segundos más por jugada", custom_increment, _step_increment))
+		var tc := _time_control()
+		var about := "Sin prisa: piensa lo que necesites. Puedes deshacer y pedir pistas." if tc[0] == 0 else Loc.f("%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes.", [tc[0], Loc.t(" y %d segundos más por jugada") % tc[1] if tc[1] > 0 else ""])
+		box.add_child(_spacer(10.0))
+		box.add_child(_para(about, F_FOOT, _c("quiet"), font_regular))
+	_fit_game_options.call_deferred()
+
+
+## La ventana no puede salirse de la pantalla: si las opciones no caben, se desplazan.
+func _fit_game_options() -> void:
+	if _game_opts_scroll == null or not is_instance_valid(_game_opts_scroll):
+		return
+	var want := _game_opts_box.get_combined_minimum_size().y
+	_game_opts_scroll.custom_minimum_size.y = minf(want, maxf(400.0, size.y - 560.0))
+
+
+## Tras cambiar una opción: se rehace la ventana si está abierta y, si no, la página.
+func _game_options_changed() -> void:
+	if _game_opts_box != null and is_instance_valid(_game_opts_box):
+		_fill_game_options()
+	else:
+		_reopen_game_setup()
 
 
 func _set_game_color(i: int) -> void:
 	game_pick_color = i
-	_reopen_game_setup()
+	_game_options_changed()
 
 
 ## Reglas de War Chess, en corto (página de partida y comienzo de la partida). Ver docs/war-chess.md.
@@ -6151,12 +6229,12 @@ static func _piece_noun(p: int) -> String:
 
 func _set_game_war(i: int) -> void:
 	game_war = i == 1 and not kids
-	_reopen_game_setup()
+	_game_options_changed()
 
 
 func _set_time_control(i: int) -> void:
 	game_tc_pick = clampi(i, 0, TIME_CONTROLS.size() - 1)
-	_reopen_game_setup()
+	_game_options_changed()
 
 
 func _set_time_control_from(i: int, offset: int) -> void:
@@ -6167,14 +6245,14 @@ func _step_minutes(d: int) -> void:
 	var steps := [1, 2, 3, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120]
 	var at := steps.find(custom_minutes)
 	custom_minutes = int(steps[clampi((at if at >= 0 else 4) + d, 0, steps.size() - 1)])
-	_reopen_game_setup()
+	_game_options_changed()
 
 
 func _step_increment(d: int) -> void:
 	var steps := [0, 1, 2, 3, 5, 10, 15, 20, 30, 60]
 	var at := steps.find(custom_increment)
 	custom_increment = int(steps[clampi((at if at >= 0 else 0) + d, 0, steps.size() - 1)])
-	_reopen_game_setup()
+	_game_options_changed()
 
 
 ## Minutos e incremento (segundos) del ritmo elegido; [0, 0] sin reloj (y siempre en el nivel Kids).
@@ -6246,7 +6324,7 @@ func _open_online() -> void:
 	body.add_child(_centered(_para("Buscando rival" if online_busy else "Partida online", F_LARGE, _c("ink"), font_display)))
 	var about := "Elige un ritmo. Si alguien espera en ese espacio, jugáis ya; si no, esperas tú a que entre un rival." if online_name != "" else ""
 	if online_busy:
-		about = Loc.f("Espacio %s. La partida empieza en cuanto entre otro jugador.", _rhythm_name(online_space))
+		about = Loc.f("Espacio %s. La partida empieza en cuanto entre otro jugador.", Online.space_label(online_space))
 	if about != "":
 		body.add_child(_spacer(10.0))
 		body.add_child(_centered(_para(about, F_BODY + 2, _c("quiet"), font_medium)))
@@ -6275,18 +6353,25 @@ func _open_online() -> void:
 		# La primera vez: el nombre con el que te verán tus rivales.
 		body.add_child(_name_block())
 	elif not online_busy:
+		# Modalidad: cada una tiene sus espacios (los de War Chess llevan una «w» delante del ritmo).
+		body.add_child(_caption("Modalidad"))
+		body.add_child(_segments(["Clásica", "War Chess"], 1 if online_war else 0, _set_online_war, ["piece_knight", "shield"]))
+		if online_war:
+			body.add_child(_spacer(10.0))
+			body.add_child(_para(WAR_RULES, F_FOOT + 2, _c("quiet"), font_regular))
+		body.add_child(_spacer(26.0))
 		body.add_child(_caption("Espacios"))
 		var grid := GridContainer.new()
 		grid.columns = 2
 		grid.add_theme_constant_override("h_separation", 22)
 		grid.add_theme_constant_override("v_separation", 22)
-		var shown: Array = Online.SPACES.duplicate()
-		# Los personalizados donde alguien espera, y el mío.
+		var shown: Array = Online.SPACES.map(func(r: String) -> String: return Online.space_of(r, online_war))
+		# Los personalizados donde alguien espera (de esta modalidad), y el mío.
 		var extra: Array = []
 		for r in online_spaces.keys():
-			if not shown.has(str(r)):
+			if not shown.has(str(r)) and Online.is_war(str(r)) == online_war:
 				extra.append(str(r))
-		var mine := "%d+%d" % [int(online_custom[0]), int(online_custom[1])]
+		var mine := Online.space_of("%d+%d" % [int(online_custom[0]), int(online_custom[1])], online_war)
 		if online_space == mine and not shown.has(mine) and not extra.has(mine):
 			extra.append(mine)
 		extra.sort_custom(func(a: String, b: String) -> bool: return _rhythm_secs(a) < _rhythm_secs(b))
@@ -6490,11 +6575,11 @@ func _open_online_custom() -> void:
 	body.add_child(_spacer(20.0))
 	body.add_child(_stepper("Segundos más por jugada", int(online_custom[1]), _step_online_custom.bind(1)))
 	body.add_child(_spacer(30.0))
-	var r := "%d+%d" % [int(online_custom[0]), int(online_custom[1])]
-	body.add_child(_centered(_para(Loc.f("%s · %s", [_rhythm_name(r), str(_rhythm_kind(r)[0])]), F_HEAD, _c("ink"), font_semibold)))
+	var r := Online.space_of("%d+%d" % [int(online_custom[0]), int(online_custom[1])], online_war)
+	body.add_child(_centered(_para(Loc.f("%s · %s", [Online.space_label(r), str(_rhythm_kind(r)[0])]), F_HEAD, _c("ink"), font_semibold)))
 	body.add_child(_spacer(10.0, true))
 	var tint := _tint("sky")
-	footer.add_child(_button("piece_queen", Loc.f("Buscar rival · %s", _rhythm_name(r)), _online_enter.bind(r), tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0}))
+	footer.add_child(_button("shield" if online_war else "piece_queen", Loc.f("Buscar rival · %s", Online.space_label(r)), _online_enter.bind(r), tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0}))
 	footer.add_child(_spacer(14.0))
 	footer.add_child(_button("back", "Volver", _open_online, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
 
@@ -6560,6 +6645,12 @@ func _online_search(space: String = "") -> void:
 	online.start(online_space)
 
 
+func _set_online_war(i: int) -> void:
+	online_war = i == 1
+	_save_settings()
+	_open_online()
+
+
 func _close_online() -> void:
 	online.leave()
 	online_busy = false
@@ -6586,7 +6677,8 @@ func _online_started(color: int) -> void:
 	online_busy = false
 	online_note = ""
 	var clock: Array = Online.rhythm_parts(online.rhythm)
-	_start_game({"variant": "", "level": 0, "title": "Partida online", "text": "", "kids": "", "unit": "", "clock": clock if int(clock[0]) > 0 else [], "online": true}, color)
+	var war := Online.is_war(online.rhythm)
+	_start_game({"variant": "war" if war else "", "level": 0, "title": "War Chess online" if war else "Partida online", "text": WAR_RULES if war else "", "kids": "", "unit": "", "clock": clock if int(clock[0]) > 0 else [], "online": true}, color)
 
 
 ## Jugada del rival, que llega por la red.
@@ -6607,6 +6699,9 @@ func _online_move(uci: String) -> void:
 	game_history.append(view.board.chess.fen())
 	game_moves.append(uci)
 	game_note = Loc.f("El rival ha jugado %s.", san)
+	var war_note := _war_rival_note(pos, m)
+	if war_note != "":
+		game_note = war_note
 	if _game_check_end(pos, m):
 		return
 	if view.board.chess.in_check():
@@ -8005,13 +8100,9 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	if game_clocked:
 		game_clock[1 - game_color] += game_inc_ms
 	game_note = "Ha movido el rival. ¡Te toca!" if kids else Loc.f("El rival ha jugado %s.", san)
-	if WarChess.is_armor_move(m):
-		game_note = Loc.f("El rival ha blindado su %s de %s.", [Loc.t(_piece_noun(pos.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))])
-	elif WarChess.is_break_move(m):
-		if (view.board.chess as WarChess).is_armored(Chess.move_to(m)):
-			game_note = Loc.f("El rival ha agrietado el blindaje de tu peón en %s: aguanta un golpe más.", Chess.sq_name(Chess.move_to(m)))
-		else:
-			game_note = Loc.f("El rival ha roto el blindaje de tu %s en %s.", [Loc.t(_piece_noun(pos.b[Chess.move_to(m)])), Chess.sq_name(Chess.move_to(m))])
+	var war_note := _war_rival_note(pos, m)
+	if war_note != "":
+		game_note = war_note
 	if _game_check_end(pos, m):
 		return
 	game_state = "play"
@@ -8021,6 +8112,20 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 		game_note = _kid_line("inCheck") if kids else Loc.f("El rival ha jugado %s: tu rey está en jaque.", san)
 		_say([_kid_line("inCheck")])
 	_refresh()
+
+
+## War Chess: qué ha hecho el rival si ha blindado o ha roto (o agrietado) un blindaje; "" si no. `pos`, antes de su
+## jugada; el tablero, ya con ella.
+func _war_rival_note(pos: Chess, m: int) -> String:
+	if not (view.board.chess is WarChess):
+		return ""
+	if WarChess.is_armor_move(m):
+		return Loc.f("El rival ha blindado su %s de %s.", [Loc.t(_piece_noun(pos.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))])
+	if WarChess.is_break_move(m):
+		if (view.board.chess as WarChess).is_armored(Chess.move_to(m)):
+			return Loc.f("El rival ha agrietado el blindaje de tu peón en %s: aguanta un golpe más.", Chess.sq_name(Chess.move_to(m)))
+		return Loc.f("El rival ha roto el blindaje de tu %s en %s.", [Loc.t(_piece_noun(pos.b[Chess.move_to(m)])), Chess.sq_name(Chess.move_to(m))])
+	return ""
 
 
 func _stop_game_thread() -> void:
@@ -8294,10 +8399,18 @@ func _popup(head: String, text: String, opaque: bool = false) -> VBoxContainer:
 	return column
 
 
+## Lo que hay que hacer al cerrarse la ventana abierta (con su botón o tocando fuera), una vez.
+var _confirm_on_close := Callable()
+
+
 func _close_confirm() -> void:
 	if confirm_node != null and is_instance_valid(confirm_node):
 		confirm_node.queue_free()
 	confirm_node = null
+	if _confirm_on_close.is_valid():
+		var then := _confirm_on_close
+		_confirm_on_close = Callable()
+		then.call()
 
 
 func _game_resign() -> void:
@@ -8876,7 +8989,7 @@ func _prog_goal_go(kind: String) -> void:
 					return
 			_open_course()
 		"partida":
-			_open_game_setup()
+			_open_game_setup(true)
 
 
 ## Directo a repasar: el fallo más antiguo que aún no se ha resuelto ni repasado (sin esperar a que toque en el
@@ -9751,14 +9864,33 @@ func _build_review_actions() -> void:
 	hint_button = null
 	step_button = null
 	left_button = _tool_button("back", "Anterior", _review_show.bind(review_at - 1), "sky")
+	# «Volver», a la pantalla desde la que se abrió el análisis (el final de la partida; si es una guardada, con
+	# «Mis partidas» a mano). Pablo, 17-11: antes solo se podía salir al inicio o a la lista.
+	var leave := _tool_button("close", "Volver", _review_leave, "peach")
 	var list := _tool_button("why", "Lista", _review_back, "lilac")
 	right_button = _tool_button("next", "Siguiente", _review_advance, "mint")
 	left_button.disabled = review_at <= 0
 	left_button.modulate.a = 1.0 if review_at > 0 else 0.42
 	right_button.disabled = review_at >= review.size() - 1
 	right_button.modulate.a = 1.0 if review_at < review.size() - 1 else 0.42
-	for b: Button in [left_button, list, right_button]:
+	for b: Button in [left_button, leave, list, right_button]:
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		actions.add_child(b)
+
+
+## Del análisis en el tablero al final de la partida, como estaba antes de abrirlo.
+func _review_leave() -> void:
+	run_id += 1
+	view.board.set_arrows([])
+	view.board.set_badge(-1, "")
+	view.board.select(-1)
+	view.set_fen(str(game_history[game_history.size() - 1]))
+	game_state = "over"
+	review_at = -1
+	_close_progress()
+	_actions_mode = ""
+	_refresh()
 
 
 ## Del tablero a la lista de momentos; la partida se queda como acabó.
@@ -10035,7 +10167,7 @@ func _build_detail_actions() -> void:
 	hint_button = null
 	step_button = null
 	left_button = _tool_button("back", "Anterior", _detail_show.bind(detail_at - 1), "sky")
-	var summary := _tool_button("back" if detail_from_over else "why", "Volver" if detail_from_over else "Resumen", _detail_back, "lilac")
+	var summary := _tool_button("close" if detail_from_over else "why", "Volver" if detail_from_over else "Resumen", _detail_back, "lilac")
 	right_button = _tool_button("next", "Siguiente", _detail_show.bind(detail_at + 1), "mint")
 	var fault := _next_detail_fault()
 	var jump := _tool_button("wrong", "Sig. fallo", _detail_show.bind(fault), "rose")

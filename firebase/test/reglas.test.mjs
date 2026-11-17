@@ -34,7 +34,10 @@ test('espera: abrir un espacio con un ritmo válido', async () => {
   await assertSucceeds(update(ref(db('a'), 'espera/g1'), { creador: 'a', latido: ts(), ritmo: '5+3' }));
   await assertSucceeds(update(ref(db('a'), 'espera/g2'), { creador: 'a', latido: ts(), ritmo: '0+0' }));
   await assertSucceeds(update(ref(db('a'), 'espera/g3'), { creador: 'a', latido: ts(), ritmo: '180+60' }));
-  for (const bad of ['0+3', '181+0', '5+61', '05+3', '5', 'x']) {
+  // War Chess: los mismos ritmos con una «w» delante (espacios aparte).
+  await assertSucceeds(update(ref(db('a'), 'espera/w1'), { creador: 'a', latido: ts(), ritmo: 'w5+3' }));
+  await assertSucceeds(update(ref(db('a'), 'espera/w2'), { creador: 'a', latido: ts(), ritmo: 'w0+0' }));
+  for (const bad of ['0+3', '181+0', '5+61', '05+3', '5', 'x', 'ww5+3', 'W5+3', 'x5+3', 'w', 'w0+3', '5+3w']) {
     await assertFails(update(ref(db('a'), 'espera/m' + bad.replace(/\W/g, '')), { creador: 'a', latido: ts(), ritmo: bad }));
   }
   await assertFails(update(ref(db('a'), 'espera/g4'), { creador: 'b', latido: ts(), ritmo: '5+3' }));
@@ -60,6 +63,10 @@ test('partidas: ritmo del creador, una sola vez', async () => {
   await env.clearDatabase();
   await assertSucceeds(update(ref(db('a'), 'partidas/p1'), { creador: 'a', ritmo: '10+5' }));
   await assertFails(set(ref(db('a'), 'partidas/p1/ritmo'), '5+3'));
+  // War Chess: el blindaje se apunta como una jugada de la casilla a sí misma («g1g1»).
+  await game('pw', 'w10+5');
+  await assertSucceeds(set(ref(db('a'), 'partidas/pw/jugadas/0'), 'g1g1'));
+  await assertFails(update(ref(db('a'), 'partidas/p9'), { creador: 'a', ritmo: 'w10+5x' }));
   await assertFails(update(ref(db('b'), 'partidas/p2'), { creador: 'a', ritmo: '5+3' }));
   await assertFails(update(ref(db('a'), 'partidas/p3'), { creador: 'a', ritmo: '0+5' }));
 });

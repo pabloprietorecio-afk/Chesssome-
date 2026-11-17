@@ -24,7 +24,7 @@
         },
         "ritmo": {
           ".write": "auth != null && !data.exists() && newData.parent().child('creador').val() === auth.uid",
-          ".validate": "newData.isString() && newData.val().matches(/^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
+          ".validate": "newData.isString() && newData.val().matches(/^w?(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
         },
         "no": {
           ".write": "auth != null && newData.parent().child('creador').val() === auth.uid",
@@ -44,7 +44,7 @@
         },
         "ritmo": {
           ".write": "auth != null && !data.exists() && newData.parent().child('creador').val() === auth.uid",
-          ".validate": "newData.isString() && newData.val().matches(/^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
+          ".validate": "newData.isString() && newData.val().matches(/^w?(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$/)"
         },
         "rival": {
           ".write": "auth != null && !data.exists() && newData.val() === auth.uid && root.child('partidas').child($id).child('creador').exists() && root.child('partidas').child($id).child('creador').val() !== auth.uid && !root.child('vetados').child(auth.uid).exists()"

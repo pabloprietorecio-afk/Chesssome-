@@ -56,7 +56,9 @@ const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡
 ## Espacios fijos (ritmos); además, cada uno puede abrir el suyo (personalizado).
 const SPACES := ["0+0", "5+3", "10+5", "15+10", "20+0", "30+0"]
 ## Ritmo válido (igual que en las reglas de la base de datos): «0+0» o de 1 a 180 minutos y de 0 a 60 segundos.
-const RHYTHM_RE := "^(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$"
+## Con una «w» delante, el espacio es de War Chess («w5+3»): son espacios aparte, así que nunca se juntan una partida
+## clásica y una de War Chess (y las versiones de la app sin War Chess no los ven: su expresión no admite la «w»).
+const RHYTHM_RE := "^w?(0\\+0|([1-9]|[1-9][0-9]|1[0-7][0-9]|180)\\+([0-9]|[1-5][0-9]|60))$"
 ## Al rival que no pulsa a tiempo se le da por perdido este margen después (su pulsación puede venir de camino).
 const FLAG_GRACE_MS := 3000.0
 ## Lo que se espera a que vuelva quien esperaba con la app minimizada.
@@ -285,12 +287,28 @@ static func rhythm_ok(r: String) -> bool:
 	return re.search(r) != null
 
 
-## [minutos, segundos por jugada] del ritmo («0+0» → [0, 0]).
+## [minutos, segundos por jugada] del ritmo («0+0» → [0, 0]; «w5+3» → [5, 3]).
 static func rhythm_parts(r: String) -> Array:
 	if not rhythm_ok(r):
 		return [0, 0]
-	var p := r.split("+")
+	var p := r.trim_prefix("w").split("+")
 	return [int(p[0]), int(p[1])]
+
+
+## Si el espacio es de War Chess («w5+3»).
+static func is_war(space: String) -> bool:
+	return space.begins_with("w")
+
+
+## El espacio de un ritmo en una modalidad: («5+3», true) → «w5+3».
+static func space_of(r: String, war: bool) -> String:
+	r = r.trim_prefix("w")
+	return "w" + r if war else r
+
+
+## Nombre del espacio para los avisos y la espera: «5+3» o «War Chess · 5+3».
+static func space_label(space: String) -> String:
+	return ("War Chess · " if is_war(space) else "") + rhythm_label(space)
 
 
 ## Reloj que sale de las pulsaciones (horas del servidor, ms): {left: [blancas, negras] al terminar la última
@@ -658,12 +676,12 @@ func _bg_start() -> void:
 	_bg.call("start", {
 		"host": DB_HOST, "game": game_id, "token": _id_token, "refresh": _refresh_token, "apiKey": API_KEY,
 		"expiresAt": int(_expires_at),
-		"title": Loc.f("Esperando rival · %s", rhythm_label(rhythm)),
+		"title": Loc.f("Esperando rival · %s", space_label(rhythm)),
 		"text": Loc.t("Te avisamos cuando entre alguien. Puedes salir de la app."),
 		"foundTitle": Loc.t("¡Rival encontrado!"),
 		"foundText": Loc.t("Vuelve a la app en menos de un minuto para empezar la partida."),
 		# Con el nombre del rival (si tiene): el servicio cambia {nombre} por el suyo.
-		"foundNamed": Loc.f("{nombre} quiere jugar %s contigo. Vuelve en menos de un minuto para empezar.", rhythm_label(rhythm)),
+		"foundNamed": Loc.f("{nombre} quiere jugar %s contigo. Vuelve en menos de un minuto para empezar.", space_label(rhythm)),
 		"playLabel": Loc.t("Jugar ahora"),
 		"backLabel": Loc.t("Volver"),
 		"stopLabel": Loc.t("Dejar de esperar"),

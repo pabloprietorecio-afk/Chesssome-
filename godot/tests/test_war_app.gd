@@ -12,14 +12,17 @@ func _initialize() -> void:
 	demo.use_settings = false
 	root.add_child(demo)
 	await _frames(4)
-	demo._open_game_setup()
+	demo._open_game_setup(true)
 	await _frames(3)
-	var modes := _buttons(demo.progress, ["Clásica", "War Chess"])
-	_ok(modes.size() == 2, "«Clásica» y «War Chess» en la página de partida (%d)" % modes.size())
+	var modes := _buttons(demo.confirm_node, ["Clásica", "War Chess"])
+	_ok(modes.size() == 2, "«Clásica» y «War Chess» en la ventana de opciones de la partida (%d)" % modes.size())
 	modes[1].emit_signal("pressed")
 	await _frames(3)
 	_ok(demo.game_war, "War Chess elegido")
-	_ok(_has_text(demo.progress, "Blindar"), "con las reglas en corto")
+	_ok(_has_text(demo.confirm_node, "Blindar"), "con las reglas en corto")
+	_buttons(demo.confirm_node, ["OK"])[0].emit_signal("pressed")
+	await _frames(3)
+	_ok(_has_text(demo.progress, Loc.t("War Chess")), "la página dice que la partida es de War Chess")
 	# Rival «Muy difícil» (un solo escalón: empieza directamente), con blancas.
 	demo.game_pick_color = 0
 	_buttons(demo.progress, Bot.GROUPS)[4].emit_signal("pressed")

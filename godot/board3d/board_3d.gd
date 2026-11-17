@@ -1848,7 +1848,7 @@ func deselect() -> void:
 func _lift(node: Node3D, s: int, up: float) -> void:
 	if not is_instance_valid(node) or float(node.get_meta("topple", 0.0)) != 0.0:
 		return
-	var old: Variant = node.get_meta("lift_tween", null)
+	var old: Variant = (node.get_meta("lift_tween") if node.has_meta("lift_tween") else null)
 	if old is Tween and (old as Tween).is_valid():
 		(old as Tween).kill()
 	var from := float(node.get_meta("lift", 0.0))
@@ -1857,7 +1857,12 @@ func _lift(node: Node3D, s: int, up: float) -> void:
 		return
 	var tw := create_tween()
 	node.set_meta("lift_tween", tw)
-	var step := tw.tween_method(_pose_lift.bind(node, s), from, up, LIFT_TIME if up > from else LIFT_TIME * 0.75)
+	# Por referencia débil: si la pieza desaparece a medio camino (se rehace el tablero), el tween no se queja.
+	var wr: WeakRef = weakref(node)
+	var step := tw.tween_method(func(t: float) -> void:
+		var n: Variant = wr.get_ref()
+		if n is Node3D:
+			_pose_lift(t, n as Node3D, s), from, up, LIFT_TIME if up > from else LIFT_TIME * 0.75)
 	if up > from:
 		step.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	else:
@@ -1884,7 +1889,7 @@ func drag_piece(s: int, screen_pos: Vector2) -> void:
 	hit.x = clampf(hit.x, -4.4, 4.4)
 	hit.z = clampf(hit.z, -4.4, 4.4)
 	var dragged: Node3D = _pieces[s]
-	var old: Variant = dragged.get_meta("lift_tween", null)
+	var old: Variant = (dragged.get_meta("lift_tween") if dragged.has_meta("lift_tween") else null)
 	if old is Tween and (old as Tween).is_valid():
 		(old as Tween).kill()
 	dragged.set_meta("lift", 1.0)
@@ -2038,7 +2043,7 @@ func play_move(m: int, dropped: bool = false) -> void:
 	var lifted := 0.0
 	if mover != null:
 		lifted = float(mover.get_meta("lift", 0.0))
-		var lt: Variant = mover.get_meta("lift_tween", null)
+		var lt: Variant = (mover.get_meta("lift_tween") if mover.has_meta("lift_tween") else null)
 		if lt is Tween and (lt as Tween).is_valid():
 			(lt as Tween).kill()
 		mover.set_meta("lift", 0.0)

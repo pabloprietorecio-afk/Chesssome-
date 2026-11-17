@@ -1015,7 +1015,7 @@ static func _grid_items(d: Variant) -> Array:
 	else:
 		items.append(["cap", "butter", "Test de nivel", "Descubre tu nivel", "Unos problemas para saber por dónde empezar.", Callable(d, "_open_experience")])
 		items.append(["target", "peach", "Entrenar", "Problemas a tu nivel", "Mates, ataques dobles, clavadas y más.", Callable(d, "_open_experience")])
-	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador", "5 niveles de dificultad.", Callable(d, "_open_game_setup")])
+	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador", "13 niveles de dificultad.", Callable(d, "_open_game_setup").bind(true)])
 	items.append(["users", "sky", "Partida online", "Contra otra persona", "Demuestra tu nivel en tiempo real.", Callable(d, "_open_online_home")])
 	var lessons: Array = d._course_lessons()
 	var done := 0
