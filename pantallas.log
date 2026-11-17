@@ -1,0 +1,106 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+
+SHOT p1_inicio
+SHOT p1b_oscuro_opciones
+OSCURO chrome=7 inicio=9 hoja=options
+SHOT p1c_inicio_oscuro
+SHOT p1d_inicio_reto
+SHOT p1e_tu_dia
+SHOT p1f_aviso_reto
+RETO racha=4 objetivos=["problemas:3/3", "leccion:0/1", "partida:0/1"] semana={ "idx": 2968, "familia": "peon", "meta": 5, "hecho": 3, "completo": false, "ids": ["s20774_0", "s20774_1", "s20774_2"] } insignias=["racha3"]
+ENGANCHES problema=1/1 lecciones=1 partidas=1 ganadas=1
+CAMINOS REALES problemas=1 partidas=1 ganadas=1
+ABANDONO partidas=1 (antes 1)
+SHOT p2_entrenar
+SHOT p3_entrenar_bloqueado
+SHOT p3b_nivel_4
+SHOT p4_online
+SHOT p5_online_buscando
+SHOT p6_online_lamina_cae
+SHOT p7_online_lamina_asienta
+SHOT p14_online_partida
+SHOT p15_online_atras
+ONLINE atrás=1 pendientes=0
+SHOT p15b_online_reloj
+SHOT p15c_online_avisos
+SHOT p15d_sigues_ahi
+SHOT p15e_rival_no_contesta
+SHOT p23_comidas
+SHOT p32_configurar_partida
+SHOT p24_reloj_te_toca
+SHOT p25_reloj_pulsa
+RELOJ estado=press
+SHOT p26_reloj_bajando
+SHOT p27_reloj_rival_pulso
+SHOT p27b_reloj_atras
+ATRAS back=1
+DIRECTO back=0
+SHOT p28_confirmar_rendirse
+CONFIRMAR abierta=true
+SHOT p16a_final_partida
+SHOT p16b_jugada_a_jugada_desde_final
+VUELTA estado=over
+SHOT p16_analisis_resumen
+DETALLE e5 · Buena · e5 lleva tu peón a e5. / Gana espacio en el centro: desde e5, el peón controla d4 y f4. / Ocupa el centro, donde las piezas tienen más casillas.
+DETALLE Cc6 · Buena · Cc6 lleva tu caballo a c6. / Desarrolla tu caballo: sale de su casilla inicial y entra en juego. Quedan 3 piezas menores sin desarrollar. / Desarrolla una pieza: sale de su casilla inicial y entra en juego.
+DETALLE Cf6 · Error grave · Cf6 lleva tu caballo a f6. / Permite jaque mate: Dxf7#. / La mejor era g6: ataca la dama.
+SHOT p17a_detalle_buena
+SHOT p17b_detalle_respuesta
+SHOT p17_detalle_error
+SHOT p17c_la_mejor_era
+SHOT p17d_la_mejor_sigue
+LINEA g6 De2 Cd4 Dd1 b5 Ad5
+SHOT p18_analisis_con_recuento
+SHOT p19_online_nombre
+SHOT p20_online_con_nombre
+SHOT p21_mis_partidas
+SHOT p21b_mis_partidas_filtro
+SHOT p22_mis_partidas_lista
+SHOT p7b_comenzar
+POR QUE fase=1 paso=3
+SHOT p8_rival_1
+SHOT p9_rival_2
+SHOT p10_rival_3
+SHOT p11_rival_5
+POR QUE · El rey rival está en jaque: tu torre de b1 lo ataca por la fila 1.
+POR QUE · Mover el rey dentro de la fila 1 no sirve: e1 y g1 siguen en la línea de tu torre. Fuera de ella, tiene tres casillas: e2, f2 y g2.
+POR QUE · Pero tu caballo de f4 controla e2 y g2. Solo le queda f2.
+POR QUE · Nada puede comer tu torre de b1 ni ponerse en medio.
+POR QUE · Así que Rf2 era la única jugada posible.
+SHOT p12a_resuelto_ventana
+RESUELTO fase=4 ventana=true
+SHOT p12_resuelto
+SHOT p12b_resumen
+SHOT p13_jugada_a_jugada
+PROG FINAL {  }
+SHOT p30_ahogado_ejemplo
+AHOGADO estado=info porque=true
+SHOT p31_ahogado_porque
+PORQUE El rey rival no está en jaque: ninguna pieza lo ataca ahora mismo.
+PORQUE Las casillas g8, g7 y h7 las controla tu dama de g6.
+PORQUE Sin jaque y sin ninguna jugada legal: ahogado. La partida acaba en tablas.
+SHOT p34_entrenar_finales
+SHOT p35_finales_lista
+SHOT p36_final_presentacion
+SHOT p37_final_pregunta
+SHOT p38_final_fallo
+CINE fallo: Tb1+ deja escapar la victoria. Así podría seguir: 56.Rh2 Ac4 57.Td2 Tb3 58.Ag2 Ad3 59.Rg1 Ae4 60.Rf2 Ta3.
+SHOT p39_final_acierto
+SHOT p40_final_explicacion
+SHOT p41_final_fin
+CINE fin: 3
+SHOT p33_flechas_cortas
+SHOT p29_aventura_chapas
+PANTALLAS DONE
+WARNING: 188 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2735)
+WARNING: 51 RIDs of type "Texture" were leaked.
+   at: finalize (servers/rendering/rendering_device.cpp:8900)
+WARNING: 851 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 3 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:822)
+ERROR: 46 RID allocations of type 'N10RendererRD14TextureStorage7TextureE' were leaked at exit.
+ERROR: 269 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 3 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
