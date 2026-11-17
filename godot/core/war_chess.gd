@@ -13,6 +13,10 @@ extends Chess
 ##
 ## Sin blindajes seguidos (17 nov): un bando no puede blindar en dos turnos seguidos suyos (`armored_last`).
 ##
+## Sin tercera repetición (17 nov, como en Arimaa): es ilegal una jugada que deje por tercera vez una posición ya
+## vista (colocación, turno, enroques, al paso y blindajes). Quien solo tiene jugadas así, pierde. Las posiciones
+## vistas (`seen`) las pone quien lleva la partida y se comparten entre copias; sin ellas, no se filtra nada.
+##
 ## Jugadas nuevas (mismo formato de int que Chess): blindarse = origen y destino iguales con la marca F_ARMOR
 ## (en UCI «e2e2»); romper un blindaje = de la atacante a la blindada con la marca F_BREAK (en UCI como una
 ## captura, «c4f7», sin coronación aunque sea un peón que llega a la última fila).
@@ -36,6 +40,8 @@ var spent := PackedByteArray()
 var cracked := PackedByteArray()
 ## Bit 1 = la última jugada de las blancas fue blindar; bit 2 = la de las negras.
 var armored_last := 0
+## Posiciones de la partida (clave de position_key → veces vistas). Compartido entre copias (no se duplica).
+var seen: Dictionary = {}
 
 
 func _init() -> void:
@@ -125,7 +131,49 @@ func copy() -> Chess:
 	c.spent = spent.duplicate()
 	c.cracked = cracked.duplicate()
 	c.armored_last = armored_last
+	c.seen = seen
 	return c
+
+
+## Clave de repetición de un FEN: colocación, turno, enroques, al paso y el campo de War Chess.
+static func key_of(fen_text: String) -> String:
+	var parts := fen_text.strip_edges().split(" ", false)
+	return " ".join(parts.slice(0, 4)) + (" " + parts[6] if parts.size() > 6 else "")
+
+
+func position_key() -> String:
+	return key_of(fen())
+
+
+## Cuenta las posiciones de una partida (lista de FEN) para `seen`.
+static func count_positions(fens: Array) -> Dictionary:
+	var out := {}
+	for f: Variant in fens:
+		var k := key_of(str(f))
+		out[k] = int(out.get(k, 0)) + 1
+	return out
+
+
+## Jugadas legales sin la que repetiría una posición por tercera vez.
+func legal_moves() -> PackedInt32Array:
+	var all := super.legal_moves()
+	if seen.is_empty():
+		return all
+	var out := PackedInt32Array()
+	for m in all:
+		if int(seen.get((after(m) as WarChess).position_key(), 0)) < 2:
+			out.append(m)
+	return out
+
+
+## ¿Hay jugadas, pero todas repetirían una posición por tercera vez? (Entonces pierde el que mueve.)
+func repetition_locked() -> bool:
+	return not seen.is_empty() and legal_moves().is_empty() and not super.legal_moves().is_empty()
+
+
+## ¿Quita la regla de la repetición alguna jugada en esta posición?
+func repetition_filters() -> bool:
+	return not seen.is_empty() and legal_moves().size() < super.legal_moves().size()
 
 
 func is_armored(s: int) -> bool:

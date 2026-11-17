@@ -10,6 +10,7 @@ var hechos := 0
 func _init() -> void:
 	_reglas()
 	_peones()
+	_repeticion()
 	_jaques()
 	_notacion()
 	_rival()
@@ -129,6 +130,24 @@ func _peones() -> void:
 	# El rey golpeando un peón blindado: dos golpes.
 	var k := _pos("8/8/8/3pK3/8/8/8/k7 b - - 0 1")
 	_comprueba(_juega(k, "d5d5") and k.hits_left(d5, Chess.sq_index("e5")) == 2, "el rey también necesita dos golpes")
+
+
+func _repeticion() -> void:
+	# Tercera repetición ilegal: Rg1-h1-g1-h1… con el rey negro igual. La jugada que dejaría por tercera vez una
+	# posición ya vista dos veces desaparece de las legales.
+	var c := _pos("7k/8/8/8/8/8/8/6K1 w - - 0 1")
+	var fens: Array = [c.fen()]
+	for u in ["g1h1", "h8g8", "h1g1", "g8h8", "g1h1", "h8g8", "h1g1"]:
+		c.seen = WarChess.count_positions(fens)
+		_comprueba(_juega(c, u), "%s todavía se puede" % u)
+		fens.append(c.fen())
+	c.seen = WarChess.count_positions(fens)
+	_comprueba(c.find_uci("g8h8") < 0, "g8h8 repetiría la posición por tercera vez: ilegal")
+	_comprueba(c.repetition_filters() and not c.repetition_locked(), "quedan otras jugadas")
+	_comprueba(c.find_uci("g8g7") >= 0, "otra jugada sí vale")
+	var plain := WarChess.from_war_fen(c.fen())
+	_comprueba(plain.find_uci("g8h8") >= 0, "sin historial no se filtra nada")
+	_comprueba(WarChess.key_of(c.fen()) == WarChess.key_of(c.fen().replace(" 0 ", " 7 ")), "la clave no depende de los contadores")
 
 
 func _jaques() -> void:

@@ -44,16 +44,22 @@ func _play(mode: String, level: int, seed_value: int, think: float) -> void:
 	# Para cada golpe: casilla de la pieza que perdió el blindaje y la jugada en la que ocurrió.
 	var pending: Array = []
 	while plies < MAX_PLIES:
+		var key := c.fen().split(" ")
+		var k := " ".join(key.slice(0, 4)) + (" " + key[6] if key.size() > 6 else "")
+		history[k] = int(history.get(k, 0)) + 1
+		if war:
+			# Tercera repetición ilegal: el tablero conoce las posiciones ya vistas.
+			(c as WarChess).seen = history
 		var moves := c.legal_moves()
 		if moves.is_empty():
-			result = "mate" if c.in_check() else "ahogado"
+			if war and (c as WarChess).repetition_locked() and not c.in_check():
+				result = "repite_pierde"
+			else:
+				result = "mate" if c.in_check() else "ahogado"
 			break
 		if c.half >= 100:
 			result = "50"
 			break
-		var key := c.fen().split(" ")
-		var k := " ".join(key.slice(0, 4)) + (" " + key[6] if key.size() > 6 else "")
-		history[k] = int(history.get(k, 0)) + 1
 		if int(history[k]) >= 3:
 			result = "repeticion"
 			break
@@ -108,6 +114,6 @@ func _play(mode: String, level: int, seed_value: int, think: float) -> void:
 			if w.is_armored(s):
 				stats["armored_never_hit"] += 1
 	var out := {"mode": mode, "level": level, "seed": seed_value, "plies": plies, "result": result,
-		"winner": (1 - c.turn) if result == "mate" else -1, "material": _material(c)}
+		"winner": (1 - c.turn) if result in ["mate", "repite_pierde"] else -1, "material": _material(c)}
 	out.merge(stats)
 	print("SIM ", JSON.stringify(out))

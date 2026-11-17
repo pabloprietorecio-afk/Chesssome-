@@ -30,6 +30,16 @@ Lo que pidió Pablo:
   primer golpe de una pieza hace saltar el de atrás, agrietado, y el de delante da un respingo y se queda.
 - FEN: `war:<blindadas>:<gastadas>:<agrietadas>:<último>` (se siguen leyendo los de tres campos).
 
+### Sin tercera repetición (17 nov, 02:05, decidido por Pablo tras comparar con otros juegos)
+
+- Es **ilegal** una jugada que deje por tercera vez una posición ya vista (colocación, turno, enroques, al paso y
+  blindajes), como en Arimaa (y parecido al superko del go). Quien solo tiene jugadas así, **pierde**. Desaparece
+  el jaque perpetuo como recurso de tablas.
+- Si el jugador toca una casilla y la regla le había quitado alguna jugada, la nota lo explica.
+- El texto del peón pasa a «trinchera»: «solo otro peón la rompe de un golpe; las piezas necesitan dos».
+- `WarChess.seen` (posiciones vistas) lo pone la partida desde su historial (`demo._war_sync_seen`); se comparte
+  entre copias. El rival solo lo usa en la primera jugada de su búsqueda.
+
 ### Decisiones tomadas al implementarla (cambiables)
 
 | Duda | Decisión | Por qué |
@@ -168,6 +178,21 @@ Lectura (muestra pequeña, mucho ruido entre partidas):
   es, en la práctica, intocable para las piezas. Su efecto está en la estructura, no en los golpes.
 - **Más repeticiones** (4 de 14 frente a 2 de 14). Puede ser ruido o el primer síntoma de fortalezas. A vigilar con
   más partidas o con un rival más fuerte.
+
+### Tercera simulación, sin tercera repetición (17 nov, 02:20)
+
+| | Clásica | v2 | v3 (sin repetición) |
+|---|---|---|---|
+| Medias jugadas (media / mediana) | 102 / 95 | 93 / 84,5 | 136 / 132 |
+| Final | 12 mates, 2 repeticiones | 10 mates, 4 repeticiones | 13 mates, 1 al límite de 240 |
+| Blindajes por partida | — | 3,9 | 6,2 (44 de 87, de peones) |
+| Golpes que rompen / que solo agrietan | — | 13 / 2 | 18 / 5 |
+
+- **Funciona contra las tablas**: ninguna partida acaba por repetición; 13 de 14 terminan en mate.
+- **Pero las partidas son más largas** (+33 % frente a la clásica): las que antes acababan en tablas siguen hasta el
+  mate (o hasta el límite), y en partidas largas se blinda más.
+- Ojo: el rival piensa con tiempo limitado y no siempre juega igual con la misma semilla, así que las comparaciones
+  partida a partida son aproximadas. Hace falta probarlo jugando (o con más partidas y un rival más fuerte).
 
 Ideas para que la regla pese más (por probar): límite de 3 blindajes por bando; que golpear un blindaje deje a la
 atacante «aturdida» un turno (no puede volver a atacar); o la alternativa de Pablo (quitarse el blindaje gasta un

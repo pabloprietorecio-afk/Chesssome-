@@ -2048,6 +2048,7 @@ func _tone_color(e: Dictionary) -> Color:
 
 ## Pone los textos y los botones que corresponden a la fase del problema.
 func _refresh(animate: bool = true) -> void:
+	_war_sync_seen()
 	if card_body == null or not is_instance_valid(card_body):
 		return
 	var total := puzzles.size()
@@ -6140,7 +6141,7 @@ func _set_game_color(i: int) -> void:
 
 
 ## Reglas de War Chess, en corto (página de partida y comienzo de la partida). Ver docs/war-chess.md.
-const WAR_RULES := "War Chess: se juega como el ajedrez, pero en lugar de mover puedes blindar una pieza (no el rey): selecciónala y toca «Blindar». Atacar una pieza blindada no la captura: le rompe el blindaje y la atacante se queda en su casilla. Cada pieza se blinda una vez y pierde el blindaje si se mueve. El blindaje de un peón aguanta dos golpes de pieza (uno de otro peón). No se puede blindar dos turnos seguidos."
+const WAR_RULES := "War Chess: se juega como el ajedrez, pero en lugar de mover puedes blindar una pieza (no el rey): selecciónala y toca «Blindar». Atacar una pieza blindada no la captura: le rompe el blindaje y la atacante se queda en su casilla. Cada pieza se blinda una vez y pierde el blindaje si se mueve. Un peón blindado es una trinchera: solo otro peón la rompe de un golpe; las piezas necesitan dos. No se puede blindar dos turnos seguidos ni repetir una posición por tercera vez."
 
 
 ## Nombre en español de la pieza (para Loc.t): «caballo», «dama»…
@@ -7607,6 +7608,18 @@ func _board_bubble(icon_name: String, text: String, tint_name: String, top: bool
 func _on_view_tapped(kind: String) -> void:
 	if kind == "locked" and mode == "game" and game_back > 0 and game_state in ["play", "think", "press"]:
 		_game_browse(-99)
+	elif kind == "illegal" and mode == "game" and game_state == "play" and view.board.chess is WarChess \
+			and (view.board.chess as WarChess).repetition_filters():
+		# Puede que el jugador intentara justo la jugada que repetiría la posición: se le dice por qué no vale.
+		game_note = "En War Chess no se puede repetir una posición por tercera vez."
+		_refresh()
+
+
+## War Chess: el tablero sabe qué posiciones han salido ya en la partida (regla de la tercera repetición).
+func _war_sync_seen() -> void:
+	if mode != "game" or game_back > 0 or view == null or not (view.board.chess is WarChess) or game_history.is_empty():
+		return
+	(view.board.chess as WarChess).seen = WarChess.count_positions(game_history)
 
 
 func _game_browse(delta: int) -> void:
@@ -8039,7 +8052,13 @@ func _game_check_end(before: Chess, m: int) -> bool:
 		if winner < 0:
 			return false
 	else:
-		if pos.legal_moves().is_empty():
+		if pos is WarChess:
+			_war_sync_seen()
+		if pos is WarChess and (pos as WarChess).repetition_locked() and not pos.in_check():
+			# War Chess: solo le quedan jugadas que repetirían la posición por tercera vez: pierde (como en Arimaa).
+			winner = 1 - pos.turn
+			why = "repite"
+		elif pos.legal_moves().is_empty():
 			winner = 1 - pos.turn if pos.in_check() else -1
 			why = "mate" if pos.in_check() else "ahogado"
 		elif pos.half >= 100:
@@ -8063,6 +8082,7 @@ func _game_check_end(before: Chess, m: int) -> bool:
 		"corona": ["¡Has coronado! Has ganado.", "El rival ha coronado: gana él."],
 		"piezas": ["¡Has capturado todas sus piezas!", "El rival ha capturado todas tus piezas."],
 		"bloqueo": ["El rival se ha quedado sin jugadas: ¡has ganado!", "Te has quedado sin jugadas: gana el rival."],
+		"repite": ["Al rival solo le quedaban jugadas que repetían la posición por tercera vez: ¡has ganado!", "Solo te quedaban jugadas que repetían la posición por tercera vez: gana el rival."],
 	}
 	var draws := {"ahogado": "Ahogado: el rey no está en jaque y no puede mover. Tablas.", "50": "Cincuenta jugadas sin capturas ni movimientos de peón: tablas.", "repeticion": "La misma posición tres veces: tablas.", "material": "No queda material para dar mate: tablas."}
 	if game_won != 0:
