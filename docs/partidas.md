@@ -79,6 +79,8 @@ y problemas.
 - «Retroceder» (barra de resolver): repasa las posiciones anteriores del problema; «Avanzar» y «Volver a jugar».
 - «¿Por qué ha jugado eso el rival?»: hechos comprobables de la jugada (qué captura, si da jaque, si recaptura, si
   retira una pieza atacada; `_move_facts`). El contexto se apoya en cómo se generan los problemas de Lichess.
+  Desde el 17 nov, con pocas jugadas legales se cuenta además **qué pasaba con cada una de las otras** (análisis de
+  Stockfish, comprobado en el tablero): ver `docs/defensas.md`.
 - Al ver una variante jugada a jugada, la ficha se recoge y deja solo sus mandos: se ve el tablero entero.
 - Valoración de la jugada con los signos de anotación de ajedrez, en una chapa sobre la casilla de destino
   (`Board3D.set_badge`, `BADGES`): «!» la jugada de la solución, «?!», «?» y «??» según la clase de error. No hay

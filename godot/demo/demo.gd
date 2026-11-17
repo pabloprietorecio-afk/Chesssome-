@@ -2924,28 +2924,35 @@ func _solver_color() -> int:
 var _why_cache := {}
 
 
-func _puzzle_move_why(i: int) -> Dictionary:
+## Con `reveal` = false (el problema aún no está resuelto) la explicación no cuenta lo que sigue en la solución.
+func _puzzle_move_why(i: int, reveal: bool = true) -> Dictionary:
 	var moves: Array = puzzle.get("moves", [])
 	if i < 0 or i >= moves.size():
 		return {}
-	var key := "%s|%s|%d" % [str(puzzle.get("id", "")), str(puzzle.get("fen", "")), i]
+	var key := "%s|%s|%d|%s" % [str(puzzle.get("id", "")), str(puzzle.get("fen", "")), i, str(reveal)]
 	if _why_cache.has(key):
 		return _why_cache[key]
 	if _why_cache.size() > 200:
 		_why_cache.clear()
-	var e := _puzzle_move_why_now(i)
+	var e := _puzzle_move_why_now(i, reveal)
 	_why_cache[key] = e
 	return e
 
 
-func _puzzle_move_why_now(i: int) -> Dictionary:
+func _puzzle_move_why_now(i: int, reveal: bool = true) -> Dictionary:
 	var moves: Array = puzzle.get("moves", [])
 	var before := _puzzle_pos(i)
 	var m := before.find_uci(str(moves[i]))
 	if m < 0:
 		return {}
 	var role := "solution" if i % 2 == 1 else ("blunder" if i == 0 else "reply")
-	return MoveWhy.explain(before, m, _solver_color(), role, moves.slice(i + 1))
+	return MoveWhy.explain(before, m, _solver_color(), role, moves.slice(i + 1), reveal)
+
+
+## «¿Por qué ha jugado eso?» mientras se resuelve: se explica la jugada sin dar lo que sigue en la solución (antes
+## decía «Pero es un error: permite…» con la solución entera, y el problema contaba como resuelto sin ayuda).
+func _why_reveal() -> bool:
+	return phase == Phase.SOLVED or phase == Phase.SHOWN
 
 
 ## Botón «¿Por qué esa jugada?» y, abierto, la explicación de la última jugada que se ve en el tablero (la del rival
@@ -2959,7 +2966,7 @@ func _add_move_why() -> void:
 	if not move_why_open:
 		card_body.add_child(_card_button("¿Por qué jugaste eso?" if mine else "¿Por qué ha jugado eso el rival?", _toggle_move_why, _c("field"), _c("ink"), F_SUB, "why"))
 		return
-	var e := _puzzle_move_why(ply - 1)
+	var e := _puzzle_move_why(ply - 1, _why_reveal())
 	if e.is_empty():
 		return
 	card_body.add_child(_why_block(e, (Loc.t("Tu jugada: %s") if mine else Loc.t("La jugada del rival: %s")) % str(e["san"])))
@@ -3171,7 +3178,7 @@ func _toggle_move_why() -> void:
 	why_idx = 0
 	if move_why_open:
 		var ply := ask_step - browse_back
-		var e := _puzzle_move_why(ply - 1)
+		var e := _puzzle_move_why(ply - 1, _why_reveal())
 		if not e.is_empty():
 			why_paras = e["paras"]
 			_why_apply()

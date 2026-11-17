@@ -64,12 +64,14 @@ static func info_text(ex: Dictionary) -> String:
 static func answer(ex: Dictionary, uci: String) -> String:
 	var info: Dictionary = ex.get("cine", {})
 	var v: Dictionary = (ex.get("moves", {}) as Dictionary).get(uci, {})
-	var played := str(info.get("playedSan", ""))
+	# Las jugadas de los datos vienen en notación española: se pasan aquí a la del idioma (Loc.f ya no toca una
+	# jugada suelta, porque las del tablero llegan escritas en la notación del idioma).
+	var played := Loc.san_text(str(info.get("playedSan", "")))
 	var win := str(info.get("target", "")) == "win"
 	var sep := " " if Loc.language != "ja" else ""
 	if v.is_empty():
 		return Loc.f("En la partida se jugó %s.", played)
-	var mine := str(v.get("san", ""))
+	var mine := Loc.san_text(str(v.get("san", "")))
 	var cls := str(v.get("c", ""))
 	var played_ok := str(info.get("playedCls", "")) == "keeps"
 	var why := Loc.t(str(info.get("why", "")))
@@ -88,7 +90,7 @@ static func answer(ex: Dictionary, uci: String) -> String:
 	else:
 		out.append(Loc.f("%s no está tan clara: puede que no baste. En la partida se jugó %s.", [mine, played]))
 	if str(v.get("line", "")) != "":
-		out.append(Loc.f("Así podría seguir: %s.", str(v["line"])))
+		out.append(Loc.f("Así podría seguir: %s.", Loc.san_text(str(v["line"]))))
 	match str(v.get("end", "")):
 		"checkmate":
 			out.append(Loc.t("Y acaba en mate."))
@@ -99,6 +101,6 @@ static func answer(ex: Dictionary, uci: String) -> String:
 	if uci == str(info.get("played", "")) and not played_ok:
 		for u: Variant in (ex.get("moves", {}) as Dictionary).keys():
 			if bool((ex["moves"][u] as Dictionary).get("ok", false)):
-				out.append(Loc.f("Lo correcto era %s.", str((ex["moves"][u] as Dictionary).get("san", ""))))
+				out.append(Loc.f("Lo correcto era %s.", Loc.san_text(str((ex["moves"][u] as Dictionary).get("san", "")))))
 				break
 	return sep.join(out)

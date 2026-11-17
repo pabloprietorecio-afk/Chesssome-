@@ -88,8 +88,17 @@ static func t(message: String) -> String:
 		return message
 	if _table.has(message):
 		return str(_table[message])
+	if _exp.is_empty():
+		return message
+	# Una jugada suelta (o varias seguidas) entra tal cual: quien la pasa ya la trae en la notación del idioma
+	# (SanEs). Leerla otra vez como española cambiaba la torre inglesa por el rey: «Rb1+» → «Kb1+» (en inglés,
+	# japonés, indonesio e hindi, que comparten letras). Las jugadas de los datos, escritas en español, se pasan
+	# con san_text o con explain.
+	var tpl := exp_template(message)
+	if str(tpl[0]) == "{1}" and str((tpl[2] as Array)[0]) == "m":
+		return message
 	# Frases con jugadas dentro («Ta2 no da jaque…»): se traducen por plantilla, como las explicaciones.
-	return explain(message) if not _exp.is_empty() else message
+	return explain(message, tpl)
 
 
 ## Traduce una plantilla con «%» y también los textos que se meten en ella (nombres de piezas, de niveles…):
@@ -198,12 +207,13 @@ static func exp_sentences(template: String) -> Array:
 
 ## Traduce una frase de las explicaciones de los problemas (que vienen escritas en español): la parte en frases, busca
 ## cada plantilla en la tabla del idioma y rellena los huecos. Si falta alguna frase, la deja entera en español.
-static func explain(text: String) -> String:
+static func explain(text: String, tpl: Array = []) -> String:
 	if language == "es" or text.is_empty():
 		return text
 	if _table.has(text):
 		return str(_table[text])
-	var tpl := exp_template(text)
+	if tpl.is_empty():
+		tpl = exp_template(text)
 	var values: Array = tpl[1]
 	var kinds: Array = tpl[2]
 	var shown: Array = []

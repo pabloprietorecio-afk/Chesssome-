@@ -912,6 +912,63 @@ static func _one_falls(pos: Chess, at: int, targets: Array, replies: PackedInt32
 	return true
 
 
+## ¿Hay una pieza del bando que mueve en `pos` (no el rey; un caballo o más) que cae haga lo que haga? Devuelve
+## [su casilla, la casilla de quien la ataca] o []. Se mira primero la que más vale.
+static func _falls(pos: Chess) -> Array:
+	var side := pos.turn
+	var opp := 1 - side
+	var replies := pos.legal_moves()
+	if replies.is_empty():
+		return []
+	var cands: Array = []
+	for sq in 64:
+		var p: int = pos.b[sq]
+		if p == 0 or Chess.color_of(p) != side:
+			continue
+		var t := Chess.type_of(p)
+		if t == Chess.KING or int(VALUE[t]) < 3:
+			continue
+		for a: int in attackers(pos, sq, opp):
+			if int(VALUE[Chess.type_of(pos.b[a])]) < int(VALUE[t]) or not pos.attacked(sq, side):
+				cands.append([sq, a])
+				break
+	cands.sort_custom(func(x: Array, y: Array) -> bool: return int(VALUE[Chess.type_of(pos.b[int(x[0])])]) > int(VALUE[Chess.type_of(pos.b[int(y[0])])]))
+	for c: Array in cands:
+		if _falls_always(pos, int(c[0]), replies):
+			return c
+	return []
+
+
+## ¿La pieza de `target` cae tras cualquiera de las `replies` de su bando? «Cae»: el otro bando puede comérsela con
+## una pieza que vale menos, o gratis (sin que se la recuperen), o dar mate. Si con alguna respuesta su bando se
+## lleva antes una pieza (un caballo o más), no se afirma nada.
+static func _falls_always(pos: Chess, target: int, replies: PackedInt32Array) -> bool:
+	var side := pos.turn
+	var tv := int(VALUE[Chess.type_of(pos.b[target])])
+	for r in replies:
+		var hit: int = pos.b[Chess.move_to(r)]
+		if hit != 0 and int(VALUE[Chess.type_of(hit)]) >= 3:
+			return false
+		var nxt := pos.after(r)
+		var at := Chess.move_to(r) if Chess.move_from(r) == target else target
+		if nxt.b[at] == 0 or Chess.color_of(nxt.b[at]) != side:
+			return false
+		var ok := false
+		for m in nxt.legal_moves():
+			var then := nxt.after(m)
+			if then.is_checkmate():
+				ok = true
+				break
+			if Chess.move_to(m) != at:
+				continue
+			if int(VALUE[Chess.type_of(nxt.b[Chess.move_from(m)])]) < tv or not then.attacked(at, side):
+				ok = true
+				break
+		if not ok:
+			return false
+	return true
+
+
 ## Si el bando que acaba de mover volviera a jugar, ¿daría mate? Devuelve esa jugada (en la posición con el turno
 ## cambiado) o −1.
 static func mate_threat(after: Chess) -> int:
@@ -958,12 +1015,264 @@ static func short_tag(before: Chess, m: int) -> String:
 	return ""
 
 
+# ---------------------------------------------------------------- las otras jugadas del rival (con el motor)
+
+## Cuántas de las otras jugadas se explican una a una (las demás, en una frase).
+const MAX_ALTS := 3
+## Hasta qué mate se dice «hay mate en N»; más lejos no enseña nada.
+const MAX_MATE := 5
+
+
+## ¿El análisis del motor dice que otra jugada aguantaba claramente más que `m`? Entonces `m` no es «su mejor defensa».
+static func has_better_defense(before: Chess, m: int) -> bool:
+	var entry := DefenseData.lookup(before)
+	if entry.is_empty() or str(entry.get("j", "")) != Chess.uci(m):
+		return false
+	for o: Array in entry.get("o", []):
+		if DefenseData.compare(entry.get("v"), o[1]) > 0:
+			return true
+	return false
+
+
+## Qué pasaba con las otras jugadas del rival, con el análisis de Stockfish (DefenseData) y comprobando en el tablero
+## lo que se afirma. Primero las peores, de la más castigada a la menos: el mate, la pieza que se come, el jaque que
+## además ataca una pieza que cae o, si no hay nada tan claro, que queda todavía peor (eso lo dice el motor). Después,
+## las que aguantaban más o menos igual. Al final, por qué la jugada hecha, si se puede decir. Cada párrafo enseña en
+## el tablero la posición tras esa otra jugada. [] si la posición no está analizada.
+## Con `reveal` = false (el problema aún no está resuelto) no se da la jugada siguiente de la solución: ni como lo que
+## «seguiría», ni como castigo de otra jugada, ni contando que a la pieza que come se la comen después.
+## Antes solo se decía «De todas sus jugadas, es la que más resiste» (Pablo, 17-11: un jugador inexperto no entiende
+## por qué el rival entrega la dama).
+static func alternatives_paras(before: Chess, m: int, me: int, rest: Array = [], reveal: bool = true) -> Array:
+	var entry := DefenseData.lookup(before)
+	if entry.is_empty() or str(entry.get("j", "")) != Chess.uci(m):
+		return []
+	var played: Variant = entry.get("v")
+	var others: Array = entry.get("o", [])
+	var better: Array = []
+	var worse: Array = []
+	var same: Array = []
+	for o: Array in others:
+		var alt := before.find_uci(str(o[0]))
+		if alt < 0 or alt == m:
+			return []
+		var item := {"move": alt, "val": o[1], "pv": o[2]}
+		var c := DefenseData.compare(played, o[1])
+		if c > 0:
+			better.append(item)
+		elif c < 0:
+			worse.append(item)
+		else:
+			same.append(item)
+	var out: Array = []
+	if not better.is_empty():
+		# Otra aguantaba más: se dice eso y nada más (la jugada hecha no es «la que menos pierde»).
+		better.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return DefenseData.rank(x["val"]) > DefenseData.rank(y["val"]))
+		for item: Dictionary in better.slice(0, MAX_ALTS):
+			var p := _alt_para(before, item, 1, me, _hidden(item, rest, reveal))
+			if not p.is_empty():
+				out.append(p)
+		return out
+	# La más castigada, primero.
+	worse.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return DefenseData.rank(x["val"]) < DefenseData.rank(y["val"]))
+	var left: Array = []
+	for item: Dictionary in worse:
+		var p := {} if out.size() >= MAX_ALTS else _alt_para(before, item, -1, me, _hidden(item, rest, reveal))
+		if p.is_empty():
+			left.append(item)
+		else:
+			out.append(p)
+	# Las que aguantaban parecido, juntas las que tienen la misma continuación. Si lo que seguiría es la jugada
+	# siguiente de la solución, no se dice: ya se verá (y, mientras se resuelve, sería dar la respuesta).
+	var groups := {}
+	var order: Array = []
+	for item: Dictionary in same:
+		var follow := ""
+		var pv: Array = item["pv"]
+		if reveal and not pv.is_empty() and (rest.is_empty() or str(pv[0]) != str(rest[0])):
+			var a := before.after(int(item["move"]))
+			var r := a.find_uci(str(pv[0]))
+			if r >= 0:
+				follow = _san(a, r)
+				item["ref"] = r
+		if not groups.has(follow):
+			groups[follow] = []
+			order.append(follow)
+		(groups[follow] as Array).append(item)
+	for follow: String in order:
+		var items: Array = groups[follow]
+		if out.size() >= MAX_ALTS:
+			left.append_array(items)
+			continue
+		out.append(_same_para(before, items, follow, DefenseData.mate_of(played) < 0))
+	if out.is_empty():
+		return []
+	if not left.is_empty():
+		var arrows: Array = []
+		for item: Dictionary in left:
+			arrows.append(_arrow(Chess.move_from(int(item["move"])), Chess.move_to(int(item["move"])), "info"))
+		out.append(_par("Las demás jugadas tampoco eran mejores.", arrows, before))
+	# Por qué la jugada hecha.
+	var san := _san(before, m)
+	var after := before.after(m)
+	var to := Chess.move_to(m)
+	var mv := [Chess.move_from(m), to]
+	var taken: int = before.b[to]
+	var mover_t := Chess.type_of(after.b[to])
+	# ¿Come algo que vale menos y a la jugada siguiente se la comen a ella? Entonces la entrega a cambio de algo.
+	var sac := false
+	if reveal and taken != 0 and not rest.is_empty() and int(VALUE[Chess.type_of(taken)]) < int(VALUE[mover_t]):
+		var next := after.find_uci(str(rest[0]))
+		sac = next >= 0 and Chess.move_to(next) == to
+	var all_worse := same.is_empty() and others.size() == before.legal_moves().size() - 1
+	if all_worse:
+		if DefenseData.mate_of(played) < 0:
+			out.append(_par(Loc.f("Así que %s: es lo que más retrasa el mate.", san), [], after, mv))
+		elif sac:
+			out.append(_par(Loc.f("Así que %s: al menos se lleva %s a cambio. Es lo que menos pierde.", [san, name_at(before, to, me, false)]), [], after, mv))
+		else:
+			out.append(_par(Loc.f("Así que %s: de todas sus jugadas, es la que menos pierde.", san), [], after, mv))
+	elif sac:
+		out.append(_par(Loc.f("Con %s, al menos se lleva %s a cambio de %s.", [san, name_at(before, to, me, false), _art(mover_t) + " " + str(NOUN[mover_t])]), [], after, mv))
+	return out
+
+
+## ¿Hay que callar lo que seguiría a esta otra jugada? Sí, si el problema no está resuelto y es la misma jugada que el
+## jugador tiene que encontrar.
+static func _hidden(item: Dictionary, rest: Array, reveal: bool) -> bool:
+	var pv: Array = item["pv"]
+	return not reveal and not rest.is_empty() and not pv.is_empty() and str(pv[0]) == str(rest[0])
+
+
+## El párrafo de otra jugada del rival: `kind` −1 si era peor, 1 si aguantaba más (las parecidas van juntas, en
+## _same_para). Con `hide` no se dice qué seguiría. {} si la continuación del motor no cuadra con el tablero.
+static func _alt_para(before: Chess, item: Dictionary, kind: int, me: int, hide: bool = false) -> Dictionary:
+	var alt: int = item["move"]
+	var pv: Array = item["pv"]
+	var val: Variant = item["val"]
+	if pv.is_empty():
+		return {}
+	var a := before.after(alt)  # mueve el que castiga
+	if hide:
+		# Lo que seguiría es la jugada que el jugador tiene que encontrar: solo se dice cómo queda.
+		var only := [Chess.move_from(alt), Chess.move_to(alt)]
+		return _par(Loc.f("%s aguantaba más." if kind > 0 else "Si %s, queda todavía peor.", _san(before, alt)), [], a, only)
+	var ref := a.find_uci(str(pv[0]))
+	if ref < 0:
+		return {}
+	var alt_san := _san(before, alt)
+	var ref_san := _san(a, ref)
+	var alt_mv := [Chess.move_from(alt), Chess.move_to(alt)]
+	var ref_mv := [Chess.move_from(ref), Chess.move_to(ref)]
+	var alt_arrow := _arrow(alt_mv[0], alt_mv[1], "info")
+	var ref_arrow := _arrow(ref_mv[0], ref_mv[1], "good")
+	if kind > 0:
+		return _par(Loc.f("%s aguantaba más: seguiría %s.", [alt_san, ref_san]), [ref_arrow], a, alt_mv)
+	var a2 := a.after(ref)
+	# Peor: mate. Solo se cuenta si está cerca (un «mate en 16» no enseña nada: mejor lo que se ve en el tablero).
+	var n := -DefenseData.mate_of(val)
+	if n == 1 and a2.is_checkmate():
+		return _par(Loc.f("Si %s, %s es jaque mate.", [alt_san, ref_san]), [alt_arrow], a2, ref_mv)
+	if n == 2 or n == 3:
+		var line := _mate_line(a, pv, n)
+		if not line.is_empty():
+			return _par(Loc.f("Si %s, llega el mate: %s.", [alt_san, " ".join(line[0])]), [], line[1], line[2])
+	if n >= 2 and n <= MAX_MATE:
+		return _par(Loc.f("Si %s, %s y hay mate en %d.", [alt_san, ref_san, n]), [alt_arrow], a2, ref_mv)
+	# Peor sin mate (o con el mate lejos): lo que se ve en el tablero.
+	var side := a.turn
+	var from := Chess.move_from(ref)
+	var to := Chess.move_to(ref)
+	var hit: int = a.b[to]
+	if hit != 0 and int(VALUE[Chess.type_of(hit)]) >= 3:
+		var cv := int(VALUE[Chess.type_of(a.b[from])])
+		if int(VALUE[Chess.type_of(hit)]) > cv or not a2.attacked(to, 1 - side):
+			return _par(Loc.f("Si %s, %s se come %s.", [alt_san, ref_san, name_at(a, to, me)]), [alt_arrow], a2, ref_mv)
+	var fall := _falls(a2)
+	if not fall.is_empty():
+		var tgt: int = fall[0]
+		var by: int = fall[1]
+		# ¿El ataque es nuevo (lo crea esta jugada, con la pieza que llega o al apartarse) o ya estaba?
+		var fresh := not attacks_from(a, from if by == to else by).has(tgt)
+		var arrows: Array = [alt_arrow]
+		var who := name_at(a2, tgt, me)
+		if a2.in_check():
+			var k := a2.king_sq(1 - side)
+			var checkers := attackers(a2, k, side)
+			var word := "jaque doble" if checkers.size() >= 2 else ("jaque" if checkers.has(to) else "jaque descubierto")
+			for c: int in checkers:
+				arrows.append(_arrow(c, k, "bad"))
+			arrows.append(_arrow(by, tgt, "bad"))
+			if fresh:
+				return _par(Loc.f("Si %s, %s es %s y además ataca %s, que cae sin remedio.", [alt_san, ref_san, word, who]), arrows, a2, ref_mv)
+			return _par(Loc.f("Si %s, %s es %s y después cae %s.", [alt_san, ref_san, word, who]), arrows, a2, ref_mv)
+		arrows.append(_arrow(by, tgt, "bad"))
+		if fresh:
+			return _par(Loc.f("Si %s, %s ataca %s, que cae sin remedio.", [alt_san, ref_san, who]), arrows, a2, ref_mv)
+		return _par(Loc.f("Si %s, tras %s cae %s.", [alt_san, ref_san, who]), arrows, a2, ref_mv)
+	# Nada tan claro en el tablero: lo dice el motor.
+	return _par(Loc.f("Si %s, %s y queda todavía peor.", [alt_san, ref_san]), [alt_arrow], a2, ref_mv)
+
+
+## El párrafo de las jugadas que aguantaban más o menos igual que la hecha (`items`, todas con la misma continuación
+## `follow`, "" si no se dice). `mate`: la hecha también acaba en mate, igual de pronto.
+static func _same_para(before: Chess, items: Array, follow: String, mate: bool) -> Dictionary:
+	var sans: Array = []
+	var arrows: Array = []
+	for item: Dictionary in items:
+		var alt: int = item["move"]
+		sans.append(_san(before, alt))
+		arrows.append(_arrow(Chess.move_from(alt), Chess.move_to(alt), "info"))
+	var one := items.size() == 1
+	var text := ""
+	if mate:
+		text = Loc.f("Con %s el mate llegaba igual.", join(sans)) if follow == "" else Loc.f("Con %s el mate llegaba igual: %s.", [join(sans), follow])
+	elif follow == "":
+		text = Loc.f("%s aguantaba más o menos igual." if one else "%s aguantaban más o menos igual.", join(sans))
+	else:
+		text = Loc.f("%s aguantaba más o menos igual: seguiría %s." if one else "%s aguantaban más o menos igual: seguiría %s.", [join(sans), follow])
+	if one:
+		# Una sola: se enseña en el tablero, con lo que seguiría.
+		var alt: int = (items[0] as Dictionary)["move"]
+		var a := before.after(alt)
+		var shown: Array = []
+		if (items[0] as Dictionary).has("ref"):
+			var r: int = (items[0] as Dictionary)["ref"]
+			shown.append(_arrow(Chess.move_from(r), Chess.move_to(r), "good"))
+		return _par(text, shown, a, [Chess.move_from(alt), Chess.move_to(alt)])
+	return _par(text, arrows, before)
+
+
+## La línea de mate del motor, comprobada jugada a jugada: [jugadas escritas, posición final, última jugada], o []
+## si no acaba en mate en `n` jugadas del que ataca.
+static func _mate_line(a: Chess, pv: Array, n: int) -> Array:
+	var need := 2 * n - 1
+	if pv.size() < need:
+		return []
+	var p := a.copy()
+	var sans: Array = []
+	var last: Array = []
+	for i in need:
+		var mv := p.find_uci(str(pv[i]))
+		if mv < 0:
+			return []
+		sans.append(_san(p, mv))
+		last = [Chess.move_from(mv), Chess.move_to(mv)]
+		p.apply(mv)
+	if not p.is_checkmate():
+		return []
+	return [sans, p, last]
+
+
 # ---------------------------------------------------------------- explicaciones completas
 
 ## Explicación de una jugada con su veredicto. `role`: "solution" (jugada de la solución, de quien aprende),
 ## "reply" (respuesta del rival dentro de la solución), "blunder" (la jugada del rival que abre el problema) o
 ## "free" (sin contexto). `rest`: las jugadas (UCI) que siguen en la solución, para resumir la combinación.
-static func explain(before: Chess, m: int, me: int, role: String, rest: Array = []) -> Dictionary:
+## `reveal`: si se puede contar lo que sigue en la solución. Mientras el problema no está resuelto va a false: se
+## explica la jugada, pero no se da la respuesta (antes, «¿Por qué ha jugado eso el rival?» decía «Pero es un error:
+## permite Cxh6+ y, tras Dxh6, Dxh6»: la solución entera).
+static func explain(before: Chess, m: int, me: int, role: String, rest: Array = [], reveal: bool = true) -> Dictionary:
 	var legal := before.legal_moves()
 	var verdict := PLAIN
 	var paras: Array = []
@@ -977,30 +1286,41 @@ static func explain(before: Chess, m: int, me: int, role: String, rest: Array = 
 	elif role == "solution":
 		verdict = BEST
 		paras = move_paras(before, m, me)
-		var defl := deflection(before, m, rest, me)
-		if not defl.is_empty():
-			paras.append(defl)
-		var plan := _plan(before.after(m), rest, me)
-		if plan != "":
-			paras.append(_par(plan, [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+		if reveal:
+			var defl := deflection(before, m, rest, me)
+			if not defl.is_empty():
+				paras.append(defl)
+			var plan := _plan(before.after(m), rest, me)
+			if plan != "":
+				paras.append(_par(plan, [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
 	elif role == "blunder":
 		verdict = ERROR
 		paras = move_paras(before, m, me)
 		var after := before.after(m)
 		var story := _story(after, rest, me)
-		if story != "":
+		if story != "" and reveal:
 			paras.append(_par(Loc.f("Pero es un error: permite %s.", story), [], after, [Chess.move_from(m), Chess.move_to(m)]))
+		elif story != "":
+			paras.append(_par("Pero es un error. ¿Ves por qué?", [], after, [Chess.move_from(m), Chess.move_to(m)]))
 	elif role == "reply":
 		verdict = DEFENSE
 		if before.in_check():
 			paras = escape_paras(before, m, me)
 		else:
 			paras = move_paras(before, m, me)
-		var why_def := defense_paras(before, m, me)
-		if why_def.is_empty():
-			paras.append(_par("De todas sus jugadas, es la que más resiste.", [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+		# Las otras jugadas, con el análisis del motor si lo hay; si no, por qué no huye su pieza amenazada (con una
+		# búsqueda corta) o, a falta de algo mejor, la frase de siempre.
+		var alts := alternatives_paras(before, m, me, rest, reveal)
+		if not alts.is_empty():
+			paras.append_array(alts)
+			if has_better_defense(before, m):
+				verdict = PLAIN
 		else:
-			paras.append_array(why_def)
+			var why_def := defense_paras(before, m, me)
+			if why_def.is_empty():
+				paras.append(_par("De todas sus jugadas, es la que más resiste.", [], before.after(m), [Chess.move_from(m), Chess.move_to(m)]))
+			else:
+				paras.append_array(why_def)
 	else:
 		if before.in_check():
 			paras = escape_paras(before, m, me)
