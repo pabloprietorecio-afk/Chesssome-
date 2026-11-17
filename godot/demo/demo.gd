@@ -407,6 +407,9 @@ var card_scroll: ScrollContainer
 var card_style: StyleBoxFlat
 ## Cuánto sube ahora la tarjeta por encima de su sitio, sobre el tablero (0 = en su sitio).
 var _card_float := 0.0
+## Alto del tablero y del cielo de encima que da _layout, antes de que una explicación larga los recorte (_fit_card).
+var _natural_board_h := 0.0
+var _natural_gap := 0.0
 var card_body: VBoxContainer
 var counter: Label
 ## Marca verde junto al nombre del problema si ya está resuelto.
@@ -1985,9 +1988,11 @@ func _layout(animate: bool = false) -> void:
 		# Con el vídeo arriba, el tablero cede algo de alto a la tarjeta (la pregunta tiene que verse entera).
 		board_h = minf(board_h, maxf(canvas.x * 0.84, 320.0))
 	board_slot.custom_minimum_size = Vector2(0.0, board_h)
+	_natural_board_h = board_h
 	var free := maxf(canvas.y - fixed - board_h, CARD_MIN)
 	var gap := minf(maxf(0.0, (free - _card_room()) * 0.86), _gap_limit)
 	_gap_limit = gap
+	_natural_gap = gap
 	if _gap_tween != null and _gap_tween.is_valid():
 		_gap_tween.kill()
 	if animate and view.board.anim_mode != Board3D.Anim.NONE and absf(top_gap.custom_minimum_size.y - gap) > 2.0:
@@ -2015,11 +2020,30 @@ func _fit_card() -> void:
 		if absf(h - chess_clock.custom_minimum_size.y) > 0.5:
 			chess_clock.custom_minimum_size = Vector2(0.0, h)
 			need = other + h
-	# Si no cabe (una explicación larga en los problemas), la tarjeta sube por encima del tablero como una ventana
-	# semitransparente, hasta dejar a la vista la parte de arriba del tablero; lo que siga sin caber, se desplaza.
+	# Si no cabe (una explicación larga en los problemas o en el análisis), la tarjeta no tapa el tablero: primero
+	# desaparece el cielo de encima del tablero y después el tablero se encoge (hasta un 60 % del ancho), así se ve
+	# entero con sus flechas; lo que siga sin caber se desplaza dentro de la tarjeta. Con poco texto, vuelve a su tamaño.
 	var lift := 0.0
-	if need > room and mode != "learn" and (mode != "game" or game_state == "review" or game_state == "detail"):
-		lift = minf(need - room, board_slot.custom_minimum_size.y * 0.7 + top_gap.custom_minimum_size.y)
+	if mode != "learn" and (mode != "game" or game_state == "review" or game_state == "detail"):
+		var canvas_w := get_viewport_rect().size.x
+		var nat_room := room + board_slot.custom_minimum_size.y + top_gap.custom_minimum_size.y - _natural_board_h - _natural_gap
+		var deficit := maxf(need - nat_room, 0.0)
+		var gap := _natural_gap
+		var bh := _natural_board_h
+		if deficit > 0.0:
+			var take := minf(gap, deficit)
+			gap -= take
+			deficit -= take
+			bh -= minf(maxf(bh - maxf(canvas_w * 0.6, 320.0), 0.0), deficit)
+		var tweening := _gap_tween != null and _gap_tween.is_valid() and _gap_tween.is_running()
+		if absf(bh - board_slot.custom_minimum_size.y) > 0.5:
+			board_slot.custom_minimum_size = Vector2(0.0, bh)
+		if need > nat_room or not tweening:
+			if tweening:
+				_gap_tween.kill()
+			if absf(gap - top_gap.custom_minimum_size.y) > 0.5:
+				top_gap.custom_minimum_size = Vector2(0.0, gap)
+		room = nat_room + (_natural_board_h - board_slot.custom_minimum_size.y) + (_natural_gap - top_gap.custom_minimum_size.y)
 	elif mode == "game" and game_clocked and game_state in ["play", "think", "press"] and view != null and view.is_inside_tree():
 		# Con reloj: la tarjeta sube hasta justo debajo del tablero (con la perspectiva, el tablero no llena su
 		# hueco) y el reloj gana ese sitio.
