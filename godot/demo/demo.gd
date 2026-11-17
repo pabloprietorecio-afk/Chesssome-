@@ -1579,12 +1579,32 @@ func _button(icon_name: String, text: String, on_press: Callable, fill: Color, f
 	b.set_meta("label_node", label)
 	# Un botón no mide a sus hijos: su tamaño mínimo se le da a mano, el del contenido más el relleno.
 	var pad_x := float(opt.get("pad_x", 22.0 if vertical else 40.0))
+	# squeeze: el texto no ensancha el botón (cuenta solo el icono) y, si no cabe, la letra encoge. Así una barra de
+	# muchos botones nunca es más ancha que la pantalla, aunque el idioma tenga palabras largas o sea el modo Kids.
+	var squeeze := bool(opt.get("squeeze", false)) and label != null
 	var fit := func() -> void:
 		if is_instance_valid(b) and is_instance_valid(box):
 			var need := box.get_combined_minimum_size()
-			b.custom_minimum_size = Vector2(need.x + pad_x * 2.0, maxf(height, need.y + 24.0))
+			var w := need.x
+			if squeeze and is_instance_valid(label):
+				w = picture.custom_minimum_size.x if picture != null else 0.0
+			b.custom_minimum_size = Vector2(w + pad_x * 2.0, maxf(height, need.y + 24.0))
 	box.minimum_size_changed.connect(fit)
 	fit.call()
+	if squeeze:
+		label.clip_text = true
+		label.custom_minimum_size.x = 1.0
+		var shrink := func() -> void:
+			if not is_instance_valid(b) or not is_instance_valid(label) or b.size.x < 2.0:
+				return
+			var f: Font = label.get_theme_font("font")
+			var room := b.size.x - 12.0
+			var fs := font_size
+			while fs > 16 and f.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+				fs -= 1
+			if label.get_theme_font_size("font_size") != fs:
+				label.add_theme_font_size_override("font_size", fs)
+		b.resized.connect(shrink)
 	return b
 
 
@@ -2184,7 +2204,7 @@ func _build_actions() -> void:
 ## Botón de la barra de ayuda: una tesela pastel con su icono grande y el nombre debajo.
 func _tool_button(icon_name: String, text: String, on_press: Callable, tint_name: String, font_size: int = F_FOOT) -> Button:
 	var tint := _tint(tint_name)
-	var b := _button(icon_name, text, on_press, tint[0], _c("ink"), {"vertical": true, "font_size": font_size, "height": BAR_HEIGHT, "icon": 62.0, "radius": 44, "icon_color": tint[1], "pad_x": 8.0})
+	var b := _button(icon_name, text, on_press, tint[0], _c("ink"), {"vertical": true, "font_size": font_size, "height": BAR_HEIGHT, "icon": 62.0, "radius": 44, "icon_color": tint[1], "pad_x": 8.0, "squeeze": true})
 	b.mouse_filter = Control.MOUSE_FILTER_STOP
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return b
