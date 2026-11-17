@@ -94,6 +94,11 @@ var _press_pos := Vector2.ZERO
 var _dragging := false
 var _press_same := false
 var _promo_panel: PanelContainer
+## Contorno de neón de la pieza que el jugador acaba de tocar (ui/neon_piece.gd).
+var neon: NeonPiece
+var show_neon := true
+## La selección viene de un toque del jugador (las pistas también seleccionan piezas, y no llevan neón).
+var _user_pick := false
 var _promo_title: Label
 var _promo_buttons: Array[Button] = []
 var _promo_moves := PackedInt32Array()
@@ -132,10 +137,14 @@ func _init() -> void:
 	sounds = BoardSounds.new()
 	add_child(sounds)
 	board.sound.connect(sounds.play)
+	board.selection_changed.connect(_on_selection_changed)
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	neon = NeonPiece.new()
+	neon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(neon)
 	_build_promotion_panel()
 	get_viewport().size_changed.connect(_sync_surface)
 	_sync_surface()
@@ -399,6 +408,17 @@ func _cancel_piece_drag() -> void:
 	_reset_touch()
 
 
+## Neón: se enciende con la pieza que toca el jugador y se apaga al soltarla, al mover o con otra selección.
+func _on_selection_changed(square: int) -> void:
+	if neon == null:
+		return
+	neon.still = board.anim_mode == Board3D.Anim.NONE
+	if square >= 0 and _user_pick and show_neon:
+		neon.show_piece(Chess.type_of(board.chess.b[square]))
+	elif neon.shown() or square < 0:
+		neon.hide_piece()
+
+
 func _on_press(pos: Vector2) -> void:
 	if _promo_panel.visible:
 		_hide_promotion()
@@ -427,7 +447,9 @@ func _on_press(pos: Vector2) -> void:
 		if own >= 0:
 			_press_same = own == sel
 			if not _press_same:
+				_user_pick = true
 				board.select(own)
+				_user_pick = false
 				tapped.emit("select")
 			_drag_from = own
 			_press_pos = pos

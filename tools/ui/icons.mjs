@@ -412,3 +412,24 @@ console.log(`iconos.bin: ${glyphs.length} iconos, ${W} × ${H}`);
   });
   console.log('iconos_app: lanzador 192, adaptativo 432 (fondo, frente, mono), arranque 432; avisos 24–96');
 }
+
+// ---------- Contorno de neón de la pieza elegida ----------
+//   godot/ui/neon_piezas.bin   campo de distancias de cada silueta (no la silueta), seis celdas en fila
+// La app dibuja con él, a cualquier tamaño, solo el contorno de la pieza que el jugador ha tocado, con su
+// resplandor (ui/neon_piece.gd). Alfa = 0,5 + d / (2 · SPREAD), con d en píxeles de la celda, positivo dentro.
+{
+  const NC = 256, SPREAD = 26, FIT = 0.86;
+  const out = new Uint8Array(NC * 6 * NC * 4);
+  PIECES.forEach((_, index) => {
+    const box = pieceBox(index);
+    const scale = (box.y1 - box.y0) / (NC * FIT);
+    const mx = (box.x0 + box.x1) / 2, my = (box.y0 + box.y1) / 2;
+    if (index === 0) console.log(`neón: el campo llega a ±${(SD_RANGE_PX / scale).toFixed(1)} px de la celda (SPREAD ${SPREAD})`);
+    for (let y = 0; y < NC; y++) for (let x = 0; x < NC; x++) {
+      const sx = mx + (x + 0.5 - NC / 2) * scale, sy = my + (y + 0.5 - NC / 2) * scale;
+      const d = pieceSd(index, sx, sy) / scale;
+      out.set([255, 255, 255, byte(clamp01(0.5 + d / (2 * SPREAD)))], 4 * (index * NC + x + NC * 6 * y));
+    }
+  });
+  writeFileSync(outDir + 'neon_piezas.bin', png(NC * 6, NC, out));
+}

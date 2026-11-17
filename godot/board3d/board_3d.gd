@@ -10,6 +10,8 @@ signal animations_finished
 ## Momentos de la partida que suenan (los pone en sonido BoardSounds): "slide" (la pieza se arrastra; amount es
 ## lo que dura), "place" (se asienta), "capture", "check" y "fall" (cae el rey en el mate).
 signal sound(kind: String, amount: float)
+## La pieza seleccionada ha cambiado (−1: ninguna). La vista enciende con ello el contorno de neón.
+signal selection_changed(square: int)
 
 enum Anim { FULL, FAST, MINIMAL, NONE }
 
@@ -19,6 +21,10 @@ const PIECE_HEIGHT := {1: 0.84, 2: 1.09, 3: 1.25, 4: 0.99, 5: 1.53, 6: 1.76}
 const PIECE_SCALE := 1.0
 ## Las piezas van algo más anchas que el modelo: llenan mejor la casilla sin tapar más las de detrás.
 const PIECE_GIRTH := 1.06
+## La pieza que toca el jugador se levanta y se agranda un poco, como si la cogiera con los dedos (Pablo, 17-11).
+const LIFT_UP := 0.34
+const LIFT_ZOOM := 1.14
+const LIFT_TIME := 0.14
 const PICK_RADIUS := 0.38
 ## Semilado y grosor del marco (tools/pieces/board.mjs).
 const FRAME_HALF := 4.14
@@ -1126,10 +1132,11 @@ func _set_glow(node: Node3D, amount: float) -> void:
 		flat.modulate = Color.WHITE.lerp(Color(1.0, 0.75, 0.5), amount)
 
 
-## Deja la pieza en reposo en su casilla.
+## Deja la pieza en reposo en su casilla (la seleccionada, levantada y algo más grande).
 func _rest(node: Node3D, s: int) -> void:
-	var lift := 0.1 if s == selected else 0.0
-	_pose(node, sq_pos(s) + Vector3(0.0, lift, 0.0), Vector3.UP, 0.0)
+	var up := 1.0 if s == selected else 0.0
+	node.set_meta("lift", up)
+	_pose(node, sq_pos(s) + Vector3(0.0, LIFT_UP * up, 0.0), Vector3.UP, 0.0, 1.0, lerpf(1.0, LIFT_ZOOM, up))
 	var topple: float = node.get_meta("topple", 0.0)
 	if topple != 0.0 and is_rigged():
 		# El rey articulado no vuelca la ficha: se queda tumbado él.
@@ -1197,6 +1204,9 @@ func set_fen(fen: String) -> void:
 	chess = Chess.from_fen(fen)
 	last_from = -1
 	last_to = -1
+	if selected >= 0:
+		selected = -1
+		selection_changed.emit(-1)
 	selected = -1
 	_drag_sq = -1
 	_targets = PackedInt32Array()
@@ -1797,13 +1807,43 @@ func select(s: int) -> void:
 	for q: int in [prev, s]:
 		if q >= 0 and _pieces.has(q):
 			var node: Node3D = _pieces[q]
-			_rest(node, q)
+			_lift(node, q, 1.0 if q == s else 0.0)
 			_set_glow(node, 1.0 if q == s else 0.0)
 	_refresh_state()
+	if s != prev:
+		selection_changed.emit(s)
 
 
 func deselect() -> void:
 	select(-1)
+
+
+## Sube o baja la pieza de su casilla (up: 0 posada, 1 levantada), con un tween propio y corto: no cuenta como
+## animación de la partida (no avisa de animations_finished ni la corta finish_animations).
+func _lift(node: Node3D, s: int, up: float) -> void:
+	if not is_instance_valid(node) or float(node.get_meta("topple", 0.0)) != 0.0:
+		return
+	var old: Variant = node.get_meta("lift_tween", null)
+	if old is Tween and (old as Tween).is_valid():
+		(old as Tween).kill()
+	var from := float(node.get_meta("lift", 0.0))
+	if anim_mode == Anim.NONE or absf(from - up) < 0.001:
+		_pose_lift(up, node, s)
+		return
+	var tw := create_tween()
+	node.set_meta("lift_tween", tw)
+	var step := tw.tween_method(_pose_lift.bind(node, s), from, up, LIFT_TIME if up > from else LIFT_TIME * 0.75)
+	if up > from:
+		step.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		step.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+func _pose_lift(t: float, node: Node3D, s: int) -> void:
+	if not is_instance_valid(node) or _pieces.get(s) != node:
+		return
+	node.set_meta("lift", t)
+	_pose(node, sq_pos(s) + Vector3(0.0, LIFT_UP * t, 0.0), Vector3.UP, 0.0, 1.0, lerpf(1.0, LIFT_ZOOM, t))
 
 
 ## La pieza sigue al dedo, levantada, mientras se arrastra.
@@ -1818,7 +1858,12 @@ func drag_piece(s: int, screen_pos: Vector2) -> void:
 	var hit := o + d * ((0.25 - o.y) / d.y)
 	hit.x = clampf(hit.x, -4.4, 4.4)
 	hit.z = clampf(hit.z, -4.4, 4.4)
-	_pose(_pieces[s], Vector3(hit.x, 0.3, hit.z), Vector3.UP, 0.0, 1.0, 1.06)
+	var dragged: Node3D = _pieces[s]
+	var old: Variant = dragged.get_meta("lift_tween", null)
+	if old is Tween and (old as Tween).is_valid():
+		(old as Tween).kill()
+	dragged.set_meta("lift", 1.0)
+	_pose(dragged, Vector3(hit.x, LIFT_UP, hit.z), Vector3.UP, 0.0, 1.0, LIFT_ZOOM)
 
 
 ## Casilla sobre la que está la pieza arrastrada (−1 si está fuera del tablero).
@@ -1961,13 +2006,24 @@ func play_move(m: int, dropped: bool = false) -> void:
 		victim_sq = (to & 7) + 8 * (from >> 3)
 	var victim: Node3D = _pieces.get(victim_sq)
 	var from_pos := sq_pos(from)
-	if dropped and mover != null:
+	# La pieza levantada sale de donde está (en el aire) y se posa al llegar.
+	var lifted := 0.0
+	if mover != null:
+		lifted = float(mover.get_meta("lift", 0.0))
+		var lt: Variant = mover.get_meta("lift_tween", null)
+		if lt is Tween and (lt as Tween).is_valid():
+			(lt as Tween).kill()
+		mover.set_meta("lift", 0.0)
+	if (dropped or lifted > 0.0) and mover != null:
 		from_pos = mover.position
 
 	# Estado lógico primero: nada de lo que sigue puede bloquear el juego.
 	chess.apply(m)
 	if selected >= 0 and _pieces.has(selected):
 		_set_glow(_pieces[selected], 0.0)
+	if selected >= 0:
+		selected = -1
+		selection_changed.emit(-1)
 	selected = -1
 	_drag_sq = -1
 	_targets = PackedInt32Array()
@@ -2048,6 +2104,9 @@ func play_move(m: int, dropped: bool = false) -> void:
 		_sfx("slide", 0.0, dur)
 	_sfx(landing, dur + (0.02 if dropped else 0.0))
 	var tw := _tw()
+	if lifted > 0.0:
+		# Primero recupera su tamaño, todavía en el aire.
+		tw.tween_method(_pose_size.bind(mover, a, lerpf(1.0, LIFT_ZOOM, lifted), 1.0), 0.0, 1.0, 0.05)
 	var lively := full and is_standee() and not dropped
 	if lively:
 		# El recortable mira hacia donde va y coge impulso antes de salir.
