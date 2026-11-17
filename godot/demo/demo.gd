@@ -8168,7 +8168,7 @@ func _confirm(head: String, text: String, ok_icon: String, ok_label: String, on_
 
 
 ## Ventana semitransparente sobre el tablero (se cierra tocando fuera): título, texto y una columna para lo demás.
-func _popup(head: String, text: String) -> VBoxContainer:
+func _popup(head: String, text: String, opaque: bool = false) -> VBoxContainer:
 	_close_confirm()
 	confirm_node = Control.new()
 	confirm_node.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -8185,7 +8185,8 @@ func _popup(head: String, text: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	var paper := _c("surface")
-	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.86)
+	# Casi opaca para lo que hay que leer con detalle (el reloj de la hora del aviso).
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.97 if opaque else 0.86)
 	sb.set_corner_radius_all(60)
 	sb.shadow_color = _c("shadow")
 	sb.shadow_size = 30
@@ -8891,8 +8892,10 @@ func _open_day() -> void:
 		var amade := _panel()
 		body.add_child(amade[0])
 		var aviso_on := bool((s["aviso"] as Dictionary)["activo"])
-		# Hora fija (21:00): solo se elige si se quiere el aviso.
 		(amade[1] as VBoxContainer).add_child(_switch_row("clock", "peach", "Avisarme cada día", Loc.f("A las %s, solo si aún no has cumplido tu reto.", _aviso_hour_text()), aviso_on, _aviso_set))
+		# La hora, con el reloj de WakeAgenda (21:00 si no se elige otra).
+		if aviso_on:
+			(amade[1] as VBoxContainer).add_child(_option_button("clock", "peach", "Hora del aviso", Loc.f("%s · toca para cambiar", _aviso_hour_text()), _aviso_pick_time))
 
 	# Lo hecho hoy.
 	var lines := Progress.summary_lines(s, day)
@@ -8933,6 +8936,8 @@ const AVISO_PLUGIN := "res://addons/NotificationSchedulerPlugin/"
 const AVISO_ID := 4201
 const AVISO_CHANNEL := "chessome_diario"
 
+## El reloj abierto para elegir la hora del aviso (para las pruebas).
+var _aviso_picker: ClockPicker
 var _aviso_node: Node
 var _aviso_ready := false
 
@@ -8971,11 +8976,54 @@ func _aviso_on_permission(_permission: String, granted: bool) -> void:
 			_open_day()
 
 
-## Activado o no, siempre a la misma hora (ReminderConfig.HOUR): la hora que se guardó antes, si se eligió otra, ya
-## no cuenta.
+## Activado o no, y a qué hora: la que eligió el jugador con el reloj o, si no eligió ninguna, ReminderConfig.HOUR
+## (las horas que se guardaron con el selector de antes, de cuatro horas fijas, ya no cuentan: no llevan «elegida»).
 func _aviso_settings() -> Dictionary:
 	var a: Dictionary = _prog()["aviso"]
-	return {"enabled": bool(a["activo"]), "hour": ReminderConfig.HOUR, "minute": 0}
+	var chosen := bool(a.get("elegida", false))
+	return {"enabled": bool(a["activo"]), "hour": int(a["hora"]) if chosen else ReminderConfig.HOUR, "minute": int(a["min"]) if chosen else 0}
+
+
+## El reloj para elegir la hora del aviso (ui/clock_picker.gd), en una ventana con «Cancelar» y «Aceptar».
+func _aviso_pick_time() -> void:
+	var settings := _aviso_settings()
+	var column := _popup(Loc.t("Hora del aviso"), "", true)
+	var picker := ClockPicker.new()
+	picker.primary = _c("accent")
+	picker.on_primary = _c("ink")
+	picker.face_color = _c("field")
+	picker.ink = _c("ink")
+	picker.quiet = _c("quiet")
+	picker.font_bold = font_display
+	picker.font_medium = font_medium
+	picker.hint_font = F_BODY
+	picker.diameter = clampf(minf(size.x - 120.0, 860.0) - 140.0, 480.0, 700.0)
+	picker.set_time(int(settings["hour"]), int(settings["minute"]))
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(picker)
+	_aviso_picker = picker
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	column.add_child(row)
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	var cancel := _button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), opts)
+	var ok := _button("check", "Aceptar", func() -> void:
+		_aviso_set_time(picker.hour, picker.minute)
+		_close_confirm()
+		_open_day(), _c("accent"), _c("ink"), opts)
+	for b: Button in [cancel, ok]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+
+
+## Guarda la hora elegida y vuelve a programar el aviso.
+func _aviso_set_time(hour: int, minute: int) -> void:
+	var a: Dictionary = _prog()["aviso"]
+	a["hora"] = clampi(hour, 0, 23)
+	a["min"] = clampi(minute, 0, 59)
+	a["elegida"] = true
+	_prog_save()
+	_aviso_refresh()
 
 
 ## Vuelve a programar el próximo aviso (se cancela el anterior): tras cada cosa que hace el jugador y al salir de la app.
@@ -9005,11 +9053,16 @@ func _aviso_set(on: bool) -> void:
 	_open_day()
 
 
-## La hora del aviso como se escribe en cada idioma: «21:00» y, en inglés, «9 PM».
+## La hora del aviso como se escribe en cada idioma: «21:00» y, en inglés, «9 PM» o «9:30 PM».
 func _aviso_hour_text() -> String:
+	var settings := _aviso_settings()
+	var h := int(settings["hour"])
+	var m := int(settings["minute"])
 	if Loc.language == "en":
-		return "%d PM" % (ReminderConfig.HOUR - 12) if ReminderConfig.HOUR > 12 else "%d AM" % ReminderConfig.HOUR
-	return "%d:00" % ReminderConfig.HOUR
+		var h12 := 12 if h % 12 == 0 else h % 12
+		var ampm := "PM" if h >= 12 else "AM"
+		return ("%d %s" % [h12, ampm]) if m == 0 else ("%d:%02d %s" % [h12, m, ampm])
+	return "%d:%02d" % [h, m]
 
 
 # ---------------------------------------------------------------- insignia del nivel

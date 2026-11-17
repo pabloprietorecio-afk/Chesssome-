@@ -17,7 +17,7 @@ Capa de constancia alrededor del juego, sin monedas ni XP: el progreso real sigu
 
 ## Aviso diario (solo la lógica; falta enviarlo al sistema)
 - `godot/core/reminder.gd` decide el próximo aviso: `Reminder.plan(estado, ajustes, ahora, bias)` devuelve `{at, title, body}` o vacío. Valores en `core/reminder_config.gd`.
-- **A las 21:00 de la hora local, fija** (Pablo, 16 nov: no es configurable; el jugador solo decide si lo quiere, en «Tu día» → «Avisarme cada día»). Un aviso como máximo; se recalcula tras cada cosa que haga el jugador. Si hoy cumplió el reto, no hay aviso hoy.
+- **A las 21:00 de la hora local si el jugador no elige otra** (Pablo: fija el 16 nov; desde el 17 nov, con el aviso activado, «Tu día» → «Hora del aviso» abre un reloj, el de los eventos de WakeAgenda, `ui/clock_picker.gd`). Un aviso como máximo; se recalcula tras cada cosa que haga el jugador. Si hoy cumplió el reto, no hay aviso hoy.
 - Dice lo que de verdad queda: la racha que se conserva, lo que falta del reto de hoy o el reto de la semana. Sin reproches.
 - Si no entra: diario hasta 3 días, luego uno a los 7 y otro a los 14 días, y después ninguno.
 - **Pendiente:** enviarlo al sistema. Godot no trae notificaciones locales: hace falta un plugin de Android (compilación Gradle personalizada; hoy `use_gradle_build=false`). Opciones: uno existente (kyoz/godot-local-notification o cengiz-pz Notification Scheduler, ambos MIT; compatibilidad con Godot 4.7.2 sin verificar) o uno propio en Kotlin siguiendo el patrón de WakeAgenda (AlarmManager + receptor de arranque + canal + permiso POST_NOTIFICATIONS). No hace falta alarma exacta. Kids: sin avisos.
