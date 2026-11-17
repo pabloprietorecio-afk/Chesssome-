@@ -643,7 +643,15 @@ jobs:
             echo "::warning::Sin secretos de firma (UPLOAD_KEYSTORE_B64, UPLOAD_KEYSTORE_PASSWORD, UPLOAD_KEY_ALIAS): no se genera el AAB."
             exit 0
           fi
-          echo "$UPLOAD_KEYSTORE_B64" | base64 -d > $RUNNER_TEMP/subida.keystore
+          # Al pegar los secretos a mano se cuelan espacios y saltos de línea: se quitan (ninguno de los tres los lleva).
+          UPLOAD_KEYSTORE_B64=$(printf %s "$UPLOAD_KEYSTORE_B64" | tr -d '[:space:]')
+          UPLOAD_KEYSTORE_PASSWORD=$(printf %s "$UPLOAD_KEYSTORE_PASSWORD" | tr -d '[:space:]')
+          UPLOAD_KEY_ALIAS=$(printf %s "$UPLOAD_KEY_ALIAS" | tr -d '[:space:]')
+          echo "$UPLOAD_KEYSTORE_B64" | base64 -d > $RUNNER_TEMP/subida.keystore 2>/dev/null || echo "::warning::UPLOAD_KEYSTORE_B64 no es base64 válido"
+          # Diagnóstico sin revelar nada: qué secreto falla si la firma no sale.
+          echo "Diagnóstico de firma: texto del almacén ${#UPLOAD_KEYSTORE_B64} caracteres, alias ${#UPLOAD_KEY_ALIAS} caracteres"
+          keytool -list -keystore $RUNNER_TEMP/subida.keystore -storepass "$UPLOAD_KEYSTORE_PASSWORD" > /dev/null 2>&1 && echo "Diagnóstico: el almacén se abre con la contraseña" || echo "::warning::Diagnóstico: el almacén NO se abre con la contraseña (revisar UPLOAD_KEYSTORE_B64 y UPLOAD_KEYSTORE_PASSWORD)"
+          keytool -list -keystore $RUNNER_TEMP/subida.keystore -storepass "$UPLOAD_KEYSTORE_PASSWORD" -alias "$UPLOAD_KEY_ALIAS" > /dev/null 2>&1 && echo "Diagnóstico: el alias existe" || echo "::warning::Diagnóstico: el alias NO existe en el almacén (revisar UPLOAD_KEY_ALIAS)"
           export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/subida.keystore
           export GODOT_ANDROID_KEYSTORE_RELEASE_USER=$UPLOAD_KEY_ALIAS
           export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$UPLOAD_KEYSTORE_PASSWORD
