@@ -42,6 +42,29 @@ func _initialize() -> void:
 	var leave := _buttons(demo.actions, ["Volver"])
 	_ok(leave.size() == 1, "con «Volver»")
 	_ok(_buttons(demo.actions, ["Anterior", "Lista", "Siguiente"]).size() == 3, "sin perder «Anterior», «Lista» y «Siguiente»")
+	var bar_end := 0.0
+	for c: Control in demo.actions.get_children():
+		bar_end = maxf(bar_end, c.get_global_rect().end.x)
+	_ok(bar_end <= demo.size.x + 1.0, "los cinco botones caben en la barra (%d de %d)" % [int(bar_end), int(demo.size.x)])
+	# «Jugada a jugada» también desde aquí (Pablo, 17-11).
+	var step := _buttons(demo.actions, ["Jugada a jugada"])
+	_ok(step.size() == 1, "con «Jugada a jugada»")
+	step[0].emit_signal("pressed")
+	var t0 := Time.get_ticks_msec()
+	while not demo.detail_done and Time.get_ticks_msec() - t0 < 60000:
+		await create_timer(0.1).timeout
+	await _frames(3)
+	_ok(demo.detail_done and demo.detail_from_over, "abre el análisis jugada a jugada")
+	var back := _buttons(demo.actions, ["Volver"])
+	_ok(back.size() == 1, "con su «Volver»")
+	back[0].emit_signal("pressed")
+	await _frames(4)
+	_ok(demo.game_state == "over", "que lleva al final de la partida")
+	_buttons(demo.actions, ["Análisis"])[0].emit_signal("pressed")
+	await _frames(4)
+	# La barra se ha rehecho: el «Volver» de antes ya no existe.
+	leave = _buttons(demo.actions, ["Volver"])
+	_ok(leave.size() == 1 and demo.game_state == "review", "de nuevo en el análisis, con «Volver»")
 	leave[0].emit_signal("pressed")
 	await _frames(4)
 	_ok(demo.game_state == "over" and demo.review_at == -1, "«Volver» lleva al final de la partida")

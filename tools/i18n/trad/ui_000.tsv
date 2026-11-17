@@ -91,7 +91,7 @@ el rey	the king	le roi	il re	キング	o rei	raja	राजा	der König	кор
 %s de %s	%s on %s	%s en %s	%s in %s	%s（%s）	%s em %s	%s di %s	%s (%s)	%s auf %s	%s на %s
 Flecha roja: tu jugada. Flecha morada: lo que haría el rival.	Red arrow: your move. Purple arrow: what your opponent would do.	Flèche rouge : ton coup. Flèche violette : ce que ferait l'adversaire.	Freccia rossa: la tua mossa. Freccia viola: cosa farebbe l'avversario.	赤い矢印：あなたの手。紫の矢印：相手の応手。	Seta vermelha: seu lance. Seta roxa: o que o rival faria.	Panah merah: langkahmu. Panah ungu: apa yang akan dilakukan lawan.	लाल तीर: आपकी चाल। बैंगनी तीर: विरोधी क्या करेगा।	Roter Pfeil: dein Zug. Lila Pfeil: was der Gegner tun würde.	Красная стрелка: твой ход. Фиолетовая: что сделал бы соперник.
 Probar otra vez	Try again	Réessayer	Riprova	もう一度	Tentar de novo	Coba lagi	फिर से कोशिश करें	Nochmal versuchen	Попробовать ещё
-Jugada a jugada	Move by move	Coup par coup	Mossa per mossa	一手ずつ	Lance a lance	Langkah demi langkah	चाल-दर-चाल	Zug für Zug	Ход за ходом
+Jugada a jugada	Move by move	Coup par coup	Mossa per mossa	一手ずつ	Lance a lance	Tiap langkah	चाल-दर-चाल	Zug für Zug	Ход за ходом
 Cerrar el paso a paso	Close step by step	Fermer le pas à pas	Chiudi il passo passo	一手ずつ表示を閉じる	Fechar o passo a passo	Tutup langkah demi langkah	चरण-दर-चरण बंद करें	Schritt für Schritt schließen	Закрыть пошаговый разбор
 Paso a paso	Step by step	Pas à pas	Passo passo	一手ずつ	Passo a passo	Langkah demi langkah	चरण-दर-चरण	Schritt für Schritt	Пошагово
 Ocultar resumen	Hide summary	Masquer le résumé	Nascondi riepilogo	まとめを隠す	Ocultar resumo	Sembunyikan ringkasan	सारांश छिपाएँ	Zusammenfassung ausblenden	Скрыть итог

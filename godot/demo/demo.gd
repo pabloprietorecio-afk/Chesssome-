@@ -9956,10 +9956,22 @@ func _build_review_actions() -> void:
 	left_button.modulate.a = 1.0 if review_at > 0 else 0.42
 	right_button.disabled = review_at >= review.size() - 1
 	right_button.modulate.a = 1.0 if review_at < review.size() - 1 else 0.42
-	for b: Button in [left_button, leave, list, right_button]:
+	var bar: Array[Button] = [left_button, leave, list]
+	if not kids:
+		# El análisis jugada a jugada, a la vista también aquí (Pablo, 17-11: al abrir una partida de «Mis partidas»
+		# se entra directo en este resumen y el jugada a jugada quedaba escondido tras «Volver» o «Lista»).
+		bar.append(_tool_button("line", "Jugada a jugada", _review_to_detail, "sky"))
+	bar.append(right_button)
+	for b: Button in bar:
 		b.mouse_filter = Control.MOUSE_FILTER_STOP
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		actions.add_child(b)
+
+
+## Del resumen del análisis al jugada a jugada; su «Volver» lleva al final de la partida.
+func _review_to_detail() -> void:
+	_review_leave()
+	_open_detail_from_over()
 
 
 ## Del análisis en el tablero al final de la partida, como estaba antes de abrirlo.
