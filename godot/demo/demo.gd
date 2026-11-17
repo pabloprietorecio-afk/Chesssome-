@@ -4087,15 +4087,11 @@ func _open_welcome() -> void:
 	scroll.add_child(body)
 
 	body.add_child(_spacer(10.0, true))
-	var emblem := TextureRect.new()
-	emblem.texture = UiIcons.emblem()
-	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	emblem.custom_minimum_size = Vector2(390.0, 390.0)
-	emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	# El logo de la app: el caballo marfil en 3D sobre la tesela naranja (el mismo icono que el del móvil).
+	var emblem := HomeScreens._icon_mark(340.0)
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(emblem)
+	body.add_child(_spacer(26.0))
 	var name_label := _para("A Chess Way", F_LARGE, _c("ink"), font_display)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(name_label)
@@ -5536,15 +5532,10 @@ func _open_home() -> void:
 	var footer: VBoxContainer = page["footer"]
 	progress.add_child(_flag_button())
 	body.add_child(_spacer(6.0, true))
-	var emblem := TextureRect.new()
-	emblem.texture = UiIcons.emblem()
-	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	emblem.custom_minimum_size = Vector2(240.0, 240.0)
-	emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var emblem := HomeScreens._icon_mark(210.0)
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(emblem)
+	body.add_child(_spacer(40.0))
 	body.add_child(_centered(_para("A Chess Way", F_LARGE, _c("ink"), font_display)))
 	var sub := "¿A qué jugamos hoy?" if kids else "¿Qué quieres hacer?"
 	body.add_child(_centered(_para(sub, F_HEAD, _c("quiet"), font_medium)))
