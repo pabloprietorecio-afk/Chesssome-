@@ -1,5 +1,8 @@
 class_name LangBoard
 extends Control
+## Torre de marfil en 3D sobre una tesela con los colores de la bandera del idioma (ui/idiomas/<código>.bin, que
+## genera tests/gen_idiomas_torre.gd con nuestra torre clásica). Si faltara la imagen, se dibuja a mano el tablero que
+## hacía de bandera:
 ## Tablero de ajedrez que hace de bandera del idioma: un tablero de 8 × 8 con marco de madera en el que las
 ## casillas llevan los colores de la bandera (las claras, tal cual; las oscuras, más oscuras), así se ve a la vez
 ## que es un tablero y de qué idioma. Banderas lisas, sin escudos: España, Reino Unido (inglés), Francia, Italia,
@@ -20,10 +23,26 @@ var current: bool = false:
 var ring_color := Color(0.36, 0.55, 0.95)
 
 static var _cache: Dictionary = {}
+static var _tiles: Dictionary = {}
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## La tesela de la torre del idioma, o null si no está la imagen.
+static func tile_for(lang: String) -> Texture2D:
+	if _tiles.has(lang):
+		return _tiles[lang]
+	var tex: Texture2D = null
+	var path := "res://ui/idiomas/%s.bin" % lang
+	if FileAccess.file_exists(path):
+		var img := Image.new()
+		if img.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) == OK:
+			img.generate_mipmaps()
+			tex = ImageTexture.create_from_image(img)
+	_tiles[lang] = tex
+	return tex
 
 
 static func texture_for(lang: String) -> ImageTexture:
@@ -50,6 +69,10 @@ static func texture_for(lang: String) -> ImageTexture:
 func _draw() -> void:
 	var side := minf(size.x, size.y)
 	var origin := (size - Vector2(side, side)) * 0.5
+	var tile := tile_for(code)
+	if tile != null:
+		_draw_tile(tile, origin, side)
+		return
 	var frame := side * 0.09
 	var radius := int(side * 0.16)
 	# Sombra suave y marco de madera, como un tablero de verdad.
@@ -71,6 +94,26 @@ func _draw() -> void:
 	# Brillo arriba, como el barniz.
 	draw_rect(Rect2(inner.position, Vector2(inner.size.x, inner.size.y * 0.18)), Color(1, 1, 1, 0.08))
 	draw_rect(inner, Color(0.25, 0.15, 0.07, 0.5), false, maxf(1.0, side * 0.01))
+	if current:
+		var ring := StyleBoxFlat.new()
+		ring.bg_color = Color(0, 0, 0, 0)
+		ring.border_color = ring_color
+		ring.set_border_width_all(maxi(3, int(side * 0.05)))
+		ring.set_corner_radius_all(radius + int(side * 0.06))
+		var grow := side * 0.07
+		draw_style_box(ring, Rect2(origin - Vector2(grow, grow), Vector2(side + grow * 2.0, side + grow * 2.0)))
+
+
+func _draw_tile(tile: Texture2D, origin: Vector2, side: float) -> void:
+	var radius := int(side * 0.266)
+	var shadow := StyleBoxFlat.new()
+	shadow.bg_color = Color(0, 0, 0, 0.0)
+	shadow.shadow_color = Color(0.1, 0.06, 0.03, 0.26)
+	shadow.shadow_size = int(side * 0.06)
+	shadow.shadow_offset = Vector2(0, side * 0.035)
+	shadow.set_corner_radius_all(radius)
+	draw_style_box(shadow, Rect2(origin + Vector2(side, side) * 0.02, Vector2(side, side) * 0.96))
+	draw_texture_rect(tile, Rect2(origin, Vector2(side, side)), false)
 	if current:
 		var ring := StyleBoxFlat.new()
 		ring.bg_color = Color(0, 0, 0, 0)
