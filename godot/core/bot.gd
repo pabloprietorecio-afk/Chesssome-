@@ -34,15 +34,16 @@ const LEVELS := [
 	{"name": "Medio", "sub": 3, "depth": 4, "noise": 12, "random": 0.0, "think": 2.0, "elo": 1589.0, "rd": 57.0},
 	{"name": "Difícil", "sub": 2, "depth": 6, "noise": 0, "random": 0.0, "think": 3.0, "elo": 1807.0, "rd": 44.0},
 	{"name": "Muy difícil", "sub": 1, "depth": 12, "noise": 0, "random": 0.0, "think": 5.0, "elo": 1912.0, "rd": 46.0},
-	# Escalones nuevos (objetivo entre paréntesis; el Elo, cuando esté medido).
-	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.6, "think": 0.6},  # (≈250)
+	# Escalones nuevos (objetivo entre paréntesis; el Elo, cuando esté medido). Ronda 1 de la calibración:
+	# tools/calibrar/pruebas/ronda1-17nov.json (Difícil 1 con profundidad 5 salía más fuerte que Difícil 2).
+	{"name": "Muy fácil", "sub": 1, "depth": 1, "noise": 300, "random": 0.54, "think": 0.6},  # (≈240)
 	{"name": "Muy fácil", "sub": 2, "depth": 1, "noise": 250, "random": 0.47, "think": 0.6},  # (≈360)
 	{"name": "Fácil", "sub": 1, "depth": 1, "noise": 130, "random": 0.22, "think": 0.8},  # (≈630)
-	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 100, "random": 0.15, "think": 1.0},  # (≈800)
+	{"name": "Fácil", "sub": 2, "depth": 2, "noise": 110, "random": 0.2, "think": 1.0},  # (≈880)
 	{"name": "Fácil", "sub": 3, "depth": 2, "noise": 75, "random": 0.1, "think": 1.0},  # (≈965)
-	{"name": "Medio", "sub": 1, "depth": 2, "noise": 40, "random": 0.035, "think": 1.2},  # (≈1200)
-	{"name": "Medio", "sub": 2, "depth": 3, "noise": 25, "random": 0.0, "think": 1.5},  # (≈1395)
-	{"name": "Difícil", "sub": 1, "depth": 5, "noise": 6, "random": 0.0, "think": 2.5},  # (≈1700)
+	{"name": "Medio", "sub": 1, "depth": 3, "noise": 70, "random": 0.03, "think": 1.5},  # (justo encima de Fácil 4)
+	{"name": "Medio", "sub": 2, "depth": 3, "noise": 45, "random": 0.01, "think": 1.5},  # (entre Medio 1 y 3)
+	{"name": "Difícil", "sub": 1, "depth": 4, "noise": 0, "random": 0.0, "think": 2.5},  # (entre Medio 3 y Difícil 2)
 ]
 ## Los cinco grupos, de más fácil a más difícil.
 const GROUPS := ["Muy fácil", "Fácil", "Medio", "Difícil", "Muy difícil"]
@@ -81,6 +82,8 @@ static func level_elo(lvl: int) -> int:
 
 
 var level := 0
+## Solo para la calibración (tests/calibrar.gd): parámetros de prueba en vez de los de LEVELS[level].
+var params := {}
 var variant := ""
 ## Tope de tiempo para pensar (segundos; 0 = el del nivel): lo pone el reloj de la partida.
 var time_cap := 0.0
@@ -117,7 +120,7 @@ func choose(pos: Chess) -> int:
 	var moves := legal(pos)
 	if moves.is_empty():
 		return -1
-	var cfg: Dictionary = LEVELS[level]
+	var cfg: Dictionary = LEVELS[level] if params.is_empty() else params
 	nodes = 0
 	_stopped = false
 	_killers = {}

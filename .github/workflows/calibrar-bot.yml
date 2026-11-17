@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.tandas != '' && inputs.tandas || '[{"a":5,"b":"6","n":40},{"a":5,"b":"0","n":24},{"a":6,"b":"0","n":40},{"a":6,"b":"7","n":24},{"a":0,"b":"7","n":40},{"a":7,"b":"8","n":32},{"a":8,"b":"9","n":32},{"a":9,"b":"1","n":32},{"a":10,"b":"1","n":32},{"a":10,"b":"11","n":24},{"a":11,"b":"2","n":24},{"a":10,"b":"sf:1320","n":24},{"a":11,"b":"sf:1320","n":24},{"a":12,"b":"2","n":24},{"a":12,"b":"3","n":24},{"a":12,"b":"sf:1600","n":24}]') }}
+        include: ${{ fromJSON(inputs.tandas != '' && inputs.tandas || '[{"a":5,"b":"6","n":40},{"a":5,"b":"0","n":24},{"a":8,"b":"7","n":32},{"a":8,"b":"9","n":32},{"a":10,"b":"1","n":32},{"a":10,"b":"sf:1320","n":24},{"a":10,"b":"11","n":24},{"a":11,"b":"2","n":24},{"a":11,"b":"sf:1320","n":24},{"a":12,"b":"2","n":24},{"a":12,"b":"3","n":24},{"a":12,"b":"sf:1600","n":24}]') }}
     steps:
       - uses: actions/checkout@v4
       - name: Godot y Stockfish
@@ -46,9 +46,14 @@ jobs:
         run: |
           set -o pipefail
           B="${{ matrix.b }}"
-          OUT="res-${{ matrix.a }}-${B/:/_}.json"
+          # Con «pa» (candidatos de prueba) el archivo lleva la etiqueta y no entra en el ajuste del Elo.
+          ET="${{ matrix.et }}"
+          OUT="res-${{ matrix.a }}-${B/:/_}${ET:+-$ET}.json"
+          [ -n "$ET" ] && OUT="prueba-$OUT"
+          EXTRA=()
+          if [ -n '${{ matrix.pa && toJSON(matrix.pa) || '' }}' ]; then EXTRA=(--pa '${{ matrix.pa && toJSON(matrix.pa) || '' }}' --etiqueta "$ET"); fi
           timeout 19000 ~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64 --headless --path godot -s tests/calibrar.gd -- \
-            --a ${{ matrix.a }} --b "$B" --partidas ${{ matrix.n }} --stockfish /usr/games/stockfish --salida "$GITHUB_WORKSPACE/$OUT" 2>&1 | tee juego.log
+            --a ${{ matrix.a }} --b "$B" --partidas ${{ matrix.n }} --stockfish /usr/games/stockfish --salida "$GITHUB_WORKSPACE/$OUT" "${EXTRA[@]}" 2>&1 | tee juego.log
           grep -q "^HECHO" juego.log
           echo "OUT=$OUT" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
@@ -73,6 +78,9 @@ jobs:
           # Las tandas ya hechas (guardadas en el repositorio) que no se han repetido ahora.
           for f in tools/calibrar/resultados/*.json; do [ -e "resultados/$(basename $f)" ] || cp "$f" resultados/; done
           ls resultados
+          # Las pruebas de candidatos no entran en el ajuste (no son ningún nivel); se publican aparte.
+          mkdir -p pruebas
+          mv resultados/prueba-*.json pruebas/ 2>/dev/null || true
           python3 tools/calibrar/ajustar.py resultados/*.json --salida calibracion.json --md calibracion.md
           cat calibracion.md >> $GITHUB_STEP_SUMMARY
       - name: Publicar
@@ -86,3 +94,4 @@ jobs:
             calibracion.json
             calibracion.md
             resultados/*.json
+            pruebas/*.json

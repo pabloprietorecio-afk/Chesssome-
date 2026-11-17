@@ -1,0 +1,152 @@
+{
+ "nota": "Ronda 1 de la calibración de los escalones nuevos (17-11, run 43981405753). Los niveles 5, 8, 10, 11 y 12 se cambiaron después (ver godot/core/bot.gd); sus tandas no entran en el ajuste. Las de 6-0, 0-7, 6-7 y 9-1 sí (tools/calibrar/resultados).",
+ "parametros": {
+  "5": {
+   "depth": 1,
+   "noise": 300,
+   "random": 0.6
+  },
+  "6": {
+   "depth": 1,
+   "noise": 250,
+   "random": 0.47
+  },
+  "7": {
+   "depth": 1,
+   "noise": 130,
+   "random": 0.22
+  },
+  "8": {
+   "depth": 2,
+   "noise": 100,
+   "random": 0.15
+  },
+  "9": {
+   "depth": 2,
+   "noise": 75,
+   "random": 0.1
+  },
+  "10": {
+   "depth": 2,
+   "noise": 40,
+   "random": 0.035
+  },
+  "11": {
+   "depth": 3,
+   "noise": 25,
+   "random": 0.0
+  },
+  "12": {
+   "depth": 5,
+   "noise": 6,
+   "random": 0.0
+  }
+ },
+ "tandas": [
+  {
+   "a": 5,
+   "b": "6",
+   "partidas": 40,
+   "puntos_a": 8.0
+  },
+  {
+   "a": 0,
+   "b": "7",
+   "partidas": 40,
+   "puntos_a": 9.0
+  },
+  {
+   "a": 6,
+   "b": "7",
+   "partidas": 24,
+   "puntos_a": 1.0
+  },
+  {
+   "a": 5,
+   "b": "0",
+   "partidas": 24,
+   "puntos_a": 2.0
+  },
+  {
+   "a": 10,
+   "b": "11",
+   "partidas": 24,
+   "puntos_a": 1.5
+  },
+  {
+   "a": 9,
+   "b": "1",
+   "partidas": 32,
+   "puntos_a": 9.0
+  },
+  {
+   "a": 6,
+   "b": "0",
+   "partidas": 40,
+   "puntos_a": 11.5
+  },
+  {
+   "a": 8,
+   "b": "9",
+   "partidas": 32,
+   "puntos_a": 13.0
+  },
+  {
+   "a": 10,
+   "b": "sf:1320",
+   "partidas": 24,
+   "puntos_a": 13.5
+  },
+  {
+   "a": 7,
+   "b": "8",
+   "partidas": 32,
+   "puntos_a": 5.5
+  },
+  {
+   "a": 11,
+   "b": "sf:1320",
+   "partidas": 24,
+   "puntos_a": 21.0
+  },
+  {
+   "a": 10,
+   "b": "1",
+   "partidas": 32,
+   "puntos_a": 15.5
+  },
+  {
+   "a": 11,
+   "b": "2",
+   "partidas": 24,
+   "puntos_a": 5.0
+  },
+  {
+   "a": 12,
+   "b": "2",
+   "partidas": 24,
+   "puntos_a": 19.0
+  },
+  {
+   "a": 12,
+   "b": "sf:1600",
+   "partidas": 24,
+   "puntos_a": 21.5
+  }
+ ],
+ "ajuste_local": {
+  "Muy fácil 3": 524,
+  "Fácil 4": 1227,
+  "Medio 3": 1678,
+  "Difícil 2": 1837,
+  "Muy difícil": 1924,
+  "Muy fácil 1": 128,
+  "Muy fácil 2": 356,
+  "Fácil 1": 751,
+  "Fácil 2": 1009,
+  "Fácil 3": 1072,
+  "Medio 1": 1259,
+  "Medio 2": 1565,
+  "Difícil 1": "≈1970 (sin la tanda contra Difícil 2)"
+ }
+}

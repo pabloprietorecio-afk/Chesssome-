@@ -8,6 +8,8 @@ extends SceneTree
 ## Stockfish juega con reloj de 60 s + 0,6 s por jugada, el ritmo con el que está calibrado su UCI_Elo.
 ##   --a      nivel del bot (índice de Bot.LEVELS: 0–12)
 ##   --b      otro nivel («2») o Stockfish con un Elo («sf:1320»)
+##   --pa     (opcional) parámetros de prueba para A, en JSON ({"depth":3,"noise":60,"random":0.04,"think":1.5}):
+##            para probar candidatos antes de fijar un nivel; el resultado lleva «pa» y «etiqueta».
 ## Colores alternos y aperturas variadas (líneas conocidas de unas pocas jugadas), para que los niveles sin ruido
 ## no repitan siempre la misma partida. Más de 160 jugadas (medias) = tablas.
 
@@ -39,6 +41,16 @@ func _init() -> void:
 	var games := int(args.get("partidas", "10"))
 	var out_path := str(args.get("salida", "res.json"))
 	var seed_base := int(args.get("semilla", "1"))
+	var pa := {}
+	if str(args.get("pa", "")) != "":
+		var parsed: Variant = JSON.parse_string(str(args["pa"]))
+		if parsed is Dictionary:
+			pa = parsed
+			for k: String in ["depth", "noise", "random", "think"]:
+				if not pa.has(k):
+					print("ERROR: a --pa le falta %s" % k)
+					quit(1)
+					return
 	if b.begins_with("sf:"):
 		if not _sf_start(str(args.get("stockfish", "stockfish")), int(b.substr(3))):
 			print("ERROR: no se puede arrancar Stockfish")
@@ -50,6 +62,8 @@ func _init() -> void:
 		var a_white := g % 2 == 0
 		var opening: String = OPENINGS[(g / 2) % OPENINGS.size()]
 		var bot_a := Bot.new(a, "", seed_base * 1000 + g)
+		if not pa.is_empty():
+			bot_a.params = pa
 		var bot_b: Bot = null if b.begins_with("sf:") else Bot.new(int(b), "", seed_base * 1000 + g + 500)
 		var r := _play(bot_a, bot_b, a_white, opening)
 		# r: 1 gana blancas, 0 tablas, −1 ganan negras → puntos de A
@@ -60,10 +74,13 @@ func _init() -> void:
 	if _sf_pid >= 0:
 		_sf_send("quit")
 	var data := {"a": a, "b": b, "partidas": games, "puntos_a": score, "reloj_stockfish": "60+0.6", "resultados": results}
+	if not pa.is_empty():
+		data["pa"] = pa
+		data["etiqueta"] = str(args.get("etiqueta", ""))
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(data, "  "))
 	f.close()
-	print("HECHO %s" % JSON.stringify({"a": a, "b": b, "partidas": games, "puntos_a": score}))
+	print("HECHO %s" % JSON.stringify({"a": a, "b": b, "partidas": games, "puntos_a": score, "etiqueta": str(args.get("etiqueta", ""))}))
 	quit()
 
 
