@@ -46,7 +46,31 @@ static func load_for(puzzle_id: String) -> ExplainData:
 	data._lines = d.get("lines", [])
 	data._strings = d.get("S", [])
 	data.ok = not data._points.is_empty()
+	data._attach_notes()
 	return data
+
+
+## Notas por jugada de «Qué pasaría» (godot/data/notas/<id>.json, tools/notas/generar.py): se cuelgan de cada
+## variante como "notes" (una por jugada; la 0, la del jugador, vacía). Si el archivo no casa, no se usa.
+func _attach_notes() -> void:
+	var path := "res://data/notas/%s.json" % id
+	if not FileAccess.file_exists(path):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var by_line: Dictionary = (parsed as Dictionary).get("lines", {})
+	for key: String in by_line:
+		var li := int(key)
+		var entry: Dictionary = by_line[key]
+		if li < 0 or li >= _lines.size():
+			continue
+		var line: Dictionary = _lines[li]
+		var ucis: Array = line.get("ucis", [])
+		var notes: Array = entry.get("n", [])
+		if ucis.is_empty() or str(ucis[0]) != str(entry.get("u", "")) or notes.size() != ucis.size():
+			continue
+		line["notes"] = notes
 
 
 func point_count() -> int:

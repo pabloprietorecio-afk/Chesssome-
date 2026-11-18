@@ -2256,6 +2256,14 @@ func _build_card() -> void:
 	if not line_on.is_empty():
 		# Viendo una variante jugada a jugada: la ficha se recoge y deja solo sus mandos, para que se vea el tablero.
 		var bad_line := str(line_on.get("tone", "")) != "good"
+		if bad_line and line_ply <= 0:
+			# Antes de recorrer lo que pasaría, qué hace la jugada del jugador (sin decir cuál era la buena).
+			var shown := _shown_exp()
+			var lv: Array = shown.get("levels", [])
+			if lv.size() > 0 and not bool(shown.get("correct", false)):
+				var paras: Array = (lv[0] as Dictionary).get("paragraphs", [])
+				if paras.size() > 1:
+					card_body.add_child(_para(str(paras[0]), F_SUB, _c("ink"), font_regular))
 		card_body.add_child(_line_block(line_on, str(line_on.get("label", "")) if not (exp_partial and bad_line) else "Qué pasaría"))
 		_fit_card.call_deferred()
 		return
@@ -2706,6 +2714,21 @@ func _line_block(line: Dictionary, label: String) -> VBoxContainer:
 	var good := str(line.get("tone", "")) == "good"
 	box.add_child(_para(label, F_SUB, _c("good") if good else _c("bad"), font_semibold))
 	box.add_child(_para(str(line.get("text", "")), F_SUB, _c("ink"), font_medium))
+	var note := _ply_note(line, line_ply) if (not line_on.is_empty() and line_on == line) else ""
+	if note != "":
+		var tint := _tint("lilac")
+		var note_panel := PanelContainer.new()
+		var nsb := StyleBoxFlat.new()
+		nsb.bg_color = tint[0]
+		nsb.set_corner_radius_all(28)
+		nsb.content_margin_left = 26.0
+		nsb.content_margin_right = 26.0
+		nsb.content_margin_top = 16.0
+		nsb.content_margin_bottom = 18.0
+		note_panel.add_theme_stylebox_override("panel", nsb)
+		note_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		note_panel.add_child(_para(note, F_FOOT + 2, _c("ink"), font_regular))
+		box.add_child(note_panel)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2735,6 +2758,64 @@ func _line_block(line: Dictionary, label: String) -> VBoxContainer:
 		row.add_child(back)
 	box.add_child(row)
 	return box
+
+
+## Nota de la jugada «ply» de una variante de «Qué pasaría» (data/notas, tools/notas/generar.py): solo hechos de
+## las reglas (jaque, pieza atacada, captura…) y lo que dice el motor (casi obligada o casi igual que otras, con sus
+## valoraciones). Nunca un «porque»: el motor no da motivos. "" si no hay nada que decir.
+func _ply_note(line: Dictionary, ply: int) -> String:
+	var notes: Array = line.get("notes", [])
+	if ply < 1 or ply >= notes.size():
+		return ""
+	var n: Dictionary = notes[ply]
+	if n.is_empty():
+		return ""
+	var sans := _line_sans(str(line.get("text", "")))
+	var san := str(sans[ply]) if ply < sans.size() else ""
+	var names := {"p": "el peón", "n": "el caballo", "b": "el alfil", "r": "la torre", "q": "la dama", "k": "el rey"}
+	var parts: Array[String] = []
+	for f: Array in n.get("r", []):
+		match str(f[0]):
+			"j":
+				parts.append(Loc.t("Estaba en jaque."))
+			"t":
+				var moved := str(names.get(str(f[1]), ""))
+				var by := Loc.f("%s de %s", [str(names.get(str(f[3]), "")), str(f[2])])
+				var tpl := "%s estaba atacada por %s." if moved.begins_with("la ") else "%s estaba atacado por %s."
+				var said := Loc.f(tpl, [moved, by])
+				parts.append(said.substr(0, 1).to_upper() + said.substr(1))
+			"x":
+				parts.append(Loc.f("Captura %s.", Loc.f("%s de %s", [str(names.get(str(f[1]), "")), str(f[2])])))
+			"re":
+				parts.append(Loc.t("Recupera material en la misma casilla."))
+			"+":
+				parts.append(Loc.t("Da jaque."))
+			"#":
+				parts.append(Loc.t("Da mate."))
+	match str(n.get("k", "")):
+		"o":
+			parts.append(Loc.t("Es la única jugada legal."))
+		"f":
+			parts.append(Loc.t("Según el motor, casi obligada: cualquier otra es mucho peor."))
+		"s":
+			var alts: Array[String] = []
+			for a: Array in n.get("a", []):
+				alts.append("%s (%s)" % [Loc.san_text(str(a[0])), str(a[1])])
+			parts.append(Loc.f("Según el motor, da casi igual: %s también (esta, %s).", [Loc.list_sep().join(alts), str(n.get("v", ""))]))
+	if parts.is_empty():
+		return ""
+	return "%s: %s" % [san, " ".join(parts)]
+
+
+## Las jugadas de una variante escrita («6. Cxf7 Dh4 7. d3…»), sin los números.
+static func _line_sans(text: String) -> Array:
+	var out: Array = []
+	for token: String in text.split(" ", false):
+		var bare := token.rstrip(".…")
+		if bare.is_valid_int() and bare != token:
+			continue
+		out.append(token)
+	return out
 
 
 ## Fila de la tabla del motor: etiqueta, jugada, evaluación y profundidad; debajo, la continuación.

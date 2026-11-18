@@ -12,3 +12,4 @@ godot/export_credentials.cfg
 *.jks
 release.keystore
 godot/data/version.json
+tools/notas/cache.json.gz
