@@ -9659,7 +9659,7 @@ func _build_avatar_sheet() -> void:
 		var photo_tint := _tint("sky")
 		box.add_child(_button("open", "Cargar una foto", _pick_avatar_photo, photo_tint[0], photo_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 52.0}))
 		box.add_child(_para("La foto se guarda solo en este dispositivo.", F_FOOT, _c("quiet"), font_regular))
-	if _has_player() and not kids:
+	if _has_player() and not kids and progress_kind != "progress":
 		var mine_tint := _tint("lilac")
 		box.add_child(_button("cap", "Mi nivel y mi plan", _open_progress.bind("progress"), mine_tint[0], mine_tint[1], {"font_size": F_SUB, "height": 112.0, "icon": 52.0}))
 
@@ -9678,6 +9678,8 @@ func _avatar_changed() -> void:
 	_close_options()
 	if progress_kind == "home":
 		_open_home()
+	elif progress_kind == "progress":
+		_open_progress("progress")
 
 
 func _pick_avatar_photo() -> void:
@@ -11019,6 +11021,27 @@ func _open_progress(kind: String = "progress") -> void:
 	var band := Assessment.level_band(r)
 	var limits := Assessment.measurable_range(pool)
 
+	# Arriba a la izquierda, el icono del jugador: al tocarlo, cambiar el icono o la foto. Va en un hueco de alto cero
+	# para no empujar el resto (y se desplaza con la página).
+	if kind == "progress" and not kids:
+		var corner := Control.new()
+		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		body.add_child(corner)
+		var pick := Button.new()
+		pick.flat = true
+		pick.focus_mode = Control.FOCUS_NONE
+		for state: String in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
+			pick.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		pick.size = Vector2(150.0, 150.0)
+		pick.position = Vector2(0.0, 0.0)
+		pick.mouse_filter = Control.MOUSE_FILTER_STOP
+		pick.pressed.connect(_open_avatar)
+		pick.set_meta("label", "Tu icono")
+		var mark := _level_badge(r, 150.0)
+		mark.set_anchors_preset(Control.PRESET_FULL_RECT)
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pick.add_child(mark)
+		corner.add_child(pick)
 	# El nivel.
 	body.add_child(_spacer(4.0))
 	body.add_child(_centered(_para("TU NIVEL" if kind != "result" else "RESULTADO DEL TEST", F_CAP, _c("quiet"), font_semibold)))

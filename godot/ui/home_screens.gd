@@ -785,9 +785,22 @@ static func _grid_header(d: Variant, height: float) -> Control:
 		var r := float(d.player["rating"]["r"])
 		var lv: int = Assessment.level_of(r)
 		who.pressed.connect(Callable(d, "_open_progress").bind("progress"))
+		# El icono es un botón aparte (como en la lista): cambia el icono o la foto; el resto lleva a «Mi nivel».
+		var badge_button := Button.new()
+		badge_button.flat = true
+		badge_button.focus_mode = Control.FOCUS_NONE
+		for state: String in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
+			badge_button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		badge_button.custom_minimum_size = Vector2(u(48.0), u(48.0))
+		badge_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		badge_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		badge_button.pressed.connect(Callable(d, "_open_avatar"))
+		badge_button.set_meta("label", "Tu icono")
 		var badge: Control = d._level_badge(r, u(48.0))
-		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		who_row.add_child(badge)
+		badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge_button.add_child(badge)
+		who_row.add_child(badge_button)
 		var words := _vbox(-u(3.5))
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
