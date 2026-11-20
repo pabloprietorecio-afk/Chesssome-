@@ -29,7 +29,10 @@ class AndroidExport extends EditorExportPlugin:
 		return "\n".join([
 			'<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
 			'<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />',
-
+			# La app va en vertical (screenOrientation="portrait"); eso hace que Android y Play den por obligatoria la
+			# función android.hardware.screen.portrait y Play bloqueaba la versión 247 por restringir dispositivos
+			# (20 nov). Se declara opcional: la app sigue en vertical en todos los móviles.
+			'<uses-feature android:name="android.hardware.screen.portrait" android:required="false" />',
 		])
 
 	func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:

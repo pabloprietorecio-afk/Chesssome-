@@ -675,6 +675,8 @@ jobs:
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/poingstudios/godot/admob" && echo "OK AdMob en el AAB" || { echo "FALTA AdMob en el AAB"; exit 1; }
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/pabloprieto/espera" && echo "OK EsperaOnline en el AAB" || { echo "FALTA EsperaOnline en el AAB"; exit 1; }
           unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "com.pabloprieto.chessome" && echo "OK paquete com.pabloprieto.chessome" || { echo "paquete distinto en el AAB"; exit 1; }
+          # Play bloquea la versión si la pantalla vertical queda como función obligatoria (20 nov): debe ir declarada.
+          unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "android.hardware.screen.portrait" && echo "OK screen.portrait declarada (opcional)" || { echo "FALTA uses-feature screen.portrait required=false en el AAB"; exit 1; }
           SIZE=$(stat -c %s $B); echo "AAB: $((SIZE/1024/1024)) MB"
           [ $SIZE -lt 200000000 ] || echo "::warning::El AAB supera 200 MB: Play pedirá Play Asset Delivery."
 
