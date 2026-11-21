@@ -14,8 +14,8 @@ extends Node
 ## Conexión (data/coach_ai.json):
 ##   - "endpoint" vacío: llamada directa a la API de Claude con la clave de prueba que se pega en Opciones. Solo en
 ##     compilaciones de depuración: una clave dentro de un APK publicado la puede sacar cualquiera.
-##   - "endpoint" con una URL: el servidor propio (p. ej. una Cloud Function) recibe el mismo cuerpo, le pone la
-##     clave y comprueba que el jugador es premium. Es lo que hace falta para publicar.
+##   - "endpoint" con una URL: el servidor propio (worker/, Cloudflare Workers) recibe solo los hechos, construye
+##     la petición y le pone la clave. La app nunca tiene la clave.
 ##
 ## Datos que salen del móvil: la posición (FEN), la jugada, los hechos comprobados, el nivel aproximado y el idioma.
 ## Nada personal. Nunca en el nivel Kids (Premium.coach_applies).
@@ -170,7 +170,9 @@ func ask(facts: Dictionary, run: int, ply: int) -> void:
 	var req := HTTPRequest.new()
 	req.timeout = float(cfg.get("timeout_s", 20))
 	add_child(req)
-	var err := req.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(build_body(facts, cfg)))
+	# Al servidor propio (worker/) solo van los hechos: el prompt lo construye él, con la clave.
+	var payload: Dictionary = {"facts": facts} if how == "server" else build_body(facts, cfg)
+	var err := req.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
 	if err != OK:
 		req.queue_free()
 		busy = false

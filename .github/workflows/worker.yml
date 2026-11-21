@@ -1,0 +1,48 @@
+# Despliega el servidor del profesor IA (worker/) en Cloudflare Workers.
+# Secretos del repositorio (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN  · token de Cloudflare con la plantilla «Edit Cloudflare Workers»
+#   CLOUDFLARE_ACCOUNT_ID · el «Account ID» de Cloudflare
+#   ANTHROPIC_API_KEY     · la clave de la API de Claude (Claude Console). Solo vive aquí y en Cloudflare.
+name: Servidor del profesor IA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, profesor-ia]
+    paths: ["worker/**", ".github/workflows/worker.yml"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pruebas del servidor
+        run: node --test worker/test.mjs
+      - name: Comprobar los secretos
+        id: secrets
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          K: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$T" ] || [ -z "$A" ] || [ -z "$K" ]; then
+            echo "::warning::Faltan secretos (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID o ANTHROPIC_API_KEY): no se despliega."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Desplegar en Cloudflare
+        if: steps.secrets.outputs.ok == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          secrets: |
+            ANTHROPIC_API_KEY
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

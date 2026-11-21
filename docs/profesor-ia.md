@@ -27,8 +27,12 @@ precios de octubre de 2026) son unos 0,0002 $ por corrección; con unos 6 errore
 La suscripción de claude.ai no cubre la API: se paga aparte en Claude Console.
 
 ## Pendiente para publicar
-- **Servidor propio** (`endpoint` en `data/coach_ai.json`): recibe el mismo cuerpo, añade la clave y comprueba que el
-  jugador es premium. Una clave dentro del APK la puede sacar cualquiera.
+- **Servidor propio**: hecho en `worker/` (Cloudflare Workers, plan gratuito), se despliega con
+  `.github/workflows/worker.yml` cuando están los secretos CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID y
+  ANTHROPIC_API_KEY. La app le manda solo los hechos; el prompt y la clave están en el servidor. Límite: 10
+  peticiones por minuto por IP. Falta poner su URL (`…/profesor`) en `endpoint` de `data/coach_ai.json`.
+  **No comprueba que el jugador sea premium** (no hay compra real todavía): hasta entonces, la protección es el
+  límite por IP y el límite de gasto que se ponga en Claude Console.
 - **Compra real** (Google Play Billing): plugin de facturación y producto en Play Console; hoy `Premium.purchased`
   no lo pone nadie.
 - Textos nuevos sin traducir (salen en español en los otros idiomas).

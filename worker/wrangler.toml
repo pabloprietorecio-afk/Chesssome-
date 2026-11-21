@@ -1,0 +1,18 @@
+# Servidor del profesor IA de A Chess Way (docs/profesor-ia.md). Guarda la clave de la API de Claude
+# (secreto ANTHROPIC_API_KEY) y construye él mismo la petición: la app solo manda los hechos comprobados.
+name = "achessway-profesor"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+MODEL = "claude-haiku-5-5"
+MAX_TOKENS = "220"
+
+# Como mucho 10 peticiones por minuto por IP (más que suficiente para corregir errores de una partida).
+[[ratelimits]]
+name = "PER_IP"
+namespace_id = "4471"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
