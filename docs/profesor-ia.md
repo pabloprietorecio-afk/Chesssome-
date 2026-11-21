@@ -19,6 +19,8 @@ premium, y poder activarla para probarla.
   textos comprobados, sin la primera frase, que cuenta tu propia jugada: «Permite Cxe4. La mejor era Cc3…») y un
   botón de color «Ver completa»; también vale tocar cualquier punto del bloque. La ventana trae la valoración, la
   explicación entera y «Entendido».
+- La ventana es bastante transparente (fondo al 62 %, las demás al 86 %) y **se puede arrastrar** con el dedo para
+  destapar el tablero (un asa arriba y una nota abajo lo indican); se abre donde se dejó la última vez.
 - La chapa se queda hasta tu siguiente jugada: el tablero la borra con cada movimiento, así que se repone tras la
   jugada del rival (salvo que capture esa pieza) y al volver de mirar jugadas atrás. El rival espera a que salga
   la valoración (y medio segundo más) antes de mover, como mucho 3 s.

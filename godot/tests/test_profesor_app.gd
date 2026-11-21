@@ -45,6 +45,32 @@ func _initialize() -> void:
 		await _frames(3)
 		_ok(demo.confirm_node != null and is_instance_valid(demo.confirm_node) and _has_text(demo.confirm_node, demo.coach_full), "«Ver completa» abre la ventana con la explicación entera")
 		_ok(_button_with(demo.confirm_node, "Entendido") != null, "con un botón para cerrarla")
+		# La ventana se arrastra y se acuerda de dónde se dejó.
+		var win := _window(demo.confirm_node)
+		_ok(win != null and (win.get_theme_stylebox("panel") as StyleBoxFlat).bg_color.a < 0.7, "la ventana es bastante transparente")
+		await _frames(3)
+		var at := win.position
+		var press := InputEventMouseButton.new()
+		press.button_index = MOUSE_BUTTON_LEFT
+		press.pressed = true
+		demo._coach_window_input(press, win)
+		var drag := InputEventMouseMotion.new()
+		drag.relative = Vector2(30.0, 250.0)
+		demo._coach_window_input(drag, win)
+		var release := InputEventMouseButton.new()
+		release.button_index = MOUSE_BUTTON_LEFT
+		release.pressed = false
+		demo._coach_window_input(release, win)
+		_ok(win.position.distance_to(at + Vector2(30.0, 250.0)) < 1.0, "arrastrar mueve la ventana: de %s a %s" % [at, win.position])
+		demo._coach_window_input(drag, win)
+		_ok(win.position.distance_to(at + Vector2(30.0, 250.0)) < 1.0, "sin el dedo puesto, no se mueve")
+		var left: Vector2 = win.position
+		demo._close_confirm()
+		await _frames(2)
+		demo._open_coach_full()
+		await _frames(4)
+		win = _window(demo.confirm_node)
+		_ok(win != null and win.position.distance_to(left) < 2.0, "al abrirla otra vez, sale donde se dejó: %s" % (win.position if win != null else Vector2.ZERO))
 		demo._close_confirm()
 		await _frames(2)
 	await _wait_bot(demo)
@@ -135,6 +161,15 @@ func _wait_bot(demo: Control) -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
+
+
+func _window(node: Node) -> PanelContainer:
+	if node == null:
+		return null
+	for c in node.get_children():
+		if c is PanelContainer:
+			return c
+	return null
 
 
 func _button_with(node: Node, text: String) -> Button:

@@ -332,6 +332,9 @@ var _coach_threads: Array[Thread] = []
 const COACH_SECONDS := 0.8
 ## Opacidad del fondo de la ventana de la explicación (las demás ventanas: 0,86).
 const COACH_WINDOW_ALPHA := 0.62
+## La ventana de la explicación se puede arrastrar (para destapar el tablero); se acuerda de dónde se dejó.
+var _coach_window_pos := Vector2.INF
+var _coach_window_drag := false
 var _coach_key_edit: LineEdit
 var _game_thread: Thread
 ## Reloj: ritmo elegido (índice de TIME_CONTROLS), el personalizado, y en la partida el tiempo que le queda a
@@ -8843,10 +8846,50 @@ func _open_coach_full() -> void:
 		glass.bg_color.a = COACH_WINDOW_ALPHA
 		glass.shadow_size = 18
 		window.add_theme_stylebox_override("panel", glass)
+		# Arrastrable: un asa arriba lo indica; al soltarla, se queda donde esté (también la próxima vez).
+		_coach_window_drag = false
+		window.gui_input.connect(_coach_window_input.bind(window))
+		window.minimum_size_changed.connect(_coach_window_restore.bind(window))
+		_coach_window_restore.call_deferred(window)
+	var grip := Panel.new()
+	grip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grip.custom_minimum_size = Vector2(120.0, 10.0)
+	grip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var gs := StyleBoxFlat.new()
+	gs.bg_color = _c("quiet")
+	gs.bg_color.a = 0.55
+	gs.set_corner_radius_all(5)
+	grip.add_theme_stylebox_override("panel", gs)
+	column.add_child(grip)
+	column.move_child(grip, 0)
 	column.add_child(_para("Profesor IA" if coach_from_ai else "Profesor", F_SUB, _c("accent_text"), font_semibold))
 	column.add_child(_para(text, F_BODY, _c("ink"), font_regular))
 	column.add_child(_spacer(6.0))
 	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
+	var hint := _para("Arrastra la ventana para moverla", F_CAP, _c("quiet"), font_medium)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(hint)
+
+
+## Arrastrar la ventana de la explicación con el dedo (o el ratón).
+func _coach_window_input(e: InputEvent, window: PanelContainer) -> void:
+	if e is InputEventMouseButton and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		_coach_window_drag = (e as InputEventMouseButton).pressed
+	elif e is InputEventMouseMotion and _coach_window_drag and is_instance_valid(window):
+		_coach_window_pos = _coach_window_clamp(window.position + (e as InputEventMouseMotion).relative, window.size)
+		window.position = _coach_window_pos
+
+
+## Dentro de la pantalla: como mucho, la mitad de la ventana puede salirse por los lados o por abajo.
+func _coach_window_clamp(pos: Vector2, window_size: Vector2) -> Vector2:
+	return Vector2(clampf(pos.x, -window_size.x * 0.5, size.x - window_size.x * 0.5), clampf(pos.y, 20.0, size.y - window_size.y * 0.5))
+
+
+## Si la ventana ya se movió antes, se abre donde se dejó.
+func _coach_window_restore(window: PanelContainer) -> void:
+	if _coach_window_pos == Vector2.INF or not is_instance_valid(window):
+		return
+	window.position = _coach_window_clamp(_coach_window_pos, window.size)
 
 
 ## Opciones → Premium. Las pruebas (activar premium sin comprar y pegar una clave de la API) solo salen en las
