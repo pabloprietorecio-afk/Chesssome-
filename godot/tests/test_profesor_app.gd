@@ -21,6 +21,8 @@ func _initialize() -> void:
 	Premium.test_on = true
 	Premium.test_key = ""
 	demo.view.board.anim_mode = Board3D.Anim.NONE
+	# Sin red en la prueba: ni servidor ni clave, así contesta con el texto comprobado.
+	demo.coach.cfg = {"endpoint": ""}
 	var fen := "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
 	var cfg := {"variant": "", "level": 0, "title": "Partida", "text": "", "kids": "", "unit": "", "fen": fen}
 
