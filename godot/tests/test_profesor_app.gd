@@ -47,7 +47,7 @@ func _initialize() -> void:
 		_ok(_button_with(demo.confirm_node, "Entendido") != null, "con un botón para cerrarla")
 		# La ventana se arrastra y se acuerda de dónde se dejó.
 		var win := _window(demo.confirm_node)
-		_ok(win != null and (win.get_theme_stylebox("panel") as StyleBoxFlat).bg_color.a < 0.7, "la ventana es bastante transparente")
+		_ok(win != null and is_equal_approx((win.get_theme_stylebox("panel") as StyleBoxFlat).bg_color.a, demo.READING_WINDOW_ALPHA), "texto largo: ventana casi opaca, para leer bien")
 		await _frames(3)
 		var at := win.position
 		var press := InputEventMouseButton.new()

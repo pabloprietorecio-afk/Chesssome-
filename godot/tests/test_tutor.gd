@@ -223,6 +223,7 @@ func _initialize() -> void:
 	_ok(not CoachAI.question_ok({"answer": "ok bien", "show": {"steps": [{"uci": "e2e5", "fen": GIFT}]}}) and CoachAI.question_ok({"answer": "ok bien", "show": null}), "línea ilegal en la respuesta: se rechaza")
 
 	# 5b. El asistente: órdenes con palabras (servidor simulado).
+	demo._sync_assistant_button()
 	_ok(demo.assistant_button != null and demo.assistant_button.visible, "botón flotante del asistente")
 	demo._open_assistant()
 	await _frames(2)

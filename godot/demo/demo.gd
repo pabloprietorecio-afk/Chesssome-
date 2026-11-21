@@ -364,6 +364,9 @@ var _coach_threads: Array[Thread] = []
 const COACH_SECONDS := 0.8
 ## Opacidad del fondo de la ventana de la explicación (las demás ventanas: 0,86).
 const COACH_WINDOW_ALPHA := 0.62
+## Ventanas con texto largo (respuestas, explicación entera): casi opacas, para leer sin las piezas detrás (Pablo,
+## 22 nov). Las cortas (escribir, esperando) siguen al COACH_WINDOW_ALPHA para ver el tablero.
+const READING_WINDOW_ALPHA := 0.88
 ## La ventana de la explicación se puede arrastrar (para destapar el tablero); se acuerda de dónde se dejó.
 var _coach_window_pos := Vector2.INF
 var _coach_window_drag := false
@@ -9024,7 +9027,7 @@ func _open_ask() -> void:
 ## Ventana de las preguntas: semitransparente y arrastrable, como la de la explicación.
 func _build_ask_window() -> void:
 	_confirm_on_close = Callable()
-	var column := _glass_popup("Asistente" if ask_mode == "assistant" else "Pregunta al tutor")
+	var column := _glass_popup("Asistente" if ask_mode == "assistant" else "Pregunta al tutor", ask_state == "answer" or ask_state == "error")
 	_confirm_on_close = _ask_closed
 	var tint := _tint("lilac")
 	var btn := {"font_size": F_SUB, "height": 104.0, "icon": 50.0, "radius": 52}
@@ -9078,7 +9081,7 @@ func _build_ask_window() -> void:
 			column.add_child(_thinking_row())
 		"answer":
 			column.add_child(_para("«%s»" % ask_text, F_SUB, _c("quiet"), font_medium))
-			column.add_child(_para(str(ask_answer.get("answer", "")), F_BODY, _c("ink"), font_regular))
+			column.add_child(_para(str(ask_answer.get("answer", "")), F_BODY, _c("ink"), font_medium))
 			if ask_mode == "tutor" and not _lesson_steps("answer").is_empty():
 				var show := _button("play", "Enséñamelo en el tablero", _open_answer_lesson, _c("accent"), _c("accent_ink"), btn)
 				show.disabled = game_state != "play"
@@ -9829,9 +9832,9 @@ func _open_coach_full() -> void:
 	var glyph := str((BADGES.get(_coach_badge_for(coach_verdict), ["", Color.WHITE]) as Array)[0])
 	var mark := "" if glyph == "" or glyph.begins_with("@") else glyph + " "
 	var head := mark + (_coach_label(coach_verdict) if coach_verdict != "" else Loc.t("Profesor"))
-	var column := _glass_popup(head)
+	var column := _glass_popup(head, true)
 	column.add_child(_para("Profesor IA" if coach_from_ai else "Profesor", F_SUB, _c("accent_text"), font_semibold))
-	column.add_child(_para(text, F_BODY, _c("ink"), font_regular))
+	column.add_child(_para(text, F_BODY, _c("ink"), font_medium))
 	column.add_child(_spacer(6.0))
 	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
 	var hint := _para("Arrastra la ventana para moverla", F_CAP, _c("quiet"), font_medium)
@@ -9840,13 +9843,14 @@ func _open_coach_full() -> void:
 
 
 ## Ventana semitransparente y arrastrable (la del profesor y la de las preguntas), con su asa arriba.
-func _glass_popup(head: String) -> VBoxContainer:
-	# Más transparente que las demás ventanas (petición de Pablo): se ve bien el tablero debajo.
+func _glass_popup(head: String, reading: bool = false) -> VBoxContainer:
+	# Más transparente que las demás ventanas (petición de Pablo): se ve bien el tablero debajo. Con texto largo
+	# (`reading`), casi opaca.
 	var column := _popup(head, "")
 	var window := column.get_parent().get_parent() as PanelContainer
 	if window != null:
 		var glass := window.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-		glass.bg_color.a = COACH_WINDOW_ALPHA
+		glass.bg_color.a = READING_WINDOW_ALPHA if reading else COACH_WINDOW_ALPHA
 		glass.shadow_size = 18
 		window.add_theme_stylebox_override("panel", glass)
 		# Arrastrable: un asa arriba lo indica; al soltarla, se queda donde esté (también la próxima vez).
