@@ -18,10 +18,6 @@ config/icon="res://iconos_app/lanzador_192.png"
 boot_splash/bg_color=Color(0.906, 0.894, 0.945, 1)
 boot_splash/show_image=false
 
-[audio]
-
-# Micrófono para el dictado (core/tutor_voice.gd): solo se abre al pulsar «Hablar».
-driver/enable_input=true
 
 [display]
 

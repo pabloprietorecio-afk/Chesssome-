@@ -23,8 +23,9 @@ intermedio”, “pon las fichas 3D de mármol e inclina el tablero 35 grados”
 - Pruebas: `worker/test.mjs` y `godot/tests/test_tutor.gd` (servidor simulado); el despliegue prueba una orden real.
 
 ## Dictado con Whisper (22 nov)
-El reconocedor de Android no sabe de ajedrez («al fin» por «alfil»). Ahora, con conexión, la app graba (micrófono de
-Godot, `audio/driver/enable_input`; 16 kHz, mono; corta sola tras 1,3 s de silencio, como mucho 12 s) y el servidor
+El reconocedor de Android no sabe de ajedrez («al fin» por «alfil»). Ahora, con conexión, la app graba (grabación
+nativa de Android en el complemento TutorVoz: el micrófono de Godot no grababa nada en el móvil de Pablo; 16 kHz,
+mono; corta sola tras 1,3 s de silencio, como mucho 12 s) y el servidor
 transcribe con Whisper large v3 turbo de Workers AI (`/voz`, `worker/src/voice.js`), con el vocabulario de ajedrez
 como contexto (`initial_prompt`). Coste: unos 0,0005 $ por minuto de audio. Sin servidor, el reconocedor de Android
 (TutorVoz) como antes. Además, la app corrige los errores típicos («al fin» → «alfil», «peor de rey» → «peón de

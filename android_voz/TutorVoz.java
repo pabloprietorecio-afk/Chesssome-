@@ -1,7 +1,13 @@
 package com.pabloprieto.voz;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.util.Base64;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -12,6 +18,7 @@ import org.godotengine.godot.plugin.GodotPlugin;
 import org.godotengine.godot.plugin.SignalInfo;
 import org.godotengine.godot.plugin.UsedByGodot;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -46,6 +53,7 @@ public class TutorVoz extends GodotPlugin {
 		out.add(new SignalInfo("voz_parcial", String.class));
 		out.add(new SignalInfo("voz_texto", String.class));
 		out.add(new SignalInfo("voz_error", Integer.class));
+		out.add(new SignalInfo("voz_audio", String.class));
 		return out;
 	}
 
@@ -108,9 +116,135 @@ public class TutorVoz extends GodotPlugin {
 		a.runOnUiThread(this::destroyRecognizer);
 	}
 
+	// ------------------------------------------------------------ grabar para Whisper (servidor)
+	// Grabación nativa (AudioRecord, 16 kHz, mono, 16 bits): el micrófono de Godot no grababa nada en el móvil de
+	// Pablo (22 nov). Corta sola tras 1,3 s de silencio después de hablar, a los 12 s como mucho, y se rinde si en
+	// 7 s no oye nada. Entrega un WAV en base64 por «voz_audio».
+	private static final int RATE = 16000;
+	private volatile boolean recording = false;
+	private volatile boolean cancelled = false;
+
+	@UsedByGodot
+	public boolean record_start() {
+		Activity a = getActivity();
+		if (a == null || recording) return false;
+		if (a.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return false;
+		destroyRecognizer();
+		recording = true;
+		cancelled = false;
+		new Thread(this::recordLoop, "TutorVozGraba").start();
+		return true;
+	}
+
+	/** Deja de grabar y entrega lo grabado. */
+	@UsedByGodot
+	public void record_stop() {
+		recording = false;
+	}
+
+	@UsedByGodot
+	public void record_cancel() {
+		cancelled = true;
+		recording = false;
+	}
+
+	private void recordLoop() {
+		AudioRecord rec = null;
+		ByteArrayOutputStream pcm = new ByteArrayOutputStream();
+		try {
+			int min = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+			rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, RATE));
+			if (rec.getState() != AudioRecord.STATE_INITIALIZED) throw new IllegalStateException("micrófono");
+			rec.startRecording();
+			short[] buf = new short[RATE / 10];
+			long start = System.currentTimeMillis();
+			long quietSince = -1;
+			boolean heard = false;
+			double floor = -1;
+			while (recording) {
+				int n = rec.read(buf, 0, buf.length);
+				if (n <= 0) continue;
+				double sum = 0;
+				byte[] bytes = new byte[n * 2];
+				for (int i = 0; i < n; i++) {
+					double v = buf[i] / 32768.0;
+					sum += v * v;
+					bytes[i * 2] = (byte) (buf[i] & 0xff);
+					bytes[i * 2 + 1] = (byte) ((buf[i] >> 8) & 0xff);
+				}
+				pcm.write(bytes, 0, bytes.length);
+				double rms = Math.sqrt(sum / n);
+				long now = System.currentTimeMillis();
+				// Ruido de fondo: el de las primeras décimas; hay voz si se supera con holgura.
+				if (floor < 0) floor = rms;
+				else if (!heard && now - start < 400) floor = Math.min(floor, rms);
+				double threshold = Math.max(0.006, floor * 3.0);
+				if (rms >= threshold) {
+					heard = true;
+					quietSince = -1;
+				} else if (heard && quietSince < 0) {
+					quietSince = now;
+				}
+				if (heard && quietSince > 0 && now - quietSince >= 1300) break;
+				if (now - start >= 12000) break;
+				if (!heard && now - start >= 7000) {
+					recording = false;
+					cancelled = true;
+					emit("voz_error", Integer.valueOf(SpeechRecognizer.ERROR_SPEECH_TIMEOUT));
+				}
+			}
+		} catch (Exception e) {
+			recording = false;
+			cancelled = true;
+			emit("voz_error", Integer.valueOf(SpeechRecognizer.ERROR_AUDIO));
+		} finally {
+			if (rec != null) {
+				try {
+					rec.stop();
+				} catch (Exception ignored) {
+				}
+				rec.release();
+			}
+		}
+		recording = false;
+		if (cancelled) return;
+		byte[] data = pcm.toByteArray();
+		emit("voz_audio", Base64.encodeToString(wav(data), Base64.NO_WRAP));
+	}
+
+	private static byte[] wav(byte[] pcm) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		int total = 36 + pcm.length;
+		int[] header = { 0x46464952, total, 0x45564157, 0x20746d66, 16 };
+		for (int v : header) le32(out, v);
+		le16(out, 1);
+		le16(out, 1);
+		le32(out, RATE);
+		le32(out, RATE * 2);
+		le16(out, 2);
+		le16(out, 16);
+		le32(out, 0x61746164);
+		le32(out, pcm.length);
+		out.write(pcm, 0, pcm.length);
+		return out.toByteArray();
+	}
+
+	private static void le32(ByteArrayOutputStream o, int v) {
+		o.write(v & 0xff);
+		o.write((v >> 8) & 0xff);
+		o.write((v >> 16) & 0xff);
+		o.write((v >> 24) & 0xff);
+	}
+
+	private static void le16(ByteArrayOutputStream o, int v) {
+		o.write(v & 0xff);
+		o.write((v >> 8) & 0xff);
+	}
+
 	@Override
 	public void onMainPause() {
 		super.onMainPause();
+		record_cancel();
 		destroyRecognizer();
 	}
 

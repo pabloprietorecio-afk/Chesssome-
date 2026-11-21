@@ -37,6 +37,7 @@ func _plugin() -> Object:
 		_p.connect("voz_parcial", func(t: String) -> void: heard_partial.emit(fix_chess_words(t, _lang.left(2))), CONNECT_DEFERRED)
 		_p.connect("voz_texto", _on_text, CONNECT_DEFERRED)
 		_p.connect("voz_error", _on_error, CONNECT_DEFERRED)
+		_p.connect("voz_audio", _on_audio, CONNECT_DEFERRED)
 		_wire_permission()
 	return _p
 
@@ -54,7 +55,7 @@ func available() -> bool:
 
 
 func _recording_possible() -> bool:
-	return server_url != "" and OS.has_feature("android")
+	return server_url != "" and _plugin() != null
 
 
 static func locale_for(language: String) -> String:
@@ -144,6 +145,7 @@ static func fix_chess_words(text: String, language: String) -> String:
 
 
 func _on_error(code: int) -> void:
+	_recording = false
 	_set_listening(false)
 	failed.emit(code)
 
@@ -156,110 +158,58 @@ func _set_listening(on: bool) -> void:
 
 
 # ---------------------------------------------------------------- grabar y transcribir con Whisper (servidor)
+# La grabación la hace el complemento (AudioRecord de Android): el micrófono de Godot no grababa nada en el móvil de
+# Pablo (22 nov). Llega un WAV en base64 por «voz_audio» y aquí se manda al servidor.
 
 const RATE := 16000
-## Corta sola: 1,3 s de silencio después de hablar; como mucho 12 s; si en 7 s no se oye nada, se rinde.
-const SILENCE_S := 1.3
-const MAX_S := 12.0
-const NOTHING_S := 7.0
-## Nivel (RMS) a partir del cual hay voz.
-const VOICE_RMS := 0.02
 
 signal transcribing
 
 var _recording := false
 var _rec_gen := 0
-var _player: AudioStreamPlayer
-var _capture: AudioEffectCapture
+## Pruebas: lo que ya se ha «grabado» para mandar.
 var _samples := PackedFloat32Array()
-var _rec_t := 0.0
 var _heard_voice := false
-var _quiet_t := 0.0
-var _carry := 0.0
-
-
-func _record_setup() -> void:
-	if _player != null:
-		return
-	var bus := AudioServer.get_bus_index("Dictado")
-	if bus < 0:
-		AudioServer.add_bus()
-		bus = AudioServer.bus_count - 1
-		AudioServer.set_bus_name(bus, "Dictado")
-		_capture = AudioEffectCapture.new()
-		AudioServer.add_bus_effect(bus, _capture)
-		# Que no se oiga por el altavoz lo que entra por el micrófono.
-		AudioServer.set_bus_mute(bus, true)
-	else:
-		_capture = AudioServer.get_bus_effect(bus, 0) as AudioEffectCapture
-	_player = AudioStreamPlayer.new()
-	_player.stream = AudioStreamMicrophone.new()
-	_player.bus = "Dictado"
-	add_child(_player)
 
 
 func _record_start() -> void:
 	_wire_permission()
-	_record_setup()
-	_capture.clear_buffer()
-	_samples = PackedFloat32Array()
-	_rec_t = 0.0
-	_quiet_t = 0.0
-	_carry = 0.0
-	_heard_voice = false
+	var p := _plugin()
+	if p == null or not bool(p.call("record_start")):
+		_set_listening(false)
+		failed.emit(PERMISSION_DENIED if not PERMISSION in OS.get_granted_permissions() else 3)
+		return
 	_recording = true
-	_player.play()
-	set_process(true)
 
 
 func _record_stop() -> void:
+	if _recording and _p != null:
+		_p.call("record_cancel")
 	_recording = false
-	if _player != null:
-		_player.stop()
-	set_process(false)
 
 
-func _process(delta: float) -> void:
-	if not _recording:
-		return
-	_rec_t += delta
-	var frames := _capture.get_frames_available()
-	if frames > 0:
-		var buf := _capture.get_buffer(frames)
-		var step := AudioServer.get_mix_rate() / float(RATE)
-		var energy := 0.0
-		for i in buf.size():
-			var v := (buf[i].x + buf[i].y) * 0.5
-			energy += v * v
-			# Pasa a 16 kHz tomando una muestra cada `step` (el habla cabe de sobra en 8 kHz).
-			_carry += 1.0
-			if _carry >= step:
-				_carry -= step
-				_samples.append(v)
-		var rms := sqrt(energy / float(maxi(1, buf.size())))
-		if rms >= VOICE_RMS:
-			_heard_voice = true
-			_quiet_t = 0.0
-		else:
-			_quiet_t += delta
-	if (_heard_voice and _quiet_t >= SILENCE_S) or _rec_t >= MAX_S:
-		_record_finish()
-	elif not _heard_voice and _rec_t >= NOTHING_S:
-		_record_stop()
-		_set_listening(false)
-		failed.emit(NO_MATCH[0])
-
-
+## «Parar»: el complemento deja de grabar y entrega lo grabado.
 func _record_finish() -> void:
-	_record_stop()
+	if _recording and _p != null:
+		_p.call("record_stop")
+		return
+	# Pruebas (sin complemento): lo que haya en _samples.
 	if not _heard_voice or _samples.size() < RATE / 4:
 		_set_listening(false)
 		failed.emit(NO_MATCH[0])
 		return
+	_transcribe(Marshalls.raw_to_base64(wav_bytes(_samples, RATE)))
+
+
+func _on_audio(audio: String) -> void:
+	_recording = false
+	_transcribe(audio)
+
+
+func _transcribe(audio: String) -> void:
 	transcribing.emit()
 	_rec_gen += 1
 	var gen := _rec_gen
-	var audio := Marshalls.raw_to_base64(wav_bytes(_samples, RATE))
 	var text := ""
 	if fake_server.is_valid():
 		text = str(fake_server.call(audio))
