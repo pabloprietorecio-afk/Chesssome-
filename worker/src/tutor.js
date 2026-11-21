@@ -346,3 +346,223 @@ export async function lesson(input, env) {
   if (!out) throw Object.assign(new Error("respuesta sin forma"), { status: 502, detail: { stop_reason: data.stop_reason ?? null, types: (data.content || []).map((c) => c.type) } });
   return out;
 }
+
+// ---------------------------------------------------------------- preguntas libres (/tutor/pregunta)
+// El alumno pregunta lo que quiera durante la partida («¿por qué no puedo comer en e5?», «¿y si muevo el
+// caballo?»). Claude contesta como profesor, pero no calcula: para cualquier jugada o línea pide a Stockfish que la
+// analice con la herramienta «analizar». Si quiere enseñar algo en el tablero, devuelve la línea y el servidor la
+// comprueba (legal) antes de mandarla a la app.
+
+const HISTORY_MAX = 16;
+const TOOL_ROUNDS = 3;
+
+export const ASK_TOOL = {
+  name: "analizar",
+  description: "Juega en el tablero una o varias jugadas (UCI, p. ej. g1f3) desde una posición de la partida y pide a Stockfish su valoración y cómo seguiría. Úsala SIEMPRE antes de afirmar qué pasa con una jugada.",
+  input_schema: {
+    type: "object",
+    properties: {
+      desde: { type: "integer", description: "Número de la posición de partida (0 = la primera del historial que te doy; si no lo pones, la posición actual)." },
+      jugadas: { type: "array", items: { type: "string" }, description: "Jugadas en UCI, en orden, de 1 a 4. Vacío: solo valorar la posición." },
+    },
+    required: ["jugadas"],
+  },
+};
+
+// Replay de la partida que manda la app: posiciones (FEN) y jugadas, desde `start`.
+export function replay(start, moves) {
+  const chess = new Chess(start);
+  const fens = [chess.fen()];
+  const done = [];
+  for (const uci of moves.slice(-HISTORY_MAX)) {
+    const mv = UCI.test(uci) ? play(chess, uci) : null;
+    if (!mv) throw Object.assign(new Error("partida no válida"), { status: 400 });
+    done.push({ uci, san: mv.san, color: mv.color });
+    fens.push(chess.fen());
+  }
+  return { fens, done };
+}
+
+function legalList(fen, lang) {
+  return new Chess(fen).moves({ verbose: true }).map((m) => `${localSan(m.san, lang)}=${m.from}${m.to}${m.promotion || ""}`).join(", ");
+}
+
+const pctFor = (e, side) => Math.round(side === "w" ? e.win : 100 - e.win);
+
+// Lo que devuelve la herramienta: las jugadas con sus hechos, la valoración y cómo seguiría Stockfish.
+export async function runTool(input, ctx, env) {
+  const idx = Number.isInteger(input?.desde) ? input.desde : ctx.fens.length - 1;
+  if (idx < 0 || idx >= ctx.fens.length) return { text: `Error: «desde» va de 0 a ${ctx.fens.length - 1}.` };
+  const fen = ctx.fens[idx];
+  const ucis = Array.isArray(input?.jugadas) ? input.jugadas.map(String).slice(0, LINE_MAX) : [];
+  const steps = buildLine(fen, ucis, LINE_MAX);
+  if (steps.length !== ucis.length) {
+    const bad = ucis[steps.length];
+    const at = new Chess(fen);
+    for (const s of steps) play(at, s.uci);
+    return { text: `Error: ${bad} no es legal en esa posición. Jugadas legales allí: ${legalList(at.fen(), ctx.lang)}.` };
+  }
+  const end = new Chess(fen);
+  for (const s of steps) play(end, s.uci);
+  for (const s of steps) {
+    ctx.allowed.add(s.from);
+    ctx.allowed.add(s.to);
+    for (const a of s.attacks) ctx.allowed.add(a.square);
+    for (const a of s.attackedBy) ctx.allowed.add(a.square);
+  }
+  const lines = [`Desde la posición ${idx}${idx === ctx.fens.length - 1 ? " (la actual)" : ""}.`];
+  if (steps.length) lines.push(...steps.map((s, i) => describeStep(s, i, ctx.player, ctx.lang)));
+  if (end.isCheckmate()) {
+    lines.push("La posición final es jaque mate.");
+    return { text: lines.join("\n") };
+  }
+  if (end.isDraw()) {
+    lines.push("La posición final es tablas.");
+    return { text: lines.join("\n") };
+  }
+  let E;
+  try {
+    E = await askEngine(end.fen(), env, null);
+  } catch {
+    lines.push("Stockfish no ha contestado: no afirmes nada de la valoración.");
+    return { text: lines.join("\n") };
+  }
+  const cont = buildLine(end.fen(), chain(E.move, E.line), LINE_MAX);
+  for (const s of cont) {
+    ctx.allowed.add(s.from);
+    ctx.allowed.add(s.to);
+  }
+  const mate = E.mate !== null ? ` Hay mate en ${Math.abs(E.mate)} para las ${E.mate > 0 ? "blancas" : "negras"}.` : "";
+  lines.push(`Valoración de Stockfish (profundidad ${E.depth}): el alumno tiene un ${pctFor(E, ctx.player)}% de probabilidad de ganar.${mate}`);
+  if (cont.length) {
+    lines.push(`Cómo seguiría (lo mejor para ambos, según Stockfish) — ${material(cont, ctx.player)}:`);
+    lines.push(...cont.map((s, i) => describeStep(s, i, ctx.player, ctx.lang)));
+  }
+  return { text: lines.join("\n") };
+}
+
+export function askPrompt(ctx, question, rating) {
+  const lang = ctx.lang;
+  const now = ctx.fens[ctx.fens.length - 1];
+  const board = describeBoard(now);
+  for (const sq of board.squares) ctx.allowed.add(sq);
+  for (const m of new Chess(now).moves({ verbose: true })) {
+    ctx.allowed.add(m.from);
+    ctx.allowed.add(m.to);
+  }
+  for (const d of ctx.done) {
+    ctx.allowed.add(d.uci.slice(0, 2));
+    ctx.allowed.add(d.uci.slice(2, 4));
+  }
+  const turn = new Chess(now).turn();
+  const system = [
+    "Eres el profesor de ajedrez de la app A Chess Way, sentado junto a tu alumno mientras juega contra la app.",
+    "El alumno te hace una pregunta (escrita o dictada por voz: puede venir con faltas o con las jugadas mal dichas). Contesta como un buen profesor: claro, cercano, de tú, sin regañar, y breve (2 a 4 frases).",
+    "Reglas estrictas:",
+    "- No calcules jugadas ni valores posiciones de cabeza. Para cualquier jugada o línea de la que vayas a hablar, usa antes la herramienta «analizar» (Stockfish) y basa tu respuesta en lo que devuelve.",
+    "- No nombres casillas, piezas ni jugadas que no salgan en los datos o en lo que devuelve la herramienta.",
+    "- Si la pregunta no es de ajedrez ni de esta partida, contesta en una frase que solo puedes ayudar con la partida.",
+    "- Si con la jugada del alumno el rival tiene algo mejor, dilo. Si la jugada del alumno era buena, explica por qué.",
+    "- Nunca le digas qué jugar ahora si no te lo pide; si te pide ayuda para la jugada actual, dale una pista (qué mirar), no la jugada, salvo que la pida expresamente.",
+    `- Escribe en ${LANGUAGES[lang]}, con la notación de ajedrez de ese idioma. Sin markdown ni emojis.`,
+    "Cuando tengas la respuesta, devuelve SOLO un objeto JSON, sin nada antes ni después:",
+    '{"respuesta": "tu texto", "mostrar": {"desde": número de posición, "jugadas": ["uci", ...]} o null}',
+    "«mostrar» es una línea de 1 a 4 jugadas (UCI, ya analizadas con la herramienta) que la app enseñará en el tablero, moviendo las piezas y con flechas, mientras el alumno lee. Úsala cuando ayude a ver lo que explicas.",
+  ].join("\n");
+  const hist = ctx.done.map((d, i) => `${i}→${i + 1}: ${d.color === ctx.player ? "ALUMNO" : "RIVAL"} ${localSan(d.san, lang)} (${d.uci})`);
+  const user = [
+    `Nivel del alumno: ${rating > 0 ? `unos ${rating} puntos` : "desconocido, trátalo como principiante"}.`,
+    `El alumno juega con ${ctx.player === "w" ? "blancas" : "negras"}. Ahora mueven las ${turn === "w" ? "blancas" : "negras"}${turn === ctx.player ? " (le toca al alumno)" : " (le toca al rival)"}.`,
+    `Últimas jugadas de la partida (la posición 0 es la de antes de la primera; la actual es la ${ctx.fens.length - 1}):`,
+    hist.length ? hist.join("\n") : "(ninguna todavía)",
+    "Posición actual:",
+    board.text,
+    `Jugadas legales ahora (notación=UCI): ${legalList(now, lang)}`,
+    "",
+    `Pregunta del alumno: «${question}»`,
+  ].join("\n");
+  return { system, user };
+}
+
+export function parseAnswer(raw, ctx) {
+  let data = null;
+  try {
+    data = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+  } catch {
+    return null;
+  }
+  const answer = cleanText(data?.respuesta, ctx.allowed, 900);
+  if (!answer) return null;
+  let show = null;
+  const m = data?.mostrar;
+  if (m && typeof m === "object" && Array.isArray(m.jugadas)) {
+    const idx = Number.isInteger(m.desde) ? m.desde : ctx.fens.length - 1;
+    if (idx >= 0 && idx < ctx.fens.length) {
+      const ucis = m.jugadas.map(String).slice(0, LINE_MAX);
+      const steps = buildLine(ctx.fens[idx], ucis, LINE_MAX);
+      if (steps.length && steps.length === ucis.length) {
+        show = { from: idx, steps: publicLine(steps, ctx.player, "best", false) };
+      }
+    }
+  }
+  return { answer, show };
+}
+
+export async function ask(input, env) {
+  const question = String(input?.question ?? "").trim().slice(0, 400);
+  if (question.length < 2) throw Object.assign(new Error("pregunta vacía"), { status: 400 });
+  const moves = Array.isArray(input?.moves) ? input.moves.map(String) : [];
+  let ctx;
+  try {
+    const { fens, done } = replay(String(input?.start ?? ""), moves);
+    ctx = { fens, done, lang: String(input?.language ?? "es") in LANGUAGES ? String(input.language) : "es", allowed: new Set() };
+  } catch (e) {
+    throw Object.assign(new Error(e?.status ? e.message : "posición no válida"), { status: 400 });
+  }
+  ctx.player = input?.player === "b" ? "b" : "w";
+  const rating = Math.max(0, Math.min(3500, Math.round(Number(input?.rating) || 0)));
+  const { system, user } = askPrompt(ctx, question, rating);
+  if (!env.ANTHROPIC_API_KEY) throw Object.assign(new Error("falta la clave en el servidor"), { status: 500 });
+  const call = (body) => fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": env.ANTHROPIC_API_KEY },
+    body: JSON.stringify(body),
+  });
+  const messages = [{ role: "user", content: user }];
+  const base = { model: env.MODEL_TUTOR || "claude-sonnet-5-5", max_tokens: Number(env.MAX_TOKENS_ASK || 1000), system, tools: [ASK_TOOL] };
+  let tools = 0;
+  let retried = false;
+  for (let round = 0; round <= TOOL_ROUNDS; round++) {
+    // En la última vuelta ya no se ofrece la herramienta: tiene que contestar.
+    const body = { ...base, messages, ...(round === TOOL_ROUNDS ? { tool_choice: { type: "none" } } : {}) };
+    let r = await call({ ...body, thinking: { type: "disabled" } });
+    if (r.status === 400) r = await call({ ...body, max_tokens: base.max_tokens + 2500 });
+    if (!r.ok) throw Object.assign(new Error(`api ${r.status}`), { status: 502 });
+    const data = await r.json();
+    const content = data.content || [];
+    const uses = content.filter((c) => c.type === "tool_use");
+    if (!uses.length || round === TOOL_ROUNDS) {
+      const text = content.filter((c) => c.type === "text").map((c) => c.text).join("");
+      const out = parseAnswer(text, ctx);
+      if (out) return { ...out, tools };
+      // Una segunda oportunidad: casillas que no salen en los datos (o sin el JSON). Se le dice cuáles.
+      if (retried || round === TOOL_ROUNDS) throw Object.assign(new Error("respuesta sin forma"), { status: 502, detail: { stop_reason: data.stop_reason ?? null } });
+      retried = true;
+      const strange = [...new Set([...text.matchAll(SQUARE)].map((m) => m[1]).filter((sq) => !ctx.allowed.has(sq)))];
+      messages.push({ role: "assistant", content });
+      messages.push({ role: "user", content: strange.length
+        ? `Tu respuesta nombra casillas que no salen en los datos ni en lo analizado: ${strange.join(", ")}. Analízalas con la herramienta o quítalas, y devuelve el JSON.`
+        : "Devuelve la respuesta en el JSON pedido, sin nada más." });
+      continue;
+    }
+    messages.push({ role: "assistant", content });
+    const results = [];
+    for (const u of uses) {
+      tools += 1;
+      const res = u.name === ASK_TOOL.name ? await runTool(u.input, ctx, env) : { text: "Herramienta desconocida." };
+      results.push({ type: "tool_result", tool_use_id: u.id, content: res.text });
+    }
+    messages.push({ role: "user", content: results });
+  }
+  throw Object.assign(new Error("sin respuesta"), { status: 502 });
+}

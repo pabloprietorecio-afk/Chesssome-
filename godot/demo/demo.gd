@@ -467,6 +467,9 @@ var _natural_board_h := 0.0
 var _natural_gap := 0.0
 var card_body: VBoxContainer
 var counter: Label
+## Interruptor «Tutor IA» de la barra, en las partidas (ver _sync_tutor_toggle).
+var tutor_toggle: Button
+var _tutor_switch: Switch
 ## Marca verde junto al nombre del problema si ya está resuelto.
 var counter_check: TextureRect
 var title: Label
@@ -1828,6 +1831,9 @@ func _build_chrome() -> void:
 	counter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	counter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	bar.add_child(counter)
+	# Interruptor «Tutor IA», en todas las partidas (petición de Pablo, 21 nov): encender y apagar sin ir a Opciones.
+	tutor_toggle = _tutor_toggle_button()
+	bar.add_child(tutor_toggle)
 	pin_button = _pin_button()
 	bar.add_child(pin_button)
 	view_button = _round_button("view", _on_toggle_view)
@@ -2189,7 +2195,8 @@ func _refresh(animate: bool = true) -> void:
 	if mode == "learn":
 		counter.text = Loc.t("Finales de campeones") if Cine.is_lesson(str(lesson.get("id", ""))) else Loc.t("Aprende desde cero")
 	elif mode == "game":
-		counter.text = Loc.t("Partida")
+		# Con el interruptor del tutor no cabe el título: «Partida» ya se ve en la tarjeta.
+		counter.text = "" if _tutor_toggle_shown() else Loc.t("Partida")
 	elif mode == "train" and _has_player():
 		var lv := Assessment.level_of(float(player["rating"]["r"]))
 		counter.text = Loc.f("Nivel %d · %s", [lv, str(_rank(lv)[1])])
@@ -2207,6 +2214,7 @@ func _refresh(animate: bool = true) -> void:
 			counter.text = _puzzle_name(str(puzzle.get("id", "")))
 	if kids_wall != null and is_instance_valid(kids_wall):
 		kids_wall.visible = kids
+	_sync_tutor_toggle()
 	_sync_music()
 	_build_card()
 	_build_actions()
@@ -9227,6 +9235,92 @@ func _coach_window_restore(window: PanelContainer) -> void:
 	if _coach_window_pos == Vector2.INF or not is_instance_valid(window):
 		return
 	window.position = _coach_window_clamp(_coach_window_pos, window.size)
+
+
+## El interruptor «Tutor IA» de la barra: una pastilla con el nombre y el interruptor; se toca entera.
+func _tutor_toggle_button() -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.custom_minimum_size = Vector2(0.0, 100.0)
+	var tint := _tint("lilac")
+	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = tint[0]
+		sb.set_corner_radius_all(50)
+		b.add_theme_stylebox_override(state, sb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pad := _pad(24, 0, 16, 0)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pad.add_child(row)
+	b.add_child(pad)
+	var bulb := _icon("bulb", 44.0, tint[1])
+	bulb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(bulb)
+	var label := _text("Tutor IA", F_SUB, _c("ink"), font_semibold)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+	_tutor_switch = Switch.new()
+	_tutor_switch.on_color = _c("accent")
+	_tutor_switch.off_color = _c("track")
+	_tutor_switch.knob_color = Color.WHITE
+	_tutor_switch.custom_minimum_size = Vector2(96.0, 58.0)
+	_tutor_switch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_tutor_switch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+		_tutor_switch.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	row.add_child(_tutor_switch)
+	b.pressed.connect(_on_tutor_toggle)
+	b.visible = false
+	# El ancho, el de su contenido.
+	pad.minimum_size_changed.connect(func() -> void: b.custom_minimum_size.x = pad.get_combined_minimum_size().x)
+	return b
+
+
+## En todas las partidas contra la app (en Kids no: allí no hay profesor).
+func _tutor_toggle_shown() -> bool:
+	return mode == "game" and not kids and not game.is_empty()
+
+
+## Por qué el tutor no puede ir en esta partida ("" si puede).
+func _tutor_blocked_reason() -> String:
+	if bool(game.get("online", false)):
+		return "En las partidas online el tutor no ayuda: sería jugar con ventaja."
+	if game_clocked:
+		return "Con reloj no hay tutor, como en una partida oficial. Juega una partida sin reloj para tenerlo."
+	if str(game.get("variant", "")) != "":
+		return "El tutor solo va en las partidas de ajedrez normal, no en las variantes."
+	if not Premium.coach_allowed(run_id):
+		return Loc.f("Has jugado tus %d partidas gratis con el tutor. Para seguir con él, hace falta la versión premium.", [Premium.TRIAL_GAMES])
+	return ""
+
+
+func _sync_tutor_toggle() -> void:
+	if tutor_toggle == null or not is_instance_valid(tutor_toggle):
+		return
+	tutor_toggle.visible = _tutor_toggle_shown()
+	if not tutor_toggle.visible:
+		return
+	var blocked := _tutor_blocked_reason() != ""
+	_tutor_switch.on = Premium.coach_on and not blocked
+	_tutor_switch.queue_redraw()
+	tutor_toggle.modulate.a = 0.55 if blocked else 1.0
+
+
+func _on_tutor_toggle() -> void:
+	var why := _tutor_blocked_reason()
+	if why != "":
+		var column := _popup("Tutor IA", why)
+		column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
+		return
+	_set_coach_on(not Premium.coach_on)
+	if Premium.coach_on and mode == "game" and game_state == "play" and coach_note == "":
+		coach_note = Loc.t("Tutor encendido: te comento tu próxima jugada. También puedes preguntarme lo que quieras.")
+		coach_full = coach_note
+	_refresh()
 
 
 ## Opciones → Premium. Las pruebas (activar premium sin comprar y pegar una clave de la API) solo salen en las

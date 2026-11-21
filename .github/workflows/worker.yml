@@ -95,3 +95,7 @@ jobs:
           l=$(post "/tutor/leccion" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\",\"played\":$played,\"best\":$best,\"verdict\":\"$verdict\",\"win_best\":$(echo "$r" | jq .win_best),\"win_played\":$(echo "$r" | jq .win_played),\"rating\":1100,\"language\":\"es\"}")
           echo "LECCION: $l"
           echo "$l" | jq -e '.played | length > 0' > /dev/null
+          echo "== pregunta libre (Claude con la herramienta de Stockfish)"
+          q=$(curl -s -m 90 -X POST "$base/tutor/pregunta" -H "content-type: application/json" -d "{\"start\":\"$FEN\",\"moves\":[\"g1e2\",\"c7e5\"],\"player\":\"w\",\"question\":\"¿Por qué he perdido el peón de e5? ¿Qué tendría que haber jugado?\",\"rating\":1100,\"language\":\"es\"}")
+          echo "PREGUNTA: $q"
+          echo "$q" | jq -e '.answer | length > 10' > /dev/null

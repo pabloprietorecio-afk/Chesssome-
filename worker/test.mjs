@@ -70,7 +70,7 @@ test("acepta los errores del análisis del motor", () => {
 });
 
 // ---------------------------------------------------------------- tutor: Stockfish + lección
-import { judge, lesson, readEngine, winPct, verdictFor, isSacrifice, buildLine, parseLesson, cleanText, lessonPrompt, localSan } from "./src/tutor.js";
+import { ask, replay, judge, lesson, readEngine, winPct, verdictFor, isSacrifice, buildLine, parseLesson, cleanText, lessonPrompt, localSan } from "./src/tutor.js";
 
 const GIFT = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
 const GIFT_AFTER = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP1N1PP/R2QK2R b KQkq - 1 12";
@@ -208,4 +208,62 @@ test("rutas del tutor: /tutor y /tutor/leccion", async () => {
   assert.equal((await r.json()).verdict, "inaccuracy");
   assert.equal((await worker.fetch(req("/tutor", { fen: "x", uci: "e2e4" }), {})).status, 400);
   assert.equal((await worker.fetch(req("/tutor", { fen: GIFT, uci: "g1e2" }), { TUTOR_IP: { limit: async () => ({ success: false }) } })).status, 429);
+});
+
+test("preguntas: Claude pide a Stockfish que analice, contesta y enseña una línea legal", async () => {
+  const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
+  const { fens } = replay(start, ["g1e2", "c7e5"]);
+  const sent = [];
+  let claude = 0;
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (!String(url).includes("anthropic")) {
+      return new Response(JSON.stringify({ type: "bestmove", depth: 18, move: "c7e5", centipawns: "-80", continuationArr: ["c7e5", "f3f4"] }), { status: 200 });
+    }
+    sent.push(body);
+    claude += 1;
+    if (claude === 1) {
+      return new Response(JSON.stringify({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "analizar", input: { desde: 0, jugadas: ["g1e2"] } }] }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ content: [{ type: "text", text: '{"respuesta":"Con Cge2 el peón de e5 se queda sin defensa y la dama lo captura.","mostrar":{"desde":0,"jugadas":["g1e2","c7e5"]}}' }] }), { status: 200 });
+  };
+  const r = await ask({ start, moves: ["g1e2", "c7e5"], player: "w", question: "¿por qué perdí el peón?", language: "es", rating: 1100 }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.answer, "Con Cge2 el peón de e5 se queda sin defensa y la dama lo captura.");
+  assert.equal(r.tools, 1);
+  assert.equal(r.show.from, 0);
+  assert.deepEqual(r.show.steps.map((s) => s.uci), ["g1e2", "c7e5"]);
+  assert.equal(r.show.steps[0].fen, fens[0]);
+  assert.equal(sent[0].tools[0].name, "analizar");
+  assert.match(sent[0].messages[0].content, /¿por qué perdí el peón\?/);
+  assert.match(sent[0].messages[0].content, /0→1: ALUMNO Cge2 \(g1e2\)/);
+  const toolResult = sent[1].messages[2].content[0];
+  assert.equal(toolResult.tool_use_id, "t1");
+  assert.match(toolResult.content, /Valoración de Stockfish/);
+});
+
+test("preguntas: línea ilegal en «mostrar» se descarta; partida rota o pregunta vacía: 400", async () => {
+  const start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  globalThis.fetch = async () => new Response(JSON.stringify({ content: [{ type: "text", text: '{"respuesta":"Controla el centro con tus peones.","mostrar":{"jugadas":["e2e5"]}}' }] }), { status: 200 });
+  const r = await ask({ start, moves: [], player: "w", question: "¿qué hago al empezar?" }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.answer, "Controla el centro con tus peones.");
+  assert.equal(r.show, null);
+  await assert.rejects(ask({ start, moves: ["e2e5"], question: "hola" }, { ANTHROPIC_API_KEY: "k" }), (e) => e.status === 400);
+  await assert.rejects(ask({ start, moves: [], question: " " }, { ANTHROPIC_API_KEY: "k" }), (e) => e.status === 400);
+});
+
+test("preguntas: una casilla inventada: se le avisa una vez; si insiste, 502", async () => {
+  const start = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
+  const sent = [];
+  let n = 0;
+  globalThis.fetch = async (url, init) => {
+    sent.push(JSON.parse(init.body));
+    n += 1;
+    const text = n === 1 ? '{"respuesta":"Tu caballo de c3 está mal.","mostrar":null}' : '{"respuesta":"Solo quedan los reyes: son tablas.","mostrar":null}';
+    return new Response(JSON.stringify({ content: [{ type: "text", text }] }), { status: 200 });
+  };
+  const r = await ask({ start, moves: [], question: "¿qué tal voy?" }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.answer, "Solo quedan los reyes: son tablas.");
+  assert.match(sent[1].messages[2].content, /c3/);
+  globalThis.fetch = async () => new Response(JSON.stringify({ content: [{ type: "text", text: '{"respuesta":"Tu caballo de c3 está mal.","mostrar":null}' }] }), { status: 200 });
+  await assert.rejects(ask({ start, moves: [], question: "¿qué tal voy?" }, { ANTHROPIC_API_KEY: "k" }), (e) => e.status === 502);
 });
