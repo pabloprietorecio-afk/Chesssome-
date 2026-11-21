@@ -67,6 +67,25 @@ static func analyze(fens: Array, moves: Array, player: int, variant: String = ""
 	return out
 
 
+## Una sola jugada, en directo (profesor IA, core/coach_ai.gd): los momentos tácticos de `_tactics`, sin los de la
+## apertura (necesitan toda la partida). {} si no hay nada que corregir.
+static func analyze_move(fen: String, uci: String, ply: int) -> Dictionary:
+	var before := Chess.from_fen(fen)
+	var m := before.find_uci(uci)
+	if m < 0:
+		return {}
+	var found := _tactics(before, m, before.after(m), ply)
+	if found.is_empty():
+		return found
+	found["arrows"] = _arrows(before, m, found)
+	found["ply"] = ply
+	found["fen"] = fen
+	found["played"] = uci
+	found["lesson"] = LESSON[found["kind"]]
+	found["themes"] = THEMES[found["kind"]]
+	return found
+
+
 static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionary:
 	var me := before.turn
 	var san := SanEs.san(before, m)

@@ -296,6 +296,13 @@ var game_state := ""
 var game_won := 0
 var game_result := ""
 var game_note := ""
+## Profesor IA (premium, core/coach_ai.gd): la corrección de la última jugada del jugador, aparte de game_note
+## (que dice qué ha jugado el rival). coach_from_ai: la ha redactado la IA (si no, es el texto comprobado).
+var coach: CoachAI
+var coach_note := ""
+var coach_from_ai := false
+var coach_waiting := false
+var _coach_key_edit: LineEdit
 var _game_thread: Thread
 ## Reloj: ritmo elegido (índice de TIME_CONTROLS), el personalizado, y en la partida el tiempo que le queda a
 ## cada bando (ms; 0 blancas, 1 negras) y el incremento por jugada.
@@ -1070,6 +1077,10 @@ func _ready() -> void:
 	online.clock_changed.connect(_online_clock_changed)
 	online.matched.connect(_online_matched)
 	online.retry.connect(_online_retry)
+	Premium.load_state()
+	coach = CoachAI.new()
+	add_child(coach)
+	coach.answered.connect(_on_coach_answered)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
@@ -3620,6 +3631,8 @@ func _build_sheet() -> void:
 		box.add_child(_switch_row("clock", "peach", "Pulsar el reloj", "Después de cada jugada, pulsa el reloj para que empiece a pensar el rival, como en una partida de verdad.", press_clock, _set_press_clock))
 		if press_clock:
 			box.add_child(_switch_row("bulb", "butter", "Aviso si no lo pulsas", Loc.f("A los %d segundos sin pulsarlo, te lo recuerda (y vibra). Tu tiempo sigue corriendo.", int(PRESS_REMINDER)), press_reminder, _set_press_reminder))
+	if not kids:
+		_premium_rows(box)
 	if kids:
 		box.add_child(_caption("Mundo de las partidas"))
 		box.add_child(_world_tiles())
@@ -8072,6 +8085,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	game_won = 0
 	game_result = ""
 	game_note = ""
+	_clear_coach()
 	var line := str(cfg.get("kids", ""))
 	if line == "":
 		line = _kid_line("gameWhite" if color == 0 else "gameBlack")
@@ -8111,6 +8125,7 @@ func _game_move(uci: String) -> void:
 		online.play(uci, game_clocked and not press_clock)
 	if _game_check_end(before, m):
 		return
+	_coach_move(str(game_history[game_history.size() - 2]), uci, game_history.size() - 2)
 	if is_online and not (game_clocked and press_clock):
 		game_clock_side = 1 - game_color
 		game_state = "think"
@@ -8388,6 +8403,131 @@ func _war_rival_note(pos: Chess, m: int) -> String:
 	return ""
 
 
+# ---------------------------------------------------------------- profesor IA (premium)
+
+func _clear_coach() -> void:
+	coach_note = ""
+	coach_from_ai = false
+	coach_waiting = false
+
+
+## Tras cada jugada del jugador: si es un error comprobable, el profesor lo explica. Mientras llega la explicación
+## de la IA, la tarjeta dice que el profesor está mirando; si no llega, queda el texto comprobado.
+func _coach_move(fen_before: String, uci: String, ply: int) -> void:
+	_clear_coach()
+	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))):
+		return
+	var moment := GameReview.analyze_move(fen_before, uci, ply)
+	if moment.is_empty():
+		return
+	var before := Chess.from_fen(fen_before)
+	var played := SanEs.san(before, before.find_uci(uci))
+	var better := ""
+	var better_m := before.find_uci(str(moment.get("better", "")))
+	if better_m >= 0:
+		better = SanEs.san(before, better_m)
+	var rating := 0.0
+	if player.has("rating") and player["rating"] is Dictionary:
+		rating = float((player["rating"] as Dictionary).get("r", 0.0))
+	var facts := CoachAI.facts_for(moment, played, better, rating, Loc.language)
+	coach_waiting = true
+	coach.ask(facts, run_id, ply)
+
+
+func _on_coach_answered(run: int, _ply: int, text: String, from_ai: bool) -> void:
+	if run != run_id or mode != "game" or game_state == "over":
+		return
+	coach_waiting = false
+	coach_note = text
+	coach_from_ai = from_ai
+	_refresh()
+
+
+func _coach_block() -> PanelContainer:
+	var paper: Color = _tint("lilac")[0]
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.6)
+	sb.set_corner_radius_all(36)
+	sb.content_margin_left = 22.0
+	sb.content_margin_right = 26.0
+	sb.content_margin_top = 20.0
+	sb.content_margin_bottom = 20.0
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var title := "Profesor IA" if coach_from_ai or coach_waiting else "Profesor"
+	var text := Loc.t("El profesor está mirando tu jugada…") if coach_waiting else coach_note
+	panel.add_child(_icon_row("bulb", "lilac", title, text, 84.0))
+	return panel
+
+
+## Opciones → Premium. Las pruebas (activar premium sin comprar y pegar una clave de la API) solo salen en las
+## compilaciones de depuración.
+func _premium_rows(box: VBoxContainer) -> void:
+	box.add_child(_caption("Premium"))
+	if Premium.test_allowed():
+		box.add_child(_switch_row("party", "butter", "Premium de prueba", "Solo en el APK de pruebas: activa la versión premium sin comprarla.", Premium.test_on, _set_premium_test))
+	if not Premium.active():
+		box.add_child(_para("El profesor IA, que te corrige mientras juegas, es parte de la versión premium.", F_SUB, _c("quiet"), font_regular))
+		return
+	box.add_child(_switch_row("bulb", "lilac", "Profesor IA en las partidas", "Te explica tus errores mientras juegas contra el rival (partidas sin reloj).", Premium.coach_on, _set_coach_on))
+	if Premium.test_allowed() and CoachAI.endpoint_mode(coach.cfg, "", true) != "server":
+		box.add_child(_coach_key_block())
+
+
+func _coach_key_block() -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	_coach_key_edit = LineEdit.new()
+	_coach_key_edit.placeholder_text = "Clave de la API de Claude (sk-ant-…)"
+	_coach_key_edit.secret = true
+	_coach_key_edit.text = Premium.test_key
+	_coach_key_edit.add_theme_font_size_override("font_size", F_SUB)
+	_coach_key_edit.add_theme_font_override("font", font_medium)
+	_coach_key_edit.custom_minimum_size = Vector2(0.0, 104.0)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = _c("surface")
+	sb.set_corner_radius_all(36)
+	sb.border_color = _c("track")
+	sb.set_border_width_all(3)
+	sb.content_margin_left = 26
+	sb.content_margin_right = 26
+	_coach_key_edit.add_theme_stylebox_override("normal", sb)
+	_coach_key_edit.add_theme_stylebox_override("focus", sb)
+	_coach_key_edit.add_theme_color_override("font_color", _c("ink"))
+	_coach_key_edit.text_submitted.connect(func(_t: String) -> void: _save_coach_key())
+	box.add_child(_coach_key_edit)
+	var state := "Clave guardada en este móvil." if Premium.test_key != "" else "Sin clave, el profesor usa los textos comprobados de la app, sin IA."
+	box.add_child(_para(state + " " + Loc.t("Solo para pruebas: no se sube a ningún sitio salvo a la API de Claude."), F_FOOT, _c("quiet"), font_regular))
+	var tint := _tint("sky")
+	box.add_child(_button("check", "Guardar la clave", _save_coach_key, tint[0], tint[1], {"font_size": F_SUB, "height": 104.0, "icon": 50.0}))
+	return box
+
+
+func _set_premium_test(on: bool) -> void:
+	Premium.test_on = on
+	Premium.save_state()
+	_sync_sheet()
+
+
+func _set_coach_on(on: bool) -> void:
+	Premium.coach_on = on
+	Premium.save_state()
+	if not on:
+		_clear_coach()
+		if mode == "game":
+			_refresh()
+	_sync_sheet()
+
+
+func _save_coach_key() -> void:
+	if _coach_key_edit == null or not is_instance_valid(_coach_key_edit):
+		return
+	Premium.test_key = _coach_key_edit.text.strip_edges()
+	Premium.save_state()
+	_sync_sheet()
+
+
 func _stop_game_thread() -> void:
 	if _game_thread != null:
 		if _game_thread.is_started():
@@ -8513,6 +8653,7 @@ func _game_undo() -> void:
 	view.board.set_arrows([])
 	game_state = "play"
 	game_note = "Jugada deshecha."
+	_clear_coach()
 	view.interactive = view.board.chess.turn == game_color
 	if not view.interactive:
 		_game_bot_turn()
@@ -8852,6 +8993,8 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(str(game.get("kids", "")) if kids and str(game.get("kids", "")) != "" else str(game["text"]), F_BODY, _c("ink"), font_regular))
 	if game_note != "":
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
+	if coach_note != "" or coach_waiting:
+		card_body.add_child(_coach_block())
 
 
 func _build_game_actions() -> void:
