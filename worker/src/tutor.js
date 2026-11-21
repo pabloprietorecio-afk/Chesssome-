@@ -231,8 +231,9 @@ export async function judge(input, env, debug) {
           verdict = verdictFor(drop, isBest, allowsMate, missedMate);
         }
       }
-    } catch {
+    } catch (e) {
       // Sin segunda opinión: vale la primera.
+      if (raw) raw.push({ error: String(e?.message || e) });
     }
   }
 
