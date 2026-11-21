@@ -3,6 +3,36 @@
 Petición de Pablo (21 nov 2026): una IA que corrija al jugador mientras juega, como un profesor, en la versión
 premium, y poder activarla para probarla.
 
+## Tutor con Stockfish y lección sobre el tablero (21 nov)
+Petición de Pablo: «mandar la jugada a Stockfish», y que el profesor enseñe sobre el tablero qué habría pasado,
+moviendo las piezas y pintando flechas mientras lo explica. Además: poder preguntar en cualquier jugada (también si
+era la mejor) y distinguir la jugada brillante.
+- **Juez: Stockfish**, en el servidor (`worker/src/tutor.js`, ruta `/tutor`). La app manda la posición y la jugada;
+  el servidor pregunta a chess-api.com (Stockfish, profundidad 18), dos veces seguidas (antes y después de la
+  jugada; en paralelo se colgaba) y valora por la caída de la probabilidad de ganar (fórmula de Lichess): menos de
+  5 puntos buena, 5 imprecisión, 10 error, 15 error grave; dejar un mate es error grave; la misma que la del motor,
+  «la mejor». **Brillante («!!»)**: la mejor, entregando material, sin estar ya ganado (≤ 97 %) ni perdido (≥ 45 %).
+- Devuelve dos líneas de hasta 4 jugadas: lo que pasa con tu jugada y lo que habría pasado con la mejor, cada paso
+  con su posición y sus flechas (rojas: lo que queda atacado o se pierde; verdes: lo que se defiende o se gana).
+- **Profesor: Claude Sonnet 5.5** (`/tutor/leccion`): con esas líneas ya comprobadas escribe un resumen, una frase
+  por jugada y un consejo, en el idioma de la app y al nivel del jugador. No decide nada de ajedrez: solo redacta.
+- En la app (`CoachAI.judge_remote`, `lesson_remote`; demo.gd `_on_coach_judged`, `_on_coach_lesson`): tras tu jugada
+  salen a la vez el motor local y la petición al servidor. Si Stockfish contesta en 6 s, manda su valoración; si
+  no, vale la del motor local (lo de siempre, sin lección). El rival espera a la valoración.
+- **«Explícamelo»** en el bloque del profesor, en todas las jugadas con respuesta de Stockfish. Abre la lección en
+  el propio tablero: «Lo que jugaste» (rojo) paso a paso y después «Lo que era mejor» (verde), con Cerrar, Anterior
+  y Siguiente; al terminar, el tablero vuelve a la partida. En imprecisiones y errores la lección se pide sola; en
+  las jugadas buenas, al tocar el botón. Mientras Claude no contesta (o si falla), cada paso lleva el texto que la
+  app sabe decir de esa jugada (MoveWhy).
+- Límites del servidor: `/tutor` 40 por minuto por IP; `/tutor/leccion` 10.
+- **Pendiente**: chess-api.com es un servicio de terceros sin condiciones de uso claras: vale para el prototipo; antes
+  de publicar, Stockfish propio (p. ej. Cloud Run). Sin probar en un móvil real. Preguntas libres con micrófono:
+  siguiente etapa.
+- Coste (precios de octubre de 2026): la lección son unos 900 tokens de entrada y 350 de salida con Sonnet 5.5
+  (2 $ / 10 $ por millón): ~0,5 céntimos de dólar por lección.
+- Pruebas: `worker/test.mjs` (16, con el motor y Claude simulados), las del despliegue (12.Cge2 de la partida de
+  Pablo: error grave, 62 % → 42 %, mejor f4) y `godot/tests/test_tutor.gd` (30, sin red).
+
 ## Qué hace
 - En las partidas contra el rival de la app (sin reloj, sin red, fuera de Kids y de las variantes), tras cada jugada
   del jugador el motor de la app la valora en otro hilo (GameDetail.entry, como el detalle de partida): la mejor,
@@ -13,8 +43,8 @@ premium, y poder activarla para probarla.
   la jugada casi igual que la mejor (más de 30 de pérdida), la valoración sube como mínimo a imprecisión (un peón)
   o error (una pieza), y la explicación es la de ese hecho: qué quedó a tiro y qué jugada lo evitaba.
 - Sale la chapa en el tablero y la valoración en la tarjeta, **en todas las jugadas**: «!» la mejor, marca de
-  «buena», «?!» imprecisión, «?» error, «??» error grave. «!!» no: el motor de la app no es lo bastante fuerte para
-  afirmar una jugada brillante.
+  «buena», «?!» imprecisión, «?» error, «??» error grave. «!!» solo con Stockfish (arriba): el motor de la app no es lo
+  bastante fuerte para afirmar una jugada brillante.
 - **Leyenda encima del tablero** (petición de Pablo, 21 nov): las cinco valoraciones con su chapa y su nombre, y la
   de tu última jugada resaltada (las demás, apagadas). Flota en el hueco entre la barra y el tablero, como la pista
   de gestos. En pantallas sin ese hueco (16:9) o con la pista de gestos a la vista no sale, y la valoración va

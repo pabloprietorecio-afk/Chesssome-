@@ -21,6 +21,10 @@ extends Node
 ## Nada personal. Nunca en el nivel Kids (Premium.coach_applies).
 
 signal answered(run: int, ply: int, text: String, from_ai: bool)
+## Tutor con Stockfish (worker/src/tutor.js): la valoración de una jugada y, aparte, la lección de Claude.
+## `data` vacío = no ha llegado (sin red, tiempo agotado o respuesta rara): vale el motor local.
+signal judged(run: int, gen: int, data: Dictionary)
+signal lesson_ready(run: int, gen: int, data: Dictionary)
 
 const CONFIG := "res://data/coach_ai.json"
 ## Una casilla suelta o dentro de una jugada («Cxf5+», «exd5»): delante puede ir una pieza o la «x» de captura,
@@ -40,6 +44,66 @@ func _init() -> void:
 static func load_config() -> Dictionary:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CONFIG))
 	return parsed if parsed is Dictionary else {}
+
+
+## Dirección del tutor con Stockfish ("" = no hay: solo el motor local).
+static func tutor_url(config: Dictionary) -> String:
+	return str(config.get("tutor", ""))
+
+
+const VERDICTS := ["brilliant", "best", "good", "inaccuracy", "mistake", "blunder"]
+
+
+## La respuesta del tutor tiene la forma esperada: una valoración conocida y la línea de la jugada, paso a paso.
+static func remote_ok(data: Dictionary) -> bool:
+	if not VERDICTS.has(str(data.get("verdict", ""))) or not (data.get("lines") is Dictionary):
+		return false
+	var lines: Dictionary = data["lines"]
+	for key: String in ["played", "best"]:
+		if not (lines.get(key) is Array):
+			return false
+		for step: Variant in lines[key]:
+			if not (step is Dictionary) or str((step as Dictionary).get("uci", "")).length() < 4 or str((step as Dictionary).get("fen", "")) == "":
+				return false
+			var pos := Chess.from_fen(str((step as Dictionary)["fen"]))
+			if pos.find_uci(str((step as Dictionary)["uci"])) < 0:
+				return false
+	return not (lines["played"] as Array).is_empty()
+
+
+## Flechas del tutor ({from: "g1", to: "e2", tone}) como las quiere el tablero (casillas por índice).
+static func board_arrows(step: Dictionary) -> Array:
+	var out: Array = []
+	var raw: Variant = step.get("arrows", [])
+	if not (raw is Array):
+		return out
+	for a: Variant in raw:
+		if not (a is Dictionary):
+			continue
+		var from := str((a as Dictionary).get("from", ""))
+		var to := str((a as Dictionary).get("to", ""))
+		if from.length() != 2 or to.length() != 2:
+			continue
+		var tone := str((a as Dictionary).get("tone", "info"))
+		out.append({"from": Chess.sq_index(from), "to": Chess.sq_index(to), "tone": tone if ["good", "bad", "info"].has(tone) else "info"})
+	return out
+
+
+## Lo que se manda para pedir la lección de una jugada ya valorada.
+static func lesson_payload(lesson: Dictionary, rating: float, language: String) -> Dictionary:
+	var lines: Dictionary = lesson.get("lines", {})
+	var ucis := func(steps: Variant) -> Array:
+		var out: Array = []
+		if steps is Array:
+			for s: Variant in steps:
+				out.append(str((s as Dictionary).get("uci", "")))
+		return out
+	return {
+		"fen": str(lesson.get("fen", "")), "uci": str(lesson.get("uci", "")),
+		"played": ucis.call(lines.get("played", [])), "best": ucis.call(lines.get("best", [])),
+		"verdict": str(lesson.get("verdict", "good")), "win_best": int(lesson.get("win_best", -1)), "win_played": int(lesson.get("win_played", -1)),
+		"rating": int(round(rating)), "language": language,
+	}
 
 
 ## Cómo se llamaría ahora: "server" (servidor propio), "direct" (clave de prueba) o "" (no se puede: se queda el
@@ -255,3 +319,44 @@ func ask(facts: Dictionary, run: int, ply: int) -> void:
 		answered.emit(run, ply, text, true)
 	else:
 		answered.emit(run, ply, verified, false)
+
+
+## POST con JSON; devuelve el diccionario de la respuesta o {} (sin red, error o respuesta que no es un objeto).
+func _post(url: String, payload: Dictionary, seconds: float) -> Dictionary:
+	var req := HTTPRequest.new()
+	req.timeout = seconds
+	add_child(req)
+	var err := req.request(url, PackedStringArray(["content-type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(payload))
+	if err != OK:
+		req.queue_free()
+		return {}
+	var r: Array = await req.request_completed
+	req.queue_free()
+	if int(r[0]) != HTTPRequest.RESULT_SUCCESS or int(r[1]) != 200:
+		if int(r[1]) != 0:
+			push_warning("Tutor: respuesta %d" % int(r[1]))
+		return {}
+	var data: Variant = JSON.parse_string((r[3] as PackedByteArray).get_string_from_utf8())
+	return data if data is Dictionary else {}
+
+
+## Pide a Stockfish (por el servidor) la valoración de una jugada. Siempre acaba emitiendo `judged`.
+func judge_remote(fen: String, uci: String, run: int, gen: int) -> void:
+	var url := tutor_url(cfg)
+	if url == "":
+		judged.emit(run, gen, {})
+		return
+	calls += 1
+	var data := await _post(url, {"fen": fen, "uci": uci}, float(cfg.get("tutor_timeout_s", 7)))
+	judged.emit(run, gen, data if remote_ok(data) else {})
+
+
+## Pide a Claude (por el servidor) la lección de una jugada ya valorada. Siempre acaba emitiendo `lesson_ready`.
+func lesson_remote(payload: Dictionary, run: int, gen: int) -> void:
+	var url := tutor_url(cfg)
+	if url == "":
+		lesson_ready.emit(run, gen, {})
+		return
+	calls += 1
+	var data := await _post(url + "/leccion", payload, float(cfg.get("lesson_timeout_s", 30)))
+	lesson_ready.emit(run, gen, data if data.get("played") is Array else {})

@@ -3,5 +3,8 @@
 	"max_tokens": 220,
 	"timeout_s": 20,
 	"api_url": "https://api.anthropic.com/v1/messages",
-	"endpoint": "https://achessway-profesor.pablo-prieto-recio.workers.dev/profesor"
+	"endpoint": "https://achessway-profesor.pablo-prieto-recio.workers.dev/profesor",
+	"tutor": "https://achessway-profesor.pablo-prieto-recio.workers.dev/tutor",
+	"tutor_timeout_s": 7,
+	"lesson_timeout_s": 30
 }

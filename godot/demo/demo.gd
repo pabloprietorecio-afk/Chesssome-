@@ -310,6 +310,19 @@ var coach_waiting := false
 var coach_full := ""
 var _coach_short := ""
 var _coach_verified := ""
+## Tutor con Stockfish: la valoración llega del servidor (CoachAI.judge_remote); mientras, el motor local analiza
+## por si no llega. `coach_lesson`: lo que hace falta para enseñar la jugada sobre el tablero ({fen, uci, verdict,
+## lines: {played, best} con {uci, fen, arrows, text}, summary, advice, asked, ready}).
+var coach_lesson := {}
+var _coach_local := {}
+var _coach_local_uci := ""
+var _coach_remote_wait := false
+const COACH_REMOTE_S := 6.0
+## La lección sobre el tablero: abierta, qué línea («played» o «best») y qué jugada se está viendo.
+var lesson_open := false
+var lesson_line := "played"
+var lesson_step := 0
+var _lesson_token := 0
 ## Solo en el APK de pruebas: qué ha decidido el profesor con la última jugada y por qué.
 var coach_debug := ""
 ## Valoración de la última jugada (GameDetail: best, good, inaccuracy, mistake, blunder) y su chapa en el tablero.
@@ -1114,6 +1127,8 @@ func _ready() -> void:
 	coach = CoachAI.new()
 	add_child(coach)
 	coach.answered.connect(_on_coach_answered)
+	coach.judged.connect(_on_coach_judged)
+	coach.lesson_ready.connect(_on_coach_lesson)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
@@ -3343,7 +3358,7 @@ func _kid_wrong_arrows(e: Dictionary) -> Array:
 ## Chapa con la valoración de la jugada en su casilla de destino, con los signos de anotación de siempre:
 ## «!» buena jugada (aquí, la de la solución), «?» error, «??» error grave (pierde material o permite mate).
 ## Signo (o «@icono») y color de cada chapa.
-const BADGES := {"best": ["!", Color("2f9e63")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
+const BADGES := {"brilliant": ["!!", Color("1aa3a3")], "best": ["!", Color("2f9e63")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
 
 
 func _move_badge(uci: String, kind: String) -> void:
@@ -8419,9 +8434,10 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 		if my_run != run_id or mode != "game":
 			return
 	# Con el profesor: el rival espera a que salga la valoración de tu jugada (y medio segundo más, para que se
-	# vea la chapa sobre tu pieza antes de que el tablero cambie). Como mucho, 3 segundos.
+	# vea la chapa sobre tu pieza antes de que el tablero cambie). Como mucho, 7,5 segundos (con Stockfish en el
+	# servidor; si no contesta a los 6, vale el motor local).
 	var held := 0
-	while _coach_pending and held < 60:
+	while _coach_pending and held < 150:
 		held += 1
 		await _wait(0.05)
 		if my_run != run_id or mode != "game":
@@ -8566,6 +8582,10 @@ func _clear_coach() -> void:
 	coach_waiting = false
 	coach_full = ""
 	coach_verdict = ""
+	coach_lesson = {}
+	_coach_local = {}
+	_coach_remote_wait = false
+	lesson_open = false
 	_coach_badge_sq = -1
 	_coach_pending = false
 	_coach_gen += 1
@@ -8592,6 +8612,12 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 	var t := Thread.new()
 	_coach_threads.append(t)
 	t.start(_coach_think.bind(fen_before, uci, ply, game_color, run_id, _coach_gen))
+	if CoachAI.tutor_url(coach.cfg) != "":
+		# Stockfish, en el servidor: su valoración manda. Si no llega a tiempo, vale la del motor local.
+		_coach_remote_wait = true
+		coach_waiting = true
+		coach.judge_remote(fen_before, uci, run_id, _coach_gen)
+		_coach_remote_deadline(_coach_gen)
 
 
 ## En otro hilo: el análisis de la jugada (unos segundos como mucho).
@@ -8604,18 +8630,62 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 	_reap_coach_threads()
 	if run != run_id or gen != _coach_gen or mode != "game":
 		return
-	_coach_pending = false
-	if e.is_empty():
+	_coach_local = e
+	_coach_local_uci = uci
+	if _coach_remote_wait:
+		# Se espera a Stockfish; el motor local queda de reserva.
 		return
-	var verdict := str(e.get("verdict", ""))
+	if coach_lesson.is_empty():
+		_coach_apply_local()
+
+
+## A los COACH_REMOTE_S segundos sin respuesta del servidor, vale el motor local.
+func _coach_remote_deadline(gen: int) -> void:
+	await get_tree().create_timer(COACH_REMOTE_S).timeout
+	if gen != _coach_gen or not _coach_remote_wait:
+		return
+	_coach_remote_wait = false
+	coach_debug += " · Stockfish no contestó a tiempo"
+	if not _coach_local.is_empty():
+		_coach_apply_local()
+
+
+func _coach_rating() -> float:
+	if player.has("rating") and player["rating"] is Dictionary:
+		return float((player["rating"] as Dictionary).get("r", 0.0))
+	return 0.0
+
+
+## Chapa del tablero y nombre de una valoración (las de GameDetail, más «brillante», que solo da Stockfish).
+func _coach_badge_for(verdict: String) -> String:
+	return "brilliant" if verdict == "brilliant" else str(GameDetail.BADGE.get(verdict, ""))
+
+
+func _coach_label(verdict: String) -> String:
+	return Loc.t("Brillante") if verdict == "brilliant" else Loc.t(str(GameDetail.LABELS.get(verdict, "")))
+
+
+func _coach_set_verdict(verdict: String, uci: String) -> void:
 	coach_verdict = verdict
-	coach_debug = coach_debug.replace(" → analizando…", " → %s (motor: pierde %d%s)" % [verdict, int(e.get("loss", 0)), (" · a la vista: " + str(e["moment"])) if e.has("moment") else ""])
-	var badge := str(GameDetail.BADGE.get(verdict, ""))
+	var badge := _coach_badge_for(verdict)
 	if badge != "":
 		_coach_badge_sq = Chess.sq_index(uci.substr(2, 2))
 		_coach_badge_uci = uci
 		_coach_badge_kind = badge
 		_coach_place_badge()
+
+
+## Valoración del motor local (sin red o sin respuesta del servidor).
+func _coach_apply_local() -> void:
+	var e := _coach_local
+	_coach_pending = false
+	coach_waiting = false
+	if e.is_empty():
+		_refresh()
+		return
+	var verdict := str(e.get("verdict", ""))
+	coach_debug = coach_debug.replace(" → analizando…", " → %s (motor local: pierde %d%s)" % [verdict, int(e.get("loss", 0)), (" · a la vista: " + str(e["moment"])) if e.has("moment") else ""])
+	_coach_set_verdict(verdict, _coach_local_uci)
 	var verified := str(e.get("full", ""))
 	_coach_verified = verified
 	_coach_short = str(e.get("short", verified))
@@ -8625,13 +8695,237 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 		coach_full = verified
 		coach_from_ai = false
 	elif verdict == GameDetail.MISTAKE or verdict == GameDetail.BLUNDER:
-		var rating := 0.0
-		if player.has("rating") and player["rating"] is Dictionary:
-			rating = float((player["rating"] as Dictionary).get("r", 0.0))
-		var facts := CoachAI.facts_for({"fen": str(e.get("fen", "")), "kind": verdict, "text": verified.left(580)}, str(e.get("san", "")), str(e.get("best_san", "")), rating, Loc.language)
+		var facts := CoachAI.facts_for({"fen": str(e.get("fen", "")), "kind": verdict, "text": verified.left(580)}, str(e.get("san", "")), str(e.get("best_san", "")), _coach_rating(), Loc.language)
 		coach_waiting = true
 		coach.ask(facts, run_id, int(e.get("ply", 0)))
 	_refresh()
+
+
+## Llega la valoración de Stockfish (o {} si no ha podido ser).
+func _on_coach_judged(run: int, gen: int, data: Dictionary) -> void:
+	if run != run_id or gen != _coach_gen or mode != "game" or not _coach_remote_wait:
+		return
+	_coach_remote_wait = false
+	if data.is_empty():
+		coach_debug += " · sin Stockfish"
+		if not _coach_local.is_empty():
+			_coach_apply_local()
+		return
+	_coach_apply_remote(data)
+
+
+func _coach_apply_remote(data: Dictionary) -> void:
+	_coach_pending = false
+	coach_waiting = false
+	var lines: Dictionary = data["lines"]
+	var first: Dictionary = (lines["played"] as Array)[0]
+	var fen := str(first["fen"])
+	var uci := str(first["uci"])
+	var verdict := str(data["verdict"])
+	coach_lesson = {
+		"fen": fen, "uci": uci, "verdict": verdict, "best": str(data.get("best", "")),
+		"win_best": int(data.get("win_best", -1)), "win_played": int(data.get("win_played", -1)),
+		"lines": {"played": (lines["played"] as Array).duplicate(true), "best": (lines["best"] as Array).duplicate(true)},
+		"summary": "", "advice": "", "asked": false, "ready": false,
+	}
+	coach_debug = coach_debug.replace(" → analizando…", " → %s (Stockfish: de %d%% a %d%%)" % [verdict, int(data.get("win_best", -1)), int(data.get("win_played", -1))])
+	_coach_set_verdict(verdict, uci)
+	coach_from_ai = false
+	coach_full = ""
+	var bad := [GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER].has(verdict)
+	if bad:
+		var pos := Chess.from_fen(fen)
+		var bm := pos.find_uci(str(data.get("best", "")))
+		coach_note = (Loc.f("La mejor era %s", SanEs.san(pos, bm)) + ".") if bm >= 0 else ""
+		# El profesor prepara ya la explicación: estará lista cuando se abra.
+		_coach_request_lesson()
+	else:
+		coach_note = Loc.t({"brilliant": "¡Brillante! Era la mejor jugada, y entregando material.", "best": "La mejor jugada.", "good": "Buena jugada."}.get(verdict, "Buena jugada."))
+	_refresh()
+
+
+## Pide la lección de Claude para la última jugada valorada (una vez).
+func _coach_request_lesson() -> void:
+	if coach_lesson.is_empty() or bool(coach_lesson.get("asked", false)):
+		return
+	coach_lesson["asked"] = true
+	coach.lesson_remote(CoachAI.lesson_payload(coach_lesson, _coach_rating(), Loc.language), run_id, _coach_gen)
+
+
+## Llegan los textos del profesor: uno por jugada de cada línea, un resumen y un consejo.
+func _on_coach_lesson(run: int, gen: int, data: Dictionary) -> void:
+	if run != run_id or gen != _coach_gen or mode != "game" or coach_lesson.is_empty():
+		return
+	coach_lesson["ready"] = true
+	if data.is_empty():
+		_refresh()
+		return
+	var lines: Dictionary = coach_lesson["lines"]
+	for key: String in ["played", "best"]:
+		var texts: Variant = data.get(key, [])
+		var steps: Array = lines[key]
+		if texts is Array:
+			for i in mini(steps.size(), (texts as Array).size()):
+				if str((texts as Array)[i]) != "":
+					(steps[i] as Dictionary)["text"] = str((texts as Array)[i])
+	coach_lesson["summary"] = str(data.get("summary", ""))
+	coach_lesson["advice"] = str(data.get("advice", ""))
+	if str(coach_lesson["summary"]) != "":
+		coach_note = str(coach_lesson["summary"])
+		coach_from_ai = true
+	_refresh()
+
+
+# ---------------------------------------------------------------- la lección sobre el tablero
+
+func _lesson_steps(line: String = "") -> Array:
+	if coach_lesson.is_empty():
+		return []
+	return (coach_lesson["lines"] as Dictionary).get(line if line != "" else lesson_line, [])
+
+
+## Abre la lección: el tablero vuelve a la posición de antes de tu jugada y el profesor la repite, jugada a
+## jugada, con flechas; después, si había una mejor, enseña la mejor. Solo en tu turno (el rival no se interrumpe).
+func _open_lesson() -> void:
+	if coach_lesson.is_empty() or mode != "game" or game_state != "play" or _lesson_steps("played").is_empty():
+		return
+	_close_confirm()
+	_coach_request_lesson()
+	lesson_open = true
+	lesson_line = "played"
+	game_back = 0
+	view.interactive = false
+	_lesson_show(0)
+
+
+func _lesson_show(i: int) -> void:
+	var steps := _lesson_steps()
+	if steps.is_empty():
+		return
+	lesson_step = clampi(i, 0, steps.size() - 1)
+	var step: Dictionary = steps[lesson_step]
+	_lesson_token += 1
+	var token := _lesson_token
+	view.set_fen(str(step["fen"]))
+	view.board.set_arrows([])
+	view.show_move(str(step["uci"]))
+	_actions_mode = ""
+	_refresh()
+	# Las flechas, cuando la pieza ya ha llegado.
+	await _wait(0.0 if view.board.anim_mode == Board3D.Anim.NONE else 0.45)
+	if token == _lesson_token and lesson_open:
+		view.board.set_arrows(CoachAI.board_arrows(step))
+
+
+func _lesson_has_next() -> bool:
+	return lesson_step < _lesson_steps().size() - 1 or (lesson_line == "played" and not _lesson_steps("best").is_empty())
+
+
+func _lesson_next() -> void:
+	if lesson_step < _lesson_steps().size() - 1:
+		_lesson_show(lesson_step + 1)
+	elif lesson_line == "played" and not _lesson_steps("best").is_empty():
+		lesson_line = "best"
+		_lesson_show(0)
+	else:
+		_close_lesson()
+
+
+func _lesson_prev() -> void:
+	if lesson_step > 0:
+		_lesson_show(lesson_step - 1)
+	elif lesson_line == "best":
+		lesson_line = "played"
+		_lesson_show(_lesson_steps().size() - 1)
+
+
+## Cierra la lección: el tablero vuelve a la partida, tal como estaba.
+func _close_lesson() -> void:
+	if not lesson_open:
+		return
+	lesson_open = false
+	_lesson_token += 1
+	view.set_fen(str(game_history[-1]))
+	view.board.set_arrows([])
+	if not game_moves.is_empty():
+		var last := str(game_moves[-1])
+		view.board.mark_last_move(Chess.sq_index(last.substr(0, 2)), Chess.sq_index(last.substr(2, 2)))
+	view.interactive = game_state == "play"
+	_coach_place_badge()
+	_actions_mode = ""
+	_refresh()
+
+
+## Texto de un paso: el del profesor si ha llegado; si no, lo que la app sabe decir de esa jugada.
+func _tutor_text(step: Dictionary) -> String:
+	if str(step.get("text", "")) != "":
+		return str(step["text"])
+	var pos := Chess.from_fen(str(step["fen"]))
+	var m := pos.find_uci(str(step["uci"]))
+	if m < 0:
+		return ""
+	var tag := MoveWhy.short_tag(pos, m)
+	return SanEs.san(pos, m) + ((": " + tag) if tag != "" else "") + "."
+
+
+## La tarjeta durante la lección: qué línea, qué jugada (y de quién) y lo que dice el profesor.
+func _build_lesson_card() -> void:
+	var steps := _lesson_steps()
+	if steps.is_empty():
+		return
+	var step: Dictionary = steps[clampi(lesson_step, 0, steps.size() - 1)]
+	var pos := Chess.from_fen(str(step["fen"]))
+	var m := pos.find_uci(str(step["uci"]))
+	var mine := pos.turn == game_color
+	var bad := [GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER].has(str(coach_lesson.get("verdict", "")))
+	var head := "Lo que jugaste" if lesson_line == "played" else "Lo que era mejor"
+	if lesson_line == "played" and not bad:
+		head = "Tu jugada"
+	title = _para(head, F_TITLE2, _c("good") if lesson_line == "best" or not bad else _c("bad"), font_display)
+	card_body.add_child(title)
+	var chips := HFlowContainer.new()
+	chips.add_theme_constant_override("h_separation", 12)
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var san := SanEs.san(pos, m) if m >= 0 else str(step["uci"])
+	var num := "%d%s %s" % [pos.full, "." if pos.turn == 0 else "…", san]
+	var tint := _tint("mint" if mine and (lesson_line == "best" or not bad) else ("rose" if lesson_line == "played" and bad else "sky"))
+	chips.add_child(_chip(num, tint[0], tint[1]))
+	chips.add_child(_chip("Tú" if mine else "Rival", _c("field"), _c("quiet")))
+	chips.add_child(_chip(Loc.f("Jugada %d de %d", [lesson_step + 1, steps.size()]), _c("field"), _c("quiet")))
+	card_body.add_child(chips)
+	card_body.add_child(_para(_tutor_text(step), F_BODY, _c("ink"), font_medium))
+	if bool(coach_lesson.get("asked", false)) and not bool(coach_lesson.get("ready", false)):
+		card_body.add_child(_para("El profesor está preparando la explicación…", F_SUB, _c("accent_text"), font_medium))
+	elif not _lesson_has_next() and str(coach_lesson.get("advice", "")) != "":
+		card_body.add_child(_para(str(coach_lesson["advice"]), F_SUB, _c("accent_text"), font_semibold))
+
+
+func _build_lesson_actions() -> void:
+	var key := "lesson:%s:%d:%s" % [lesson_line, lesson_step, str(_lesson_has_next())]
+	if key == _actions_mode:
+		return
+	_actions_mode = key
+	for old in actions.get_children():
+		(old as CanvasItem).visible = false
+		old.queue_free()
+	hint_button = null
+	step_button = null
+	var go := {"font_size": F_BODY, "height": BAR_HEIGHT, "icon": 56.0, "radius": 60, "glow": _c("glow"), "trailing": true}
+	var close := _tool_button("close", "Cerrar", _close_lesson, "lilac")
+	var prev := _tool_button("back", "Anterior", _lesson_prev, "peach")
+	prev.disabled = lesson_step == 0 and lesson_line == "played"
+	prev.modulate.a = 0.42 if prev.disabled else 1.0
+	var label := "Siguiente"
+	if lesson_step >= _lesson_steps().size() - 1:
+		label = "Ver la mejor" if lesson_line == "played" and not _lesson_steps("best").is_empty() else "Terminar"
+	var next := _button("next" if _lesson_has_next() else "check", label, _lesson_next, _c("accent"), _c("accent_ink"), go)
+	left_button = close
+	right_button = next
+	for b: Button in [close, prev, next]:
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		actions.add_child(b)
+	next.size_flags_stretch_ratio = 2.2
 
 
 ## Si la leyenda de las chapas se ve ahora: partida con profesor, en juego, y con sitio encima del tablero.
@@ -8687,8 +8981,11 @@ func _sync_coach_legend() -> void:
 		for c in coach_legend.get_children():
 			coach_legend.remove_child(c)
 			c.queue_free()
+		var in_legend := COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant"
 		for v: String in COACH_LEGEND:
-			coach_legend.add_child(_coach_legend_item(v, coach_verdict == v, coach_verdict != "" and COACH_LEGEND.has(coach_verdict)))
+			# «Brillante» (solo la da Stockfish) ocupa el sitio de «La mejor» cuando toca.
+			var shown := "brilliant" if v == GameDetail.BEST and coach_verdict == "brilliant" else v
+			coach_legend.add_child(_coach_legend_item(shown, coach_verdict == shown, in_legend))
 	var w := size.x - 24.0
 	coach_legend.size = Vector2(w, COACH_LEGEND_H)
 	coach_legend.position = Vector2(12.0, _coach_legend_top() - COACH_LEGEND_H - 14.0)
@@ -8698,7 +8995,7 @@ func _sync_coach_legend() -> void:
 ## Una valoración de la leyenda: la chapa (como en el tablero) y, debajo, su nombre. `current`: es la de tu última
 ## jugada (va resaltada); `dim`: hay otra resaltada, esta se apaga.
 func _coach_legend_item(verdict: String, current: bool, dim: bool) -> Control:
-	var def: Array = BADGES[str(GameDetail.BADGE[verdict])]
+	var def: Array = BADGES[_coach_badge_for(verdict)]
 	var glyph := str(def[0])
 	var pill := PanelContainer.new()
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -8738,7 +9035,7 @@ func _coach_legend_item(verdict: String, current: bool, dim: bool) -> Control:
 		g.add_theme_font_override("font", font_display)
 		center.add_child(g)
 	column.add_child(disc)
-	var name_label := _text(str(GameDetail.LABELS[verdict]), F_CAP, _c("ink") if current else _c("quiet"), font_semibold if current else font_medium)
+	var name_label := _text(_coach_label(verdict), F_CAP, _c("ink") if current else _c("quiet"), font_semibold if current else font_medium)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(name_label)
 	if dim and not current:
@@ -8806,8 +9103,15 @@ func _coach_block() -> PanelContainer:
 	if coach_waiting:
 		column.add_child(_para("El profesor está mirando tu jugada…", F_BODY, _c("quiet"), font_medium))
 		return panel
-	# «Ver completa»: un botón con color, bien visible; además, se puede tocar cualquier punto del bloque.
-	var more := _button("eye", "Ver completa", _open_coach_full, _c("accent"), _c("accent_ink"), {"font_size": F_FOOT, "height": 72.0, "icon": 40.0, "radius": 36})
+	# Un botón con color, bien visible; además, se puede tocar cualquier punto del bloque. Con Stockfish hay
+	# lección sobre el tablero («Explícamelo», en cualquier jugada, también en las buenas); sin él, el texto entero.
+	var has_lesson := not coach_lesson.is_empty()
+	var open_it: Callable = _open_lesson if has_lesson else _open_coach_full
+	var more := _button("play" if has_lesson else "eye", "Explícamelo" if has_lesson else "Ver completa", open_it, _c("accent"), _c("accent_ink"), {"font_size": F_FOOT, "height": 72.0, "icon": 40.0, "radius": 36})
+	if has_lesson and game_state != "play":
+		# La lección se abre en tu turno: mientras piensa el rival, el botón espera.
+		more.disabled = true
+		more.modulate.a = 0.5
 	more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(more)
 	# En la tarjeta, dos líneas como mucho; lo demás, en la ventana.
@@ -8821,7 +9125,8 @@ func _coach_block() -> PanelContainer:
 	tap.focus_mode = Control.FOCUS_NONE
 	for st: String in ["normal", "hover", "pressed", "focus", "disabled"]:
 		tap.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	tap.pressed.connect(_open_coach_full)
+	tap.pressed.connect(open_it)
+	tap.disabled = more.disabled
 	panel.add_child(tap)
 	return panel
 
@@ -8831,9 +9136,9 @@ func _open_coach_full() -> void:
 	var text := coach_full if coach_full != "" else coach_note
 	if text == "":
 		return
-	var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
+	var glyph := str((BADGES.get(_coach_badge_for(coach_verdict), ["", Color.WHITE]) as Array)[0])
 	var mark := "" if glyph == "" or glyph.begins_with("@") else glyph + " "
-	var head := mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, "Profesor")))
+	var head := mark + (_coach_label(coach_verdict) if coach_verdict != "" else Loc.t("Profesor"))
 	# Más transparente que las demás ventanas (petición de Pablo): se ve bien el tablero debajo.
 	var column := _popup(head, "")
 	var window := column.get_parent().get_parent() as PanelContainer
@@ -9313,6 +9618,9 @@ func _game_next_lesson() -> void:
 
 
 func _build_game_card() -> void:
+	if lesson_open:
+		_build_lesson_card()
+		return
 	if game_state == "review":
 		_build_review_card()
 		return
@@ -9428,17 +9736,20 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
 	# La valoración va en la leyenda de encima del tablero; aquí solo si la leyenda no cabe (o es «única jugada»,
 	# que no está en la leyenda).
-	if coach_verdict != "" and (not COACH_LEGEND.has(coach_verdict) or not _coach_legend_shown()):
-		var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
+	if coach_verdict != "" and (not (COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant") or not _coach_legend_shown()):
+		var glyph := str((BADGES.get(_coach_badge_for(coach_verdict), ["", Color.WHITE]) as Array)[0])
 		var mark := "" if glyph.begins_with("@") else glyph + " "
-		card_body.add_child(_para(mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, ""))), F_BODY, _c("ink"), font_semibold))
-	if coach_note != "" or coach_waiting:
+		card_body.add_child(_para(mark + _coach_label(coach_verdict), F_BODY, _c("ink"), font_semibold))
+	if coach_note != "" or coach_waiting or not coach_lesson.is_empty():
 		card_body.add_child(_coach_block())
 	if coach_debug != "" and Premium.test_on:
 		card_body.add_child(_para(coach_debug, F_FOOT, _c("quiet"), font_regular))
 
 
 func _build_game_actions() -> void:
+	if lesson_open:
+		_build_lesson_actions()
+		return
 	if game_state == "review":
 		_build_review_actions()
 		return
