@@ -50,9 +50,9 @@ export function readEngine(d) {
 async function askEngine(fen, env, raw) {
   const r = await fetch(env.STOCKFISH_URL || "https://chess-api.com/v1", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", accept: "application/json", "user-agent": "AChessWay-tutor/1.0 (+https://github.com/pabloprietorecio-afk/Chesssome-)" },
     body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1 }),
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`stockfish ${r.status}`);
   const data = await r.json();
