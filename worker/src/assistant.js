@@ -70,6 +70,7 @@ export function assistantPrompt(text, state, language) {
     "Reglas:",
     "- Si lo que pide se puede hacer con las herramientas, úsalas (varias si hace falta, en orden) y escribe además una frase corta diciendo lo que haces.",
     "- Si no se puede, dilo con amabilidad en una o dos frases y sugiere lo más parecido que sí se puede y cómo hacerlo (qué tocar en la app).",
+    "- El texto suele venir del dictado por voz, que no sabe de ajedrez: «al fin» es «alfil», «peor» puede ser «peón», «reina» es la dama, «ce», «de», «e»… son columnas (c, d, e), y los números pueden venir en letra. Interprétalo siempre en clave de ajedrez.",
     "- Para mover: el jugador puede decir la jugada en notación («e4», «Cf3») o con palabras («peón de rey dos pasos», «enroque corto», «la dama come el alfil»). Elige la jugada de la lista de jugadas legales que te doy; si no está claro cuál es o no es legal, pregunta o explica por qué no se puede, sin mover.",
     "- No inventes funciones que la app no tiene. Si pide algo peligroso o irreversible (borrar el progreso, rendirse), explica cómo hacerlo él mismo y no lo hagas.",
     "- Las preguntas de ajedrez sobre la partida (por qué una jugada es mala, qué planea el rival) van al tutor con «preguntar_tutor».",

@@ -29,7 +29,7 @@ func _plugin() -> Object:
 		_p = Engine.get_singleton(SINGLETON)
 	if _p != null and not _wired:
 		_wired = true
-		_p.connect("voz_parcial", func(t: String) -> void: heard_partial.emit(t), CONNECT_DEFERRED)
+		_p.connect("voz_parcial", func(t: String) -> void: heard_partial.emit(fix_chess_words(t, _lang.left(2))), CONNECT_DEFERRED)
 		_p.connect("voz_texto", _on_text, CONNECT_DEFERRED)
 		_p.connect("voz_error", _on_error, CONNECT_DEFERRED)
 		get_tree().on_request_permissions_result.connect(_on_permission)
@@ -86,7 +86,28 @@ func _on_permission(permission: String, granted: bool) -> void:
 
 func _on_text(t: String) -> void:
 	_set_listening(false)
-	heard.emit(t.strip_edges())
+	heard.emit(fix_chess_words(t.strip_edges(), _lang.left(2)))
+
+
+## Lo que el reconocedor de voz suele entender mal en una app de ajedrez (no sabe de qué hablamos): «al fin» por
+## «alfil» (Pablo, 22 nov), «peor de rey» por «peón de rey»… Solo en español, con cuidado de no tocar frases normales.
+const FIXES_ES := [
+	["(?i)\\bal fin\\b", "alfil"],
+	["(?i)\\bal fil\\b", "alfil"],
+	["(?i)\\bpeor de (rey|dama|reina|torre|alfil|caballo)\\b", "peón de $1"],
+	["(?i)\\bpeores de (rey|dama|reina|torre|alfil|caballo)\\b", "peones de $1"],
+	["(?i)\\ben roque\\b", "enroque"],
+]
+
+
+static func fix_chess_words(text: String, language: String) -> String:
+	if language != "es":
+		return text
+	var out := text
+	for f: Array in FIXES_ES:
+		var re := RegEx.create_from_string(str(f[0]))
+		out = re.sub(out, str(f[1]), true)
+	return out
 
 
 func _on_error(code: int) -> void:

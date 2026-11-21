@@ -33,6 +33,8 @@ func _initialize() -> void:
 	_ok(not CoachAI.remote_ok({"verdict": "best"}), "sin líneas: no vale")
 	var arrows := CoachAI.board_arrows(_fake("blunder")["lines"]["played"][1])
 	_ok(arrows.size() == 2 and int(arrows[0]["from"]) == Chess.sq_index("c7") and int(arrows[0]["to"]) == Chess.sq_index("e5") and str(arrows[0]["tone"]) == "bad", "flechas del tutor, por índice de casilla")
+	_ok(TutorVoice.fix_chess_words("mueve el al fin a c4", "es") == "mueve el alfil a c4" and TutorVoice.fix_chess_words("peor de rey dos pasos", "es") == "peón de rey dos pasos", "dictado: «al fin» → «alfil», «peor de rey» → «peón de rey»")
+	_ok(TutorVoice.fix_chess_words("¿es peor esta jugada?", "es") == "¿es peor esta jugada?" and TutorVoice.fix_chess_words("al fin", "en") == "al fin", "sin tocar frases normales ni otros idiomas")
 	var check_pos := Chess.from_fen("r1b1kbnr/pppp1ppp/2n1p3/8/1qBPP3/5N2/PPPN1PPP/R1BQK2R b KQkq - 5 5")
 	_ok(CoachAI.threatened(check_pos, ["b4", "c4", "d2"]) == [Chess.sq_index("c4"), Chess.sq_index("d2")], "en rosa, las piezas amenazadas que se nombran (c4, d2), no la dama que ataca (b4)")
 	_ok(CoachAI.squares_in("Con Cge2 sacas el caballo de g1, pero no proteges el peón de e5 (e5 queda solo). Dxe5.") == ["g1", "e5"], "casillas nombradas sueltas en un texto")
