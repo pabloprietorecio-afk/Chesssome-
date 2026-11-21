@@ -9,6 +9,7 @@ import { Chess } from "chess.js";
 
 export const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
 const UCI = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
+const LINE_MAX = 4;
 const PIECE_ES = { p: "peón", n: "caballo", b: "alfil", r: "torre", q: "dama", k: "rey" };
 export const LANGUAGES = {
   es: "Español", en: "English", pt: "Português", fr: "Français", de: "Deutsch", it: "Italiano",
@@ -181,8 +182,22 @@ export async function judge(input, env, debug) {
   let verdict = verdictFor(drop, isBest, allowsMate, missedMate);
 
   const bad = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder";
-  const playedSteps = buildLine(fen, [uci, ...(B ? chain(B.move, B.line) : [])], 6);
-  const bestSteps = isBest ? [] : buildLine(fen, chain(A.move, A.line), 5);
+  // Dos líneas para enseñar, cortas (cuatro jugadas): lo que jugó y cómo sigue, y la mejor. Si Stockfish no dio
+  // la continuación de la mejor (con poco tiempo a veces solo da la primera jugada), se le pregunta.
+  const playedSteps = buildLine(fen, [uci, ...(B ? chain(B.move, B.line) : [])], LINE_MAX);
+  let bestUcis = isBest ? [] : chain(A.move, A.line);
+  if (bad && bestUcis.length < 2) {
+    const next = new Chess(fen);
+    if (play(next, A.move) && !next.isGameOver()) {
+      try {
+        const C = await askEngine(next.fen(), env, raw);
+        bestUcis = [A.move, ...chain(C.move, C.line)];
+      } catch {
+        // Sin continuación: la línea buena se queda en una jugada.
+      }
+    }
+  }
+  const bestSteps = buildLine(fen, bestUcis, LINE_MAX);
   // Brillante: la mejor jugada, que entrega una pieza, sin estar ya ganado del todo ni quedar peor.
   if (verdict === "best" && playedSteps.length && isSacrifice(playedSteps[0]) && winPlayed >= 45 && winBest <= 97) {
     verdict = "brilliant";
@@ -304,10 +319,10 @@ export async function lesson(input, env) {
   } catch {
     throw Object.assign(new Error("posición no válida"), { status: 400 });
   }
-  const ucis = (v) => (Array.isArray(v) ? v.map(String).filter((u) => UCI.test(u)).slice(0, 6) : []);
+  const ucis = (v) => (Array.isArray(v) ? v.map(String).filter((u) => UCI.test(u)).slice(0, LINE_MAX) : []);
   const playedUcis = ucis(input?.played);
-  const played = buildLine(fen, playedUcis, 6);
-  const best = buildLine(fen, ucis(input?.best), 5);
+  const played = buildLine(fen, playedUcis, LINE_MAX);
+  const best = buildLine(fen, ucis(input?.best), LINE_MAX);
   if (!played.length || played.length !== playedUcis.length) throw Object.assign(new Error("línea no válida"), { status: 400 });
   const num = (v, lo, hi) => (Number.isFinite(Number(v)) && Number(v) >= lo && Number(v) <= hi ? Math.round(Number(v)) : -1);
   const info = {
