@@ -7,8 +7,12 @@ premium, y poder activarla para probarla.
 - En las partidas contra el rival de la app (sin reloj, sin red, fuera de Kids y de las variantes), tras cada jugada
   del jugador el motor de la app la valora en otro hilo (GameDetail.entry, como el detalle de partida): la mejor,
   buena, imprecisión, error o error grave.
-- Sale la chapa en el tablero y en la tarjeta: «!» la mejor, «?!» imprecisión, «?» error, «??» error grave (las
-  buenas, sin chapa). «!!» no: el motor de la app no es lo bastante fuerte para afirmar una jugada brillante.
+- Sale la chapa en el tablero y la valoración en la tarjeta, **en todas las jugadas**: «!» la mejor, marca de
+  «buena», «?!» imprecisión, «?» error, «??» error grave. «!!» no: el motor de la app no es lo bastante fuerte para
+  afirmar una jugada brillante.
+- La chapa se queda hasta tu siguiente jugada: el tablero la borra con cada movimiento, así que se repone tras la
+  jugada del rival (salvo que capture esa pieza) y al volver de mirar jugadas atrás. El rival espera a que salga
+  la valoración (y medio segundo más) antes de mover, como mucho 3 s.
 - Imprecisión: la explicación comprobada del análisis (qué hace, qué permite, cuál era la mejor), sin IA.
 - Error y error grave: «El profesor está mirando tu jugada…» y la explicación de **Claude Haiku 5.5**, redactada a
   partir de esos mismos hechos. Si nombra una casilla que no está en los hechos, se descarta y queda el texto

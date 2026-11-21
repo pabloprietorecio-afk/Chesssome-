@@ -35,10 +35,13 @@ func _initialize() -> void:
 	if OS.is_debug_build():
 		_ok(demo.coach_verdict == GameDetail.BLUNDER or demo.coach_verdict == GameDetail.MISTAKE, "Dh4: error para el motor (%s)" % demo.coach_verdict)
 		_ok(str(demo.coach_note) != "" and not demo.coach_from_ai, "el profesor lo explica (texto comprobado, sin red): %s" % demo.coach_note)
-		_ok(demo._coach_badge_sq == Chess.sq_index("h4") or demo._coach_badge_sq == -1, "la chapa va en h4 (o se quitó si el rival capturó allí)")
+		_ok(demo._coach_badge_sq == Chess.sq_index("h4") and demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "la chapa está puesta en el tablero, en h4")
 		_ok(_has_text(demo, "Profesor") and _has_text(demo, "?"), "en la tarjeta: la valoración y el profesor")
 	await _wait_bot(demo)
+	await _frames(4)
 	_ok(str(demo.coach_note) != "", "la corrección sigue tras la jugada del rival")
+	var taken: bool = Chess.color_of(demo.view.board.chess.b[Chess.sq_index("h4")]) != 1
+	_ok(taken or (demo.view.board._badge != null and is_instance_valid(demo.view.board._badge)), "y la chapa sigue en el tablero tras la jugada del rival (salvo que capture la dama)")
 
 	# Jugada buena: chapa como mucho, sin explicación.
 	demo._start_game(cfg, 1)
@@ -49,7 +52,17 @@ func _initialize() -> void:
 	await _until(func() -> bool: return demo.coach_verdict != "")
 	_ok(demo.coach_verdict == GameDetail.BEST or demo.coach_verdict == GameDetail.GOOD, "Cc6: buena (%s)" % demo.coach_verdict)
 	_ok(demo.coach_note == "" and not demo.coach_waiting, "Cc6: el profesor no dice nada")
+	_ok(demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "Cc6: también lleva chapa (todas las jugadas)")
+	_ok(_has_text(demo, str(GameDetail.LABELS[demo.coach_verdict])), "y la valoración sale en la tarjeta")
 	await _wait_bot(demo)
+	await _frames(4)
+	_ok(demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "Cc6: la chapa sigue tras la jugada del rival")
+	# Mirar una jugada atrás y volver: la chapa vuelve.
+	demo._game_browse(1)
+	await _frames(2)
+	demo._game_browse(-99)
+	await _frames(2)
+	_ok(demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "al volver al directo, la chapa vuelve")
 
 	# Sin premium: nunca.
 	Premium.test_on = false

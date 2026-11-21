@@ -311,6 +311,10 @@ var coach_debug := ""
 ## Valoración de la última jugada (GameDetail: best, good, inaccuracy, mistake, blunder) y su chapa en el tablero.
 var coach_verdict := ""
 var _coach_badge_sq := -1
+var _coach_badge_uci := ""
+## El análisis de la última jugada sigue en marcha: el rival espera a que salga la valoración antes de mover.
+var _coach_pending := false
+var _coach_badge_kind := ""
 var _coach_gen := 0
 var _coach_threads: Array[Thread] = []
 const COACH_SECONDS := 0.8
@@ -8031,6 +8035,7 @@ func _game_browse(delta: int) -> void:
 		view.board.mark_last_move(Chess.sq_index(last.substr(0, 2)), Chess.sq_index(last.substr(2, 2)))
 	if game_back == 0:
 		view.interactive = game_state == "play"
+		_coach_place_badge()
 		# Lo que llegó mientras se miraba atrás.
 		var pending := _online_pending.duplicate()
 		_online_pending = []
@@ -8391,6 +8396,18 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 		await _wait((least - float(waited)) / 1000.0)
 		if my_run != run_id or mode != "game":
 			return
+	# Con el profesor: el rival espera a que salga la valoración de tu jugada (y medio segundo más, para que se
+	# vea la chapa sobre tu pieza antes de que el tablero cambie). Como mucho, 3 segundos.
+	var held := 0
+	while _coach_pending and held < 60:
+		held += 1
+		await _wait(0.05)
+		if my_run != run_id or mode != "game":
+			return
+	if held > 0:
+		await _wait(0.5)
+		if my_run != run_id or mode != "game":
+			return
 	if m < 0:
 		_game_check_end(null, -1)
 		return
@@ -8400,11 +8417,10 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 		view.set_fen(pos.fen())
 		_actions_mode = ""
 	var san := SanEs.san(pos, m)
-	if Chess.move_to(m) == _coach_badge_sq:
-		# El rival juega a la casilla de la chapa: ya no es la pieza valorada.
-		view.board.set_badge(-1, "")
-		_coach_badge_sq = -1
 	view.show_move(Chess.uci(m))
+	# El tablero quita la chapa con cada jugada: la del profesor se vuelve a poner, para que se vea hasta tu
+	# siguiente jugada (salvo que el rival haya capturado esa pieza).
+	_coach_place_badge()
 	game_history.append(view.board.chess.fen())
 	game_moves.append(Chess.uci(m))
 	if game_clocked:
@@ -8527,6 +8543,8 @@ func _clear_coach() -> void:
 	coach_from_ai = false
 	coach_waiting = false
 	coach_verdict = ""
+	_coach_badge_sq = -1
+	_coach_pending = false
 	_coach_gen += 1
 
 
@@ -8547,6 +8565,7 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 		return
 	coach_debug += " → analizando…"
 	_coach_gen += 1
+	_coach_pending = true
 	var t := Thread.new()
 	_coach_threads.append(t)
 	t.start(_coach_think.bind(fen_before, uci, ply, game_color, run_id, _coach_gen))
@@ -8562,15 +8581,20 @@ func _coach_think(fen_before: String, uci: String, ply: int, color: int, run: in
 
 func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 	_reap_coach_threads()
-	if run != run_id or gen != _coach_gen or mode != "game" or e.is_empty():
+	if run != run_id or gen != _coach_gen or mode != "game":
+		return
+	_coach_pending = false
+	if e.is_empty():
 		return
 	var verdict := str(e.get("verdict", ""))
 	coach_verdict = verdict
 	coach_debug = coach_debug.replace(" → analizando…", " → %s (pierde %d)" % [verdict, int(e.get("loss", 0))])
 	var badge := str(GameDetail.BADGE.get(verdict, ""))
-	if badge != "" and verdict != GameDetail.GOOD:
-		_move_badge(uci, badge)
+	if badge != "":
 		_coach_badge_sq = Chess.sq_index(uci.substr(2, 2))
+		_coach_badge_uci = uci
+		_coach_badge_kind = badge
+		_coach_place_badge()
 	var paras: Array = e.get("paras", [])
 	var verified := " ".join(paras).strip_edges()
 	if verdict == GameDetail.INACCURACY:
@@ -8585,6 +8609,17 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 		coach_waiting = true
 		coach.ask(facts, run_id, int(e.get("ply", 0)))
 	_refresh()
+
+
+## Pone (o repone) la chapa de la última jugada valorada, si en esa casilla sigue habiendo una pieza del jugador
+## y se está viendo la partida en directo.
+func _coach_place_badge() -> void:
+	if _coach_badge_sq < 0 or mode != "game" or game_back > 0:
+		return
+	if Chess.color_of(view.board.chess.b[_coach_badge_sq]) != game_color:
+		_coach_badge_sq = -1
+		return
+	_move_badge(_coach_badge_uci, _coach_badge_kind)
 
 
 func _reap_coach_threads() -> void:
@@ -9155,7 +9190,7 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(str(game.get("kids", "")) if kids and str(game.get("kids", "")) != "" else str(game["text"]), F_BODY, _c("ink"), font_regular))
 	if game_note != "":
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
-	if coach_verdict != "" and coach_verdict != GameDetail.GOOD:
+	if coach_verdict != "":
 		var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
 		var mark := "" if glyph.begins_with("@") else glyph + " "
 		card_body.add_child(_para(mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, ""))), F_BODY, _c("ink"), font_semibold))
