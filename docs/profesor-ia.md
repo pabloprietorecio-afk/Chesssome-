@@ -7,6 +7,11 @@ premium, y poder activarla para probarla.
 - En las partidas contra el rival de la app (sin reloj, sin red, fuera de Kids y de las variantes), tras cada jugada
   del jugador el motor de la app la valora en otro hilo (GameDetail.entry, como el detalle de partida): la mejor,
   buena, imprecisión, error o error grave.
+- **El material a la vista manda** (CoachAI.judge, 21 nov): la valoración del motor mezcla material y posición y sus
+  umbrales son anchos, así que un peón regalado le podía salir «buena» (12.Cge2 dejando e5: «pierde 70»). Ahora, si
+  el detector corto (GameReview.analyze_move) ve material a tiro o una captura gratis sin hacer y el motor no ve
+  la jugada casi igual que la mejor (más de 30 de pérdida), la valoración sube como mínimo a imprecisión (un peón)
+  o error (una pieza), y la explicación es la de ese hecho: qué quedó a tiro y qué jugada lo evitaba.
 - Sale la chapa en el tablero y la valoración en la tarjeta, **en todas las jugadas**: «!» la mejor, marca de
   «buena», «?!» imprecisión, «?» error, «??» error grave. «!!» no: el motor de la app no es lo bastante fuerte para
   afirmar una jugada brillante.

@@ -8596,9 +8596,7 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 
 ## En otro hilo: el análisis de la jugada (unos segundos como mucho).
 func _coach_think(fen_before: String, uci: String, ply: int, color: int, run: int, gen: int) -> void:
-	var pos := Chess.from_fen(fen_before)
-	var m := pos.find_uci(uci)
-	var e := {} if m < 0 else GameDetail.entry(Bot.new(4), pos, m, color, ply, COACH_SECONDS)
+	var e := CoachAI.judge(fen_before, uci, color, ply, COACH_SECONDS)
 	_coach_entry_done.call_deferred(e, uci, run, gen)
 
 
@@ -8611,18 +8609,16 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 		return
 	var verdict := str(e.get("verdict", ""))
 	coach_verdict = verdict
-	coach_debug = coach_debug.replace(" → analizando…", " → %s (pierde %d)" % [verdict, int(e.get("loss", 0))])
+	coach_debug = coach_debug.replace(" → analizando…", " → %s (motor: pierde %d%s)" % [verdict, int(e.get("loss", 0)), (" · a la vista: " + str(e["moment"])) if e.has("moment") else ""])
 	var badge := str(GameDetail.BADGE.get(verdict, ""))
 	if badge != "":
 		_coach_badge_sq = Chess.sq_index(uci.substr(2, 2))
 		_coach_badge_uci = uci
 		_coach_badge_kind = badge
 		_coach_place_badge()
-	var paras: Array = e.get("paras", [])
-	var verified := " ".join(paras).strip_edges()
-	# En la tarjeta, lo que importa: qué permite y cuál era la mejor (sin la primera frase, que cuenta tu jugada).
+	var verified := str(e.get("full", ""))
 	_coach_verified = verified
-	_coach_short = " ".join(paras.slice(1)).strip_edges() if paras.size() > 1 else verified
+	_coach_short = str(e.get("short", verified))
 	if verdict == GameDetail.INACCURACY:
 		# Imprecisión: basta con el texto comprobado, sin gastar una consulta.
 		coach_note = _coach_short

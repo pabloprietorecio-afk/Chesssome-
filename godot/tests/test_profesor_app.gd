@@ -39,7 +39,7 @@ func _initialize() -> void:
 		_ok(_has_text(demo, "Profesor") and _has_text(demo, "?"), "en la tarjeta: la valoración y el profesor")
 	if OS.is_debug_build():
 		# En la tarjeta, la versión corta (sin la frase que cuenta tu jugada) y un botón «Ver completa» a la vista.
-		_ok(demo.coach_full.length() > demo.coach_note.length() and demo.coach_full.ends_with(demo.coach_note), "tarjeta: versión corta; completa: %s" % demo.coach_full)
+		_ok(demo.coach_full.length() >= demo.coach_note.length() and demo.coach_full.ends_with(demo.coach_note) and demo.coach_full.contains("h4"), "la explicación dice qué quedó a tiro; completa: %s" % demo.coach_full)
 		_ok(_button_with(demo.card_body, "Ver completa") != null, "botón «Ver completa» en el bloque del profesor")
 		demo._open_coach_full()
 		await _frames(3)

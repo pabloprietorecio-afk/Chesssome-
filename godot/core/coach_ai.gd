@@ -52,6 +52,67 @@ static func endpoint_mode(config: Dictionary, key: String, debug: bool) -> Strin
 	return ""
 
 
+## Si el motor ve la jugada tan buena como la mejor (hasta estas centésimas de peón), se le cree aunque deje
+## material a tiro: o hay compensación o se perdía igual.
+const TRUST_LOSS := 30
+const RANK := {"only": 0, "best": 0, "good": 1, "inaccuracy": 2, "mistake": 3, "blunder": 4}
+
+
+## Valoración de una jugada para el profesor en vivo. Junta dos vistas:
+##   - el motor de la app (GameDetail.entry): la mejor, buena, imprecisión, error, error grave. Sus umbrales son
+##     anchos y su valoración mezcla material y posición: un peón regalado puede salirle «buena» (pierde 1 peón
+##     pero «gana» desarrollo; partida de Pablo, 21-11: 12.Cge2 dejando e5 a la dama).
+##   - lo que se ve en el tablero a una jugada vista (GameReview.analyze_move): pieza o peón a tiro, captura gratis
+##     que no se hizo, mates en una. Si lo hay y el motor no ve la jugada casi igual que la mejor, la valoración
+##     sube como mínimo a imprecisión (un peón) o error (una pieza), y la explicación es la de ese hecho, que dice
+##     qué quedó a tiro y qué jugada lo evitaba.
+## Devuelve la entrada de GameDetail con «short» (para la tarjeta), «full» (ventana) y, si subió, «raised».
+static func judge(fen: String, uci: String, color: int, ply: int, seconds: float) -> Dictionary:
+	var pos := Chess.from_fen(fen)
+	var m := pos.find_uci(uci)
+	if m < 0:
+		return {}
+	var e := GameDetail.entry(Bot.new(4), pos, m, color, ply, seconds)
+	var paras: Array = e.get("paras", [])
+	e["full"] = " ".join(paras).strip_edges()
+	# En la tarjeta, lo que importa: qué permite y cuál era la mejor (sin la primera frase, que cuenta tu jugada).
+	e["short"] = " ".join(paras.slice(1)).strip_edges() if paras.size() > 1 else str(e["full"])
+	var verdict := str(e.get("verdict", ""))
+	if int(RANK.get(verdict, 0)) == 0 or int(e.get("loss", 0)) <= TRUST_LOSS:
+		return e
+	var moment := GameReview.analyze_move(fen, uci, ply)
+	if moment.is_empty():
+		return e
+	var least := material_floor(moment, pos, m)
+	if int(RANK[least]) > int(RANK.get(verdict, 0)):
+		e["verdict"] = least
+		e["raised"] = true
+	e["moment"] = str(moment["kind"])
+	e["full"] = str(moment["text"])
+	e["short"] = str(moment["text"])
+	var better := pos.find_uci(str(moment.get("better", "")))
+	if better >= 0:
+		e["best_san"] = SanEs.san(pos, better)
+		e["best_uci"] = Chess.uci(better)
+	return e
+
+
+## Valoración mínima por lo que se pierde a la vista: un peón, imprecisión; una pieza, error; un mate, error grave.
+static func material_floor(moment: Dictionary, pos: Chess, m: int) -> String:
+	match str(moment.get("kind", "")):
+		"allowed_mate":
+			return GameDetail.BLUNDER
+		"missed_mate":
+			return GameDetail.MISTAKE
+		"hang":
+			return GameDetail.MISTAKE if -GameReview.net(pos, m) >= 300 else GameDetail.INACCURACY
+		"missed_capture":
+			var better := pos.find_uci(str(moment.get("better", "")))
+			var gain := (GameReview.net(pos, better) if better >= 0 else 0) - GameReview.net(pos, m)
+			return GameDetail.MISTAKE if gain >= 300 else GameDetail.INACCURACY
+	return GameDetail.GOOD
+
+
 ## Hechos de un error para el profesor. `moment`: lo que devuelve GameReview.analyze_move.
 static func facts_for(moment: Dictionary, played_san: String, better_san: String, rating: float, language: String) -> Dictionary:
 	return {

@@ -32,6 +32,19 @@ func _init() -> void:
 		var t := GameDetail.after_best("X")
 		_ok(t.ends_with("X") and t.length() > 3 and (lang == "es" or not t.begins_with("Si la hubieras")), "traducida en %s: %s" % [lang, t])
 	Loc.apply(was)
+	# Un peón regalado que al motor le sale «buena» (Pablo, 21-11): 12.Cge2 deja e5 a la dama de c7.
+	var gift := "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12"
+	var raw := GameDetail.entry(Bot.new(4), Chess.from_fen(gift), Chess.from_fen(gift).find_uci("g1e2"), 0, 22, 0.8)
+	var j := CoachAI.judge(gift, "g1e2", 0, 22, 0.8)
+	print("12.Cge2: motor %s (pierde %d) → profesor %s · %s" % [raw.get("verdict"), int(raw.get("loss", 0)), j.get("verdict"), j.get("short")])
+	_ok(str(j.get("verdict", "")) == GameDetail.INACCURACY or int(CoachAI.RANK[str(j.get("verdict", "good"))]) > 2, "12.Cge2 regalando e5: como mínimo, imprecisión (%s)" % j.get("verdict"))
+	_ok(str(j.get("short", "")).contains("e5") and str(j.get("full", "")).contains("e5"), "y la explicación dice que el peón de e5 quedó a tiro")
+	_ok(str(j.get("best_san", "")) != "" and str(j.get("full", "")).contains(str(j.get("best_san", ""))), "con la jugada que lo evitaba: %s" % j.get("best_san"))
+	var fine := CoachAI.judge(gift, "f3f4", 0, 22, 0.8)
+	_ok(int(CoachAI.RANK[str(fine.get("verdict", "blunder"))]) <= 1, "12.f4, que defiende el peón: buena o la mejor (%s)" % fine.get("verdict"))
+	var hung := CoachAI.judge(fen, "d8h4", 1, 3, 0.8)
+	_ok(int(CoachAI.RANK[str(hung.get("verdict", "good"))]) >= 3 and str(hung.get("full", "")).contains("h4"), "dama regalada: error o error grave, y se dice dónde (%s)" % hung.get("verdict"))
+	_ok(CoachAI.material_floor({"kind": "allowed_mate"}, Chess.from_fen(gift), 0) == GameDetail.BLUNDER, "permitir mate en una: error grave como mínimo")
 	# Mate en una que se escapa: la dama blanca da mate en f7 y el jugador juega otra cosa.
 	var mate_fen := "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
 	var mm := GameReview.analyze_move(mate_fen, "g1f3", 6)
