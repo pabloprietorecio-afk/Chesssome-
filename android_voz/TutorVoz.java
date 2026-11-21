@@ -2,6 +2,7 @@ package com.pabloprieto.voz;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -20,14 +21,22 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Preguntas al tutor por voz: el reconocimiento de voz del propio Android (SpeechRecognizer). La app no graba ni
- * guarda audio; el texto reconocido llega a GDScript y se manda como pregunta escrita.
+ * Preguntas al tutor por voz. Primero, la ventana de dictado del sistema (RecognizerIntent, normalmente la de
+ * Google, la misma que el micrófono del teclado): funciona en casi todos los móviles y no necesita permiso propio.
+ * Si no hay ninguna, el reconocedor por debajo (SpeechRecognizer), con el permiso del micrófono. En el primer APK se
+ * usaba solo este último y en el Xiaomi de Pablo cortaba a los dos segundos con «no te he oído» (21 nov): en esos
+ * móviles el reconocedor por defecto es el del fabricante.
+ * La app no graba ni guarda audio; el texto reconocido llega a GDScript y se manda como pregunta escrita.
  * Desde GDScript: Engine.get_singleton("TutorVoz") (lo usa core/tutor_voice.gd).
  * Lo copia el CI en la plantilla de Gradle, como android_espera/ (ver android_voz/LEEME.md).
  */
 public class TutorVoz extends GodotPlugin {
 
 	private static final int PERMISSION_CODE = 7311;
+	private static final int DICTATION_CODE = 7312;
+	/** Error propio: el jugador cerró la ventana de dictado sin decir nada (no es un fallo). */
+	private static final int CANCELLED = -2;
+	private String pendingLang = null;
 	private SpeechRecognizer recognizer;
 	private boolean listening = false;
 
@@ -81,11 +90,50 @@ public class TutorVoz extends GodotPlugin {
 		if (requestCode != PERMISSION_CODE) return;
 		boolean ok = grantResults != null && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
 		emitSignal("voz_permiso", ok);
+		if (ok && pendingLang != null) listen(pendingLang);
+		pendingLang = null;
+	}
+
+	@Override
+	public void onMainActivityResult(int requestCode, int resultCode, Intent data) {
+		if (requestCode != DICTATION_CODE) return;
+		if (resultCode != Activity.RESULT_OK || data == null) {
+			emitSignal("voz_error", CANCELLED);
+			return;
+		}
+		ArrayList<String> list = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+		String t = list == null || list.isEmpty() || list.get(0) == null ? "" : list.get(0);
+		emitSignal("voz_texto", t);
 	}
 
 	/** Empieza a escuchar. `lang`: etiqueta BCP-47 («es-ES», «en-US»…). */
 	@UsedByGodot
 	public void start(String lang) {
+		final Activity a = getActivity();
+		if (a == null) return;
+		a.runOnUiThread(() -> {
+			Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
+			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang);
+			i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+			try {
+				a.startActivityForResult(i, DICTATION_CODE);
+				emitSignal("voz_lista");
+				return;
+			} catch (ActivityNotFoundException e) {
+				// Sin ventana de dictado: el reconocedor por debajo.
+			}
+			if (!has_permission()) {
+				pendingLang = lang;
+				a.requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, PERMISSION_CODE);
+				return;
+			}
+			listen(lang);
+		});
+	}
+
+	private void listen(String lang) {
 		final Activity a = getActivity();
 		if (a == null) return;
 		a.runOnUiThread(() -> {
@@ -101,9 +149,6 @@ public class TutorVoz extends GodotPlugin {
 			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang);
 			i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 			i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-			// Deja hablar con calma: una pausa corta no corta la pregunta.
-			i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800);
-			i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500);
 			listening = true;
 			recognizer.startListening(i);
 		});

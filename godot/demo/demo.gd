@@ -9193,12 +9193,15 @@ func _on_voice_failed(code: int) -> void:
 		return
 	ask_state = "edit"
 	_build_ask_window()
+	if code == TutorVoice.CANCELLED:
+		return
 	var why := "No te he oído bien. Prueba otra vez, más cerca del micrófono." if TutorVoice.NO_MATCH.has(code) else "No se ha podido usar el micrófono."
 	if code == TutorVoice.PERMISSION_DENIED:
 		why = "Sin permiso para el micrófono: puedes escribir la pregunta o dar el permiso en los ajustes de Android."
 	var col := _ask_column()
 	if col != null:
-		var note := _para(why, F_SUB, _c("bad"), font_medium)
+		# En el APK de pruebas, con el código de Android (para saber qué pasa en cada móvil).
+		var note := _para(Loc.t(why) + ((" (%d)" % code) if Premium.test_allowed() else ""), F_SUB, _c("bad"), font_medium)
 		col.add_child(note)
 		col.move_child(note, mini(3, col.get_child_count() - 1))
 

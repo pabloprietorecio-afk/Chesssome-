@@ -13,6 +13,8 @@ const SINGLETON := "TutorVoz"
 ## Errores de SpeechRecognizer que significan «no he oído nada» (no es un fallo: se vuelve a intentar).
 const NO_MATCH := [6, 7]
 const PERMISSION_DENIED := 9
+## Se cerró la ventana de dictado sin decir nada: no es un fallo, no se avisa.
+const CANCELLED := -2
 const LOCALES := {"es": "es-ES", "en": "en-US", "pt": "pt-PT", "fr": "fr-FR", "de": "de-DE", "it": "it-IT", "ru": "ru-RU", "hi": "hi-IN", "id": "id-ID", "ja": "ja-JP"}
 
 var listening := false
@@ -48,9 +50,7 @@ func listen(language: String) -> void:
 		failed.emit(-1)
 		return
 	_lang = locale_for(language)
-	if not bool(p.call("has_permission")):
-		p.call("ask_permission")
-		return
+	# El complemento decide: ventana de dictado del sistema o, si no la hay, el reconocedor (y pide el permiso).
 	_start()
 
 
@@ -71,9 +71,8 @@ func _start() -> void:
 
 
 func _on_permission(ok: bool) -> void:
-	if ok:
-		_start()
-	else:
+	if not ok:
+		_set_listening(false)
 		failed.emit(PERMISSION_DENIED)
 
 

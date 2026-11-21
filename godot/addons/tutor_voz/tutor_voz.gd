@@ -26,7 +26,7 @@ class AndroidExport extends EditorExportPlugin:
 	func _get_android_manifest_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
 		return "\n".join([
 			'<uses-permission android:name="android.permission.RECORD_AUDIO" />',
-			'<queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>',
+			'<queries><intent><action android:name="android.speech.RecognitionService" /></intent><intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent></queries>',
 		])
 
 	func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
