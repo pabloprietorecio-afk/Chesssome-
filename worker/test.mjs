@@ -331,3 +331,26 @@ test("segunda opinión: un «error grave» que un segundo análisis más hondo n
   assert.equal(r.verdict, "good", "con la segunda opinión (de +0,4 a +0,1) ya no es error");
   assert.ok(asked >= 3);
 });
+
+test("con Stockfish en el móvil: usa sus análisis y no llama al servicio", async () => {
+  const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response("{}", { status: 500 });
+  };
+  const engine = {
+    A: { type: "bestmove", move: "f3f4", depth: 20, centipawns: 120, mate: null, continuationArr: ["f3f4", "f8g7", "g1f3"] },
+    B: { type: "bestmove", move: "c7e5", depth: 20, centipawns: -150, mate: null, continuationArr: ["c7e5", "d1d2"] },
+  };
+  const r = await judge({ fen: start, uci: "g1e2", engine }, {});
+  assert.equal(calls, 0);
+  assert.equal(r.phone, true);
+  assert.equal(r.verdict, "blunder");
+  assert.deepEqual(r.lines.played.map((s) => s.uci), ["g1e2", "c7e5", "d1d2"]);
+  assert.deepEqual(r.lines.best.map((s) => s.uci), ["f3f4", "f8g7", "g1f3"]);
+  // Un análisis que no vale (jugada ilegal) no se usa: se pregunta al servicio.
+  globalThis.fetch = async () => new Response(JSON.stringify({ type: "bestmove", depth: 15, move: "f3f4", centipawns: "40", continuationArr: [] }), { status: 200 });
+  const r2 = await judge({ fen: start, uci: "g1e2", engine: { A: { ...engine.A, move: "a1a8" }, B: engine.B } }, {});
+  assert.notEqual(r2.phone, true);
+});

@@ -375,14 +375,111 @@ func _post(url: String, payload: Dictionary, seconds: float) -> Dictionary:
 
 
 ## Pide a Stockfish (por el servidor) la valoración de una jugada. Siempre acaba emitiendo `judged`.
-func judge_remote(fen: String, uci: String, run: int, gen: int) -> void:
+## `engine`: los análisis de Stockfish ya hechos en el móvil ({A, B}, forma de LocalEngine): el servidor solo
+## prepara las líneas y sus flechas, sin volver a analizar. Si el servidor no contesta, la valoración se hace aquí
+## mismo con esos análisis (local_judge): las chapas salen igual sin conexión.
+func judge_remote(fen: String, uci: String, run: int, gen: int, engine: Dictionary = {}) -> void:
 	var url := tutor_url(cfg)
-	if url == "":
-		judged.emit(run, gen, {})
-		return
-	calls += 1
-	var data := await _post(url, {"fen": fen, "uci": uci}, float(cfg.get("tutor_timeout_s", 7)))
+	var data := {}
+	if url != "":
+		calls += 1
+		var payload := {"fen": fen, "uci": uci}
+		if not engine.is_empty():
+			payload["engine"] = engine
+		data = await _post(url, payload, float(cfg.get("tutor_timeout_s", 7)))
+	if not remote_ok(data) and not engine.is_empty():
+		data = local_judge(fen, uci, engine.get("A", {}), engine.get("B", {}))
 	judged.emit(run, gen, data if remote_ok(data) else {})
+
+
+# ---------------------------------------------------------------- valoración con el Stockfish del móvil
+
+## Probabilidad de ganar (0–100) a partir de centésimas de peón: la fórmula de Lichess (como el servidor).
+static func win_pct(cp: float) -> float:
+	return 50.0 + 50.0 * (2.0 / (1.0 + exp(-0.00368208 * cp)) - 1.0)
+
+
+## Probabilidad de ganar de las blancas según un análisis (forma de LocalEngine / chess-api.com).
+static func white_win(e: Dictionary) -> float:
+	if e.get("mate") != null:
+		return 100.0 if int(e["mate"]) > 0 else 0.0
+	return win_pct(float(e.get("centipawns", 0)))
+
+
+## Umbrales de chess.com (igual que verdictFor en worker/src/tutor.js).
+static func verdict_for(drop: float, is_best: bool, allows_mate: bool, missed_mate: bool) -> String:
+	if is_best:
+		return "best"
+	if allows_mate or drop >= 20.0:
+		return "blunder"
+	if drop >= 10.0 or missed_mate:
+		return "mistake"
+	if drop >= 5.0:
+		return "inaccuracy"
+	return "good"
+
+
+## La valoración entera en el móvil, con la misma forma que la del servidor (sin «brillante» ni las flechas de
+## amenazas: esas las pone el servidor cuando hay conexión).
+static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary) -> Dictionary:
+	var pos := Chess.from_fen(fen)
+	var m := pos.find_uci(uci)
+	if m < 0 or str(a.get("move", "")).length() < 4:
+		return {}
+	var player := pos.turn
+	var after := Chess.from_fen(fen)
+	after.apply(m)
+	var mate_now := after.is_checkmate()
+	var mine := func(e: Dictionary) -> float: return white_win(e) if player == 0 else 100.0 - white_win(e)
+	var i_mate := func(e: Dictionary) -> bool: return not e.is_empty() and e.get("mate") != null and (int(e["mate"]) > 0) == (player == 0)
+	var they_mate := func(e: Dictionary) -> bool: return not e.is_empty() and e.get("mate") != null and (int(e["mate"]) > 0) != (player == 0)
+	var win_best: float = mine.call(a)
+	var win_played: float = 100.0 if mate_now else (mine.call(b) if not b.is_empty() else 50.0)
+	var is_best := uci == str(a["move"]) or mate_now
+	var drop := 0.0 if is_best else maxf(0.0, win_best - win_played)
+	var allows: bool = they_mate.call(b) and not they_mate.call(a)
+	var missed: bool = i_mate.call(a) and absi(int(a["mate"])) <= 3 and not i_mate.call(b) and not mate_now
+	var verdict := verdict_for(drop, is_best, allows, missed)
+	var bad := verdict == "inaccuracy" or verdict == "mistake" or verdict == "blunder"
+	var played: Array = [uci]
+	if not b.is_empty():
+		played.append_array(_chain(str(b["move"]), b.get("continuationArr", [])))
+	var best: Array = [] if is_best else _chain(str(a["move"]), a.get("continuationArr", []))
+	return {
+		"verdict": verdict, "drop": snappedf(drop, 0.1), "win_best": roundi(win_best), "win_played": roundi(win_played),
+		"best": str(a["move"]), "player": "w" if player == 0 else "b", "depth": int(a.get("depth", 0)), "local": true,
+		"lines": {"played": _line(fen, played, player, "played", bad), "best": _line(fen, best, player, "best", bad)},
+	}
+
+
+static func _chain(first: String, rest: Variant) -> Array:
+	var r: Array = rest if rest is Array else []
+	if not r.is_empty() and str(r[0]) == first:
+		return r.duplicate()
+	return [first] + r
+
+
+## Pasos de una línea (hasta 4 jugadas legales) con su posición de antes y la flecha de la jugada.
+static func _line(fen: String, ucis: Array, player: int, kind: String, bad: bool) -> Array:
+	var pos := Chess.from_fen(fen)
+	var out: Array = []
+	for u: Variant in ucis.slice(0, 4):
+		var m := pos.find_uci(str(u))
+		if m < 0:
+			break
+		var before := pos.fen()
+		var mine := pos.turn == player
+		var capture := pos.b[Chess.sq_index(str(u).substr(2, 2))] != 0
+		pos.apply(m)
+		var tone := "info"
+		if mine:
+			tone = "bad" if kind == "played" and out.is_empty() and bad else "good"
+		elif kind == "played" and (capture or pos.in_check()):
+			tone = "bad"
+		out.append({"uci": str(u), "fen": before, "arrows": [{"from": str(u).substr(0, 2), "to": str(u).substr(2, 2), "tone": tone}]})
+		if pos.is_checkmate():
+			break
+	return out
 
 
 ## Pide a Claude (por el servidor) la lección de una jugada ya valorada. Siempre acaba emitiendo `lesson_ready`.

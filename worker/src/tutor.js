@@ -202,9 +202,19 @@ export async function judge(input, env, debug) {
   const after = new Chess(fen);
   if (!play(after, uci)) throw Object.assign(new Error("jugada ilegal"), { status: 400 });
   const raw = debug ? [] : null;
+  // Con Stockfish en el móvil, la app manda sus análisis (engine.A antes de la jugada, engine.B después, con la forma
+  // de chess-api.com): aquí solo se preparan las líneas y las flechas. Si no vienen o no valen, se analiza aquí.
+  const eng = input?.engine && typeof input.engine === "object" ? input.engine : null;
+  const given = (e, at) => {
+    const r = eng ? readEngine(e) : null;
+    return r && play(new Chess(at), r.move) ? r : null;
+  };
+  const localA = given(eng?.A, fen);
+  const localB = after.isGameOver() ? null : given(eng?.B, after.fen());
   // Una consulta detrás de otra: dos a la vez contra el servicio se quedaban colgadas (21 nov).
-  const A = await askEngine(fen, env, raw);
-  const B = after.isGameOver() ? null : await askEngine(after.fen(), env, raw);
+  const A = localA || (await askEngine(fen, env, raw));
+  const B = after.isGameOver() ? null : localB || (await askEngine(after.fen(), env, raw));
+  const fromPhone = Boolean(localA && (localB || after.isGameOver()));
   const mine = (e) => (player === "w" ? e.win : 100 - e.win);
   const iMate = (e) => e && e.mate !== null && e.mate > 0 === (player === "w");
   const theyMate = (e) => e && e.mate !== null && e.mate > 0 !== (player === "w");
@@ -220,7 +230,7 @@ export async function judge(input, env, debug) {
   // valoración más favorable al alumno; un mate permitido no se discute. (Se probó `searchmoves` para valorar la jugada
   // desde la misma posición que la mejor, pero chess-api.com lo ignora: devolvía la mejor, 21 nov.)
   let confirmed = null;
-  if ((verdict === "mistake" || verdict === "blunder") && !allowsMate && !after.isGameOver()) {
+  if (!fromPhone && (verdict === "mistake" || verdict === "blunder") && !allowsMate && !after.isGameOver()) {
     try {
       const P = await askEngine(after.fen(), env, raw);
       {
@@ -242,7 +252,7 @@ export async function judge(input, env, debug) {
   // la continuación de la mejor (con poco tiempo a veces solo da la primera jugada), se le pregunta.
   const playedSteps = buildLine(fen, [uci, ...(B ? chain(B.move, B.line) : [])], LINE_MAX);
   let bestUcis = isBest ? [] : chain(A.move, A.line);
-  if (bad && bestUcis.length < 2) {
+  if (bad && bestUcis.length < 2 && !fromPhone) {
     const next = new Chess(fen);
     if (play(next, A.move) && !next.isGameOver()) {
       try {
@@ -260,7 +270,7 @@ export async function judge(input, env, debug) {
   }
   const out = {
     verdict, drop: Math.round(drop * 10) / 10, win_best: Math.round(winBest), win_played: Math.round(winPlayed),
-    best: A.move, player, depth: A.depth, ...(confirmed !== null ? { second: Math.round(confirmed) } : {}),
+    best: A.move, player, depth: A.depth, ...(confirmed !== null ? { second: Math.round(confirmed) } : {}), ...(fromPhone ? { phone: true } : {}),
     lines: {
       played: publicLine(playedSteps, player, "played", bad),
       best: publicLine(bestSteps, player, "best", bad),

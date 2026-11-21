@@ -394,6 +394,8 @@ jobs:
     permissions:
       contents: write
     env:
+      SF_TAG: "sf_19"
+      SF_COMMIT: "edb0d9db6731067ec50ce619ff372b463bc4dd5d"
       PLUGIN_VERSION: "6.0"
       PLUGIN_SHA256: "806c85eafe8f4c8aa4ee37e0ed1ab551e85db8755f8aeb1c6302092f809725a3"
       # AdMob de Poing Studios (MIT): etiqueta v5.1.0 fijada por su commit; las librerías de Android, por su suma.
@@ -481,7 +483,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/godot/addons
           cp -r res/addons/* $GITHUB_WORKSPACE/godot/addons/
           cd $GITHUB_WORKSPACE
-          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/tutor_voz/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/tutor_voz/plugin.cfg", "res://addons/motor_stockfish/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
           tail -4 godot/project.godot
           ls godot/addons
 
@@ -529,6 +531,59 @@ jobs:
           mkdir -p $ROOT/com/pabloprieto/voz
           cp android_voz/*.java $ROOT/com/pabloprieto/voz/
           ls -la $ROOT/com/pabloprieto/voz
+          # Stockfish dentro del móvil (android_motor/LEEME.md): el complemento Java.
+          mkdir -p $ROOT/com/pabloprieto/motor
+          cp android_motor/*.java $ROOT/com/pabloprieto/motor/
+          ls -la $ROOT/com/pabloprieto/motor
+          # Las librerías nativas van comprimidas y Android las extrae al instalar: Stockfish es un programa que la
+          # app arranca (lib/arm64-v8a/libstockfish.so), y solo se puede ejecutar si está extraído en disco.
+          printf '\nandroid {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }\n}\n' >> godot/android/build/build.gradle
+          tail -8 godot/android/build/build.gradle
+
+      # Stockfish 19 (GPL v3) compilado para Android arm64 con el NDK, sin cambios en su código. Se fija por su commit;
+      # la app enlaza ese mismo código (pantalla de Licencias). Va dentro de un AAR que añade res://addons/motor_stockfish.
+      - name: Caché de Stockfish para Android
+        id: cache-sf
+        uses: actions/cache@v4
+        with:
+          path: build/stockfish
+          key: stockfish-${{ env.SF_COMMIT }}-ndk28-v1
+
+      - name: Stockfish 19 para Android (arm64)
+        if: steps.cache-sf.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          git clone -q --depth 1 --branch $SF_TAG https://github.com/official-stockfish/Stockfish /tmp/sf
+          test "$(git -C /tmp/sf rev-parse HEAD)" = "$SF_COMMIT"
+          export PATH=$ANDROID_HOME/ndk/28.1.13356709/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+          cd /tmp/sf/src
+          # Binario universal (elige solo la mejor variante del procesador); si no compila, el básico armv8.
+          if make -j4 build ARCH=arm64-universal COMP=ndk > /tmp/sf-build.log 2>&1; then echo "universal"; else tail -30 /tmp/sf-build.log; make clean > /dev/null; make -j4 build ARCH=armv8 COMP=ndk; fi
+          llvm-strip stockfish || true
+          file stockfish
+          ls -lh stockfish
+          mkdir -p $GITHUB_WORKSPACE/build/stockfish
+          cp stockfish $GITHUB_WORKSPACE/build/stockfish/libstockfish.so
+
+      - name: AAR con Stockfish (lib/arm64-v8a/libstockfish.so)
+        run: |
+          set -euo pipefail
+          ls -lh build/stockfish/libstockfish.so
+          mkdir -p godot/addons/motor_stockfish/bin
+          python3 - <<'PY'
+          import zipfile, io
+          aar = "godot/addons/motor_stockfish/bin/motor_stockfish.aar"
+          jar = io.BytesIO()
+          with zipfile.ZipFile(jar, "w") as j:
+              j.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n")
+          with zipfile.ZipFile(aar, "w", zipfile.ZIP_DEFLATED) as z:
+              z.writestr("AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.pabloprieto.motorlib" />\n')
+              z.writestr("classes.jar", jar.getvalue())
+              z.writestr("R.txt", "")
+              z.write("build/stockfish/libstockfish.so", "jni/arm64-v8a/libstockfish.so")
+          print("AAR listo")
+          PY
+          unzip -l godot/addons/motor_stockfish/bin/motor_stockfish.aar
 
       - name: Importar el proyecto
         run: |
@@ -571,9 +626,15 @@ jobs:
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/espera"; then echo "OK EsperaOnline dentro del APK"; else echo "FALTA EsperaOnline en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/cine"; then echo "OK YouTubeCine dentro del APK"; else echo "FALTA YouTubeCine en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/voz"; then echo "OK TutorVoz dentro del APK"; else echo "FALTA TutorVoz en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/motor"; then echo "OK MotorStockfish dentro del APK"; else echo "FALTA MotorStockfish en el APK"; exit 1; fi
+          if grep -q "lib/arm64-v8a/libstockfish.so" build/avisos-log/apk-contenido.txt; then echo "OK Stockfish dentro del APK"; else echo "FALTA Stockfish en el APK"; exit 1; fi
+          grep "lib/arm64-v8a/libstockfish.so\|lib/arm64-v8a/libgodot" build/avisos-log/apk-contenido.txt || true
+          if grep -q "data/licencias/gpl-3.0.txt" build/avisos-log/apk-contenido.txt; then echo "OK licencia GPL"; else echo "FALTA la licencia GPL"; exit 1; fi
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
-          for f in "org.godotengine.plugin.v2.TutorVoz" "android.permission.RECORD_AUDIO" "android.speech.RecognitionService" "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
+          grep -n "extractNativeLibs" build/avisos-log/manifiesto.txt || echo "(sin extractNativeLibs: por defecto se extraen)"
+          if grep -E -q 'extractNativeLibs.*(=false|\)0x0$)' build/avisos-log/manifiesto.txt; then echo "Las librerías no se extraen: Stockfish no podría arrancar"; exit 1; fi
+          for f in "org.godotengine.plugin.v2.MotorStockfish" "org.godotengine.plugin.v2.TutorVoz" "android.permission.RECORD_AUDIO" "android.speech.RecognitionService" "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
             if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
           done
           # El icono de la notificación: sin él Android puede descartar el aviso.

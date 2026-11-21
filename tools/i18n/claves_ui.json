@@ -1037,5 +1037,9 @@
 "Es la única jugada legal.",
 "Según el motor, casi obligada: cualquier otra es mucho peor.",
 "Según el motor, da casi igual: %s también (esta, %s).",
-"El tutor está preparando tu respuesta"
+"El tutor está preparando tu respuesta",
+"Licencias",
+"Código fuente de Stockfish 19",
+"Texto de la licencia (GPL v3)",
+"La app lleva Stockfish 19 sin cambios para analizar las jugadas en el móvil. Stockfish es software libre: se puede redistribuir y modificar según la Licencia Pública General de GNU, versión 3 o posterior. Se distribuye SIN NINGUNA GARANTÍA."
 ]

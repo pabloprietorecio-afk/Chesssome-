@@ -176,3 +176,10 @@ Pablo vio «error grave» en jugadas que el propio tutor, al preguntarle, decía
 - Las preguntas llevan cómo se marcó la última jugada (`judged`): si al analizarla el tutor ve otra cosa, lo explica
   con datos en vez de contradecir la marca sin más.
 - Un análisis más profundo de verdad necesita Stockfish propio (pendiente antes de publicar).
+
+## Stockfish dentro del móvil (21 nov)
+Decisión de Pablo: Stockfish 19 en el propio móvil en vez de un servidor (Cloud Run). Detalle y licencia en
+`android_motor/LEEME.md`. Cada jugada: 0,8 s de análisis antes y 0,8 s después, en el móvil; el servidor solo prepara
+las líneas con esos análisis (sin chess-api.com) y Claude escribe. Sin conexión, las chapas salen igual (valoración
+en el móvil, sin «brillante» ni flechas de amenazas). Las preguntas libres siguen con el Stockfish del servidor.
+Opciones → Licencias: aviso de Stockfish, GPL v3 entera y enlace al código de sf_19.

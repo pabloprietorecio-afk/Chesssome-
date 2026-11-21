@@ -323,6 +323,8 @@ var ask_edit: LineEdit
 ## Preguntas y respuestas de esta partida ({q, a}), para que el tutor siga el hilo.
 var ask_history: Array = []
 var tutor_voice: TutorVoice
+## Stockfish 19 dentro del móvil (android_motor/): valora las jugadas del tutor sin depender del servidor.
+var local_engine: LocalEngine
 var _ask_gen := 0
 ## Partida gratis con profesor en curso (1…5), o 0 (premium, o sin prueba).
 var coach_trial_game := 0
@@ -1148,6 +1150,8 @@ func _ready() -> void:
 	coach.asked.connect(_on_tutor_answer)
 	tutor_voice = TutorVoice.new()
 	add_child(tutor_voice)
+	local_engine = LocalEngine.new()
+	add_child(local_engine)
 	tutor_voice.heard_partial.connect(_on_voice_partial)
 	tutor_voice.heard.connect(_on_voice_heard)
 	tutor_voice.failed.connect(_on_voice_failed)
@@ -3744,9 +3748,46 @@ func _build_sheet() -> void:
 	var how_pad := _pad(0, 18, 0, 0)
 	how_pad.add_child(how)
 	box.add_child(how_pad)
+	var licences := _button("info", "Licencias", _open_licences, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 50.0})
+	box.add_child(licences)
 	var about := _para(Loc.f("A Chess Way · %s", app_version), F_CAP, _c("quiet"), font_regular)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(about)
+
+
+## Licencias del software de terceros que va dentro de la app. Stockfish (GPL v3): el aviso de copyright, la
+## licencia entera (data/licencias/gpl-3.0.txt) y dónde está el código de la versión exacta que lleva la app
+## (sf_19, sin cambios). Ver android_motor/LEEME.md.
+const STOCKFISH_SOURCE := "https://github.com/official-stockfish/Stockfish/tree/sf_19"
+const LICENCE_FILE := "res://data/licencias/gpl-3.0.txt"
+
+
+func _open_licences() -> void:
+	var column := _popup("Licencias", "")
+	column.add_child(_para("Stockfish 19", F_BODY, _c("ink"), font_semibold))
+	column.add_child(_para("Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)", F_SUB, _c("ink"), font_regular))
+	column.add_child(_para("La app lleva Stockfish 19 sin cambios para analizar las jugadas en el móvil. Stockfish es software libre: se puede redistribuir y modificar según la Licencia Pública General de GNU, versión 3 o posterior. Se distribuye SIN NINGUNA GARANTÍA.", F_SUB, _c("quiet"), font_regular))
+	var tint := _tint("sky")
+	var btn := {"font_size": F_SUB, "height": 96.0, "icon": 46.0, "radius": 48}
+	column.add_child(_button("open", "Código fuente de Stockfish 19", func() -> void: OS.shell_open(STOCKFISH_SOURCE), tint[0], tint[1], btn))
+	column.add_child(_button("book", "Texto de la licencia (GPL v3)", _open_licence_text, tint[0], tint[1], btn))
+	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), btn))
+
+
+func _open_licence_text() -> void:
+	var column := _popup("GNU GPL v3", "")
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0.0, 1100.0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var text := Label.new()
+	text.text = FileAccess.get_file_as_string(LICENCE_FILE)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.add_theme_font_size_override("font_size", F_CAP)
+	text.add_theme_color_override("font_color", _c("ink"))
+	scroll.add_child(text)
+	column.add_child(scroll)
+	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 46.0, "radius": 48}))
 
 
 func _caption(text: String) -> MarginContainer:
@@ -8649,12 +8690,18 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 	var t := Thread.new()
 	_coach_threads.append(t)
 	t.start(_coach_think.bind(fen_before, uci, ply, game_color, run_id, _coach_gen))
-	if CoachAI.tutor_url(coach.cfg) != "":
-		# Stockfish, en el servidor: su valoración manda. Si no llega a tiempo, vale la del motor local.
+	var sf := local_engine.available()
+	if sf or CoachAI.tutor_url(coach.cfg) != "":
+		# Stockfish manda: el del móvil si lo hay (0,8 s por posición) y, si no, el del servidor. Si no llega a
+		# tiempo, vale el motor de la app.
 		_coach_remote_wait = true
 		coach_waiting = true
-		coach.judge_remote(fen_before, uci, run_id, _coach_gen)
-		_coach_remote_deadline(_coach_gen)
+		if sf:
+			coach_debug += " (Stockfish del móvil)"
+			_coach_with_local_sf(fen_before, uci, run_id, _coach_gen)
+		else:
+			coach.judge_remote(fen_before, uci, run_id, _coach_gen)
+		_coach_remote_deadline(_coach_gen, COACH_REMOTE_S + (4.0 if sf else 0.0))
 
 
 ## Se acabaron las partidas gratis con profesor: se avisa una vez, en el bloque del profesor de la tarjeta.
@@ -8692,8 +8739,24 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 
 
 ## A los COACH_REMOTE_S segundos sin respuesta del servidor, vale el motor local.
-func _coach_remote_deadline(gen: int) -> void:
-	await get_tree().create_timer(COACH_REMOTE_S).timeout
+## Stockfish del móvil: la posición de antes y la de después de la jugada; luego el servidor prepara las líneas
+## con esos análisis (o, sin conexión, se valora aquí mismo: CoachAI.local_judge).
+func _coach_with_local_sf(fen: String, uci: String, run: int, gen: int) -> void:
+	var a: Dictionary = await local_engine.analyze(fen)
+	var after := Chess.from_fen(fen)
+	var m := after.find_uci(uci)
+	var b := {}
+	if m >= 0:
+		after.apply(m)
+		if not after.legal_moves().is_empty():
+			b = await local_engine.analyze(after.fen())
+	if run != run_id or gen != _coach_gen:
+		return
+	coach.judge_remote(fen, uci, run, gen, {} if a.is_empty() else {"A": a, "B": b})
+
+
+func _coach_remote_deadline(gen: int, seconds: float = COACH_REMOTE_S) -> void:
+	await get_tree().create_timer(seconds).timeout
 	if gen != _coach_gen or not _coach_remote_wait:
 		return
 	_coach_remote_wait = false

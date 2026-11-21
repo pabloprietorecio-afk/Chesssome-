@@ -39,6 +39,17 @@ func _initialize() -> void:
 	_ok(CoachAI.tutor_url({"tutor": "https://x.test/tutor"}) == "https://x.test/tutor" and CoachAI.tutor_url({}) == "", "dirección del tutor")
 	_ok(CoachAI.tutor_url(CoachAI.load_config()).ends_with("/tutor"), "la app trae la dirección del tutor")
 
+	# Stockfish del móvil: lo que devuelve el complemento, a la forma del servidor (desde las blancas).
+	var ea := LocalEngine.parse("move=f3f4;depth=20;cp=120;pv=f3f4,f8g7,g1f3", GIFT)
+	_ok(ea["move"] == "f3f4" and ea["centipawns"] == 120 and ea["continuationArr"] == ["f3f4", "f8g7", "g1f3"], "análisis del móvil, juegan blancas")
+	var eb := LocalEngine.parse("move=c7e5;depth=20;cp=150;pv=c7e5,d1d2", GIFT_AFTER)
+	_ok(eb["centipawns"] == -150, "juegan negras: el valor se da la vuelta (desde las blancas)")
+	_ok(LocalEngine.parse("move=e2e4;depth=9;mate=2;pv=e2e4", GIFT_AFTER)["mate"] == -2 and LocalEngine.parse("error=IOException", GIFT).is_empty(), "mate desde las blancas; un error, vacío")
+	var lj := CoachAI.local_judge(GIFT, "g1e2", ea, eb)
+	_ok(lj["verdict"] == "blunder" and lj["win_best"] == 61 and lj["local"] and CoachAI.remote_ok(lj), "valoración en el móvil (sin servidor): error grave, de 61 %%")
+	_ok((lj["lines"]["played"] as Array).map(func(x: Dictionary) -> String: return x["uci"]) == ["g1e2", "c7e5", "d1d2"] and (lj["lines"]["best"] as Array).size() == 3, "con sus dos líneas")
+	_ok(CoachAI.verdict_for(19.0, false, false, false) == "mistake" and CoachAI.verdict_for(20.0, false, false, false) == "blunder", "umbrales de chess.com, como el servidor")
+
 	Premium._loaded = true
 	Premium.purchased = false
 	Premium.test_on = true
@@ -129,6 +140,19 @@ func _initialize() -> void:
 	_ok(demo._tutor_text(demo.coach_lesson["lines"]["played"][0]) != "", "sin texto del profesor: el de la app")
 	demo._close_lesson()
 	await _frames(2)
+
+	# 4b. Con Stockfish en el móvil y sin servidor: la valoración sale igual (Stockfish simulado).
+	demo.local_engine.fake = func(fen: String, _ms: int) -> String:
+		return "move=f3f4;depth=20;cp=120;pv=f3f4,f8g7,g1f3" if fen == GIFT else "move=c7e5;depth=20;cp=150;pv=c7e5,d1d2"
+	demo.coach.cfg = {"endpoint": ""}
+	demo._start_game(cfg, 0)
+	await _frames(4)
+	demo.view.show_move("g1e2")
+	demo._game_move("g1e2")
+	await _until(func() -> bool: return demo.coach_verdict != "" and not demo._coach_remote_wait)
+	_ok(demo.coach_verdict == "blunder" and not demo.coach_lesson.is_empty() and demo.coach_debug.contains("Stockfish del móvil"), "Stockfish del móvil sin conexión: error grave y lección en el tablero (%s)" % demo.coach_verdict)
+	await _until(func() -> bool: return demo.game_state == "play")
+	demo.local_engine.fake = Callable()
 
 	# 5. Preguntas libres (servidor simulado: se llama a _on_tutor_answer a mano).
 	demo.coach.cfg = {"endpoint": "", "tutor": "http://127.0.0.1:9/tutor", "tutor_timeout_s": 1, "ask_timeout_s": 1}
@@ -246,6 +270,15 @@ func _initialize() -> void:
 	Premium.trial_used = 0
 	Premium.trial_told = false
 	Premium.save_state()
+
+	# Licencias: el aviso de Stockfish y la GPL entera dentro de la app.
+	demo._open_licences()
+	await _frames(2)
+	_ok(_has_text(demo.confirm_node, "Copyright (C) 2004-2026 The Stockfish developers") and _button_with(demo.confirm_node, "Código fuente de Stockfish 19") != null, "Licencias: aviso de Stockfish y enlace al código")
+	demo._open_licence_text()
+	await _frames(2)
+	_ok(_has_text(demo.confirm_node, "GNU GENERAL PUBLIC LICENSE") and FileAccess.get_file_as_string(demo.LICENCE_FILE).length() > 30000, "el texto entero de la GPL v3")
+	demo._close_confirm()
 
 	print("tutor: %d de %d bien" % [hechos - fallos, hechos])
 	if fallos == 0:
