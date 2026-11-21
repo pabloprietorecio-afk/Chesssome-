@@ -39,6 +39,11 @@ var calls := 0
 
 func _init() -> void:
 	cfg = load_config()
+	# Con el ejecutable del editor (las pruebas y las capturas de la CI), sin servidor: las 5 partidas gratis harían
+	# que cualquier prueba con una partida llamase a Stockfish y a Claude (y gastase). El móvil no lleva «editor».
+	if OS.has_feature("editor"):
+		cfg.erase("tutor")
+		cfg["endpoint"] = ""
 
 
 static func load_config() -> Dictionary:
@@ -69,6 +74,17 @@ static func remote_ok(data: Dictionary) -> bool:
 			if pos.find_uci(str((step as Dictionary)["uci"])) < 0:
 				return false
 	return not (lines["played"] as Array).is_empty()
+
+
+## Casillas que un texto nombra sueltas («el peón de e5»), en orden y sin repetir. Las que van dentro de una jugada
+## («Cge2», «Dxe5») no cuentan: esas ya las marca la propia jugada.
+static func squares_in(text: String) -> Array:
+	var re := RegEx.create_from_string("(?<![A-Za-z0-9])[a-h][1-8](?![A-Za-z0-9])")
+	var out: Array = []
+	for m in re.search_all(text):
+		if not out.has(m.get_string()):
+			out.append(m.get_string())
+	return out
 
 
 ## Flechas del tutor ({from: "g1", to: "e2", tone}) como las quiere el tablero (casillas por índice).

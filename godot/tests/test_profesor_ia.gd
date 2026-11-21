@@ -81,6 +81,16 @@ func _init() -> void:
 	Premium.coach_on = true
 	Premium._loaded = true
 	_ok(not Premium.active(), "sin compra ni prueba: no es premium")
+	# Las 5 partidas gratis (para todos).
+	Premium.trial_used = 0
+	Premium.trial_run = -1
+	_ok(Premium.coach_applies(false, false, false, "", 101) and Premium.trial_left() == 5, "sin premium: 5 partidas gratis con profesor")
+	_ok(Premium.use_trial(101) == 1 and Premium.use_trial(101) == 1 and Premium.trial_left() == 4, "una partida cuenta una vez, aunque se juegue entera")
+	for r in [102, 103, 104, 105]:
+		Premium.use_trial(r)
+	_ok(Premium.trial_left() == 0 and Premium.coach_applies(false, false, false, "", 105), "la quinta sigue con profesor hasta el final")
+	_ok(not Premium.coach_applies(false, false, false, "", 106) and Premium.use_trial(106) == 0, "la sexta ya no: hace falta premium")
+	_ok(not Premium.coach_applies(true, false, false, "", 105), "Kids: nunca, tampoco gratis")
 	Premium.test_on = true
 	_ok(Premium.active() == OS.is_debug_build(), "premium de prueba: solo en depuración")
 	Premium.purchased = true

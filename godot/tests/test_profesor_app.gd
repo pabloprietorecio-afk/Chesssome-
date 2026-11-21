@@ -121,14 +121,16 @@ func _initialize() -> void:
 	await _frames(2)
 	_ok(demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "al volver al directo, la chapa vuelve")
 
-	# Sin premium: nunca.
+	# Sin premium y sin partidas gratis: nunca.
 	Premium.test_on = false
+	Premium.trial_used = Premium.TRIAL_GAMES
+	Premium.trial_told = true
 	demo._start_game(cfg, 1)
 	await _frames(4)
 	demo.view.show_move("d8h4")
 	demo._game_move("d8h4")
 	await _frames(4)
-	_ok(demo.coach_note == "", "sin premium: sin profesor")
+	_ok(demo.coach_note == "", "sin premium ni partidas gratis: sin profesor")
 	await _wait_bot(demo)
 
 	# Opciones: sección Premium (con el interruptor de prueba en depuración).

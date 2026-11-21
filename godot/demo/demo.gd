@@ -313,6 +313,8 @@ var _coach_verified := ""
 ## Tutor con Stockfish: la valoración llega del servidor (CoachAI.judge_remote); mientras, el motor local analiza
 ## por si no llega. `coach_lesson`: lo que hace falta para enseñar la jugada sobre el tablero ({fen, uci, verdict,
 ## lines: {played, best} con {uci, fen, arrows, text}, summary, advice, asked, ready}).
+## Partida gratis con profesor en curso (1…5), o 0 (premium, o sin prueba).
+var coach_trial_game := 0
 var coach_lesson := {}
 var _coach_local := {}
 var _coach_local_uci := ""
@@ -8603,9 +8605,11 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 		_coach_badge_sq = -1
 	if Premium.test_allowed():
 		coach_debug = "Profesor (prueba) · %s · premium %s · activo %s · kids %s · online %s · reloj %s · variante «%s»" % [uci, Premium.active(), Premium.coach_on, kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))]
-	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))):
+	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), run_id):
 		coach_debug += " → no se aplica"
+		_coach_trial_over()
 		return
+	coach_trial_game = Premium.use_trial(run_id)
 	coach_debug += " → analizando…"
 	_coach_gen += 1
 	_coach_pending = true
@@ -8618,6 +8622,21 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 		coach_waiting = true
 		coach.judge_remote(fen_before, uci, run_id, _coach_gen)
 		_coach_remote_deadline(_coach_gen)
+
+
+## Se acabaron las partidas gratis con profesor: se avisa una vez, en el bloque del profesor de la tarjeta.
+func _coach_trial_over() -> void:
+	if Premium.active() or Premium.trial_left() > 0 or Premium.trial_told or not Premium.coach_on:
+		return
+	if kids or bool(game.get("online", false)) or game_clocked or str(game.get("variant", "")) != "":
+		return
+	Premium.trial_told = true
+	Premium.save_state()
+	coach_trial_game = 0
+	coach_note = Loc.f("Has jugado tus %d partidas gratis con el profesor. Para seguir con él, hazte premium.", [Premium.TRIAL_GAMES])
+	coach_full = coach_note
+	coach_from_ai = false
+	_refresh()
 
 
 ## En otro hilo: el análisis de la jugada (unos segundos como mucho).
@@ -8773,6 +8792,8 @@ func _on_coach_lesson(run: int, gen: int, data: Dictionary) -> void:
 	if str(coach_lesson["summary"]) != "":
 		coach_note = str(coach_lesson["summary"])
 		coach_from_ai = true
+	if lesson_open and not _lesson_steps().is_empty():
+		view.board.set_focus(_tutor_focus(_lesson_steps()[clampi(lesson_step, 0, _lesson_steps().size() - 1)]))
 	_refresh()
 
 
@@ -8815,6 +8836,20 @@ func _lesson_show(i: int) -> void:
 	await _wait(0.0 if view.board.anim_mode == Board3D.Anim.NONE else 0.45)
 	if token == _lesson_token and lesson_open:
 		view.board.set_arrows(CoachAI.board_arrows(step))
+		view.board.set_focus(_tutor_focus(step))
+
+
+## Casillas de las que habla el profesor en un paso (las que nombra el texto, menos las de la propia jugada, que
+## ya van marcadas): parpadean en rosa en el tablero, con su pieza. Idea de Pablo (21 nov): a muchos jugadores les
+## cuesta localizar «e5» por la notación.
+func _tutor_focus(step: Dictionary) -> Array:
+	var uci := str(step.get("uci", ""))
+	var skip := [uci.substr(0, 2), uci.substr(2, 2)]
+	var out: Array = []
+	for name: String in CoachAI.squares_in(_tutor_text(step)):
+		if not skip.has(name) and not out.has(Chess.sq_index(name)):
+			out.append(Chess.sq_index(name))
+	return out
 
 
 func _lesson_has_next() -> bool:
@@ -8934,7 +8969,7 @@ func _coach_legend_shown() -> bool:
 		return false
 	if game_state != "play" and game_state != "think":
 		return false
-	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))):
+	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), run_id):
 		return false
 	if board_slot == null or not is_instance_valid(board_slot) or not board_slot.is_inside_tree():
 		return false
@@ -9096,7 +9131,8 @@ func _coach_block() -> PanelContainer:
 	var bulb := _icon("bulb", 52.0, tint[1])
 	bulb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(bulb)
-	var title := _text("Profesor IA" if coach_from_ai or coach_waiting else "Profesor", F_SUB, _c("ink"), font_semibold)
+	var who := "Profesor IA" if coach_from_ai or coach_waiting else "Profesor"
+	var title := _text(Loc.t(who) + ((" · " + Loc.f("gratis %d de %d", [coach_trial_game, Premium.TRIAL_GAMES])) if coach_trial_game > 0 else ""), F_SUB, _c("ink"), font_semibold)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(title)
@@ -9198,15 +9234,16 @@ func _coach_window_restore(window: PanelContainer) -> void:
 func _premium_rows(box: VBoxContainer) -> void:
 	# En la versión de publicación, mientras no haya compra real, la sección no sale: anunciaría algo que no se
 	# puede comprar.
-	if not Premium.test_allowed() and not Premium.active():
-		return
 	box.add_child(_caption("Premium"))
 	if Premium.test_allowed():
 		box.add_child(_switch_row("party", "butter", "Premium de prueba", "Solo en el APK de pruebas: activa la versión premium sin comprarla.", Premium.test_on, _set_premium_test))
-	if not Premium.active():
-		box.add_child(_para("El profesor IA, que te corrige mientras juegas, es parte de la versión premium.", F_SUB, _c("quiet"), font_regular))
+	if not Premium.active() and Premium.trial_left() <= 0:
+		box.add_child(_para(Loc.f("Has jugado tus %d partidas gratis con el profesor IA. Para seguir con él, hace falta la versión premium.", [Premium.TRIAL_GAMES]), F_SUB, _c("quiet"), font_regular))
 		return
-	box.add_child(_switch_row("bulb", "lilac", "Profesor IA en las partidas", "Te explica tus errores mientras juegas contra el rival (partidas sin reloj).", Premium.coach_on, _set_coach_on))
+	var sub := "Te explica tus errores mientras juegas contra el rival (partidas sin reloj)."
+	if not Premium.active():
+		sub = Loc.t(sub) + " " + Loc.f("Te quedan %d de %d partidas gratis.", [Premium.trial_left(), Premium.TRIAL_GAMES])
+	box.add_child(_switch_row("bulb", "lilac", "Profesor IA en las partidas", sub, Premium.coach_on, _set_coach_on))
 	if Premium.test_allowed() and CoachAI.endpoint_mode(coach.cfg, "", true) != "server":
 		box.add_child(_coach_key_block())
 

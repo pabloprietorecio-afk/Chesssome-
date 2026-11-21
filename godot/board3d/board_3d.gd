@@ -217,6 +217,14 @@ var _pieces_root: Node3D
 var _arrows_root: Node3D
 ## Lecciones: estrellas que recoger (casilla → nodo) y la única pieza que se puede mover (−1 = cualquiera propia).
 var _goals_root: Node3D
+## Casillas señaladas por el profesor (set_focus): su marca en el suelo, las piezas teñidas y el parpadeo.
+var _focus_root: Node3D
+var _focus := PackedInt32Array()
+var _focus_floor: StandardMaterial3D
+var _focus_over: StandardMaterial3D
+var _focus_sprites: Array = []
+var _focus_meshes: Array = []
+var _focus_tween: Tween
 var _goals := {}
 var _goal_t := 0.0
 var only_square := -1
@@ -373,6 +381,8 @@ func _build() -> void:
 	add_child(_arrows_root)
 	_goals_root = Node3D.new()
 	add_child(_goals_root)
+	_focus_root = Node3D.new()
+	add_child(_focus_root)
 	_pieces_root = Node3D.new()
 	add_child(_pieces_root)
 
@@ -1202,6 +1212,7 @@ func _pose_flat(node: Node3D, pos: Vector3, axis: Vector3, angle: float, squash:
 
 func set_fen(fen: String) -> void:
 	set_badge(-1, "")
+	set_focus([])
 	_kill_tweens()
 	chess = WarChess.parse(fen)
 	armor_option = -1
@@ -1597,6 +1608,84 @@ func is_own(s: int) -> bool:
 
 
 # ---------------------------------------------------------------- estrellas de las lecciones
+
+## Señala casillas mientras se habla de ellas (el profesor): la casilla parpadea en rosa y, si hay una pieza, la
+## pieza también. Para quien no localiza «e5» por la notación. Con la lista vacía se quita. Vale para todos los
+## juegos de piezas: las de volumen llevan una capa rosa encima (material_overlay); las de dibujo, su color.
+const FOCUS_COLOR := Color("ff4f9a")
+
+
+func set_focus(squares: Array) -> void:
+	if _focus_tween != null:
+		_focus_tween.kill()
+		_focus_tween = null
+	for e: Array in _focus_sprites:
+		if is_instance_valid(e[0]):
+			(e[0] as SpriteBase3D).modulate = e[1]
+	for n: Variant in _focus_meshes:
+		if is_instance_valid(n):
+			(n as GeometryInstance3D).material_overlay = null
+	_focus_sprites.clear()
+	_focus_meshes.clear()
+	_focus = PackedInt32Array()
+	if _focus_root == null:
+		return
+	for n in _focus_root.get_children():
+		_focus_root.remove_child(n)
+		n.queue_free()
+	if squares.is_empty():
+		return
+	if _focus_floor == null:
+		_focus_floor = StandardMaterial3D.new()
+		_focus_floor.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_focus_floor.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_focus_floor.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_focus_over = _focus_floor.duplicate()
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(0.98, 0.98)
+	for v: Variant in squares:
+		var sq := int(v)
+		if sq < 0 or sq > 63 or _focus.has(sq):
+			continue
+		_focus.append(sq)
+		var mi := MeshInstance3D.new()
+		mi.mesh = quad
+		mi.material_override = _focus_floor
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = sq_pos(sq) + Vector3(0.0, 0.011, 0.0)
+		_focus_root.add_child(mi)
+		if _pieces.has(sq) and is_instance_valid(_pieces[sq]):
+			_focus_tint(_pieces[sq])
+	_focus_pulse(1.0)
+	_focus_tween = create_tween().set_loops()
+	_focus_tween.tween_method(_focus_pulse, 1.0, 0.0, 0.42).set_trans(Tween.TRANS_SINE)
+	_focus_tween.tween_method(_focus_pulse, 0.0, 1.0, 0.42).set_trans(Tween.TRANS_SINE)
+
+
+## Casillas señaladas ahora mismo.
+func focus_squares() -> PackedInt32Array:
+	return _focus
+
+
+func _focus_tint(node: Node) -> void:
+	if node is SpriteBase3D:
+		_focus_sprites.append([node, (node as SpriteBase3D).modulate])
+	elif node is GeometryInstance3D:
+		(node as GeometryInstance3D).material_overlay = _focus_over
+		_focus_meshes.append(node)
+	for c in node.get_children():
+		_focus_tint(c)
+
+
+func _focus_pulse(v: float) -> void:
+	_focus_floor.albedo_color = Color(FOCUS_COLOR.r, FOCUS_COLOR.g, FOCUS_COLOR.b, lerpf(0.22, 0.85, v))
+	_focus_over.albedo_color = Color(FOCUS_COLOR.r, FOCUS_COLOR.g, FOCUS_COLOR.b, lerpf(0.0, 0.62, v))
+	for e: Array in _focus_sprites:
+		if is_instance_valid(e[0]):
+			var base: Color = e[1]
+			var pink := Color(FOCUS_COLOR.r, FOCUS_COLOR.g, FOCUS_COLOR.b, base.a)
+			(e[0] as SpriteBase3D).modulate = base.lerp(pink, v * 0.7)
+
 
 ## Pone una estrella dorada, flotando, en cada casilla de la lista (las de antes se quitan).
 func set_goals(squares: Array) -> void:

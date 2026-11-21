@@ -33,6 +33,7 @@ func _initialize() -> void:
 	_ok(not CoachAI.remote_ok({"verdict": "best"}), "sin líneas: no vale")
 	var arrows := CoachAI.board_arrows(_fake("blunder")["lines"]["played"][1])
 	_ok(arrows.size() == 2 and int(arrows[0]["from"]) == Chess.sq_index("c7") and int(arrows[0]["to"]) == Chess.sq_index("e5") and str(arrows[0]["tone"]) == "bad", "flechas del tutor, por índice de casilla")
+	_ok(CoachAI.squares_in("Con Cge2 sacas el caballo de g1, pero no proteges el peón de e5 (e5 queda solo). Dxe5.") == ["g1", "e5"], "casillas nombradas sueltas en un texto")
 	_ok(CoachAI.tutor_url({"tutor": "https://x.test/tutor"}) == "https://x.test/tutor" and CoachAI.tutor_url({}) == "", "dirección del tutor")
 	_ok(CoachAI.tutor_url(CoachAI.load_config()).ends_with("/tutor"), "la app trae la dirección del tutor")
 
@@ -91,13 +92,16 @@ func _initialize() -> void:
 	_ok(not demo.view.interactive, "durante la lección no se mueven piezas a mano")
 	_ok(_has_text(demo.card_body, "Sale el caballo.") and _has_text(demo.card_body, "Lo que jugaste"), "la tarjeta dice lo del profesor para esa jugada")
 	_ok(_button_with(demo.actions, "Siguiente") != null and _button_with(demo.actions, "Cerrar") != null, "botones: Cerrar, Anterior, Siguiente")
+	_ok(Array(demo.view.board.focus_squares()).is_empty(), "sin casillas nombradas (aparte de la jugada), nada parpadea")
 	demo._lesson_next()
 	await _frames(3)
 	_ok(demo.lesson_step == 1 and _has_text(demo.card_body, "La dama captura en e5."), "siguiente: el castigo del rival")
+	_ok(Array(demo.view.board.focus_squares()).is_empty(), "la casilla de la propia jugada (e5) no parpadea: ya va marcada")
 	_ok(_button_with(demo.actions, "Ver la mejor") != null, "al final de tu línea: «Ver la mejor»")
 	demo._lesson_next()
 	await _frames(3)
 	_ok(demo.lesson_line == "best" and demo.lesson_step == 0 and _has_text(demo.card_body, "Si hubieras jugado f4"), "después, la mejor jugada")
+	_ok(Array(demo.view.board.focus_squares()) == [Chess.sq_index("e5")], "parpadea en rosa la pieza de la que habla el profesor (e5)")
 	_ok(_has_text(demo.card_body, "Mira qué queda atacado.") and _button_with(demo.actions, "Terminar") != null, "al final, el consejo y «Terminar»")
 	demo._lesson_prev()
 	await _frames(3)
@@ -106,6 +110,7 @@ func _initialize() -> void:
 	demo._lesson_next()
 	await _frames(3)
 	_ok(not demo.lesson_open and demo.view.board.chess.fen() == live and demo.view.interactive, "al terminar, el tablero vuelve a la partida")
+	_ok(Array(demo.view.board.focus_squares()).is_empty(), "y deja de parpadear")
 
 	# 4. Sin textos del profesor, cada paso lleva lo que la app sabe decir.
 	demo._start_game(cfg, 0)
@@ -122,6 +127,35 @@ func _initialize() -> void:
 	_ok(demo._tutor_text(demo.coach_lesson["lines"]["played"][0]) != "", "sin texto del profesor: el de la app")
 	demo._close_lesson()
 	await _frames(2)
+
+	# 5. Sin premium: partidas gratis con profesor; al acabarse, un aviso (una vez) y nada más.
+	Premium.test_on = false
+	Premium.trial_used = 4
+	Premium.trial_run = -1
+	Premium.trial_told = false
+	demo.coach.cfg = {"endpoint": ""}
+	demo._start_game(cfg, 0)
+	await _frames(4)
+	demo.view.show_move("g1e2")
+	demo._game_move("g1e2")
+	_ok(demo.coach_trial_game == 5 and Premium.trial_left() == 0, "quinta partida gratis: con profesor")
+	await _until(func() -> bool: return demo.coach_verdict != "")
+	_ok(_has_text(demo.card_body, "gratis 5 de 5"), "la tarjeta dice qué partida gratis es")
+	await _until(func() -> bool: return demo.game_state == "play")
+	demo._start_game(cfg, 0)
+	await _frames(4)
+	demo.view.show_move("g1e2")
+	demo._game_move("g1e2")
+	_ok(demo.coach_note.contains("premium") and demo.coach_verdict == "" and Premium.trial_told, "sexta: aviso de que hace falta premium, sin valoración")
+	await _until(func() -> bool: return demo.game_state == "play")
+	demo.view.show_move("h2h3")
+	demo._game_move("h2h3")
+	_ok(demo.coach_note == "", "el aviso sale una sola vez")
+	await _until(func() -> bool: return demo.game_state == "play")
+	await _frames(10)
+	Premium.trial_used = 0
+	Premium.trial_told = false
+	Premium.save_state()
 
 	print("tutor: %d de %d bien" % [hechos - fallos, hechos])
 	if fallos == 0:

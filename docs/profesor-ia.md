@@ -33,6 +33,19 @@ era la mejor) y distinguir la jugada brillante.
 - Pruebas: `worker/test.mjs` (16, con el motor y Claude simulados), las del despliegue (12.Cge2 de la partida de
   Pablo: error grave, 62 % → 42 %, mejor f4) y `godot/tests/test_tutor.gd` (30, sin red).
 
+- **Parpadeo rosa** (idea de Pablo, 21 nov: a muchos les cuesta localizar «e5» por la notación): en cada paso de
+  la lección, las casillas que nombra el texto del profesor (menos las de la propia jugada, que ya van marcadas)
+  parpadean en rosa, y su pieza también (Board3D.set_focus; vale para todos los juegos de piezas).
+
+## 5 partidas gratis para todos (21 nov)
+Decisión de Pablo: el profesor va gratis en las 5 primeras partidas de cualquier jugador; después, premium
+(`Premium.TRIAL_GAMES`, `trial_used` en user://premium.cfg). Cuenta una partida al mirar la primera jugada y esa
+partida sigue con profesor hasta el final. La tarjeta dice «Profesor IA · gratis 2 de 5»; Opciones, cuántas
+quedan. Al acabarse, un aviso una sola vez («hazte premium») y nada más. Kids, online, reloj y variantes: nunca.
+Ojo: la compra aún no existe, así que tras las 5 no hay forma de seguir. Y el servidor no distingue a nadie: lo que
+cuesta la prueba se paga igual (ver Coste).
+Las pruebas y capturas (ejecutable del editor) no llaman al servidor: si no, cada partida de prueba gastaría.
+
 ## Qué hace
 - En las partidas contra el rival de la app (sin reloj, sin red, fuera de Kids y de las variantes), tras cada jugada
   del jugador el motor de la app la valora en otro hilo (GameDetail.entry, como el detalle de partida): la mejor,
