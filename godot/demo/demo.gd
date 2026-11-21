@@ -308,6 +308,12 @@ var coach_from_ai := false
 var coach_waiting := false
 ## Solo en el APK de pruebas: qué ha decidido el profesor con la última jugada y por qué.
 var coach_debug := ""
+## Valoración de la última jugada (GameDetail: best, good, inaccuracy, mistake, blunder) y su chapa en el tablero.
+var coach_verdict := ""
+var _coach_badge_sq := -1
+var _coach_gen := 0
+var _coach_threads: Array[Thread] = []
+const COACH_SECONDS := 0.8
 var _coach_key_edit: LineEdit
 var _game_thread: Thread
 ## Reloj: ritmo elegido (índice de TIME_CONTROLS), el personalizado, y en la partida el tiempo que le queda a
@@ -8394,6 +8400,10 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 		view.set_fen(pos.fen())
 		_actions_mode = ""
 	var san := SanEs.san(pos, m)
+	if Chess.move_to(m) == _coach_badge_sq:
+		# El rival juega a la casilla de la chapa: ya no es la pieza valorada.
+		view.board.set_badge(-1, "")
+		_coach_badge_sq = -1
 	view.show_move(Chess.uci(m))
 	game_history.append(view.board.chess.fen())
 	game_moves.append(Chess.uci(m))
@@ -8505,39 +8515,83 @@ func _wait_bot_farewell() -> void:
 
 # ---------------------------------------------------------------- profesor IA (premium)
 
+func _exit_tree() -> void:
+	for t: Thread in _coach_threads:
+		if t.is_started():
+			t.wait_to_finish()
+	_coach_threads.clear()
+
+
 func _clear_coach() -> void:
 	coach_note = ""
 	coach_from_ai = false
 	coach_waiting = false
+	coach_verdict = ""
+	_coach_gen += 1
 
 
-## Tras cada jugada del jugador: si es un error comprobable, el profesor lo explica. Mientras llega la explicación
-## de la IA, la tarjeta dice que el profesor está mirando; si no llega, queda el texto comprobado.
+## Tras cada jugada del jugador, el motor de la app la valora (GameDetail.entry: la mejor, buena, imprecisión,
+## error, error grave) en otro hilo, sin parar la partida. Sale la chapa («!», «?!», «?», «??») en el tablero y en la
+## tarjeta; si es un error o un error grave, el profesor lo explica a partir de los hechos del análisis.
 func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 	_clear_coach()
 	coach_debug = ""
+	coach_verdict = ""
+	if _coach_badge_sq >= 0:
+		view.board.set_badge(-1, "")
+		_coach_badge_sq = -1
 	if Premium.test_allowed():
 		coach_debug = "Profesor (prueba) · %s · premium %s · activo %s · kids %s · online %s · reloj %s · variante «%s»" % [uci, Premium.active(), Premium.coach_on, kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))]
 	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))):
 		coach_debug += " → no se aplica"
 		return
-	var moment := GameReview.analyze_move(fen_before, uci, ply)
-	if moment.is_empty():
-		coach_debug += " → sin error comprobable (neto %d)" % GameReview.net(Chess.from_fen(fen_before), Chess.from_fen(fen_before).find_uci(uci))
+	coach_debug += " → analizando…"
+	_coach_gen += 1
+	var t := Thread.new()
+	_coach_threads.append(t)
+	t.start(_coach_think.bind(fen_before, uci, ply, game_color, run_id, _coach_gen))
+
+
+## En otro hilo: el análisis de la jugada (unos segundos como mucho).
+func _coach_think(fen_before: String, uci: String, ply: int, color: int, run: int, gen: int) -> void:
+	var pos := Chess.from_fen(fen_before)
+	var m := pos.find_uci(uci)
+	var e := {} if m < 0 else GameDetail.entry(Bot.new(4), pos, m, color, ply, COACH_SECONDS)
+	_coach_entry_done.call_deferred(e, uci, run, gen)
+
+
+func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
+	_reap_coach_threads()
+	if run != run_id or gen != _coach_gen or mode != "game" or e.is_empty():
 		return
-	coach_debug += " → error: %s" % str(moment["kind"])
-	var before := Chess.from_fen(fen_before)
-	var played := SanEs.san(before, before.find_uci(uci))
-	var better := ""
-	var better_m := before.find_uci(str(moment.get("better", "")))
-	if better_m >= 0:
-		better = SanEs.san(before, better_m)
-	var rating := 0.0
-	if player.has("rating") and player["rating"] is Dictionary:
-		rating = float((player["rating"] as Dictionary).get("r", 0.0))
-	var facts := CoachAI.facts_for(moment, played, better, rating, Loc.language)
-	coach_waiting = true
-	coach.ask(facts, run_id, ply)
+	var verdict := str(e.get("verdict", ""))
+	coach_verdict = verdict
+	coach_debug = coach_debug.replace(" → analizando…", " → %s (pierde %d)" % [verdict, int(e.get("loss", 0))])
+	var badge := str(GameDetail.BADGE.get(verdict, ""))
+	if badge != "" and verdict != GameDetail.GOOD:
+		_move_badge(uci, badge)
+		_coach_badge_sq = Chess.sq_index(uci.substr(2, 2))
+	var paras: Array = e.get("paras", [])
+	var verified := " ".join(paras).strip_edges()
+	if verdict == GameDetail.INACCURACY:
+		# Imprecisión: basta con el texto comprobado, sin gastar una consulta.
+		coach_note = verified
+		coach_from_ai = false
+	elif verdict == GameDetail.MISTAKE or verdict == GameDetail.BLUNDER:
+		var rating := 0.0
+		if player.has("rating") and player["rating"] is Dictionary:
+			rating = float((player["rating"] as Dictionary).get("r", 0.0))
+		var facts := CoachAI.facts_for({"fen": str(e.get("fen", "")), "kind": verdict, "text": verified.left(580)}, str(e.get("san", "")), str(e.get("best_san", "")), rating, Loc.language)
+		coach_waiting = true
+		coach.ask(facts, run_id, int(e.get("ply", 0)))
+	_refresh()
+
+
+func _reap_coach_threads() -> void:
+	for t: Thread in _coach_threads.duplicate():
+		if not t.is_alive():
+			t.wait_to_finish()
+			_coach_threads.erase(t)
 
 
 func _on_coach_answered(run: int, _ply: int, text: String, from_ai: bool) -> void:
@@ -9101,6 +9155,10 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(str(game.get("kids", "")) if kids and str(game.get("kids", "")) != "" else str(game["text"]), F_BODY, _c("ink"), font_regular))
 	if game_note != "":
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
+	if coach_verdict != "" and coach_verdict != GameDetail.GOOD:
+		var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
+		var mark := "" if glyph.begins_with("@") else glyph + " "
+		card_body.add_child(_para(mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, ""))), F_BODY, _c("ink"), font_semibold))
 	if coach_note != "" or coach_waiting:
 		card_body.add_child(_coach_block())
 	if coach_debug != "" and Premium.test_on:

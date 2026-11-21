@@ -5,13 +5,17 @@ premium, y poder activarla para probarla.
 
 ## Qué hace
 - En las partidas contra el rival de la app (sin reloj, sin red, fuera de Kids y de las variantes), tras cada jugada
-  del jugador se busca un error comprobable: mate que se escapa, mate permitido, pieza a tiro, captura que no se hizo
-  (`GameReview.analyze_move`, la misma vista corta del análisis de la partida).
-- Si lo hay, la tarjeta enseña «El profesor está mirando tu jugada…» y después la explicación de **Claude Haiku 5.5**,
-  redactada con la voz de un profesor y adaptada al nivel del jugador.
-- La IA no calcula ni evalúa: recibe los hechos ya comprobados y solo los redacta. Si su respuesta nombra una casilla
-  que no está en los hechos, se descarta y se enseña el texto comprobado. Sin red, sin clave o con error, también.
-- Jugadas sin error: el profesor no dice nada (y no se gasta ninguna petición).
+  del jugador el motor de la app la valora en otro hilo (GameDetail.entry, como el detalle de partida): la mejor,
+  buena, imprecisión, error o error grave.
+- Sale la chapa en el tablero y en la tarjeta: «!» la mejor, «?!» imprecisión, «?» error, «??» error grave (las
+  buenas, sin chapa). «!!» no: el motor de la app no es lo bastante fuerte para afirmar una jugada brillante.
+- Imprecisión: la explicación comprobada del análisis (qué hace, qué permite, cuál era la mejor), sin IA.
+- Error y error grave: «El profesor está mirando tu jugada…» y la explicación de **Claude Haiku 5.5**, redactada a
+  partir de esos mismos hechos. Si nombra una casilla que no está en los hechos, se descarta y queda el texto
+  comprobado. Sin red, también.
+- Antes (hasta el 21 nov) solo usaba el detector corto de GameReview (pieza a tiro, mate…, dos peones o más):
+  callaba casi siempre. Se cambió al motor.
+- En el APK de pruebas, una línea gris dice qué ha decidido el profesor y por qué.
 
 ## Cómo probarlo (APK de depuración)
 1. Opciones → Premium → «Premium de prueba».

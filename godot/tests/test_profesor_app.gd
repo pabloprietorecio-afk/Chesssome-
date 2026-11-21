@@ -26,25 +26,28 @@ func _initialize() -> void:
 	var fen := "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
 	var cfg := {"variant": "", "level": 0, "title": "Partida", "text": "", "kids": "", "unit": "", "fen": fen}
 
-	# Error: Dh4, la dama a tiro del caballo.
+	# Error: Dh4, la dama a tiro del caballo. El motor la valora en otro hilo.
 	demo._start_game(cfg, 1)
 	await _frames(4)
 	demo.view.show_move("d8h4")
 	demo._game_move("d8h4")
-	await _frames(4)
+	await _until(func() -> bool: return demo.coach_verdict != "" and not demo.coach_waiting)
 	if OS.is_debug_build():
-		_ok(str(demo.coach_note).contains("h4") and not demo.coach_from_ai, "error: el profesor lo explica (texto comprobado, sin clave): %s" % demo.coach_note)
-		_ok(_has_text(demo, "Profesor"), "la tarjeta del profesor está en pantalla")
+		_ok(demo.coach_verdict == GameDetail.BLUNDER or demo.coach_verdict == GameDetail.MISTAKE, "Dh4: error para el motor (%s)" % demo.coach_verdict)
+		_ok(str(demo.coach_note) != "" and not demo.coach_from_ai, "el profesor lo explica (texto comprobado, sin red): %s" % demo.coach_note)
+		_ok(demo._coach_badge_sq == Chess.sq_index("h4") or demo._coach_badge_sq == -1, "la chapa va en h4 (o se quitó si el rival capturó allí)")
+		_ok(_has_text(demo, "Profesor") and _has_text(demo, "?"), "en la tarjeta: la valoración y el profesor")
 	await _wait_bot(demo)
 	_ok(str(demo.coach_note) != "", "la corrección sigue tras la jugada del rival")
 
-	# Jugada normal: nada.
+	# Jugada buena: chapa como mucho, sin explicación.
 	demo._start_game(cfg, 1)
 	await _frames(4)
-	_ok(demo.coach_note == "", "partida nueva: sin corrección")
+	_ok(demo.coach_note == "" and demo.coach_verdict == "", "partida nueva: sin corrección")
 	demo.view.show_move("b8c6")
 	demo._game_move("b8c6")
-	await _frames(4)
+	await _until(func() -> bool: return demo.coach_verdict != "")
+	_ok(demo.coach_verdict == GameDetail.BEST or demo.coach_verdict == GameDetail.GOOD, "Cc6: buena (%s)" % demo.coach_verdict)
 	_ok(demo.coach_note == "" and not demo.coach_waiting, "Cc6: el profesor no dice nada")
 	await _wait_bot(demo)
 
@@ -69,6 +72,13 @@ func _initialize() -> void:
 	if fallos == 0:
 		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
+
+
+func _until(cond: Callable) -> void:
+	for i in 900:
+		if cond.call():
+			return
+		await process_frame
 
 
 func _wait_bot(demo: Control) -> void:

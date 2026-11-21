@@ -63,3 +63,8 @@ test("desactiva el razonamiento y, si no se admite, repite con más margen", asy
   assert.equal(bodies[1].thinking, undefined);
   assert.ok(bodies[1].max_tokens >= 1000);
 });
+
+test("acepta los errores del análisis del motor", () => {
+  assert.ok(cleanFacts({ ...facts, kind: "blunder", verified: "Ch3. Permite Cxe4: gana un peón. La mejor era Cc3: defiende el peón." }));
+  assert.ok(cleanFacts({ ...facts, kind: "mistake" }));
+});

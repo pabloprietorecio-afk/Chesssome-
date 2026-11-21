@@ -21,6 +21,9 @@ func _init() -> void:
 	_ok(not pm.is_empty() and str(pm["kind"]) == "hang" and str(pm["text"]).contains("e4"), "2.Ch3: el peón de e4 queda a tiro: %s" % str(pm.get("text", "")))
 	_ok(GameReview.analyze_move(pawn_fen, "b1c3", 2).is_empty(), "2.Cc3, que lo defiende: nada")
 	_ok(GameReview.analyze(["rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", pawn_fen, "rnbqkb1r/pppppppp/5n2/8/4P3/7N/PPPP1PPP/RNBQKB1R b KQkq - 2 2"], ["e2e4", "g8f6", "g1h3"], 0).filter(func(x: Dictionary) -> bool: return str(x["kind"]) == "hang").is_empty(), "en el análisis de después, un peón sigue sin ser un momento")
+	# Con el motor (lo que usa el profesor en vivo): 2.Ch3 no es «buena».
+	var pe := GameDetail.entry(Bot.new(4), Chess.from_fen(pawn_fen), Chess.from_fen(pawn_fen).find_uci("g1h3"), 0, 2, 0.8)
+	_ok([GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER].has(str(pe.get("verdict", ""))), "2.Ch3 para el motor: %s (pierde %d) · %s" % [str(pe.get("verdict", "")), int(pe.get("loss", 0)), " ".join(pe.get("paras", []))])
 	# Mate en una que se escapa: la dama blanca da mate en f7 y el jugador juega otra cosa.
 	var mate_fen := "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
 	var mm := GameReview.analyze_move(mate_fen, "g1f3", 6)

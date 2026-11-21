@@ -82,6 +82,9 @@ const KIND_WORDS := {
 	"allowed_mate": "su jugada permite al rival dar jaque mate en una",
 	"hang": "su jugada deja material a tiro: el rival puede capturar y ganarlo",
 	"missed_capture": "podía capturar una pieza mal defendida y ganar material, y no lo hizo",
+	"inaccuracy": "su jugada es imprecisa: había otra claramente mejor",
+	"mistake": "su jugada es un error: según el análisis de la app pierde ventaja o material",
+	"blunder": "su jugada es un error grave: según el análisis de la app pierde mucho material o permite un mate",
 }
 
 
