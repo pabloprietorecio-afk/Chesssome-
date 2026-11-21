@@ -68,3 +68,144 @@ test("acepta los errores del análisis del motor", () => {
   assert.ok(cleanFacts({ ...facts, kind: "blunder", verified: "Ch3. Permite Cxe4: gana un peón. La mejor era Cc3: defiende el peón." }));
   assert.ok(cleanFacts({ ...facts, kind: "mistake" }));
 });
+
+// ---------------------------------------------------------------- tutor: Stockfish + lección
+import { judge, lesson, readEngine, winPct, verdictFor, isSacrifice, buildLine, parseLesson, cleanText, lessonPrompt, localSan } from "./src/tutor.js";
+
+const GIFT = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
+const GIFT_AFTER = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP1N1PP/R2QK2R b KQkq - 1 12";
+// Stockfish simulado: por posición, lo que contestaría chess-api.com (valores desde las blancas).
+function fakeEngine(table) {
+  return async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (String(url).includes("anthropic")) throw new Error("no debería llamar a Claude");
+    const hit = table[body.fen];
+    if (!hit) return new Response("{}", { status: 500 });
+    return new Response(JSON.stringify({ type: "bestmove", depth: 18, ...hit }), { status: 200 });
+  };
+}
+
+test("lee la respuesta de Stockfish (centésimas, mate, línea)", () => {
+  const e = readEngine({ move: "f3f4", centipawns: "35", winChance: 53.2, continuationArr: ["f3f4", "d7d6", "zz"], mate: null });
+  assert.deepEqual([e.move, e.cp, e.mate, e.line], ["f3f4", 35, null, ["f3f4", "d7d6"]]);
+  assert.equal(readEngine({ move: "d8h4", mate: -1 }).cp, -10000);
+  assert.ok(readEngine({ move: "d8h4", mate: -1 }).win < 1);
+  assert.equal(readEngine({ text: "error" }), null);
+  assert.ok(Math.abs(winPct(0) - 50) < 0.01 && winPct(-100) < 42 && winPct(-100) > 40);
+});
+
+test("umbrales: un peón, imprecisión; una pieza, error grave", () => {
+  assert.equal(verdictFor(0, true, false, false), "best");
+  assert.equal(verdictFor(3, false, false, false), "good");
+  assert.equal(verdictFor(50 - winPct(-100), false, false, false), "inaccuracy");
+  assert.equal(verdictFor(12, false, false, false), "mistake");
+  assert.equal(verdictFor(50 - winPct(-300), false, false, false), "blunder");
+  assert.equal(verdictFor(1, false, true, false), "blunder");
+  assert.equal(verdictFor(1, false, false, true), "mistake");
+});
+
+test("12.Cge2 regalando e5: imprecisión, con las dos líneas y sus flechas", async () => {
+  globalThis.fetch = fakeEngine({
+    [GIFT]: { move: "f3f4", centipawns: "30", continuationArr: ["f3f4", "d7d6", "g1f3"] },
+    [GIFT_AFTER]: { move: "c7e5", centipawns: "-75", continuationArr: ["c7e5", "e1g1", "f8g7"] },
+  });
+  const r = await judge({ fen: GIFT, uci: "g1e2" }, {});
+  assert.equal(r.verdict, "inaccuracy");
+  assert.equal(r.best, "f3f4");
+  assert.equal(r.player, "w");
+  assert.deepEqual(r.lines.played.map((s) => s.uci), ["g1e2", "c7e5", "e1g1", "f8g7"]);
+  assert.deepEqual(r.lines.best.map((s) => s.uci), ["f3f4", "d7d6", "g1f3"]);
+  assert.equal(r.lines.played[0].fen, GIFT);
+  assert.deepEqual(r.lines.played[0].arrows[0], { from: "g1", to: "e2", tone: "bad" });
+  assert.deepEqual(r.lines.played[1].arrows[0], { from: "c7", to: "e5", tone: "bad" });
+  assert.equal(r.lines.best[0].arrows[0].tone, "good");
+  assert.equal(r.lines.best[1].arrows[0].tone, "info");
+});
+
+test("la mejor jugada: «best», sin línea alternativa; jugada ilegal o posición rota: 400", async () => {
+  globalThis.fetch = fakeEngine({
+    [GIFT]: { move: "f3f4", centipawns: "30", continuationArr: ["f3f4", "d7d6"] },
+    "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B2P2/2N5/PPP3PP/R2QK1NR b KQkq - 0 12": { move: "d7d6", centipawns: "28", continuationArr: ["d7d6"] },
+  });
+  const r = await judge({ fen: GIFT, uci: "f3f4" }, {});
+  assert.equal(r.verdict, "best");
+  assert.equal(r.lines.best.length, 0);
+  assert.deepEqual(r.lines.played.map((s) => s.uci), ["f3f4", "d7d6"]);
+  await assert.rejects(judge({ fen: GIFT, uci: "g1g5" }, {}), (e) => e.status === 400);
+  await assert.rejects(judge({ fen: "hola", uci: "e2e4" }, {}), (e) => e.status === 400);
+});
+
+test("brillante: la mejor, entregando una pieza", async () => {
+  // Axh7+ clásico: el alfil captura un peón y el rey lo puede tomar.
+  const fen = "r1bq1rk1/pppn1ppp/4p3/3pP3/1b1P4/2NB1N2/PPP2PPP/R1BQK2R w KQ - 0 8";
+  const after = "r1bq1rk1/pppn1ppB/4p3/3pP3/1b1P4/2N2N2/PPP2PPP/R1BQK2R b KQ - 0 8";
+  globalThis.fetch = fakeEngine({
+    [fen]: { move: "d3h7", centipawns: "180", continuationArr: ["d3h7", "g8h7", "f3g5"] },
+    [after]: { move: "g8h7", centipawns: "180", continuationArr: ["g8h7", "f3g5"] },
+  });
+  const r = await judge({ fen, uci: "d3h7" }, {});
+  assert.equal(r.verdict, "brilliant");
+  const quiet = buildLine(GIFT, ["f3f4"], 1)[0];
+  assert.equal(isSacrifice(quiet), false);
+  assert.equal(isSacrifice(buildLine(fen, ["d3h7"], 1)[0]), true);
+});
+
+test("mate permitido: error grave aunque la valoración no llegue", async () => {
+  const { Chess } = await import("chess.js");
+  const fen = "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2";
+  const c = new Chess(fen);
+  c.move({ from: "g2", to: "g4" });
+  globalThis.fetch = fakeEngine({
+    [fen]: { move: "e2e4", centipawns: "-40", continuationArr: ["e2e4"] },
+    [c.fen()]: { move: "d8h4", mate: -1, continuationArr: ["d8h4"] },
+  });
+  const r = await judge({ fen, uci: "g2g4" }, {});
+  assert.equal(r.verdict, "blunder");
+  assert.equal(r.lines.played[1].uci, "d8h4");
+});
+
+test("lección: el prompt lleva los hechos; la respuesta se valida", async () => {
+  const played = buildLine(GIFT, ["g1e2", "c7e5"], 6);
+  const best = buildLine(GIFT, ["f3f4", "d7d6"], 5);
+  const { system, user, allowed } = lessonPrompt(GIFT, played, best, { language: "es", verdict: "inaccuracy", rating: 1100, win_best: 52, win_played: 43 });
+  assert.match(system, /SOLO los hechos/);
+  assert.match(system, /"jugada": \[2 textos\], "mejor": \[2 textos\]/);
+  assert.match(user, /\[ALUMNO\] Cge2: caballo de g1 a e2/);
+  assert.match(user, /\[RIVAL\] Dxe5: dama de c7 a e5; captura peón en e5/);
+  assert.match(user, /el alumno pierde 1 punto/);
+  assert.ok(allowed.has("e5") && allowed.has("e2") && !allowed.has("h5"));
+  assert.equal(localSan("Nge2", "de"), "Sge2");
+  assert.equal(cleanText("La dama captura en e5.", allowed), "La dama captura en e5.");
+  assert.equal(cleanText("Mejor era Dh5.", allowed), "");
+  const ok = parseLesson('```json\n{"resumen":"Dejaste e5 sin defensa.","jugada":["Tu caballo sale a e2.","La dama captura en e5."],"mejor":["Con f4 defendías e5.","Sigue d6 y Dh5."],"consejo":"Mira qué queda atacado."}\n```', 2, 2, allowed);
+  assert.equal(ok.played[1], "La dama captura en e5.");
+  assert.equal(ok.best[1], "", "el texto que nombra una casilla ajena se vacía");
+  assert.equal(parseLesson("no es json", 2, 2, allowed), null);
+});
+
+test("lección completa con Claude simulado; línea ilegal: 400", async () => {
+  let sent;
+  globalThis.fetch = async (url, init) => {
+    sent = JSON.parse(init.body);
+    return new Response(JSON.stringify({ content: [{ type: "text", text: '{"resumen":"Dejaste e5 sin defensa.","jugada":["Sale el caballo.","La dama captura el peón de e5."],"mejor":["Si hubieras jugado f4, defendías e5."],"consejo":"Antes de mover, mira qué queda atacado."}' }] }), { status: 200 });
+  };
+  const r = await lesson({ fen: GIFT, uci: "g1e2", played: ["g1e2", "c7e5"], best: ["f3f4"], verdict: "inaccuracy", language: "es", rating: 1100 }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.summary, "Dejaste e5 sin defensa.");
+  assert.equal(r.played.length, 2);
+  assert.equal(r.best[0], "Si hubieras jugado f4, defendías e5.");
+  assert.equal(sent.model, "claude-sonnet-5-5");
+  await assert.rejects(lesson({ fen: GIFT, played: ["g1g5"], best: [] }, { ANTHROPIC_API_KEY: "k" }), (e) => e.status === 400);
+});
+
+test("rutas del tutor: /tutor y /tutor/leccion", async () => {
+  globalThis.fetch = fakeEngine({
+    [GIFT]: { move: "f3f4", centipawns: "30", continuationArr: ["f3f4"] },
+    [GIFT_AFTER]: { move: "c7e5", centipawns: "-75", continuationArr: ["c7e5"] },
+  });
+  const req = (path, b) => new Request("https://x.dev" + path, { method: "POST", body: JSON.stringify(b), headers: { "content-type": "application/json" } });
+  const r = await worker.fetch(req("/tutor", { fen: GIFT, uci: "g1e2" }), {});
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).verdict, "inaccuracy");
+  assert.equal((await worker.fetch(req("/tutor", { fen: "x", uci: "e2e4" }), {})).status, 400);
+  assert.equal((await worker.fetch(req("/tutor", { fen: GIFT, uci: "g1e2" }), { TUTOR_IP: { limit: async () => ({ success: false }) } })).status, 429);
+});

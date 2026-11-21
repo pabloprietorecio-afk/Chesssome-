@@ -3,6 +3,8 @@
 // La app manda solo los hechos comprobados de un error; el prompt se construye aquí, así nadie puede usar este
 // servidor (ni la clave) para pedirle a Claude otra cosa que explicar un error de ajedrez.
 
+import { judge, lesson } from "./tutor.js";
+
 export const KINDS = {
   missed_mate: "tenía jaque mate en una jugada y no lo dio",
   allowed_mate: "su jugada permite al rival dar jaque mate en una",
@@ -72,14 +74,19 @@ export function buildBody(f, model, maxTokens) {
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json; charset=utf-8" } });
 
+// Rutas: /profesor (redactar un error ya comprobado por la app), /tutor (Stockfish valora la jugada) y
+// /tutor/leccion (Claude la explica jugada a jugada). Cada una con su límite por IP.
+const ROUTES = { "/profesor": "PER_IP", "/tutor": "TUTOR_IP", "/tutor/leccion": "PER_IP" };
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname !== "/profesor") return json({ error: "no existe" }, 404);
+    if (!(url.pathname in ROUTES)) return json({ error: "no existe" }, 404);
     if (request.method !== "POST") return json({ error: "solo POST" }, 405);
-    if (env.PER_IP) {
+    const limiter = env[ROUTES[url.pathname]];
+    if (limiter) {
       const ip = request.headers.get("cf-connecting-ip") || "?";
-      const { success } = await env.PER_IP.limit({ key: ip });
+      const { success } = await limiter.limit({ key: ip });
       if (!success) return json({ error: "demasiadas peticiones" }, 429);
     }
     if (Number(request.headers.get("content-length") || 0) > 4000) return json({ error: "demasiado grande" }, 413);
@@ -88,6 +95,13 @@ export default {
       body = await request.json();
     } catch {
       return json({ error: "json no válido" }, 400);
+    }
+    if (url.pathname !== "/profesor") {
+      try {
+        return json(url.pathname === "/tutor" ? await judge(body, env, url.searchParams.get("debug") === "1") : await lesson(body, env));
+      } catch (e) {
+        return json({ error: String(e?.message || e), ...(e?.detail ? { detail: e.detail } : {}) }, e?.status || 502);
+      }
     }
     const facts = cleanFacts(body?.facts);
     if (!facts) return json({ error: "hechos no válidos" }, 400);

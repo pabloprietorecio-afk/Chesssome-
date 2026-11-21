@@ -7,6 +7,8 @@ compatibility_date = "2026-11-01"
 [vars]
 MODEL = "claude-haiku-5-5"
 MAX_TOKENS = "220"
+# La lección paso a paso la escribe un modelo más capaz.
+MODEL_TUTOR = "claude-sonnet-5-5"
 
 # Como mucho 10 peticiones por minuto por IP (más que suficiente para corregir errores de una partida).
 [[ratelimits]]
@@ -15,4 +17,13 @@ namespace_id = "4471"
 
   [ratelimits.simple]
   limit = 10
+  period = 60
+
+# El tutor valora cada jugada: hasta 40 peticiones por minuto por IP.
+[[ratelimits]]
+name = "TUTOR_IP"
+namespace_id = "4472"
+
+  [ratelimits.simple]
+  limit = 40
   period = 60

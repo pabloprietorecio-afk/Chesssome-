@@ -1,0 +1,7 @@
+{
+  "name": "achessway-profesor",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test.mjs" },
+  "dependencies": { "chess.js": "^1.4.0" }
+}
