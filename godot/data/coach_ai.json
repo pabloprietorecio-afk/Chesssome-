@@ -3,5 +3,5 @@
 	"max_tokens": 220,
 	"timeout_s": 20,
 	"api_url": "https://api.anthropic.com/v1/messages",
-	"endpoint": ""
+	"endpoint": "https://achessway-profesor.pablo-prieto-recio.workers.dev/profesor"
 }

@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, profesor-ia]
-    paths: ["worker/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", ".github/workflows/worker.yml", "godot/data/coach_ai.json"]
 
 jobs:
   deploy:
@@ -61,3 +61,13 @@ jobs:
             ANTHROPIC_API_KEY
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Probar el servidor desplegado
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          url=$(jq -r .endpoint godot/data/coach_ai.json)
+          [ -n "$url" ] || { echo "Sin endpoint en coach_ai.json"; exit 0; }
+          bad=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$url" -H "content-type: application/json" -d '{"facts":{"fen":"hola","kind":"chiste"}}')
+          echo "Petición falsa: $bad (debe ser 400)"; [ "$bad" = "400" ]
+          r=$(curl -s -m 30 -X POST "$url" -H "content-type: application/json" -d '{"facts":{"fen":"rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2","kind":"hang","played":"Dh4","better":"Cc6","verified":"Con Dh4 tu dama queda en h4, a tiro del caballo de f3: el rival puede capturarla gratis.","rating":1100,"language":"es"}}')
+          echo "Respuesta del profesor: $r"
+          echo "$r" | jq -e '.content[0].text | length > 10' > /dev/null

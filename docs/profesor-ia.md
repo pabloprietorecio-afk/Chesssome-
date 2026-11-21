@@ -30,7 +30,8 @@ La suscripción de claude.ai no cubre la API: se paga aparte en Claude Console.
 - **Servidor propio**: hecho en `worker/` (Cloudflare Workers, plan gratuito), se despliega con
   `.github/workflows/worker.yml` cuando están los secretos CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID y
   ANTHROPIC_API_KEY. La app le manda solo los hechos; el prompt y la clave están en el servidor. Límite: 10
-  peticiones por minuto por IP. Falta poner su URL (`…/profesor`) en `endpoint` de `data/coach_ai.json`.
+  peticiones por minuto por IP. Dirección: https://achessway-profesor.pablo-prieto-recio.workers.dev/profesor
+  (`endpoint` de `data/coach_ai.json`; el despliegue la prueba con un error de verdad).
   **No comprueba que el jugador sea premium** (no hay compra real todavía): hasta entonces, la protección es el
   límite por IP y el límite de gasto que se ponga en Claude Console.
 - **Compra real** (Google Play Billing): plugin de facturación y producto en Play Console; hoy `Premium.purchased`
