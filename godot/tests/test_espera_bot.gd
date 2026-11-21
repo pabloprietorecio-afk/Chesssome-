@@ -76,6 +76,8 @@ func _initialize() -> void:
 	_ok(demo.game_clocked and absf(demo.game_inc_ms - 3000.0) < 1.0 and absf(demo.game_clock[0] - 300000.0) < 10000.0 and absf(demo.game_clock[1] - 300000.0) < 10000.0, "con el ritmo del espacio (5+3): %s" % str(demo.game_clock))
 	_ok(not demo.online_busy and not bool(demo.game.get("online", false)), "ya no busca rival y no es una partida online")
 	print("espera con bot: %d de %d bien" % [hechos - fallos, hechos])
+	if fallos == 0:
+		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
 
 

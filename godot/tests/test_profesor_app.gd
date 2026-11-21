@@ -64,6 +64,8 @@ func _initialize() -> void:
 	if OS.is_debug_build():
 		_ok(_has_text(demo, "Premium de prueba"), "con «Premium de prueba» en depuración")
 	print("profesor en la app: %d de %d bien" % [hechos - fallos, hechos])
+	if fallos == 0:
+		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
 
 

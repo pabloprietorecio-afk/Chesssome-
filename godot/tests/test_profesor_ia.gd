@@ -75,6 +75,8 @@ func _init() -> void:
 	coach.free()
 
 	print("profesor IA: %d de %d bien" % [hechos - fallos, hechos])
+	if fallos == 0:
+		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
 
 
