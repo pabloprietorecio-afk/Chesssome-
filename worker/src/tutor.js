@@ -508,7 +508,7 @@ export function parseAnswer(raw, ctx) {
   return { answer, show };
 }
 
-export async function ask(input, env) {
+export async function answerQuestion(input, env) {
   const question = String(input?.question ?? "").trim().slice(0, 400);
   if (question.length < 2) throw Object.assign(new Error("pregunta vacía"), { status: 400 });
   const moves = Array.isArray(input?.moves) ? input.moves.map(String) : [];

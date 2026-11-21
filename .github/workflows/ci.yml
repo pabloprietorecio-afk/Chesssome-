@@ -481,7 +481,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/godot/addons
           cp -r res/addons/* $GITHUB_WORKSPACE/godot/addons/
           cd $GITHUB_WORKSPACE
-          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/tutor_voz/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
           tail -4 godot/project.godot
           ls godot/addons
 
@@ -525,6 +525,10 @@ jobs:
           mkdir -p $ROOT/com/pabloprieto/cine
           cp android_cine/*.java $ROOT/com/pabloprieto/cine/
           ls -la $ROOT/com/pabloprieto/cine
+          # Preguntas al tutor por voz (android_voz/LEEME.md).
+          mkdir -p $ROOT/com/pabloprieto/voz
+          cp android_voz/*.java $ROOT/com/pabloprieto/voz/
+          ls -la $ROOT/com/pabloprieto/voz
 
       - name: Importar el proyecto
         run: |
@@ -566,9 +570,10 @@ jobs:
           if unzip -p $A 'classes*.dex' | grep -a -q "org/godotengine/plugin/notification"; then echo "OK plugin dentro del APK"; else echo "FALTA el plugin en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/espera"; then echo "OK EsperaOnline dentro del APK"; else echo "FALTA EsperaOnline en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/cine"; then echo "OK YouTubeCine dentro del APK"; else echo "FALTA YouTubeCine en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/voz"; then echo "OK TutorVoz dentro del APK"; else echo "FALTA TutorVoz en el APK"; exit 1; fi
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
-          for f in "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
+          for f in "org.godotengine.plugin.v2.TutorVoz" "android.permission.RECORD_AUDIO" "android.speech.RecognitionService" "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
             if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
           done
           # El icono de la notificación: sin él Android puede descartar el aviso.

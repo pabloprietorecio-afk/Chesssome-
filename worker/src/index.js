@@ -3,7 +3,7 @@
 // La app manda solo los hechos comprobados de un error; el prompt se construye aquí, así nadie puede usar este
 // servidor (ni la clave) para pedirle a Claude otra cosa que explicar un error de ajedrez.
 
-import { judge, lesson, ask } from "./tutor.js";
+import { judge, lesson, answerQuestion } from "./tutor.js";
 
 export const KINDS = {
   missed_mate: "tenía jaque mate en una jugada y no lo dio",
@@ -99,7 +99,7 @@ export default {
     if (url.pathname !== "/profesor") {
       try {
         if (url.pathname === "/tutor") return json(await judge(body, env, url.searchParams.get("debug") === "1"));
-        return json(url.pathname === "/tutor/pregunta" ? await ask(body, env) : await lesson(body, env));
+        return json(url.pathname === "/tutor/pregunta" ? await answerQuestion(body, env) : await lesson(body, env));
       } catch (e) {
         return json({ error: String(e?.message || e), ...(e?.detail ? { detail: e.detail } : {}) }, e?.status || 502);
       }

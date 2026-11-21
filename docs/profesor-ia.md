@@ -37,11 +37,37 @@ era la mejor) y distinguir la jugada brillante.
   la lección, las casillas que nombra el texto del profesor (menos las de la propia jugada, que ya van marcadas)
   parpadean en rosa, y su pieza también (Board3D.set_focus; vale para todos los juegos de piezas).
 
+## Preguntas libres y micrófono (21 nov)
+Petición de Pablo: preguntar al tutor en cualquier momento, también por voz.
+- **Servidor** (`/tutor/pregunta`, `ask` en worker/src/tutor.js): la app manda las 16 últimas jugadas (desde la
+  posición de antes), el color del alumno y la pregunta. Claude Sonnet 5.5 contesta como profesor, pero **no
+  calcula**: tiene una herramienta, «analizar», que juega una línea desde cualquier posición de esas y pide a
+  Stockfish la valoración y cómo seguiría (hasta 3 vueltas). Devuelve `{answer, show}`: el texto y, si quiere
+  enseñarla, una línea de hasta 4 jugadas que el servidor comprueba (legal) antes de mandarla. Si la respuesta
+  nombra casillas que no salen en los datos, se le pide una vez que las analice o las quite; si insiste, error.
+  Límite: 10 por minuto por IP (el mismo que la lección).
+- **En la app**: botón redondo con el bocadillo (o el micrófono) en el bloque del tutor, en cualquier momento de
+  la partida. Ventana semitransparente y arrastrable con el cuadro de texto, tres ideas para empezar y
+  «Preguntar». La respuesta trae «Enséñamelo en el tablero» (la línea se ve como la lección, con flechas) y las
+  casillas que nombra parpadean en rosa. Muchas preguntas seguidas (429) o sin conexión: lo dice y deja reintentar.
+- **Micrófono**: complemento de Android propio (android_voz/TutorVoz.java + addons/tutor_voz), con el
+  reconocimiento de voz del sistema; la app no graba audio, recibe el texto y pregunta directamente. Pide el
+  permiso del micrófono la primera vez. Solo en el APK con Gradle (el de «APK (Gradle…)»); en el APK sencillo
+  de la CI no hay botón «Hablar», pero el teclado de Android deja dictar.
+- Coste estimado (sin medir): 2–4 llamadas a Sonnet 5.5 por pregunta, ~1–2 céntimos de dólar.
+- **Pendiente**: que el tutor recuerde las preguntas anteriores de la partida (hoy cada una va sola); que lea la
+  respuesta en voz alta; traducir los textos nuevos.
+
+## Interruptor «Tutor IA» (21 nov)
+En la barra de arriba de todas las partidas contra la app (no en Kids): enciende y apaga el tutor sin ir a
+Opciones (es el mismo ajuste). Con reloj, online, variantes o sin partidas gratis sale apagado y atenuado, y al
+tocarlo explica por qué.
+
 ## 5 partidas gratis para todos (21 nov)
 Decisión de Pablo: el profesor va gratis en las 5 primeras partidas de cualquier jugador; después, premium
 (`Premium.TRIAL_GAMES`, `trial_used` en user://premium.cfg). Cuenta una partida al mirar la primera jugada y esa
 partida sigue con profesor hasta el final. La tarjeta dice «Profesor IA · gratis 2 de 5»; Opciones, cuántas
-quedan. Al acabarse, un aviso una sola vez («hazte premium») y nada más. Kids, online, reloj y variantes: nunca.
+quedan; la tarjeta, «Gratis 2/5». Al acabarse, un aviso una sola vez («hazte premium») y nada más. Kids, online, reloj y variantes: nunca.
 Ojo: la compra aún no existe, así que tras las 5 no hay forma de seguir. Y el servidor no distingue a nadie: lo que
 cuesta la prueba se paga igual (ver Coste).
 Las pruebas y capturas (ejecutable del editor) no llaman al servidor: si no, cada partida de prueba gastaría.

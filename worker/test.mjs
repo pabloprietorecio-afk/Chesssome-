@@ -70,7 +70,7 @@ test("acepta los errores del análisis del motor", () => {
 });
 
 // ---------------------------------------------------------------- tutor: Stockfish + lección
-import { ask, replay, judge, lesson, readEngine, winPct, verdictFor, isSacrifice, buildLine, parseLesson, cleanText, lessonPrompt, localSan } from "./src/tutor.js";
+import { answerQuestion as ask, replay, judge, lesson, readEngine, winPct, verdictFor, isSacrifice, buildLine, parseLesson, cleanText, lessonPrompt, localSan } from "./src/tutor.js";
 
 const GIFT = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
 const GIFT_AFTER = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP1N1PP/R2QK2R b KQkq - 1 12";

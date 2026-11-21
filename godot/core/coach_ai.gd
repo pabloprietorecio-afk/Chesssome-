@@ -25,6 +25,8 @@ signal answered(run: int, ply: int, text: String, from_ai: bool)
 ## `data` vacío = no ha llegado (sin red, tiempo agotado o respuesta rara): vale el motor local.
 signal judged(run: int, gen: int, data: Dictionary)
 signal lesson_ready(run: int, gen: int, data: Dictionary)
+## Respuesta a una pregunta libre ({answer, show} o {_error: código HTTP, 0 sin conexión}).
+signal asked(run: int, gen: int, data: Dictionary)
 
 const CONFIG := "res://data/coach_ai.json"
 ## Una casilla suelta o dentro de una jugada («Cxf5+», «exd5»): delante puede ir una pieza o la «x» de captura,
@@ -35,6 +37,8 @@ var cfg: Dictionary = {}
 var busy := false
 ## Peticiones hechas en esta sesión (para las pruebas y para vigilar el gasto).
 var calls := 0
+## Pruebas: las preguntas no salen a la red y la respuesta la pone la prueba (llamando a la app directamente).
+var hold_questions := false
 
 
 func _init() -> void:
@@ -345,13 +349,13 @@ func _post(url: String, payload: Dictionary, seconds: float) -> Dictionary:
 	var err := req.request(url, PackedStringArray(["content-type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(payload))
 	if err != OK:
 		req.queue_free()
-		return {}
+		return {"_error": 0}
 	var r: Array = await req.request_completed
 	req.queue_free()
 	if int(r[0]) != HTTPRequest.RESULT_SUCCESS or int(r[1]) != 200:
 		if int(r[1]) != 0:
 			push_warning("Tutor: respuesta %d" % int(r[1]))
-		return {}
+		return {"_error": int(r[1])}
 	var data: Variant = JSON.parse_string((r[3] as PackedByteArray).get_string_from_utf8())
 	return data if data is Dictionary else {}
 
@@ -376,3 +380,47 @@ func lesson_remote(payload: Dictionary, run: int, gen: int) -> void:
 	calls += 1
 	var data := await _post(url + "/leccion", payload, float(cfg.get("lesson_timeout_s", 30)))
 	lesson_ready.emit(run, gen, data if data.get("played") is Array else {})
+
+
+## Pregunta libre: la partida (las últimas 16 jugadas como mucho, desde la posición de antes), el color del alumno
+## y la pregunta. `history`: posiciones (FEN) de la partida, una más que `moves`.
+static func ask_payload(history: Array, moves: Array, color: int, question: String, rating: int, language: String) -> Dictionary:
+	var k := maxi(0, moves.size() - 16)
+	var start := str(history[k]) if k < history.size() else str(history[0])
+	return {"start": start, "moves": moves.slice(k), "player": "w" if color == 0 else "b", "question": question.strip_edges().left(400), "rating": rating, "language": language}
+
+
+## Respuesta a una pregunta válida: texto y, si la hay, la línea para el tablero (pasos con posición legal).
+static func question_ok(data: Dictionary) -> bool:
+	if str(data.get("answer", "")).length() < 3:
+		return false
+	var show: Variant = data.get("show")
+	if show == null:
+		return true
+	if not (show is Dictionary) or not ((show as Dictionary).get("steps") is Array):
+		return false
+	for step: Variant in (show as Dictionary)["steps"]:
+		if not (step is Dictionary):
+			return false
+		if str((step as Dictionary).get("fen", "")) == "" or str((step as Dictionary).get("uci", "")).length() < 4:
+			return false
+		var pos := Chess.from_fen(str((step as Dictionary)["fen"]))
+		if pos.find_uci(str((step as Dictionary)["uci"])) < 0:
+			return false
+	return true
+
+
+## Pregunta al tutor (Claude, con Stockfish como herramienta). Siempre acaba emitiendo `asked`.
+func ask_remote(payload: Dictionary, run: int, gen: int) -> void:
+	var url := tutor_url(cfg)
+	if url == "":
+		asked.emit(run, gen, {"_error": -1})
+		return
+	calls += 1
+	if hold_questions:
+		return
+	var data := await _post(url + "/pregunta", payload, float(cfg.get("ask_timeout_s", 60)))
+	if data.has("_error") or not question_ok(data):
+		asked.emit(run, gen, {"_error": int(data.get("_error", 502))})
+		return
+	asked.emit(run, gen, data)

@@ -103,6 +103,9 @@ const ICONS = {
   // Opciones → «Pantalla de inicio»: lista o rejilla.
   rows: ['rows', 'fill'],
   tiles: ['squares-four', 'fill'],
+  mic: ['microphone', 'duotone'],
+  ask: ['chat-circle-dots', 'duotone'],
+  send: ['paper-plane-right', 'duotone'],
 };
 
 // ---------- PNG (mismo formato sencillo que tools/pieces/fichas.mjs: 8 bits RGBA, sin filtro) ----------

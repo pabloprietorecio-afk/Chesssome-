@@ -128,7 +128,77 @@ func _initialize() -> void:
 	demo._close_lesson()
 	await _frames(2)
 
-	# 5. Sin premium: partidas gratis con profesor; al acabarse, un aviso (una vez) y nada más.
+	# 5. Preguntas libres (servidor simulado: se llama a _on_tutor_answer a mano).
+	demo.coach.cfg = {"endpoint": "", "tutor": "http://127.0.0.1:9/tutor", "tutor_timeout_s": 1, "ask_timeout_s": 1}
+	demo.coach.hold_questions = true
+	demo._start_game(cfg, 0)
+	await _frames(4)
+	_ok(demo._tutor_can_ask() and _has_text(demo.card_body, "pregúntame lo que quieras"), "desde la primera jugada se puede preguntar")
+	_ok(demo.tutor_toggle.visible and demo._tutor_switch.on, "el interruptor «Tutor IA» está en la barra, encendido")
+	var payload := CoachAI.ask_payload(["a", "b", "c"], ["e2e4", "e7e5"], 1, "  ¿por qué?  ", 1200, "es")
+	_ok(payload["start"] == "a" and payload["moves"] == ["e2e4", "e7e5"] and payload["player"] == "b" and payload["question"] == "¿por qué?", "lo que se manda al preguntar")
+	var many: Array = []
+	var hist: Array = ["p0"]
+	for i in 20:
+		many.append("m%d" % i)
+		hist.append("p%d" % (i + 1))
+	var cut := CoachAI.ask_payload(hist, many, 0, "x", 0, "es")
+	_ok(cut["start"] == "p4" and (cut["moves"] as Array).size() == 16 and cut["moves"][0] == "m4", "como mucho las 16 últimas jugadas, desde la posición de antes")
+	demo._open_ask()
+	await _frames(2)
+	_ok(demo.ask_state == "edit" and demo.ask_edit != null and _has_text(demo.confirm_node, "Qué planea el rival"), "ventana de preguntas, con ideas para empezar")
+	_ok(not demo.tutor_voice.available() and _has_text(demo.confirm_node, "dictar con el micrófono del teclado"), "sin el complemento de voz, solo escribir (y el dictado del teclado)")
+	demo._ask_idea("¿Qué planea el rival?")
+	await _frames(2)
+	_ok(demo.ask_state == "wait" and _has_text(demo.confirm_node, "El tutor está pensando"), "al preguntar: «el tutor está pensando»")
+	var gen_q: int = demo._ask_gen
+	demo._on_tutor_answer(demo.run_id, gen_q, {"answer": "Las negras quieren atacar tu peón de e5.", "show": {"from": 0, "steps": [{"uci": "c7e5", "fen": GIFT_AFTER, "arrows": [{"from": "c7", "to": "e5", "tone": "bad"}]}]}})
+	await _frames(2)
+	_ok(demo.ask_state == "answer" and _has_text(demo.confirm_node, "Las negras quieren atacar"), "llega la respuesta")
+	_ok(_button_with(demo.confirm_node, "Enséñamelo en el tablero") != null, "con línea: «Enséñamelo en el tablero»")
+	_ok(Array(demo.view.board.focus_squares()) == [Chess.sq_index("e5")], "la casilla de la respuesta parpadea en el tablero")
+	var live2: String = demo.view.board.chess.fen()
+	demo._open_answer_lesson()
+	await _frames(3)
+	_ok(demo.lesson_open and demo.lesson_line == "answer" and _has_text(demo.card_body, "Te lo enseño en el tablero") and _has_text(demo.card_body, "Las negras quieren atacar"), "la línea de la respuesta, en el tablero")
+	_ok(_button_with(demo.actions, "Terminar") != null, "una sola jugada: «Terminar»")
+	demo._lesson_next()
+	await _frames(3)
+	_ok(not demo.lesson_open and demo.view.board.chess.fen() == live2, "al terminar, vuelve la partida")
+	demo._ask_again()
+	await _frames(2)
+	demo.ask_text = "hola"
+	demo._send_question()
+	demo._on_tutor_answer(demo.run_id, demo._ask_gen, {"_error": 429})
+	await _frames(2)
+	_ok(demo.ask_state == "error" and _has_text(demo.confirm_node, "muchas preguntas seguidas"), "demasiadas preguntas: lo dice")
+	demo._on_tutor_answer(demo.run_id, demo._ask_gen - 1, {"answer": "vieja"})
+	_ok(demo.ask_state == "error", "una respuesta vieja no pisa la actual")
+	demo._close_confirm()
+	await _frames(2)
+	_ok(Array(demo.view.board.focus_squares()).is_empty(), "al cerrar, nada parpadea")
+	_ok(not CoachAI.question_ok({"answer": "ok bien", "show": {"steps": [{"uci": "e2e5", "fen": GIFT}]}}) and CoachAI.question_ok({"answer": "ok bien", "show": null}), "línea ilegal en la respuesta: se rechaza")
+
+	# 6. El interruptor: apagar y encender sin ir a Opciones; en partidas con reloj, apagado y explica por qué.
+	demo._on_tutor_toggle()
+	await _frames(2)
+	_ok(not Premium.coach_on and not demo._tutor_switch.on and not demo._tutor_can_ask(), "apagar el tutor desde la barra")
+	demo._on_tutor_toggle()
+	await _frames(2)
+	_ok(Premium.coach_on and demo._tutor_switch.on and demo.coach_note.contains("Tutor encendido"), "y volver a encenderlo")
+	demo.game_clocked = true
+	demo._refresh()
+	await _frames(2)
+	_ok(not demo._tutor_switch.on and demo.tutor_toggle.modulate.a < 1.0, "con reloj: apagado y atenuado")
+	demo._on_tutor_toggle()
+	await _frames(2)
+	_ok(_has_text(demo.confirm_node, "Con reloj no hay tutor") and Premium.coach_on, "al tocarlo, explica por qué (sin cambiar el ajuste)")
+	demo._close_confirm()
+	demo.game_clocked = false
+	await _until(func() -> bool: return demo.game_state == "play")
+	await _frames(6)
+
+	# 7. Sin premium: partidas gratis con profesor; al acabarse, un aviso (una vez) y nada más.
 	Premium.test_on = false
 	Premium.trial_used = 4
 	Premium.trial_run = -1
@@ -140,7 +210,7 @@ func _initialize() -> void:
 	demo._game_move("g1e2")
 	_ok(demo.coach_trial_game == 5 and Premium.trial_left() == 0, "quinta partida gratis: con profesor")
 	await _until(func() -> bool: return demo.coach_verdict != "")
-	_ok(_has_text(demo.card_body, "gratis 5 de 5"), "la tarjeta dice qué partida gratis es")
+	_ok(_has_text(demo.card_body, "Gratis 5/5"), "la tarjeta dice qué partida gratis es")
 	await _until(func() -> bool: return demo.game_state == "play")
 	demo._start_game(cfg, 0)
 	await _frames(4)

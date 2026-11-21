@@ -285,33 +285,45 @@
    6,
    8
   ],
-  "piece_pawn": [
+  "mic": [
    7,
    8
   ],
-  "piece_knight": [
+  "ask": [
    0,
    9
   ],
-  "piece_bishop": [
+  "send": [
    1,
    9
   ],
-  "piece_rook": [
+  "piece_pawn": [
    2,
    9
   ],
-  "piece_queen": [
+  "piece_knight": [
    3,
    9
   ],
-  "piece_king": [
+  "piece_bishop": [
    4,
    9
   ],
-  "token_pawn": [
+  "piece_rook": [
    5,
    9
+  ],
+  "piece_queen": [
+   6,
+   9
+  ],
+  "piece_king": [
+   7,
+   9
+  ],
+  "token_pawn": [
+   0,
+   10
   ]
  }
 }
