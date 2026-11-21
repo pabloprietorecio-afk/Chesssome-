@@ -309,16 +309,21 @@ test("hechos de la lección: para el jaque y a la vez defiende el alfil (5.Cbd2 
   assert.match(text, /DEFIENDE a: alfil de c4, que está atacada y antes no tenía defensa/);
 });
 
-test("segunda opinión: un «error grave» que Stockfish no confirma desde la misma posición se rebaja", async () => {
+test("segunda opinión: un «error grave» que un segundo análisis más hondo no confirma se rebaja", async () => {
   const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
   const { fens } = replay(start, ["g1e2"]);
   let asked = 0;
+  let after = 0;
   globalThis.fetch = async (url, init) => {
     const b = JSON.parse(init.body);
     asked += 1;
-    if (b.searchmoves) return new Response(JSON.stringify({ type: "bestmove", depth: 18, move: "g1e2", centipawns: "10", continuationArr: [] }), { status: 200 });
     if (b.fen === start) return new Response(JSON.stringify({ type: "bestmove", depth: 18, move: "f3f4", centipawns: "40", continuationArr: ["f3f4"] }), { status: 200 });
-    if (b.fen === fens[1]) return new Response(JSON.stringify({ type: "bestmove", depth: 12, move: "c7e5", centipawns: "-260", continuationArr: ["c7e5"] }), { status: 200 });
+    if (b.fen === fens[1]) {
+      after += 1;
+      // Primero, un análisis corto que exagera; el segundo, más hondo, ve que no es para tanto.
+      const cp = after === 1 ? "-260" : "10";
+      return new Response(JSON.stringify({ type: "bestmove", depth: after === 1 ? 12 : 18, move: "c7e5", centipawns: cp, continuationArr: ["c7e5"] }), { status: 200 });
+    }
     return new Response("{}", { status: 500 });
   };
   const r = await judge({ fen: start, uci: "g1e2" }, {});

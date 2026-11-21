@@ -171,7 +171,7 @@ Pablo vio «error grave» en jugadas que el propio tutor, al preguntarle, decía
   «error grave»).
 - chess-api.com da como mucho 100 ms y profundidad 18, y la valoración salía de dos análisis sueltos (antes y después
   de la jugada): en posiciones tácticas, diferencias falsas. Ahora, antes de marcar «error» o «error grave», se pide
-  una segunda opinión: Stockfish valora la jugada desde la misma posición que la mejor (`searchmoves`); vale la más
+  una segunda opinión: Stockfish valora la posición tras la jugada otra vez (al repetirla, el servicio llega más hondo; `searchmoves` lo ignora); vale la más
   favorable al alumno (`second` en la respuesta). Un mate permitido no se discute.
 - Las preguntas llevan cómo se marcó la última jugada (`judged`): si al analizarla el tutor ve otra cosa, lo explica
   con datos en vez de contradecir la marca sin más.

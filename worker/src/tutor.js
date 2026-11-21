@@ -48,13 +48,12 @@ export function readEngine(d) {
   return { move, cp, mate, win, line, depth: Number(d.depth) || 0 };
 }
 
-async function askEngine(fen, env, raw, only = "") {
+async function askEngine(fen, env, raw) {
   const r = await fetch(env.STOCKFISH_URL || "https://chess-api.com/v1", {
     method: "POST",
     headers: { "content-type": "application/json" },
     // taskId: el servicio empareja cada respuesta con su petición.
-    // only: valorar solo esa jugada desde esta posición (searchmoves), para comparar con la mejor desde la misma raíz.
-    body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1, taskId: Math.random().toString(36).slice(2, 11), ...(only ? { searchmoves: only } : {}) }),
+    body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1, taskId: Math.random().toString(36).slice(2, 11) }),
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error(`stockfish ${r.status}`);
@@ -216,14 +215,15 @@ export async function judge(input, env, debug) {
   const allowsMate = theyMate(B) && !theyMate(A);
   const missedMate = iMate(A) && Math.abs(A.mate) <= 3 && !iMate(B) && !after.isCheckmate();
   let verdict = verdictFor(drop, isBest, allowsMate, missedMate);
-  // Segunda opinión antes de llamar «error» a una jugada: Stockfish la valora desde la misma posición que la mejor
-  // (searchmoves). Con 100 ms por análisis, dos análisis sueltos (antes y después) dan diferencias falsas en posiciones
-  // tácticas. Vale la valoración más favorable al alumno; un mate permitido no se discute.
+  // Segunda opinión antes de llamar «error» a una jugada: otro análisis de la posición tras la jugada (con 100 ms, un
+  // análisis suelto puede salir corto; al repetir la posición el servicio suele llegar más hondo: 15 → 18). Vale la
+  // valoración más favorable al alumno; un mate permitido no se discute. (Se probó `searchmoves` para valorar la jugada
+  // desde la misma posición que la mejor, pero chess-api.com lo ignora: devolvía la mejor, 21 nov.)
   let confirmed = null;
   if ((verdict === "mistake" || verdict === "blunder") && !allowsMate && !after.isGameOver()) {
     try {
-      const P = await askEngine(fen, env, raw, uci);
-      if (P.move === uci) {
+      const P = await askEngine(after.fen(), env, raw);
+      {
         confirmed = mine(P);
         if (confirmed > winPlayed) {
           winPlayed = confirmed;
