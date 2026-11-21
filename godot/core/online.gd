@@ -288,6 +288,16 @@ static func rhythm_ok(r: String) -> bool:
 
 
 ## [minutos, segundos por jugada] del ritmo («0+0» → [0, 0]; «w5+3» → [5, 3]).
+## Segundos de espera antes de ofrecer el bot (docs/espera-bot.md): 15 si no hay nadie más esperando en ningún
+## espacio; 15 más por cada jugador que espera en otro espacio (hay gente: merece la pena esperar), hasta 2 minutos.
+const BOT_OFFER_MIN_S := 15
+const BOT_OFFER_MAX_S := 120
+
+
+static func bot_offer_s(waiting_elsewhere: int) -> int:
+	return clampi(BOT_OFFER_MIN_S * (1 + maxi(0, waiting_elsewhere)), BOT_OFFER_MIN_S, BOT_OFFER_MAX_S)
+
+
 static func rhythm_parts(r: String) -> Array:
 	if not rhythm_ok(r):
 		return [0, 0]

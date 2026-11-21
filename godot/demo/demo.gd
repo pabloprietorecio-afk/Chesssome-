@@ -274,6 +274,10 @@ var _online_pending: Array = []
 var online_status := ""
 ## Aviso (no de error) de la búsqueda: «Has entrado en su partida; esperando a que vuelva…».
 var online_note := ""
+## Espera online sin nadie (core/wait_bot.gd): pasado un rato se ofrece jugar contra Robi, un bot de la app.
+var online_bot_offer := false
+var _wait_gen := 0
+var _bot_cheer_at := -99
 var game_history: Array = []
 ## Jugadas de la partida (UCI), una menos que game_history.
 var game_moves: Array = []
@@ -6618,6 +6622,9 @@ func _open_online() -> void:
 	if online_busy and online_note != "":
 		body.add_child(_spacer(20.0))
 		body.add_child(_centered(_para(online_note, F_BODY, _c("accent_text"), font_semibold)))
+	if online_busy and online_bot_offer:
+		body.add_child(_spacer(30.0))
+		body.add_child(_bot_offer_block())
 	if online_status != "":
 		body.add_child(_spacer(20.0))
 		body.add_child(_centered(_para(online_status, F_BODY, _c("bad"), font_medium)))
@@ -6908,6 +6915,13 @@ func _online_search(space: String = "") -> void:
 	online_note = ""
 	online_busy = true
 	online_wait_ms = Time.get_ticks_msec()
+	online_bot_offer = false
+	_wait_gen += 1
+	var elsewhere := 0
+	for r in online_spaces.keys():
+		if str(r) != online_space:
+			elsewhere += int(online_spaces[r])
+	_offer_bot_later(_wait_gen, Online.bot_offer_s(elsewhere))
 	online_rival = {}
 	_rival_tex = null
 	online.my_profile = _online_profile()
@@ -6927,6 +6941,8 @@ func _set_online_war(i: int) -> void:
 func _close_online() -> void:
 	online.leave()
 	online_busy = false
+	online_bot_offer = false
+	_wait_gen += 1
 	_close_progress()
 	_open_home()
 
@@ -6949,6 +6965,8 @@ func _online_retry() -> void:
 func _online_started(color: int) -> void:
 	online_busy = false
 	online_note = ""
+	online_bot_offer = false
+	_wait_gen += 1
 	var clock: Array = Online.rhythm_parts(online.rhythm)
 	var war := Online.is_war(online.rhythm)
 	_start_game({"variant": "war" if war else "", "level": 0, "title": "War Chess online" if war else "Partida online", "text": WAR_RULES if war else "", "kids": "", "unit": "", "clock": clock if int(clock[0]) > 0 else [], "online": true}, color)
@@ -8126,6 +8144,7 @@ func _game_move(uci: String) -> void:
 	if _game_check_end(before, m):
 		return
 	_coach_move(str(game_history[game_history.size() - 2]), uci, game_history.size() - 2)
+	_wait_bot_react(str(game_history[game_history.size() - 2]), str(game_history[-1]), uci)
 	if is_online and not (game_clocked and press_clock):
 		game_clock_side = 1 - game_color
 		game_state = "think"
@@ -8341,6 +8360,7 @@ func _game_flag(side: int) -> void:
 	else:
 		game_won = 1
 		game_result = "Al rival se le ha acabado el tiempo: ¡has ganado!"
+	_wait_bot_farewell()
 	_refresh()
 
 
@@ -8354,10 +8374,13 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	_stop_game_thread()
 	if my_run != run_id or mode != "game":
 		return
-	# Que no conteste de golpe: medio segundo como mínimo.
+	# Que no conteste de golpe: medio segundo como mínimo (Robi, el de la espera online, piensa como una persona).
 	var waited := Time.get_ticks_msec() - started
-	if waited < 550:
-		await _wait(float(550 - waited) / 1000.0)
+	var least := 550.0
+	if bool(game.get("wait_bot", false)):
+		least = WaitBot.think_ms(_rng.randf(), game_history.size(), game_clock[1 - game_color] if game_clocked else 0.0)
+	if waited < least:
+		await _wait((least - float(waited)) / 1000.0)
 		if my_run != run_id or mode != "game":
 			return
 	if m < 0:
@@ -8401,6 +8424,81 @@ func _war_rival_note(pos: Chess, m: int) -> String:
 			return Loc.f("El rival ha agrietado el blindaje de tu peón en %s: aguanta un golpe más.", Chess.sq_name(Chess.move_to(m)))
 		return Loc.f("El rival ha roto el blindaje de tu %s en %s.", [Loc.t(_piece_noun(pos.b[Chess.move_to(m)])), Chess.sq_name(Chess.move_to(m))])
 	return ""
+
+
+# ---------------------------------------------------------------- espera online: Robi, el bot (core/wait_bot.gd)
+
+## Si en `seconds` no ha empezado la partida (y nadie está entrando), se ofrece jugar contra el bot.
+func _offer_bot_later(gen: int, seconds: int) -> void:
+	await get_tree().create_timer(float(seconds)).timeout
+	if gen != _wait_gen or not online_busy or online.phase == "joining" or online.phase == "playing":
+		return
+	online_bot_offer = true
+	if progress_kind == "online":
+		_open_online()
+
+
+func _bot_offer_block() -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	box.add_child(_centered(_para("Ahora no hay nadie más conectado en este espacio.", F_BODY, _c("ink"), font_semibold)))
+	var tint := _tint("peach")
+	box.add_child(_button("bot", Loc.f("Jugar contra %s, un bot de la app", WaitBot.NAME), _play_wait_bot, tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0}))
+	box.add_child(_centered(_para("Es un bot, no una persona: juega a tu nivel y con el mismo ritmo. Dejas de buscar rival; al acabar puedes volver a buscar.", F_FOOT + 2, _c("quiet"), font_regular)))
+	return box
+
+
+func _play_wait_bot() -> void:
+	var space := online_space
+	online.leave()
+	online_busy = false
+	online_bot_offer = false
+	_wait_gen += 1
+	var gr := GameLog.game_rating(_log())
+	var lvl := Bot.closest_level(float(gr["r"]) if int(gr["n"]) > 0 else 0.0)
+	var war := Online.is_war(space)
+	var clock: Array = Online.rhythm_parts(space)
+	var title := Loc.f("%s (bot) · %s", [WaitBot.NAME, Online.space_label(space)])
+	_bot_cheer_at = -99
+	_start_game({"variant": "war" if war else "", "level": lvl, "title": title, "text": WAR_RULES if war else "", "kids": "", "unit": "", "clock": clock if int(clock[0]) > 0 else [], "wait_bot": true}, _rng.randi_range(0, 1))
+	var run := run_id
+	await _wait(1.4)
+	if run == run_id and mode == "game":
+		_bot_bubble("saludo")
+
+
+func _bot_bubble(kind: String) -> void:
+	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "buena": "lilac"}
+	_board_bubble("g_" + kind, "%s (bot): %s" % [WaitBot.NAME, Loc.t(str(Online.GESTURE_TEXT.get(kind, "")))], str(tints.get(kind, "sky")), true)
+
+
+func _wait_bot_react(fen_before: String, fen_after: String, uci: String) -> void:
+	if not bool(game.get("wait_bot", false)) or str(game.get("variant", "")) != "":
+		return
+	var ply := game_history.size() - 2
+	var captured := WaitBot.captured_value(fen_before, fen_after, game_color)
+	if captured < 3:
+		return
+	var blunder := not GameReview.analyze_move(fen_before, uci, ply).is_empty()
+	var kind := WaitBot.cheer_for(captured, blunder, (ply - _bot_cheer_at) / 2, _rng.randf())
+	if kind == "":
+		return
+	_bot_cheer_at = ply
+	var run := run_id
+	await _wait(0.7)
+	if run == run_id and mode == "game":
+		_bot_bubble(kind)
+
+
+func _wait_bot_farewell() -> void:
+	if not bool(game.get("wait_bot", false)):
+		return
+	var run := run_id
+	for kind: String in WaitBot.farewell(game_won):
+		await _wait(1.2)
+		if run != run_id or mode != "game":
+			return
+		_bot_bubble(kind)
 
 
 # ---------------------------------------------------------------- profesor IA (premium)
@@ -8582,6 +8680,7 @@ func _game_check_end(before: Chess, m: int) -> bool:
 	if bool(game.get("online", false)):
 		online.finish()
 	game_won = 0 if winner < 0 else (1 if winner == game_color else -1)
+	_wait_bot_farewell()
 	var texts := {
 		"mate": ["¡Jaque mate! Has ganado.", "Jaque mate: gana el rival."],
 		"corona": ["¡Has coronado! Has ganado.", "El rival ha coronado: gana él."],
@@ -8824,6 +8923,7 @@ func _game_resign() -> void:
 	game_state = "over"
 	game_won = -1
 	game_result = "Te has rendido."
+	_wait_bot_farewell()
 	view.interactive = false
 	_refresh()
 

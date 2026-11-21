@@ -79,6 +79,23 @@ static func level_name(lvl: int) -> String:
 	return "%s %d" % [group, int(cfg["sub"])]
 
 
+## Nivel con el Elo medido más cercano a `rating` (el rival de la espera online, docs/espera-bot.md). Sin
+## rating (0 o menos): el primer escalón de «Fácil».
+static func closest_level(rating: float) -> int:
+	if rating <= 0.0:
+		return group_levels(1)[0]
+	var best := 0
+	var gap := INF
+	for i in LEVELS.size():
+		if not LEVELS[i].has("elo"):
+			continue
+		var d := absf(float(LEVELS[i]["elo"]) - rating)
+		if d < gap:
+			gap = d
+			best = i
+	return best
+
+
 ## Elo medido (redondeado a la decena) o -1 si aún no se ha medido.
 static func level_elo(lvl: int) -> int:
 	var cfg: Dictionary = LEVELS[clampi(lvl, 0, LEVELS.size() - 1)]
