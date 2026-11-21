@@ -33,6 +33,8 @@ func _initialize() -> void:
 	_ok(not CoachAI.remote_ok({"verdict": "best"}), "sin líneas: no vale")
 	var arrows := CoachAI.board_arrows(_fake("blunder")["lines"]["played"][1])
 	_ok(arrows.size() == 2 and int(arrows[0]["from"]) == Chess.sq_index("c7") and int(arrows[0]["to"]) == Chess.sq_index("e5") and str(arrows[0]["tone"]) == "bad", "flechas del tutor, por índice de casilla")
+	var check_pos := Chess.from_fen("r1b1kbnr/pppp1ppp/2n1p3/8/1qBPP3/5N2/PPPN1PPP/R1BQK2R b KQkq - 5 5")
+	_ok(CoachAI.threatened(check_pos, ["b4", "c4", "d2"]) == [Chess.sq_index("c4"), Chess.sq_index("d2")], "en rosa, las piezas amenazadas que se nombran (c4, d2), no la dama que ataca (b4)")
 	_ok(CoachAI.squares_in("Con Cge2 sacas el caballo de g1, pero no proteges el peón de e5 (e5 queda solo). Dxe5.") == ["g1", "e5"], "casillas nombradas sueltas en un texto")
 	_ok(CoachAI.tutor_url({"tutor": "https://x.test/tutor"}) == "https://x.test/tutor" and CoachAI.tutor_url({}) == "", "dirección del tutor")
 	_ok(CoachAI.tutor_url(CoachAI.load_config()).ends_with("/tutor"), "la app trae la dirección del tutor")
@@ -150,7 +152,7 @@ func _initialize() -> void:
 	_ok(not demo.tutor_voice.available() and _has_text(demo.confirm_node, "dictar con el micrófono del teclado"), "sin el complemento de voz, solo escribir (y el dictado del teclado)")
 	demo._ask_idea("¿Qué planea el rival?")
 	await _frames(2)
-	_ok(demo.ask_state == "wait" and _has_text(demo.confirm_node, "El tutor está pensando"), "al preguntar: «el tutor está pensando»")
+	_ok(demo.ask_state == "wait" and _has_text(demo.confirm_node, "El tutor está preparando tu respuesta") and _button_with(demo.confirm_node, "Cerrar") == null, "al preguntar: «el tutor está preparando tu respuesta», sin botones")
 	var gen_q: int = demo._ask_gen
 	demo._on_tutor_answer(demo.run_id, gen_q, {"answer": "Las negras quieren atacar tu peón de e5.", "show": {"from": 0, "steps": [{"uci": "c7e5", "fen": GIFT_AFTER, "arrows": [{"from": "c7", "to": "e5", "tone": "bad"}]}]}})
 	await _frames(2)
@@ -165,6 +167,22 @@ func _initialize() -> void:
 	demo._lesson_next()
 	await _frames(3)
 	_ok(not demo.lesson_open and demo.view.board.chess.fen() == live2, "al terminar, vuelve la partida")
+	_ok(demo.ask_history.size() == 1 and str(demo.ask_history[0]["a"]).contains("Las negras"), "la pregunta y su respuesta quedan para seguir el hilo")
+	_ok(demo._ask_shown().is_empty(), "en la partida en directo no se manda «lo que se ve»")
+	# Preguntar mirando la lección: el tutor sabe qué paso está en pantalla.
+	demo._open_answer_lesson()
+	await _frames(3)
+	var shown: Dictionary = demo._ask_shown()
+	_ok(str(shown.get("label", "")).contains("respuesta anterior, jugada 1 de 1") and shown["moves"] == ["c7e5"] and shown["start"] == GIFT_AFTER, "mirando una línea en el tablero: se manda el paso que se ve (%s)" % str(shown.get("label", "")))
+	_ok(_has_round_ask(demo.card_body, demo), "en la lección también hay botón para preguntar")
+	var p2 := CoachAI.ask_payload(demo.game_history, demo.game_moves, 0, "¿y si le como el peón?", 0, "es", shown, demo.ask_history)
+	_ok(p2.has("shown") and (p2["previous"] as Array).size() == 1, "la pregunta lleva lo que se ve y el hilo")
+	# Apagar el tutor con la lección abierta: el tablero vuelve a la partida (antes se quedaba el ejemplo).
+	demo._on_tutor_toggle()
+	await _frames(3)
+	_ok(not demo.lesson_open and demo.view.board.chess.fen() == live2 and demo.view.interactive, "apagar el tutor en plena lección devuelve el tablero a la partida")
+	demo._on_tutor_toggle()
+	await _frames(2)
 	demo._ask_again()
 	await _frames(2)
 	demo.ask_text = "hola"
@@ -260,6 +278,15 @@ func _button_with(node: Node, text: String) -> Button:
 func _label_below(node: Node, text: String) -> bool:
 	for c in node.get_children():
 		if (c is Label and (c as Label).text.contains(text)) or _label_below(c, text):
+			return true
+	return false
+
+
+func _has_round_ask(node: Node, demo: Node) -> bool:
+	if node is Button and (node as Button).pressed.is_connected(Callable(demo, "_open_ask")):
+		return true
+	for c in node.get_children():
+		if _has_round_ask(c, demo):
 			return true
 	return false
 

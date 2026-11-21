@@ -149,3 +149,17 @@ Todos los textos del tutor, Robi y las preguntas, en los nueve idiomas: `tools/i
 que solo estaban en las tablas van ahora en `tools/i18n/trad/ui_detalle.tsv`, así que `build.py` ya no borra nada.
 Los textos que la app manda a Claude (instrucciones) siguen en español a propósito: Claude contesta en el idioma
 de la app. Los textos de depuración (APK de pruebas) no se traducen.
+
+## Correcciones tras la primera prueba de Pablo (21 nov)
+- Preguntaba mirando un ejemplo de la lección y el tutor contestaba sobre la partida en directo (le dijo que estaba
+  en jaque, que era verdad en la partida pero no en el ejemplo). Ahora la pregunta lleva lo que hay en pantalla
+  (`shown`: el paso de la lección, la línea de una respuesta o la jugada a la que se ha vuelto con «Atrás») y el
+  servidor lo marca como lo que mira el alumno; la herramienta analiza desde ahí por defecto. Va también el hilo
+  (las 3 últimas preguntas y respuestas).
+- Apagar el tutor con la lección abierta dejaba el ejemplo en el tablero con la tarjeta de la partida: ahora el
+  tablero vuelve a la partida.
+- Esperando la respuesta: «El tutor está preparando tu respuesta», bombilla y puntos animados, sin botones; al
+  llegar, sale la respuesta.
+- Rosa solo en las piezas amenazadas que nombra el texto (no en la que ataca: parpadeaba la dama de b4).
+- Lección: el servidor le da a Claude si la jugada para el jaque (y cómo) y qué piezas amenazadas defiende o salva,
+  y se le pide que empiece por eso (5.Cbd2 contra Db4+: para el jaque y defiende el alfil de c4 a la vez).

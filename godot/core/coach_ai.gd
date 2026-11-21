@@ -91,6 +91,20 @@ static func squares_in(text: String) -> Array:
 	return out
 
 
+## De las casillas que nombra un texto, las que tienen una pieza atacada por el bando contrario: esas son las que
+## parpadean en rosa (la pieza amenazada de la que se habla). La que ataca no: Pablo vio parpadear la dama de b4 en
+## «la dama de b4 lo ataca» y no se entendía (21 nov).
+static func threatened(pos: Chess, names: Array) -> Array:
+	var out: Array = []
+	for name: Variant in names:
+		var sq := Chess.sq_index(str(name))
+		if sq < 0 or out.has(sq) or pos.b[sq] == 0:
+			continue
+		if pos.attacked(sq, 1 - Chess.color_of(pos.b[sq])):
+			out.append(sq)
+	return out
+
+
 ## Flechas del tutor ({from: "g1", to: "e2", tone}) como las quiere el tablero (casillas por índice).
 static func board_arrows(step: Dictionary) -> Array:
 	var out: Array = []
@@ -384,10 +398,21 @@ func lesson_remote(payload: Dictionary, run: int, gen: int) -> void:
 
 ## Pregunta libre: la partida (las últimas 16 jugadas como mucho, desde la posición de antes), el color del alumno
 ## y la pregunta. `history`: posiciones (FEN) de la partida, una más que `moves`.
-static func ask_payload(history: Array, moves: Array, color: int, question: String, rating: int, language: String) -> Dictionary:
+## `shown`: lo que el alumno tiene en pantalla si no es la partida en directo ({start, moves, label}; {} si es la
+## partida). `previous`: las últimas preguntas y respuestas de esta partida ({q, a}), para seguir el hilo.
+static func ask_payload(history: Array, moves: Array, color: int, question: String, rating: int, language: String, shown: Dictionary = {}, previous: Array = []) -> Dictionary:
 	var k := maxi(0, moves.size() - 16)
 	var start := str(history[k]) if k < history.size() else str(history[0])
-	return {"start": start, "moves": moves.slice(k), "player": "w" if color == 0 else "b", "question": question.strip_edges().left(400), "rating": rating, "language": language}
+	var out := {"start": start, "moves": moves.slice(k), "player": "w" if color == 0 else "b", "question": question.strip_edges().left(400), "rating": rating, "language": language}
+	if not shown.is_empty():
+		out["shown"] = shown
+	var prev: Array = []
+	for p: Variant in previous.slice(-3):
+		if p is Dictionary:
+			prev.append({"q": str(p.get("q", "")).left(300), "a": str(p.get("a", "")).left(500)})
+	if not prev.is_empty():
+		out["previous"] = prev
+	return out
 
 
 ## Respuesta a una pregunta válida: texto y, si la hay, la línea para el tablero (pasos con posición legal).

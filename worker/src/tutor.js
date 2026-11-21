@@ -101,12 +101,44 @@ export function buildLine(fen, ucis, max) {
   const steps = [];
   for (const uci of ucis.slice(0, max)) {
     const before = chess.fen();
+    const prev = new Chess(before);
     const mv = UCI.test(uci) ? play(chess, uci) : null;
     if (!mv) break;
-    steps.push({ ...facts(chess, mv), fen: before });
+    steps.push({ ...facts(chess, mv), ...solves(prev, chess, mv), fen: before });
     if (chess.isGameOver()) break;
   }
   return steps;
+}
+
+// Lo que la jugada resuelve: si para un jaque (y cómo) y qué piezas propias amenazadas pasa a defender o salva.
+// Con esto el profesor puede decir lo importante: «para el jaque y a la vez defiende el alfil de c4» (Pablo, 21 nov).
+export function solves(prev, after, mv) {
+  const me = mv.color;
+  const them = me === "w" ? "b" : "w";
+  let parries = "";
+  if (prev.inCheck()) {
+    const kingSq = prev.board().flat().find((p) => p && p.type === "k" && p.color === me).square;
+    const checkers = prev.attackers(kingSq, them);
+    if (mv.piece === "k") parries = "mueve el rey";
+    else if (mv.captured && checkers.includes(mv.to)) parries = "captura la pieza que daba jaque";
+    else parries = "se interpone";
+  }
+  // Piezas propias (no el rey) atacadas por el rival: antes sin defensa, o que la movida defiende ahora.
+  const defends = [];
+  const saved = [];
+  for (const row of after.board()) {
+    for (const p of row) {
+      if (!p || p.color !== me || p.type === "k" || p.square === mv.to) continue;
+      if (!after.attackers(p.square, them).length) {
+        if (prev.attackers(p.square, them).length && prev.get(p.square)?.type === p.type) saved.push({ piece: p.type, square: p.square, how: "ya no está atacada" });
+        continue;
+      }
+      const byMoved = after.attackers(p.square, me).includes(mv.to);
+      const before = prev.get(p.square)?.type === p.type ? prev.attackers(p.square, me).length : -1;
+      if (byMoved) defends.push({ piece: p.type, square: p.square, wasUndefended: before === 0 });
+    }
+  }
+  return { parries, defends, saved };
 }
 
 // ¿Entrega material la jugada? La pieza movida (no un peón ni el rey) queda donde el rival la gana: sin defensa, o
@@ -228,6 +260,9 @@ function describeBoard(fen) {
 function describeStep(s, i, player, lang) {
   const who = s.color === player ? "ALUMNO" : "RIVAL";
   const bits = [`${i + 1}. [${who}] ${localSan(s.san, lang)}: ${PIECE_ES[s.promotion ? "p" : s.piece]} de ${s.from} a ${s.to}`];
+  if (s.parries) bits.push(`PARA EL JAQUE (${s.parries})`);
+  if (s.defends?.length) bits.push("la pieza movida DEFIENDE a: " + s.defends.map((d) => `${PIECE_ES[d.piece]} de ${d.square}, que está atacada${d.wasUndefended ? " y antes no tenía defensa" : ""}`).join(", "));
+  if (s.saved?.length) bits.push("deja de estar atacada: " + s.saved.map((d) => `${PIECE_ES[d.piece]} de ${d.square}`).join(", "));
   if (s.castle) bits.push("es un enroque");
   if (s.promotion) bits.push(`corona ${PIECE_ES[s.promotion]}`);
   if (s.captured) bits.push(`captura ${PIECE_ES[s.captured]} en ${s.to}`);
@@ -263,7 +298,8 @@ export function lessonPrompt(fen, played, best, info) {
     "Reglas estrictas:",
     "- Usa SOLO los hechos que te doy: los ha comprobado Stockfish y un programa. No calcules jugadas ni evalúes por tu cuenta.",
     "- No nombres casillas, piezas ni jugadas que no aparezcan en los datos. Escribe las jugadas exactamente como te las doy.",
-    "- Cada texto: 1 o 2 frases cortas. Di qué hace esa jugada y por qué importa (qué captura, qué ataca, qué deja sin defensa).",
+    "- Cada texto: 1 o 2 frases cortas. Empieza por lo MÁS importante de esa jugada: si para un jaque, si defiende o salva una pieza amenazada, si captura, si deja algo sin defensa. Si hace varias cosas a la vez (p. ej. para el jaque y además defiende una pieza), dilo: es lo que el alumno tiene que aprender.",
+    "- No digas lo obvio (de qué casilla sale la pieza) si hay algo más importante que decir.",
     `- Escribe en ${LANGUAGES[lang]}. Sin markdown ni emojis.`,
     "Devuelve SOLO un objeto JSON, sin nada antes ni después, con esta forma:",
     `{"resumen": "1-2 frases con la idea clave", "jugada": [${played.length} textos], "mejor": [${best.length} textos], "consejo": "una frase práctica para la próxima vez"}`,
@@ -362,7 +398,7 @@ export const ASK_TOOL = {
   input_schema: {
     type: "object",
     properties: {
-      desde: { type: "integer", description: "Número de la posición de partida (0 = la primera del historial que te doy; si no lo pones, la posición actual)." },
+      desde: { type: "integer", description: "Número de la posición desde la que jugar (de las que te doy). Si no lo pones: la que el alumno tiene en pantalla." },
       jugadas: { type: "array", items: { type: "string" }, description: "Jugadas en UCI, en orden, de 1 a 4. Vacío: solo valorar la posición." },
     },
     required: ["jugadas"],
@@ -383,6 +419,29 @@ export function replay(start, moves) {
   return { fens, done };
 }
 
+// Lo que el alumno tiene en pantalla si no es la partida en directo (un paso de la lección, una jugada anterior):
+// sus posiciones se añaden detrás de las de la partida, y la última es la que está mirando.
+export function addShown(ctx, shown) {
+  if (!shown || typeof shown !== "object") return;
+  const label = String(shown.label ?? "").slice(0, 200);
+  let chess;
+  try {
+    chess = new Chess(String(shown.start ?? ""));
+  } catch {
+    return;
+  }
+  const first = ctx.fens.length;
+  ctx.fens.push(chess.fen());
+  ctx.shownMoves = [];
+  for (const uci of (Array.isArray(shown.moves) ? shown.moves.map(String) : []).slice(0, LINE_MAX + 1)) {
+    const mv = UCI.test(uci) ? play(chess, uci) : null;
+    if (!mv) break;
+    ctx.shownMoves.push({ uci, san: mv.san, color: mv.color });
+    ctx.fens.push(chess.fen());
+  }
+  ctx.shown = { first, last: ctx.fens.length - 1, label };
+}
+
 function legalList(fen, lang) {
   return new Chess(fen).moves({ verbose: true }).map((m) => `${localSan(m.san, lang)}=${m.from}${m.to}${m.promotion || ""}`).join(", ");
 }
@@ -393,6 +452,7 @@ const pctFor = (e, side) => Math.round(side === "w" ? e.win : 100 - e.win);
 export async function runTool(input, ctx, env) {
   const idx = Number.isInteger(input?.desde) ? input.desde : ctx.fens.length - 1;
   if (idx < 0 || idx >= ctx.fens.length) return { text: `Error: «desde» va de 0 a ${ctx.fens.length - 1}.` };
+  const where = ctx.shown && idx >= ctx.shown.first ? " (del ejemplo en pantalla)" : "";
   const fen = ctx.fens[idx];
   const ucis = Array.isArray(input?.jugadas) ? input.jugadas.map(String).slice(0, LINE_MAX) : [];
   const steps = buildLine(fen, ucis, LINE_MAX);
@@ -410,7 +470,7 @@ export async function runTool(input, ctx, env) {
     for (const a of s.attacks) ctx.allowed.add(a.square);
     for (const a of s.attackedBy) ctx.allowed.add(a.square);
   }
-  const lines = [`Desde la posición ${idx}${idx === ctx.fens.length - 1 ? " (la actual)" : ""}.`];
+  const lines = [`Desde la posición ${idx}${where}${idx === ctx.fens.length - 1 ? " (la que ve el alumno)" : ""}. ${situation(fen, ctx.player)}`];
   if (steps.length) lines.push(...steps.map((s, i) => describeStep(s, i, ctx.player, ctx.lang)));
   if (end.isCheckmate()) {
     lines.push("La posición final es jaque mate.");
@@ -441,20 +501,31 @@ export async function runTool(input, ctx, env) {
   return { text: lines.join("\n") };
 }
 
-export function askPrompt(ctx, question, rating) {
+function situation(fen, player) {
+  const c = new Chess(fen);
+  const turn = c.turn();
+  const who = turn === player ? "le toca al alumno" : "le toca al rival";
+  const check = c.isCheckmate() ? ", y es JAQUE MATE" : c.inCheck() ? `, y el rey de las ${turn === "w" ? "blancas" : "negras"} ESTÁ EN JAQUE` : ", sin jaque";
+  return `Mueven las ${turn === "w" ? "blancas" : "negras"} (${who})${check}.`;
+}
+
+export function askPrompt(ctx, question, rating, previous = []) {
   const lang = ctx.lang;
-  const now = ctx.fens[ctx.fens.length - 1];
+  const gameLast = ctx.shown ? ctx.shown.first - 1 : ctx.fens.length - 1;
+  // Lo que mira el alumno: el ejemplo en pantalla o, si no hay, la partida en directo.
+  const now = ctx.fens[ctx.shown ? ctx.shown.last : gameLast];
+  const live = ctx.fens[gameLast];
+  for (const sq of describeBoard(live).squares) ctx.allowed.add(sq);
   const board = describeBoard(now);
   for (const sq of board.squares) ctx.allowed.add(sq);
   for (const m of new Chess(now).moves({ verbose: true })) {
     ctx.allowed.add(m.from);
     ctx.allowed.add(m.to);
   }
-  for (const d of ctx.done) {
+  for (const d of [...ctx.done, ...(ctx.shownMoves || [])]) {
     ctx.allowed.add(d.uci.slice(0, 2));
     ctx.allowed.add(d.uci.slice(2, 4));
   }
-  const turn = new Chess(now).turn();
   const system = [
     "Eres el profesor de ajedrez de la app A Chess Way, sentado junto a tu alumno mientras juega contra la app.",
     "El alumno te hace una pregunta (escrita o dictada por voz: puede venir con faltas o con las jugadas mal dichas). Contesta como un buen profesor: claro, cercano, de tú, sin regañar, y breve (2 a 4 frases).",
@@ -464,23 +535,44 @@ export function askPrompt(ctx, question, rating) {
     "- Si la pregunta no es de ajedrez ni de esta partida, contesta en una frase que solo puedes ayudar con la partida.",
     "- Si con la jugada del alumno el rival tiene algo mejor, dilo. Si la jugada del alumno era buena, explica por qué.",
     "- Nunca le digas qué jugar ahora si no te lo pide; si te pide ayuda para la jugada actual, dale una pista (qué mirar), no la jugada, salvo que la pida expresamente.",
+    "- Habla SIEMPRE de la posición que el alumno tiene en pantalla (te la doy abajo). Si está mirando un ejemplo de la lección o una jugada anterior, «esto», «aquí», «el peón», «si como» se refieren a ese ejemplo, no a la partida en directo. No mezcles las dos: si mencionas la partida en directo, dilo claramente.",
+    "- No digas que hay jaque, mate o una amenaza si no sale en los datos de esa posición.",
     `- Escribe en ${LANGUAGES[lang]}, con la notación de ajedrez de ese idioma. Sin markdown ni emojis.`,
     "Cuando tengas la respuesta, devuelve SOLO un objeto JSON, sin nada antes ni después:",
     '{"respuesta": "tu texto", "mostrar": {"desde": número de posición, "jugadas": ["uci", ...]} o null}',
     "«mostrar» es una línea de 1 a 4 jugadas (UCI, ya analizadas con la herramienta) que la app enseñará en el tablero, moviendo las piezas y con flechas, mientras el alumno lee. Úsala cuando ayude a ver lo que explicas.",
   ].join("\n");
-  const hist = ctx.done.map((d, i) => `${i}→${i + 1}: ${d.color === ctx.player ? "ALUMNO" : "RIVAL"} ${localSan(d.san, lang)} (${d.uci})`);
-  const user = [
+  const who = (c) => (c === ctx.player ? "ALUMNO" : "RIVAL");
+  const hist = ctx.done.map((d, i) => `${i}→${i + 1}: ${who(d.color)} ${localSan(d.san, lang)} (${d.uci})`);
+  const lines = [
     `Nivel del alumno: ${rating > 0 ? `unos ${rating} puntos` : "desconocido, trátalo como principiante"}.`,
-    `El alumno juega con ${ctx.player === "w" ? "blancas" : "negras"}. Ahora mueven las ${turn === "w" ? "blancas" : "negras"}${turn === ctx.player ? " (le toca al alumno)" : " (le toca al rival)"}.`,
-    `Últimas jugadas de la partida (la posición 0 es la de antes de la primera; la actual es la ${ctx.fens.length - 1}):`,
+    `El alumno juega con ${ctx.player === "w" ? "blancas" : "negras"}.`,
+    `PARTIDA EN DIRECTO. Últimas jugadas (la posición 0 es la de antes de la primera; la de ahora en la partida es la ${gameLast}):`,
     hist.length ? hist.join("\n") : "(ninguna todavía)",
-    "Posición actual:",
-    board.text,
-    `Jugadas legales ahora (notación=UCI): ${legalList(now, lang)}`,
+    `En la partida en directo: ${situation(live, ctx.player)}`,
+  ];
+  if (ctx.shown) {
+    const sh = ctx.shownMoves.map((d, i) => `${ctx.shown.first + i}→${ctx.shown.first + i + 1}: ${who(d.color)} ${localSan(d.san, lang)} (${d.uci})`);
+    lines.push(
+      "",
+      `LO QUE EL ALUMNO TIENE AHORA EN PANTALLA no es la partida en directo: ${ctx.shown.label || "un ejemplo"}.`,
+      `Posiciones del ejemplo: de la ${ctx.shown.first} a la ${ctx.shown.last} (la ${ctx.shown.last} es la que ve). Jugadas del ejemplo:`,
+      sh.length ? sh.join("\n") : "(ninguna: es esa posición tal cual)",
+    );
+  }
+  lines.push(
     "",
-    `Pregunta del alumno: «${question}»`,
-  ].join("\n");
+    `Posición que ve el alumno (número ${ctx.shown ? ctx.shown.last : gameLast}): ${situation(now, ctx.player)}`,
+    board.text,
+    `Jugadas legales en esa posición (notación=UCI): ${legalList(now, lang)}`,
+  );
+  const prev = (Array.isArray(previous) ? previous : []).slice(-3);
+  if (prev.length) {
+    lines.push("", "Lo que ya te ha preguntado en esta partida (por si la pregunta sigue el hilo):");
+    for (const p of prev) lines.push(`- Alumno: «${String(p?.q ?? "").slice(0, 300)}» / Tú: «${String(p?.a ?? "").slice(0, 600)}»`);
+  }
+  lines.push("", `Pregunta del alumno: «${question}»`);
+  const user = lines.join("\n");
   return { system, user };
 }
 
@@ -515,13 +607,14 @@ export async function answerQuestion(input, env) {
   let ctx;
   try {
     const { fens, done } = replay(String(input?.start ?? ""), moves);
-    ctx = { fens, done, lang: String(input?.language ?? "es") in LANGUAGES ? String(input.language) : "es", allowed: new Set() };
+    ctx = { fens, done, lang: String(input?.language ?? "es") in LANGUAGES ? String(input?.language ?? "es") : "es", allowed: new Set() };
   } catch (e) {
     throw Object.assign(new Error(e?.status ? e.message : "posición no válida"), { status: 400 });
   }
   ctx.player = input?.player === "b" ? "b" : "w";
+  addShown(ctx, input?.shown);
   const rating = Math.max(0, Math.min(3500, Math.round(Number(input?.rating) || 0)));
-  const { system, user } = askPrompt(ctx, question, rating);
+  const { system, user } = askPrompt(ctx, question, rating, input?.previous);
   if (!env.ANTHROPIC_API_KEY) throw Object.assign(new Error("falta la clave en el servidor"), { status: 500 });
   const call = (body) => fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

@@ -89,7 +89,7 @@ export default {
       const { success } = await limiter.limit({ key: ip });
       if (!success) return json({ error: "demasiadas peticiones" }, 429);
     }
-    if (Number(request.headers.get("content-length") || 0) > 4000) return json({ error: "demasiado grande" }, 413);
+    if (Number(request.headers.get("content-length") || 0) > 10000) return json({ error: "demasiado grande" }, 413);
     let body;
     try {
       body = await request.json();

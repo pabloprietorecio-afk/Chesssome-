@@ -267,3 +267,42 @@ test("preguntas: una casilla inventada: se le avisa una vez; si insiste, 502", a
   globalThis.fetch = async () => new Response(JSON.stringify({ content: [{ type: "text", text: '{"respuesta":"Tu caballo de c3 está mal.","mostrar":null}' }] }), { status: 200 });
   await assert.rejects(ask({ start, moves: [], question: "¿qué tal voy?" }, { ANTHROPIC_API_KEY: "k" }), (e) => e.status === 502);
 });
+
+test("preguntas: la posición en pantalla (un paso de la lección) manda, y va el hilo de antes", async () => {
+  const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
+  const sent = [];
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (!String(url).includes("anthropic")) return new Response(JSON.stringify({ type: "bestmove", depth: 18, move: "f3f4", centipawns: "20", continuationArr: [] }), { status: 200 });
+    sent.push(body);
+    if (sent.length === 1) return new Response(JSON.stringify({ content: [{ type: "tool_use", id: "t1", name: "analizar", input: { jugadas: ["e5f6"] } }] }), { status: 200 });
+    return new Response(JSON.stringify({ content: [{ type: "text", text: '{"respuesta":"En el ejemplo, comer en f6 al paso es legal.","mostrar":{"jugadas":["e5f6"]}}' }] }), { status: 200 });
+  };
+  // Partida: 12.Cge2 Dxe5 (rey blanco sin jaque). En pantalla: la línea buena, 12.f4 d5 (al paso posible).
+  const r = await ask({
+    start, moves: ["g1e2", "c7e5"], player: "w", question: "¿y si le como el peón?",
+    shown: { start, moves: ["f3f4", "f7f5"], label: "lección, línea de la mejor jugada, paso 2 de 2" },
+    previous: [{ q: "¿por qué perdí el peón?", a: "Porque Cge2 lo dejó sin defensa." }],
+  }, { ANTHROPIC_API_KEY: "k" });
+  const prompt = sent[0].messages[0].content;
+  assert.match(prompt, /LO QUE EL ALUMNO TIENE AHORA EN PANTALLA no es la partida en directo: lección, línea de la mejor jugada/);
+  assert.match(prompt, /Posición que ve el alumno \(número 5\)/);
+  assert.match(prompt, /3→4: ALUMNO f4 \(f3f4\)/);
+  assert.match(prompt, /Porque Cge2 lo dejó sin defensa/);
+  assert.match(prompt, /exf6=e5f6/, "en las legales del ejemplo está comer al paso");
+  assert.match(prompt, /0→1: ALUMNO Cge2/, "en español, con sus letras");
+  assert.match(sent[1].messages[2].content[0].content, /Desde la posición 5 \(del ejemplo en pantalla\)/);
+  assert.equal(r.show.from, 5);
+  assert.deepEqual(r.show.steps.map((s) => s.uci), ["e5f6"]);
+});
+
+test("hechos de la lección: para el jaque y a la vez defiende el alfil (5.Cbd2 contra Db4+)", () => {
+  // 1.e4 e6 2.d4 Cc6 3.Cf3 ... posición con Db4+ y el alfil de c4 atacado sin defensa.
+  const fen = "r1b1kbnr/pppp1ppp/2n1p3/8/1qBPP3/5N2/PPP2PPP/RNBQK2R w KQkq - 4 5";
+  const [step] = buildLine(fen, ["b1d2"], 1);
+  assert.equal(step.parries, "se interpone");
+  assert.deepEqual(step.defends.map((d) => [d.square, d.wasUndefended]), [["c4", true]]);
+  const text = lessonPrompt(fen, [step], [], { language: "es", verdict: "best", rating: 0, win_best: -1, win_played: -1 }).user;
+  assert.match(text, /PARA EL JAQUE \(se interpone\)/);
+  assert.match(text, /DEFIENDE a: alfil de c4, que está atacada y antes no tenía defensa/);
+});

@@ -991,7 +991,6 @@
 "Hablar",
 "Preguntar",
 "También puedes dictar con el micrófono del teclado.",
-"El tutor está pensando… (mira la posición con Stockfish antes de contestar)",
 "Enséñamelo en el tablero",
 "Otra pregunta",
 "Entendido",
@@ -1037,5 +1036,6 @@
 "Da mate.",
 "Es la única jugada legal.",
 "Según el motor, casi obligada: cualquier otra es mucho peor.",
-"Según el motor, da casi igual: %s también (esta, %s)."
+"Según el motor, da casi igual: %s también (esta, %s).",
+"El tutor está preparando tu respuesta"
 ]

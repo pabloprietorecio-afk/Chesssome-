@@ -320,6 +320,8 @@ var ask_text := ""
 var ask_answer := {}
 var ask_error := 0
 var ask_edit: LineEdit
+## Preguntas y respuestas de esta partida ({q, a}), para que el tutor siga el hilo.
+var ask_history: Array = []
 var tutor_voice: TutorVoice
 var _ask_gen := 0
 ## Partida gratis con profesor en curso (1…5), o 0 (premium, o sin prueba).
@@ -8140,6 +8142,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	ask_state = ""
 	ask_answer = {}
 	_ask_gen += 1
+	ask_history = []
 	if color < 0:
 		color = game_pick_color if game_pick_color < 2 else _rng.randi_range(0, 1)
 		# Partida elegida en la página: con el ritmo elegido allí.
@@ -8605,6 +8608,10 @@ func _exit_tree() -> void:
 
 
 func _clear_coach() -> void:
+	# Con la lección abierta (p. ej. se apaga el tutor desde la barra), primero el tablero vuelve a la partida: si no,
+	# se quedaba el ejemplo en pantalla con la tarjeta de la partida (lo vio Pablo, 21 nov).
+	if lesson_open:
+		_close_lesson()
 	coach_note = ""
 	coach_from_ai = false
 	coach_waiting = false
@@ -8877,11 +8884,11 @@ func _lesson_show(i: int) -> void:
 func _tutor_focus(step: Dictionary) -> Array:
 	var uci := str(step.get("uci", ""))
 	var skip := [uci.substr(0, 2), uci.substr(2, 2)]
-	var out: Array = []
+	var names: Array = []
 	for name: String in CoachAI.squares_in(_tutor_text(step)):
-		if not skip.has(name) and not out.has(Chess.sq_index(name)):
-			out.append(Chess.sq_index(name))
-	return out
+		if not skip.has(name):
+			names.append(name)
+	return CoachAI.threatened(view.board.chess, names)
 
 
 func _lesson_has_next() -> bool:
@@ -8996,8 +9003,7 @@ func _build_ask_window() -> void:
 				column.add_child(_para("También puedes dictar con el micrófono del teclado.", F_CAP, _c("quiet"), font_medium))
 		"wait":
 			column.add_child(_para("«%s»" % ask_text, F_SUB, _c("quiet"), font_medium))
-			column.add_child(_para("El tutor está pensando… (mira la posición con Stockfish antes de contestar)", F_BODY, _c("ink"), font_medium))
-			column.add_child(_button("close", "Cerrar", _close_confirm, _c("field"), _c("ink"), btn))
+			column.add_child(_thinking_row())
 		"answer":
 			column.add_child(_para("«%s»" % ask_text, F_SUB, _c("quiet"), font_medium))
 			column.add_child(_para(str(ask_answer.get("answer", "")), F_BODY, _c("ink"), font_regular))
@@ -9032,6 +9038,43 @@ func _build_ask_window() -> void:
 	column.add_child(hint)
 
 
+## Mientras el tutor prepara la respuesta: la bombilla se balancea y tres puntos laten, uno detrás de otro.
+func _thinking_row() -> HBoxContainer:
+	var tint := _tint("lilac")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	var bulb := _icon("bulb", 76.0, tint[1])
+	bulb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bulb.pivot_offset = Vector2(38.0, 70.0)
+	row.add_child(bulb)
+	var rock := bulb.create_tween().set_loops()
+	rock.tween_property(bulb, "rotation", 0.22, 0.5).set_trans(Tween.TRANS_SINE)
+	rock.tween_property(bulb, "rotation", -0.22, 0.5).set_trans(Tween.TRANS_SINE)
+	var label := _para("El tutor está preparando tu respuesta", F_BODY, _c("ink"), font_medium)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(label)
+	var dots := HBoxContainer.new()
+	dots.add_theme_constant_override("separation", 10)
+	dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for i in 3:
+		var dot := Panel.new()
+		dot.custom_minimum_size = Vector2(18.0, 18.0)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = tint[1]
+		sb.set_corner_radius_all(9)
+		dot.add_theme_stylebox_override("panel", sb)
+		dot.modulate.a = 0.25
+		dots.add_child(dot)
+		var beat := dot.create_tween().set_loops()
+		beat.tween_interval(0.2 * i)
+		beat.tween_property(dot, "modulate:a", 1.0, 0.3)
+		beat.tween_property(dot, "modulate:a", 0.25, 0.3)
+		beat.tween_interval(0.4 - 0.2 * i)
+	row.add_child(dots)
+	return row
+
+
 func _ask_idea(q: String) -> void:
 	ask_text = Loc.t(q)
 	_send_question()
@@ -9054,12 +9097,7 @@ func _ask_error_text() -> String:
 
 ## Casillas de la respuesta que tienen pieza en el tablero de la partida (las que tiene sentido señalar).
 func _answer_focus() -> Array:
-	var out: Array = []
-	for name: String in CoachAI.squares_in(str(ask_answer.get("answer", ""))):
-		var sq := Chess.sq_index(name)
-		if view.board.chess.b[sq] != 0 and not out.has(sq):
-			out.append(sq)
-	return out
+	return CoachAI.threatened(view.board.chess, CoachAI.squares_in(str(ask_answer.get("answer", ""))))
 
 
 func _send_question() -> void:
@@ -9072,8 +9110,28 @@ func _send_question() -> void:
 	ask_answer = {}
 	_ask_gen += 1
 	view.board.set_focus([])
-	coach.ask_remote(CoachAI.ask_payload(game_history, game_moves, game_color, q, _coach_rating(), Loc.language), run_id, _ask_gen)
+	coach.ask_remote(CoachAI.ask_payload(game_history, game_moves, game_color, q, _coach_rating(), Loc.language, _ask_shown(), ask_history), run_id, _ask_gen)
 	_build_ask_window()
+
+
+## Lo que el alumno tiene en pantalla si no es la partida en directo: un paso de la lección (o de la línea de una
+## respuesta) o una jugada anterior de la partida. El tutor contesta sobre eso (Pablo preguntó «¿y si le como el
+## peón?» mirando un ejemplo y le contestó sobre la partida). Las etiquetas son para Claude: van en español.
+func _ask_shown() -> Dictionary:
+	if lesson_open:
+		var steps := _lesson_steps()
+		if steps.is_empty():
+			return {}
+		var upto := clampi(lesson_step, 0, steps.size() - 1)
+		var moves: Array = []
+		for i in upto + 1:
+			moves.append(str((steps[i] as Dictionary)["uci"]))
+		var what: String = {"played": "la lección: lo que jugó el alumno y cómo sigue según Stockfish", "best": "la lección: la mejor jugada, lo que habría pasado si la hubiera jugado", "answer": "la línea que enseñaste en tu respuesta anterior"}.get(lesson_line, "un ejemplo")
+		return {"start": str((steps[0] as Dictionary)["fen"]), "moves": moves, "label": "%s, jugada %d de %d" % [what, upto + 1, steps.size()]}
+	if game_back > 0 and game_history.size() > game_back:
+		var idx := game_history.size() - 1 - game_back
+		return {"start": str(game_history[idx]), "moves": [], "label": "repasando la partida hacia atrás: la posición tras la jugada %d de la partida, no la de ahora" % idx}
+	return {}
 
 
 func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:
@@ -9085,6 +9143,9 @@ func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:
 	else:
 		ask_state = "answer"
 		ask_answer = data
+		ask_history.append({"q": ask_text, "a": str(data.get("answer", ""))})
+		if ask_history.size() > 3:
+			ask_history = ask_history.slice(-3)
 	# La respuesta sale aunque se hubiera cerrado la ventana mientras pensaba.
 	if mode == "game" and not lesson_open:
 		_build_ask_window()
@@ -9190,7 +9251,17 @@ func _build_lesson_card() -> void:
 	if lesson_line == "answer":
 		head = "Te lo enseño en el tablero"
 	title = _para(head, F_TITLE2, _c("good") if lesson_line == "best" or not bad else _c("bad"), font_display)
-	card_body.add_child(title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 14)
+	head_row.add_child(title)
+	if _tutor_can_ask():
+		# También se pregunta sobre el ejemplo que está en el tablero (el tutor sabe qué paso se ve).
+		var tint := _tint("lilac")
+		var ask_b := _round_button("mic" if tutor_voice.available() else "ask", _open_ask, 80.0, tint[1], Color.WHITE, false)
+		ask_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		head_row.add_child(ask_b)
+	card_body.add_child(head_row)
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 12)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
