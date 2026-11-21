@@ -283,12 +283,14 @@ test("preguntas: la posición en pantalla (un paso de la lección) manda, y va e
     start, moves: ["g1e2", "c7e5"], player: "w", question: "¿y si le como el peón?",
     shown: { start, moves: ["f3f4", "f7f5"], label: "lección, línea de la mejor jugada, paso 2 de 2" },
     previous: [{ q: "¿por qué perdí el peón?", a: "Porque Cge2 lo dejó sin defensa." }],
+    judged: { uci: "g1e2", verdict: "blunder", win_best: 62, win_played: 42 },
   }, { ANTHROPIC_API_KEY: "k" });
   const prompt = sent[0].messages[0].content;
   assert.match(prompt, /LO QUE EL ALUMNO TIENE AHORA EN PANTALLA no es la partida en directo: lección, línea de la mejor jugada/);
   assert.match(prompt, /Posición que ve el alumno \(número 5\)/);
   assert.match(prompt, /3→4: ALUMNO f4 \(f3f4\)/);
   assert.match(prompt, /Porque Cge2 lo dejó sin defensa/);
+  assert.match(prompt, /La app marcó la última jugada del alumno \(g1e2\) como «error grave».*de 62% a 42%/);
   assert.match(prompt, /exf6=e5f6/, "en las legales del ejemplo está comer al paso");
   assert.match(prompt, /0→1: ALUMNO Cge2/, "en español, con sus letras");
   assert.match(sent[1].messages[2].content[0].content, /Desde la posición 5 \(del ejemplo en pantalla\)/);
@@ -305,4 +307,22 @@ test("hechos de la lección: para el jaque y a la vez defiende el alfil (5.Cbd2 
   const text = lessonPrompt(fen, [step], [], { language: "es", verdict: "best", rating: 0, win_best: -1, win_played: -1 }).user;
   assert.match(text, /PARA EL JAQUE \(se interpone\)/);
   assert.match(text, /DEFIENDE a: alfil de c4, que está atacada y antes no tenía defensa/);
+});
+
+test("segunda opinión: un «error grave» que Stockfish no confirma desde la misma posición se rebaja", async () => {
+  const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
+  const { fens } = replay(start, ["g1e2"]);
+  let asked = 0;
+  globalThis.fetch = async (url, init) => {
+    const b = JSON.parse(init.body);
+    asked += 1;
+    if (b.searchmoves) return new Response(JSON.stringify({ type: "bestmove", depth: 18, move: "g1e2", centipawns: "10", continuationArr: [] }), { status: 200 });
+    if (b.fen === start) return new Response(JSON.stringify({ type: "bestmove", depth: 18, move: "f3f4", centipawns: "40", continuationArr: ["f3f4"] }), { status: 200 });
+    if (b.fen === fens[1]) return new Response(JSON.stringify({ type: "bestmove", depth: 12, move: "c7e5", centipawns: "-260", continuationArr: ["c7e5"] }), { status: 200 });
+    return new Response("{}", { status: 500 });
+  };
+  const r = await judge({ fen: start, uci: "g1e2" }, {});
+  assert.equal(r.second, Math.round(winPct(10)));
+  assert.equal(r.verdict, "good", "con la segunda opinión (de +0,4 a +0,1) ya no es error");
+  assert.ok(asked >= 3);
 });

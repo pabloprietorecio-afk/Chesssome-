@@ -9110,7 +9110,7 @@ func _send_question() -> void:
 	ask_answer = {}
 	_ask_gen += 1
 	view.board.set_focus([])
-	coach.ask_remote(CoachAI.ask_payload(game_history, game_moves, game_color, q, _coach_rating(), Loc.language, _ask_shown(), ask_history), run_id, _ask_gen)
+	coach.ask_remote(CoachAI.ask_payload(game_history, game_moves, game_color, q, _coach_rating(), Loc.language, _ask_shown(), ask_history, _ask_judged()), run_id, _ask_gen)
 	_build_ask_window()
 
 
@@ -9132,6 +9132,13 @@ func _ask_shown() -> Dictionary:
 		var idx := game_history.size() - 1 - game_back
 		return {"start": str(game_history[idx]), "moves": [], "label": "repasando la partida hacia atrás: la posición tras la jugada %d de la partida, no la de ahora" % idx}
 	return {}
+
+
+## Cómo se valoró la última jugada del alumno (la chapa que ve), para que el tutor no la contradiga sin explicarlo.
+func _ask_judged() -> Dictionary:
+	if coach_lesson.is_empty():
+		return {}
+	return {"uci": str(coach_lesson["uci"]), "verdict": str(coach_lesson["verdict"]), "win_best": int(coach_lesson["win_best"]), "win_played": int(coach_lesson["win_played"])}
 
 
 func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:

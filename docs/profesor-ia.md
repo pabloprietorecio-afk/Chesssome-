@@ -163,3 +163,16 @@ de la app. Los textos de depuración (APK de pruebas) no se traducen.
 - Rosa solo en las piezas amenazadas que nombra el texto (no en la que ataca: parpadeaba la dama de b4).
 - Lección: el servidor le da a Claude si la jugada para el jaque (y cómo) y qué piezas amenazadas defiende o salva,
   y se le pide que empiece por eso (5.Cbd2 contra Db4+: para el jaque y defiende el alfil de c4 a la vez).
+
+## Valoraciones más justas (21 nov)
+Pablo vio «error grave» en jugadas que el propio tutor, al preguntarle, decía que no lo eran.
+- Umbrales de chess.com (puntos esperados): imprecisión 5–10, error 10–20, error grave 20 o más puntos de
+  probabilidad perdidos (antes, los de Lichess: error grave desde 15; perder un peón en una posición igualada salía
+  «error grave»).
+- chess-api.com da como mucho 100 ms y profundidad 18, y la valoración salía de dos análisis sueltos (antes y después
+  de la jugada): en posiciones tácticas, diferencias falsas. Ahora, antes de marcar «error» o «error grave», se pide
+  una segunda opinión: Stockfish valora la jugada desde la misma posición que la mejor (`searchmoves`); vale la más
+  favorable al alumno (`second` en la respuesta). Un mate permitido no se discute.
+- Las preguntas llevan cómo se marcó la última jugada (`judged`): si al analizarla el tutor ve otra cosa, lo explica
+  con datos en vez de contradecir la marca sin más.
+- Un análisis más profundo de verdad necesita Stockfish propio (pendiente antes de publicar).

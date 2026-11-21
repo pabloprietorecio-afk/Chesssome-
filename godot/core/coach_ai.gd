@@ -400,7 +400,7 @@ func lesson_remote(payload: Dictionary, run: int, gen: int) -> void:
 ## y la pregunta. `history`: posiciones (FEN) de la partida, una más que `moves`.
 ## `shown`: lo que el alumno tiene en pantalla si no es la partida en directo ({start, moves, label}; {} si es la
 ## partida). `previous`: las últimas preguntas y respuestas de esta partida ({q, a}), para seguir el hilo.
-static func ask_payload(history: Array, moves: Array, color: int, question: String, rating: int, language: String, shown: Dictionary = {}, previous: Array = []) -> Dictionary:
+static func ask_payload(history: Array, moves: Array, color: int, question: String, rating: int, language: String, shown: Dictionary = {}, previous: Array = [], judged: Dictionary = {}) -> Dictionary:
 	var k := maxi(0, moves.size() - 16)
 	var start := str(history[k]) if k < history.size() else str(history[0])
 	var out := {"start": start, "moves": moves.slice(k), "player": "w" if color == 0 else "b", "question": question.strip_edges().left(400), "rating": rating, "language": language}
@@ -412,6 +412,8 @@ static func ask_payload(history: Array, moves: Array, color: int, question: Stri
 			prev.append({"q": str(p.get("q", "")).left(300), "a": str(p.get("a", "")).left(500)})
 	if not prev.is_empty():
 		out["previous"] = prev
+	if not judged.is_empty():
+		out["judged"] = judged
 	return out
 
 

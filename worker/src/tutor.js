@@ -48,12 +48,13 @@ export function readEngine(d) {
   return { move, cp, mate, win, line, depth: Number(d.depth) || 0 };
 }
 
-async function askEngine(fen, env, raw) {
+async function askEngine(fen, env, raw, only = "") {
   const r = await fetch(env.STOCKFISH_URL || "https://chess-api.com/v1", {
     method: "POST",
     headers: { "content-type": "application/json" },
     // taskId: el servicio empareja cada respuesta con su petición.
-    body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1, taskId: Math.random().toString(36).slice(2, 11) }),
+    // only: valorar solo esa jugada desde esta posición (searchmoves), para comparar con la mejor desde la misma raíz.
+    body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1, taskId: Math.random().toString(36).slice(2, 11), ...(only ? { searchmoves: only } : {}) }),
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error(`stockfish ${r.status}`);
@@ -176,9 +177,12 @@ function arrows(step, player, lineKind, index, bad) {
 const publicLine = (steps, player, kind, bad) =>
   steps.map((s, i) => ({ uci: s.uci, fen: s.fen, arrows: arrows(s, player, kind, i, bad) }));
 
+// Umbrales de chess.com (modelo de puntos esperados): imprecisión 5–10, error 10–20, error grave 20 o más puntos de
+// probabilidad de ganar perdidos. Antes, los de Lichess (error grave desde 15): perder un peón en una posición igualada
+// salía «error grave» y Pablo lo vio exagerado (21 nov).
 export function verdictFor(drop, isBest, allowsMate, missedMate) {
   if (isBest) return "best";
-  if (allowsMate || drop >= 15) return "blunder";
+  if (allowsMate || drop >= 20) return "blunder";
   if (drop >= 10 || missedMate) return "mistake";
   if (drop >= 5) return "inaccuracy";
   return "good";
@@ -206,12 +210,31 @@ export async function judge(input, env, debug) {
   const iMate = (e) => e && e.mate !== null && e.mate > 0 === (player === "w");
   const theyMate = (e) => e && e.mate !== null && e.mate > 0 !== (player === "w");
   const winBest = mine(A);
-  const winPlayed = after.isCheckmate() ? 100 : B ? mine(B) : 50;
+  let winPlayed = after.isCheckmate() ? 100 : B ? mine(B) : 50;
   const isBest = uci === A.move || after.isCheckmate();
-  const drop = isBest ? 0 : Math.max(0, winBest - winPlayed);
+  let drop = isBest ? 0 : Math.max(0, winBest - winPlayed);
   const allowsMate = theyMate(B) && !theyMate(A);
   const missedMate = iMate(A) && Math.abs(A.mate) <= 3 && !iMate(B) && !after.isCheckmate();
   let verdict = verdictFor(drop, isBest, allowsMate, missedMate);
+  // Segunda opinión antes de llamar «error» a una jugada: Stockfish la valora desde la misma posición que la mejor
+  // (searchmoves). Con 100 ms por análisis, dos análisis sueltos (antes y después) dan diferencias falsas en posiciones
+  // tácticas. Vale la valoración más favorable al alumno; un mate permitido no se discute.
+  let confirmed = null;
+  if ((verdict === "mistake" || verdict === "blunder") && !allowsMate && !after.isGameOver()) {
+    try {
+      const P = await askEngine(fen, env, raw, uci);
+      if (P.move === uci) {
+        confirmed = mine(P);
+        if (confirmed > winPlayed) {
+          winPlayed = confirmed;
+          drop = Math.max(0, winBest - winPlayed);
+          verdict = verdictFor(drop, isBest, allowsMate, missedMate);
+        }
+      }
+    } catch {
+      // Sin segunda opinión: vale la primera.
+    }
+  }
 
   const bad = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder";
   // Dos líneas para enseñar, cortas (cuatro jugadas): lo que jugó y cómo sigue, y la mejor. Si Stockfish no dio
@@ -236,7 +259,7 @@ export async function judge(input, env, debug) {
   }
   const out = {
     verdict, drop: Math.round(drop * 10) / 10, win_best: Math.round(winBest), win_played: Math.round(winPlayed),
-    best: A.move, player, depth: A.depth,
+    best: A.move, player, depth: A.depth, ...(confirmed !== null ? { second: Math.round(confirmed) } : {}),
     lines: {
       played: publicLine(playedSteps, player, "played", bad),
       best: publicLine(bestSteps, player, "best", bad),
@@ -566,6 +589,15 @@ export function askPrompt(ctx, question, rating, previous = []) {
     board.text,
     `Jugadas legales en esa posición (notación=UCI): ${legalList(now, lang)}`,
   );
+  const j = ctx.judged;
+  if (j && typeof j === "object" && UCI.test(String(j.uci)) && VERDICT_ES[j.verdict]) {
+    const nums = Number.isFinite(j.win_best) && Number.isFinite(j.win_played) && j.win_best >= 0 ? ` (según ese análisis, su probabilidad de ganar pasó de ${j.win_best}% a ${j.win_played}%)` : "";
+    lines.push(
+      "",
+      `La app marcó la última jugada del alumno (${j.uci}) como «${VERDICT_ES[j.verdict]}», con un análisis rápido de Stockfish${nums}. El alumno ve esa marca.`,
+      "Si te pregunta por ella y al analizarla con la herramienta te sale otra cosa, no la contradigas sin más: di qué has comprobado y con qué datos (p. ej. «mirándola con más calma, pierde menos de lo que parecía: …»).",
+    );
+  }
   const prev = (Array.isArray(previous) ? previous : []).slice(-3);
   if (prev.length) {
     lines.push("", "Lo que ya te ha preguntado en esta partida (por si la pregunta sigue el hilo):");
@@ -613,6 +645,7 @@ export async function answerQuestion(input, env) {
   }
   ctx.player = input?.player === "b" ? "b" : "w";
   addShown(ctx, input?.shown);
+  ctx.judged = input?.judged;
   const rating = Math.max(0, Math.min(3500, Math.round(Number(input?.rating) || 0)));
   const { system, user } = askPrompt(ctx, question, rating, input?.previous);
   if (!env.ANTHROPIC_API_KEY) throw Object.assign(new Error("falta la clave en el servidor"), { status: 500 });
