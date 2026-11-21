@@ -125,7 +125,9 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 			best_text += ": " + btag
 		paras.append(best_text + ".")
 		if best_why.size() > 1 and btag == "" and not missed_mate:
-			paras.append(str((best_why[1] as Dictionary)["text"]))
+			# Esta frase cuenta cómo quedaría la posición con la mejor jugada, que no se jugó: hay que decirlo, o
+			# parece que habla de piezas que no están ahí («El peón de h4…» con el peón aún en h3; Pablo, 21-11).
+			paras.append(after_best(str((best_why[1] as Dictionary)["text"])))
 		arrows.append({"from": Chess.move_from(best), "to": Chess.move_to(best), "tone": "good"})
 	e["paras"] = paras
 	e["arrows"] = arrows
@@ -134,6 +136,11 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 		# Para enseñar la mejor en el tablero, con cómo seguiría la partida.
 		e["best_uci"] = Chess.uci(best)
 	return _finish(e)
+
+
+## Lo que se dice de la posición a la que llevaba la mejor jugada (que no se jugó).
+static func after_best(text: String) -> String:
+	return Loc.f("Si la hubieras jugado: %s", text)
 
 
 ## Principios de la apertura que cumple una jugada (en las primeras jugadas): centro, desarrollo, enroque.

@@ -24,6 +24,14 @@ func _init() -> void:
 	# Con el motor (lo que usa el profesor en vivo): 2.Ch3 no es «buena».
 	var pe := GameDetail.entry(Bot.new(4), Chess.from_fen(pawn_fen), Chess.from_fen(pawn_fen).find_uci("g1h3"), 0, 2, 0.8)
 	_ok([GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER].has(str(pe.get("verdict", ""))), "2.Ch3 para el motor: %s (pierde %d) · %s" % [str(pe.get("verdict", "")), int(pe.get("loss", 0)), " ".join(pe.get("paras", []))])
+	# Lo que se cuenta de la mejor jugada (no jugada) va como hipótesis, en todos los idiomas.
+	_ok(GameDetail.after_best("El peón de h4 es pasado.") == "Si la hubieras jugado: El peón de h4 es pasado.", "la frase sobre la mejor jugada dice que es «si la hubieras jugado»")
+	var was := Loc.language
+	for lang: String in Loc.NAMES.keys():
+		Loc.apply(lang)
+		var t := GameDetail.after_best("X")
+		_ok(t.ends_with("X") and t.length() > 3 and (lang == "es" or not t.begins_with("Si la hubieras")), "traducida en %s: %s" % [lang, t])
+	Loc.apply(was)
 	# Mate en una que se escapa: la dama blanca da mate en f7 y el jugador juega otra cosa.
 	var mate_fen := "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
 	var mm := GameReview.analyze_move(mate_fen, "g1f3", 6)

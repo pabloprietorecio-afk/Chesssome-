@@ -21,6 +21,10 @@ premium, y poder activarla para probarla.
   explicación entera y «Entendido».
 - La ventana es bastante transparente (fondo al 62 %, las demás al 86 %) y **se puede arrastrar** con el dedo para
   destapar el tablero (un asa arriba y una nota abajo lo indican); se abre donde se dejó la última vez.
+- Lo que el análisis cuenta de la mejor jugada (que no se jugó) va como hipótesis: «La mejor era h4. Si la hubieras
+  jugado: El peón de h4 es pasado…» (antes parecía hablar de un peón que no estaba; GameDetail.after_best, también
+  en el detalle de partida). Traducida a los diez idiomas (tools/i18n/trad/ui_profesor.tsv). Ojo: las tablas de
+  godot/data/i18n tienen 10 frases que no están en los .tsv; `build.py` las borraría, así que esta se añadió a mano.
 - La chapa se queda hasta tu siguiente jugada: el tablero la borra con cada movimiento, así que se repone tras la
   jugada del rival (salvo que capture esa pieza) y al volver de mirar jugadas atrás. El rival espera a que salga
   la valoración (y medio segundo más) antes de mover, como mucho 3 s.
