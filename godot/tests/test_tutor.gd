@@ -35,6 +35,8 @@ func _initialize() -> void:
 	_ok(arrows.size() == 2 and int(arrows[0]["from"]) == Chess.sq_index("c7") and int(arrows[0]["to"]) == Chess.sq_index("e5") and str(arrows[0]["tone"]) == "bad", "flechas del tutor, por índice de casilla")
 	_ok(TutorVoice.fix_chess_words("mueve el al fin a c4", "es") == "mueve el alfil a c4" and TutorVoice.fix_chess_words("peor de rey dos pasos", "es") == "peón de rey dos pasos", "dictado: «al fin» → «alfil», «peor de rey» → «peón de rey»")
 	_ok(TutorVoice.fix_chess_words("¿es peor esta jugada?", "es") == "¿es peor esta jugada?" and TutorVoice.fix_chess_words("al fin", "en") == "al fin", "sin tocar frases normales ni otros idiomas")
+	var wav := TutorVoice.wav_bytes(PackedFloat32Array([0.0, 0.5, -0.5, 1.0]), 16000)
+	_ok(wav.size() == 52 and wav.decode_u32(0) == 0x46464952 and wav.decode_u32(24) == 16000 and wav.decode_s16(46) == 16383, "WAV de 16 kHz para Whisper")
 	var check_pos := Chess.from_fen("r1b1kbnr/pppp1ppp/2n1p3/8/1qBPP3/5N2/PPPN1PPP/R1BQK2R b KQkq - 5 5")
 	_ok(CoachAI.threatened(check_pos, ["b4", "c4", "d2"]) == [Chess.sq_index("c4"), Chess.sq_index("d2")], "en rosa, las piezas amenazadas que se nombran (c4, d2), no la dama que ataca (b4)")
 	_ok(CoachAI.squares_in("Con Cge2 sacas el caballo de g1, pero no proteges el peón de e5 (e5 queda solo). Dxe5.") == ["g1", "e5"], "casillas nombradas sueltas en un texto")
@@ -223,6 +225,21 @@ func _initialize() -> void:
 	await _frames(2)
 	_ok(Array(demo.view.board.focus_squares()).is_empty(), "al cerrar, nada parpadea")
 	_ok(not CoachAI.question_ok({"answer": "ok bien", "show": {"steps": [{"uci": "e2e5", "fen": GIFT}]}}) and CoachAI.question_ok({"answer": "ok bien", "show": null}), "línea ilegal en la respuesta: se rechaza")
+
+	# 5a. Dictado con Whisper (servidor simulado): lo grabado se transcribe y se corrige «al fin» → «alfil».
+	var heard_text := [""]
+	var on_heard := func(t: String) -> void: heard_text[0] = t
+	demo.tutor_voice.heard.connect(on_heard)
+	demo.tutor_voice.fake_server = func(audio: String) -> String: return "mueve el al fin a c4" if audio.length() > 100 else ""
+	demo.tutor_voice._samples = PackedFloat32Array()
+	demo.tutor_voice._samples.resize(16000)
+	demo.tutor_voice._heard_voice = true
+	demo.tutor_voice._lang = "es-ES"
+	demo.tutor_voice._record_finish()
+	await _frames(2)
+	_ok(heard_text[0] == "mueve el alfil a c4", "Whisper: «%s»" % heard_text[0])
+	demo.tutor_voice.heard.disconnect(on_heard)
+	demo.tutor_voice.fake_server = Callable()
 
 	# 5b. El asistente: órdenes con palabras (servidor simulado).
 	demo._sync_assistant_button()

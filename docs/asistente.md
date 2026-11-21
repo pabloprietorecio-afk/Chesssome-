@@ -21,3 +21,12 @@ intermedio”, “pon las fichas 3D de mármol e inclina el tablero 35 grados”
 - Coste estimado: una llamada a Haiku por petición (~2.000 tokens de entrada por la lista de acciones): ~0,03
   céntimos.
 - Pruebas: `worker/test.mjs` y `godot/tests/test_tutor.gd` (servidor simulado); el despliegue prueba una orden real.
+
+## Dictado con Whisper (22 nov)
+El reconocedor de Android no sabe de ajedrez («al fin» por «alfil»). Ahora, con conexión, la app graba (micrófono de
+Godot, `audio/driver/enable_input`; 16 kHz, mono; corta sola tras 1,3 s de silencio, como mucho 12 s) y el servidor
+transcribe con Whisper large v3 turbo de Workers AI (`/voz`, `worker/src/voice.js`), con el vocabulario de ajedrez
+como contexto (`initial_prompt`). Coste: unos 0,0005 $ por minuto de audio. Sin servidor, el reconocedor de Android
+(TutorVoz) como antes. Además, la app corrige los errores típicos («al fin» → «alfil», «peor de rey» → «peón de
+rey») y Claude sabe que el texto puede venir del dictado. Privacidad: el audio de la pregunta va al servidor solo
+para transcribirlo; no se guarda.

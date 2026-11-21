@@ -552,6 +552,12 @@ func ask_remote(payload: Dictionary, run: int, gen: int) -> void:
 	asked.emit(run, gen, data)
 
 
+## Dirección del dictado con Whisper (/voz), en el mismo servidor.
+static func voice_url(config: Dictionary) -> String:
+	var t := tutor_url(config)
+	return t.trim_suffix("/tutor") + "/voz" if t != "" else ""
+
+
 ## Dirección del asistente (la del servidor del tutor, en /asistente).
 static func assistant_url(config: Dictionary) -> String:
 	var t := tutor_url(config)

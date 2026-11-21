@@ -106,3 +106,8 @@ jobs:
           q=$(curl -s -m 90 -X POST "$base/tutor/pregunta" -H "content-type: application/json" -d "{\"start\":\"$FEN\",\"moves\":[\"g1e2\",\"c7e5\"],\"player\":\"w\",\"question\":\"¿Por qué he perdido el peón de e5? ¿Qué tendría que haber jugado?\",\"rating\":1100,\"language\":\"es\"}")
           echo "PREGUNTA: $q"
           echo "$q" | jq -e '.answer | length > 10' > /dev/null
+          echo "== dictado (Whisper): un segundo de silencio, solo para ver que Workers AI responde"
+          python3 -c "import wave,base64,io;b=io.BytesIO();w=wave.open(b,'wb');w.setnchannels(1);w.setsampwidth(2);w.setframerate(16000);w.writeframes(bytes(32000));w.close();print('{\"audio\":\"%s\",\"language\":\"es\"}'%base64.b64encode(b.getvalue()).decode())" > /tmp/voz.json
+          v=$(curl -s -m 40 -X POST "$base/voz" -H "content-type: application/json" --data-binary @/tmp/voz.json)
+          echo "VOZ: $v"
+          echo "$v" | jq -e 'has("text")' > /dev/null

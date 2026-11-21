@@ -30,7 +30,11 @@ namespace_id = "4472"
   limit = 40
   period = 60
 
-# El asistente: hasta 20 órdenes por minuto por IP.
+# Whisper (dictado), de Workers AI.
+[ai]
+binding = "AI"
+
+# El asistente y el dictado: hasta 20 por minuto por IP.
 [[ratelimits]]
 name = "ASSIST_IP"
 namespace_id = "4473"

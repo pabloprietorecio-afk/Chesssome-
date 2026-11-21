@@ -1158,6 +1158,8 @@ func _ready() -> void:
 	coach.assisted.connect(_on_assistant_reply)
 	tutor_voice = TutorVoice.new()
 	add_child(tutor_voice)
+	tutor_voice.server_url = CoachAI.voice_url(coach.cfg)
+	tutor_voice.transcribing.connect(_on_voice_transcribing)
 	local_engine = LocalEngine.new()
 	add_child(local_engine)
 	tutor_voice.heard_partial.connect(_on_voice_partial)
@@ -9464,6 +9466,17 @@ func _toggle_listen() -> void:
 	ask_state = "listen"
 	_build_ask_window()
 	tutor_voice.listen(Loc.language)
+
+
+## Grabado: ahora lo transcribe Whisper en el servidor (un segundo o dos).
+func _on_voice_transcribing() -> void:
+	if ask_state != "listen":
+		return
+	var col := _ask_column()
+	if col != null:
+		for c in col.get_children():
+			if c is Label and (c as Label).text == Loc.t("Te escucho… habla con calma."):
+				(c as Label).text = Loc.t("Un momento, que lo escribo…")
 
 
 func _on_voice_partial(t: String) -> void:

@@ -382,3 +382,16 @@ test("asistente: acciones válidas; jugada solo si es legal; nombres o valores r
   assert.equal(sent.tools.length, TOOLS.length);
   assert.match(sent.messages[0].content, /e4=e2e4/);
 });
+
+import { transcribe } from "./src/voice.js";
+
+test("dictado: Whisper con el vocabulario de ajedrez; audio raro, 400", async () => {
+  let got;
+  const env = { AI: { run: async (model, params) => { got = { model, params }; return { text: " Alfil a c4 " }; } } };
+  const r = await transcribe({ audio: "UklGR".padEnd(400, "A"), language: "es" }, env);
+  assert.equal(r.text, "Alfil a c4");
+  assert.equal(got.model, "@cf/openai/whisper-large-v3-turbo");
+  assert.match(got.params.initial_prompt, /Alfil/);
+  assert.equal(got.params.language, "es");
+  await assert.rejects(transcribe({ audio: "hola" }, env), (e) => e.status === 400);
+});

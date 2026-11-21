@@ -5,6 +5,7 @@
 
 import { judge, lesson, answerQuestion } from "./tutor.js";
 import { assist } from "./assistant.js";
+import { transcribe } from "./voice.js";
 
 export const KINDS = {
   missed_mate: "tenía jaque mate en una jugada y no lo dio",
@@ -77,7 +78,7 @@ const json = (obj, status = 200) =>
 
 // Rutas: /profesor (redactar un error ya comprobado por la app), /tutor (Stockfish valora la jugada) y
 // /tutor/leccion (Claude la explica jugada a jugada) y /tutor/pregunta (preguntas libres del alumno). Cada una con su límite por IP.
-const ROUTES = { "/profesor": "PER_IP", "/tutor": "TUTOR_IP", "/tutor/leccion": "PER_IP", "/tutor/pregunta": "PER_IP", "/asistente": "ASSIST_IP" };
+const ROUTES = { "/profesor": "PER_IP", "/tutor": "TUTOR_IP", "/tutor/leccion": "PER_IP", "/tutor/pregunta": "PER_IP", "/asistente": "ASSIST_IP", "/voz": "ASSIST_IP" };
 
 export default {
   async fetch(request, env) {
@@ -90,7 +91,9 @@ export default {
       const { success } = await limiter.limit({ key: ip });
       if (!success) return json({ error: "demasiadas peticiones" }, 429);
     }
-    if (Number(request.headers.get("content-length") || 0) > 10000) return json({ error: "demasiado grande" }, 413);
+    // El dictado trae audio (WAV de 16 kHz, unos 12 s como mucho); lo demás, poco texto.
+    const maxBytes = url.pathname === "/voz" ? 1_600_000 : 10000;
+    if (Number(request.headers.get("content-length") || 0) > maxBytes) return json({ error: "demasiado grande" }, 413);
     let body;
     try {
       body = await request.json();
@@ -100,6 +103,7 @@ export default {
     if (url.pathname !== "/profesor") {
       try {
         if (url.pathname === "/asistente") return json(await assist(body, env));
+        if (url.pathname === "/voz") return json(await transcribe(body, env));
         if (url.pathname === "/tutor") return json(await judge(body, env, url.searchParams.get("debug") === "1"));
         return json(url.pathname === "/tutor/pregunta" ? await answerQuestion(body, env) : await lesson(body, env));
       } catch (e) {
