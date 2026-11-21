@@ -47,3 +47,19 @@ test("límite por IP, método y ruta", async () => {
   assert.equal((await worker.fetch(new Request("https://x.dev/otra"), {})).status, 404);
   assert.equal((await worker.fetch(post({ facts: { fen: "x" } }), { ANTHROPIC_API_KEY: "k" })).status, 400);
 });
+
+test("desactiva el razonamiento y, si no se admite, repite con más margen", async () => {
+  const bodies = [];
+  globalThis.fetch = async (url, init) => {
+    const b = JSON.parse(init.body);
+    bodies.push(b);
+    if (b.thinking) return new Response(JSON.stringify({ error: { message: "thinking disabled not supported" } }), { status: 400 });
+    return new Response(JSON.stringify({ content: [{ type: "thinking", thinking: "" }, { type: "text", text: "Cuidado con la dama en h4." }] }), { status: 200 });
+  };
+  const r = await worker.fetch(post({ facts }), { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).content[0].text, "Cuidado con la dama en h4.");
+  assert.deepEqual(bodies[0].thinking, { type: "disabled" });
+  assert.equal(bodies[1].thinking, undefined);
+  assert.ok(bodies[1].max_tokens >= 1000);
+});

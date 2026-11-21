@@ -112,6 +112,8 @@ static func build_body(facts: Dictionary, config: Dictionary) -> Dictionary:
 		"max_tokens": int(config.get("max_tokens", 220)),
 		"system": system,
 		"messages": [{"role": "user", "content": user}],
+		# Solo hay que redactar: sin razonamiento previo, que gastaría los tokens antes de escribir.
+		"thinking": {"type": "disabled"},
 	}
 
 

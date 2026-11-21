@@ -89,11 +89,16 @@ export default {
     const facts = cleanFacts(body?.facts);
     if (!facts) return json({ error: "hechos no válidos" }, 400);
     if (!env.ANTHROPIC_API_KEY) return json({ error: "falta la clave en el servidor" }, 500);
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    // Sin razonamiento previo (cuesta tokens y tiempo, y aquí solo hay que redactar). Si el modelo no admite
+    // desactivarlo, se repite con margen para que piense y aun así escriba.
+    const base = buildBody(facts, env.MODEL || "claude-haiku-5-5", Number(env.MAX_TOKENS || 220));
+    const ask = (body) => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": env.ANTHROPIC_API_KEY },
-      body: JSON.stringify(buildBody(facts, env.MODEL || "claude-haiku-5-5", Number(env.MAX_TOKENS || 220))),
+      body: JSON.stringify(body),
     });
+    let r = await ask({ ...base, thinking: { type: "disabled" } });
+    if (r.status === 400) r = await ask({ ...base, max_tokens: Number(env.MAX_TOKENS_THINKING || 1500) });
     if (!r.ok) return json({ error: `api ${r.status}` }, 502);
     const data = await r.json();
     const text = (data.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
