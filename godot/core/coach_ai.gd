@@ -27,6 +27,8 @@ signal judged(run: int, gen: int, data: Dictionary)
 signal lesson_ready(run: int, gen: int, data: Dictionary)
 ## Respuesta a una pregunta libre ({answer, show} o {_error: código HTTP, 0 sin conexión}).
 signal asked(run: int, gen: int, data: Dictionary)
+## Respuesta del asistente ({say, actions} o {_error}).
+signal assisted(gen: int, data: Dictionary)
 
 const CONFIG := "res://data/coach_ai.json"
 ## Una casilla suelta o dentro de una jugada («Cxf5+», «exd5»): delante puede ir una pieza o la «x» de captura,
@@ -548,3 +550,25 @@ func ask_remote(payload: Dictionary, run: int, gen: int) -> void:
 		asked.emit(run, gen, {"_error": int(data.get("_error", 502))})
 		return
 	asked.emit(run, gen, data)
+
+
+## Dirección del asistente (la del servidor del tutor, en /asistente).
+static func assistant_url(config: Dictionary) -> String:
+	var t := tutor_url(config)
+	return t.trim_suffix("/tutor") + "/asistente" if t != "" else ""
+
+
+## El asistente: lo que pide el jugador y el estado de la app; vuelven una frase y acciones. Siempre emite `assisted`.
+func assist_remote(text: String, state: Dictionary, language: String, gen: int) -> void:
+	var url := assistant_url(cfg)
+	if url == "":
+		assisted.emit(gen, {"_error": -1})
+		return
+	calls += 1
+	if hold_questions:
+		return
+	var data := await _post(url, {"text": text.strip_edges().left(400), "state": state, "language": language}, float(cfg.get("ask_timeout_s", 60)))
+	if data.has("_error") or not (data.get("actions") is Array):
+		assisted.emit(gen, {"_error": int(data.get("_error", 502))})
+		return
+	assisted.emit(gen, data)

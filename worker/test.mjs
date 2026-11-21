@@ -354,3 +354,31 @@ test("con Stockfish en el móvil: usa sus análisis y no llama al servicio", asy
   const r2 = await judge({ fen: start, uci: "g1e2", engine: { A: { ...engine.A, move: "a1a8" }, B: engine.B } }, {});
   assert.notEqual(r2.phone, true);
 });
+
+import { assist, cleanAction, TOOLS } from "./src/assistant.js";
+
+test("asistente: acciones válidas; jugada solo si es legal; nombres o valores raros, fuera", async () => {
+  const state = { pantalla: "partida", legal: ["e4=e2e4", "Cf3=g1f3"] };
+  assert.deepEqual(cleanAction("mover", { uci: "e2e4" }, state), { name: "mover", input: { uci: "e2e4" } });
+  assert.equal(cleanAction("mover", { uci: "e2e5" }, state), null);
+  assert.equal(cleanAction("cambiar_material", { material: "oro" }, state), null);
+  assert.equal(cleanAction("borrar_todo", {}, state), null);
+  assert.deepEqual(cleanAction("inclinar_tablero", { grados: "55" }, state), { name: "inclinar_tablero", input: { grados: 55 } });
+  let sent;
+  globalThis.fetch = async (url, init) => {
+    sent = JSON.parse(init.body);
+    return new Response(JSON.stringify({ content: [
+      { type: "text", text: "Pongo el mármol y juego e4." },
+      { type: "tool_use", id: "a", name: "cambiar_material", input: { material: "mármol" } },
+      { type: "tool_use", id: "b", name: "mover", input: { uci: "e2e4" } },
+      { type: "tool_use", id: "c", name: "mover", input: { uci: "a2a5" } },
+    ] }), { status: 200 });
+  };
+  const r = await assist({ text: "mármol y peón de rey dos pasos", state, language: "es" }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.say, "Pongo el mármol y juego e4.");
+  assert.deepEqual(r.actions.map((a) => a.name), ["cambiar_material", "mover"]);
+  assert.equal(r.dropped, 1);
+  assert.equal(sent.model, "claude-haiku-5-5");
+  assert.equal(sent.tools.length, TOOLS.length);
+  assert.match(sent.messages[0].content, /e4=e2e4/);
+});

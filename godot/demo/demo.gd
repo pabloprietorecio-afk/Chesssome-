@@ -320,6 +320,10 @@ var ask_text := ""
 var ask_answer := {}
 var ask_error := 0
 var ask_edit: LineEdit
+## La ventana de preguntas sirve al tutor («tutor») y al asistente de la app («assistant»).
+var ask_mode := "tutor"
+## Botón flotante del asistente (en todas las pantallas, menos en Kids).
+var assistant_button: Button
 ## Preguntas y respuestas de esta partida ({q, a}), para que el tutor siga el hilo.
 var ask_history: Array = []
 var tutor_voice: TutorVoice
@@ -1148,6 +1152,7 @@ func _ready() -> void:
 	coach.judged.connect(_on_coach_judged)
 	coach.lesson_ready.connect(_on_coach_lesson)
 	coach.asked.connect(_on_tutor_answer)
+	coach.assisted.connect(_on_assistant_reply)
 	tutor_voice = TutorVoice.new()
 	add_child(tutor_voice)
 	local_engine = LocalEngine.new()
@@ -2236,6 +2241,7 @@ func _refresh(animate: bool = true) -> void:
 	if kids_wall != null and is_instance_valid(kids_wall):
 		kids_wall.visible = kids
 	_sync_tutor_toggle()
+	_sync_assistant_button()
 	_sync_music()
 	_build_card()
 	_build_actions()
@@ -9004,6 +9010,9 @@ func _tutor_can_ask() -> bool:
 func _open_ask() -> void:
 	if not _tutor_can_ask():
 		return
+	if ask_mode != "tutor":
+		ask_mode = "tutor"
+		ask_state = ""
 	if ask_state == "" or ask_state == "answer" or ask_state == "error":
 		if ask_state != "answer" and ask_state != "error":
 			ask_text = ""
@@ -9015,7 +9024,7 @@ func _open_ask() -> void:
 ## Ventana de las preguntas: semitransparente y arrastrable, como la de la explicación.
 func _build_ask_window() -> void:
 	_confirm_on_close = Callable()
-	var column := _glass_popup("Pregunta al tutor")
+	var column := _glass_popup("Asistente" if ask_mode == "assistant" else "Pregunta al tutor")
 	_confirm_on_close = _ask_closed
 	var tint := _tint("lilac")
 	var btn := {"font_size": F_SUB, "height": 104.0, "icon": 50.0, "radius": 52}
@@ -9023,7 +9032,7 @@ func _build_ask_window() -> void:
 		"edit", "listen":
 			ask_edit = LineEdit.new()
 			ask_edit.text = ask_text
-			ask_edit.placeholder_text = Loc.t("Escribe tu pregunta") if not tutor_voice.available() else Loc.t("Escribe o pulsa «Hablar»")
+			ask_edit.placeholder_text = Loc.t("Pídeme lo que quieras") if ask_mode == "assistant" else (Loc.t("Escribe tu pregunta") if not tutor_voice.available() else Loc.t("Escribe o pulsa «Hablar»"))
 			ask_edit.max_length = 400
 			ask_edit.add_theme_font_size_override("font_size", F_BODY)
 			ask_edit.add_theme_font_override("font", font_medium)
@@ -9048,7 +9057,7 @@ func _build_ask_window() -> void:
 				var ideas := HFlowContainer.new()
 				ideas.add_theme_constant_override("h_separation", 12)
 				ideas.add_theme_constant_override("v_separation", 12)
-				for q: String in ["¿Por qué es buena o mala mi última jugada?", "¿Qué planea el rival?", "Dame una pista, sin decirme la jugada"]:
+				for q: String in _ask_ideas():
 					var chip := _button("", q, _ask_idea.bind(q), _c("field"), _c("ink"), {"font_size": F_FOOT, "height": 80.0, "radius": 40})
 					ideas.add_child(chip)
 				column.add_child(ideas)
@@ -9070,13 +9079,13 @@ func _build_ask_window() -> void:
 		"answer":
 			column.add_child(_para("«%s»" % ask_text, F_SUB, _c("quiet"), font_medium))
 			column.add_child(_para(str(ask_answer.get("answer", "")), F_BODY, _c("ink"), font_regular))
-			if not _lesson_steps("answer").is_empty():
+			if ask_mode == "tutor" and not _lesson_steps("answer").is_empty():
 				var show := _button("play", "Enséñamelo en el tablero", _open_answer_lesson, _c("accent"), _c("accent_ink"), btn)
 				show.disabled = game_state != "play"
 				column.add_child(show)
 			var row2 := HBoxContainer.new()
 			row2.add_theme_constant_override("separation", 16)
-			var again := _button("ask", "Otra pregunta", _ask_again, tint[0], tint[1], btn)
+			var again := _button("ask", "Otra cosa" if ask_mode == "assistant" else "Otra pregunta", _ask_again, tint[0], tint[1], btn)
 			again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row2.add_child(again)
 			var ok := _button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), btn)
@@ -9084,7 +9093,8 @@ func _build_ask_window() -> void:
 			row2.add_child(ok)
 			column.add_child(row2)
 			# Lo que nombra la respuesta parpadea en el tablero.
-			view.board.set_focus(_answer_focus())
+			if ask_mode == "tutor":
+				view.board.set_focus(_answer_focus())
 		"error":
 			column.add_child(_para(_ask_error_text(), F_BODY, _c("ink"), font_medium))
 			var row3 := HBoxContainer.new()
@@ -9164,6 +9174,9 @@ func _answer_focus() -> Array:
 
 
 func _send_question() -> void:
+	if ask_mode == "assistant":
+		_send_to_assistant()
+		return
 	var q := ask_text.strip_edges()
 	if q.length() < 2 or not _tutor_can_ask():
 		return
@@ -9175,6 +9188,214 @@ func _send_question() -> void:
 	view.board.set_focus([])
 	coach.ask_remote(CoachAI.ask_payload(game_history, game_moves, game_color, q, _coach_rating(), Loc.language, _ask_shown(), ask_history, _ask_judged()), run_id, _ask_gen)
 	_build_ask_window()
+
+
+# ---------------------------------------------------------------- asistente: el jugador pide cosas con sus palabras
+
+## Ideas para empezar, según el modo de la ventana.
+func _ask_ideas() -> Array:
+	if ask_mode == "tutor":
+		return ["¿Por qué es buena o mala mi última jugada?", "¿Qué planea el rival?", "Dame una pista, sin decirme la jugada"]
+	if mode == "game" and game_state == "play":
+		return ["Peón de rey dos pasos", "Pon las piezas de mármol", "Dame una pista"]
+	return ["Empieza una partida en nivel medio", "Pon el tablero de mármol y en picado", "¿Hay alguien esperando online?"]
+
+
+func _assistant_available() -> bool:
+	return not kids and CoachAI.assistant_url(coach.cfg) != ""
+
+
+func _open_assistant() -> void:
+	if not _assistant_available():
+		return
+	if ask_mode != "assistant" or ask_state == "" or ask_state == "answer" or ask_state == "error":
+		ask_text = ""
+		ask_state = "edit"
+	ask_mode = "assistant"
+	_build_ask_window()
+
+
+## Lo que el asistente necesita saber de la app ahora mismo (y, si toca mover, las jugadas legales).
+func _assistant_state() -> Dictionary:
+	var screen := mode
+	if progress != null and is_instance_valid(progress):
+		screen = "pagina:" + progress_kind
+	elif sheet_kind != "":
+		screen = "opciones"
+	var st := {
+		"pantalla": screen, "idioma": Loc.language, "piezas": str(SET_NAMES[maxi(0, SETS.find(piece_set))]),
+		"material": str(STYLE_NAMES[maxi(0, STYLES.find(board_style))]), "tema": "oscuro" if dark else "claro",
+		"inclinacion": roundi(view.board.cam_pitch), "sonido": sound_on, "tutor": Premium.coach_on,
+	}
+	if mode == "game" and not game.is_empty():
+		var g := {"titulo": str(game.get("title", "")), "online": bool(game.get("online", false)), "reloj": game_clocked, "color": "blancas" if game_color == 0 else "negras", "estado": game_state}
+		st["partida"] = g
+		if game_state == "play" and game_back == 0 and not lesson_open:
+			var pos := view.board.chess
+			var legal: Array = []
+			for m in pos.legal_moves():
+				legal.append("%s=%s" % [SanEs.san(pos, m), Chess.uci(m)])
+			st["legal"] = legal
+	return st
+
+
+func _send_to_assistant() -> void:
+	var q := ask_text.strip_edges()
+	if q.length() < 2 or not _assistant_available():
+		return
+	tutor_voice.cancel()
+	ask_text = q
+	ask_state = "wait"
+	ask_answer = {}
+	_ask_gen += 1
+	coach.assist_remote(q, _assistant_state(), Loc.language, _ask_gen)
+	_build_ask_window()
+
+
+func _on_assistant_reply(gen: int, data: Dictionary) -> void:
+	if gen != _ask_gen or ask_mode != "assistant" or ask_state != "wait":
+		return
+	if data.has("_error"):
+		ask_state = "error"
+		ask_error = int(data["_error"])
+		_build_ask_window()
+		return
+	var notes: Array = []
+	var say := str(data.get("say", ""))
+	for a: Variant in data.get("actions", []):
+		if a is Dictionary:
+			var note: String = await _run_assistant_action(str(a.get("name", "")), a.get("input", {}) if a.get("input") is Dictionary else {})
+			if note != "":
+				notes.append(note)
+		if ask_mode != "assistant":
+			return
+	if gen != _ask_gen:
+		return
+	ask_state = "answer"
+	ask_answer = {"answer": "\n\n".join(([say] if say != "" else []) + notes)}
+	# Hecho sin nada más que contar: la ventana se cierra y la frase sale en un aviso breve.
+	if notes.is_empty() and not (data.get("actions", []) as Array).is_empty():
+		ask_state = ""
+		_confirm_on_close = Callable()
+		_close_confirm()
+		if say != "":
+			_prog_toast(say, "", false)
+		return
+	_build_ask_window()
+
+
+## Ejecuta una acción del asistente. Devuelve un texto para el jugador si hay algo que contar (un resultado o por
+## qué no se ha podido); "" si se hizo sin más.
+func _run_assistant_action(action: String, a: Dictionary) -> String:
+	match action:
+		"empezar_partida":
+			if kids:
+				return Loc.t("En el modo Kids las partidas se eligen desde el curso.")
+			var g := maxi(0, ["muy fácil", "fácil", "medio", "difícil", "muy difícil"].find(str(a.get("nivel", "medio"))))
+			var levels := Bot.group_levels(g)
+			var lv := int(levels[clampi(int(a.get("subnivel", 1)) - 1, 0, levels.size() - 1)]) if a.has("subnivel") else int(game_sublevels.get(str(g), levels[0]))
+			if a.has("color"):
+				game_pick_color = maxi(0, ["blancas", "negras", "azar"].find(str(a["color"])))
+			if a.has("ritmo"):
+				for i in TIME_CONTROLS.size():
+					if str(TIME_CONTROLS[i][0]).to_lower() == str(a["ritmo"]):
+						game_tc_pick = i
+			if a.has("war_chess"):
+				game_war = bool(a["war_chess"])
+			_close_confirm()
+			_start_level(lv)
+		"mover":
+			if mode != "game" or game_state != "play" or game_back > 0 or lesson_open:
+				return Loc.t("Ahora no se puede mover: espera a que te toque en la partida.")
+			var uci := str(a.get("uci", ""))
+			if view.board.chess.find_uci(uci) < 0:
+				return Loc.t("Esa jugada no es legal ahora.")
+			_confirm_on_close = Callable()
+			_close_confirm()
+			view.show_move(uci)
+			_game_move(uci)
+		"cambiar_piezas":
+			_set_pieces_index(maxi(0, ["figuras", "fichas", "simple"].find(str(a.get("piezas", "figuras")))))
+		"cambiar_material":
+			_set_style_index(maxi(0, ["madera", "mármol", "metal", "ilustrado"].find(str(a.get("material", "madera")))))
+		"inclinar_tablero":
+			if view.board.is_simple():
+				return Loc.t("Con las piezas «Simple» el tablero se ve siempre desde arriba.")
+			var deg := clampf(float(a.get("grados", Board3D.DEFAULT_PITCH)), Board3D.PITCH_MIN, Board3D.PITCH_MAX)
+			top_view = deg > 84.0
+			view.board.animate_view(deg, view.board.cam_yaw)
+			_save_settings()
+			if float(a.get("grados", deg)) < Board3D.PITCH_MIN:
+				return Loc.f("Lo más inclinado que va el tablero son %d grados: lo he dejado así.", int(Board3D.PITCH_MIN))
+		"cambiar_tema":
+			_set_theme_index(1 if str(a.get("tema", "")) == "oscuro" else 0)
+		"animaciones":
+			_set_anim(maxi(0, ["completas", "rápidas", "mínimas", "sin"].find(str(a.get("modo", "completas")))))
+		"ajuste":
+			var on := bool(a.get("activo", true))
+			match str(a.get("nombre", "")):
+				"sonido": _set_sound(on)
+				"contorno": _set_outline(on)
+				"seguir_movil": _set_tilt(on)
+				"fijar_giro": _set_lock(on)
+				"pista_gestos": _set_gesture_hint(on)
+				"pulsar_reloj": _set_press_clock(on)
+				"tutor":
+					if on and _tutor_blocked_reason() != "":
+						return Loc.t(_tutor_blocked_reason())
+					_set_coach_on(on)
+					_refresh()
+		"cambiar_idioma":
+			_set_language(str(a.get("idioma", Loc.language)))
+		"abrir":
+			_confirm_on_close = Callable()
+			_close_confirm()
+			match str(a.get("pantalla", "")):
+				"inicio": _open_home()
+				"opciones": _open_options()
+				"jugar": _open_game_setup()
+				"online": _open_online_home()
+				"mis_partidas": _open_my_games_from("home")
+				"entrenar": _open_train_hub()
+				"aprender": _open_course()
+				"mi_nivel":
+					if _has_player():
+						_open_progress("progress")
+					else:
+						_open_experience()
+				"finales_campeones": _open_cine()
+				"como_se_usa": _open_welcome()
+				"licencias": _open_licences()
+		"ver_partidas_online":
+			var lobby: Dictionary = await online.lobby()
+			if not bool(lobby.get("ok", false)):
+				return Loc.t("No he podido mirar las partidas online (sin conexión).")
+			var spaces: Dictionary = lobby.get("spaces", {})
+			if spaces.is_empty():
+				return Loc.t("Ahora mismo no hay nadie esperando rival online. Si entras en «Partida online» y eliges un ritmo, esperas tú y te avisa cuando llegue alguien.")
+			var parts: Array = []
+			for r: String in spaces.keys():
+				parts.append(Loc.f("%s: %d esperando", [Online.rhythm_label(r), (spaces[r] as Array).size()]))
+			return Loc.t("Esperando rival ahora:") + " " + ", ".join(parts) + "."
+		"accion_partida":
+			if mode != "game" or game_state != "play":
+				return Loc.t("Eso solo se puede en una partida, cuando te toca.")
+			_confirm_on_close = Callable()
+			_close_confirm()
+			match str(a.get("accion", "")):
+				"pista": _game_hint()
+				"deshacer": _game_undo()
+				"explicamelo":
+					if coach_lesson.is_empty():
+						return Loc.t("Todavía no hay ninguna jugada tuya que explicar.")
+					_open_lesson()
+		"preguntar_tutor":
+			if not _tutor_can_ask():
+				return Loc.t("El tutor solo contesta en una partida contra la app, con el tutor encendido.")
+			ask_mode = "tutor"
+			ask_text = str(a.get("pregunta", ""))
+			_send_question()
+	return ""
 
 
 ## Lo que el alumno tiene en pantalla si no es la partida en directo: un paso de la lección (o de la línea de una
@@ -9662,6 +9883,22 @@ func _coach_window_restore(window: PanelContainer) -> void:
 	if _coach_window_pos == Vector2.INF or not is_instance_valid(window):
 		return
 	window.position = _coach_window_clamp(_coach_window_pos, window.size)
+
+
+## Botón flotante del asistente: abajo a la derecha, encima de la barra de botones, en todas las pantallas.
+func _sync_assistant_button() -> void:
+	if assistant_button == null or not is_instance_valid(assistant_button):
+		var tint := _tint("lilac")
+		assistant_button = _round_button("mic" if tutor_voice.available() else "spark", _open_assistant, 116.0, tint[1], Color.WHITE)
+		assistant_button.tooltip_text = Loc.t("Asistente")
+		add_child(assistant_button)
+	assistant_button.visible = _assistant_available() and welcome == null
+	if not assistant_button.visible:
+		return
+	move_child(assistant_button, get_child_count() - 1)
+	var vp := get_viewport_rect().size
+	var bottom := _insets().y
+	assistant_button.position = Vector2(vp.x - 116.0 - 28.0, vp.y - bottom - BAR_HEIGHT - 116.0 - 64.0)
 
 
 ## El interruptor «Tutor IA» de la barra: una pastilla con el nombre y el interruptor; se toca entera.

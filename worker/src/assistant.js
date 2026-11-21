@@ -1,0 +1,113 @@
+// Asistente de A Chess Way (/asistente): el jugador pide cosas con sus palabras («empieza una partida en nivel
+// medio», «pon el tablero de mármol», «peón de rey dos pasos») y Claude elige acciones de una lista fija. La app
+// las ejecuta (y las comprueba); aquí solo se validan su forma y sus valores. Petición de Pablo (21 nov).
+
+const LEVELS = ["muy fácil", "fácil", "medio", "difícil", "muy difícil"];
+const RHYTHMS = ["sin reloj", "3+2", "5+0", "10+0", "15+10", "30+0", "90+30"];
+const SCREENS = ["inicio", "opciones", "jugar", "online", "mis_partidas", "entrenar", "aprender", "mi_nivel", "finales_campeones", "como_se_usa", "licencias"];
+const SWITCHES = ["sonido", "contorno", "seguir_movil", "fijar_giro", "pista_gestos", "tutor", "pulsar_reloj"];
+const UCI = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
+
+const tool = (name, description, properties, required = []) => ({ name, description, input_schema: { type: "object", properties, required } });
+
+export const TOOLS = [
+  tool("empezar_partida", "Empieza una partida contra la app.", {
+    nivel: { type: "string", enum: LEVELS, description: "Nivel del rival. «Intermedio» = medio; «principiante» = muy fácil." },
+    subnivel: { type: "integer", description: "Escalón dentro del nivel (1 = el más fácil). Opcional." },
+    color: { type: "string", enum: ["blancas", "negras", "azar"] },
+    ritmo: { type: "string", enum: RHYTHMS },
+    war_chess: { type: "boolean", description: "Variante War Chess de la app (piezas con armadura)." },
+  }, ["nivel"]),
+  tool("mover", "Juega una jugada en la partida en curso. Solo si le toca al jugador. Elige una de las jugadas legales que te doy (en UCI).", {
+    uci: { type: "string", description: "La jugada en UCI, p. ej. e2e4. Tiene que estar en la lista de jugadas legales." },
+  }, ["uci"]),
+  tool("cambiar_piezas", "Cambia el juego de piezas.", { piezas: { type: "string", enum: ["figuras", "fichas", "simple"], description: "figuras = piezas 3D clásicas; fichas = discos con el icono; simple = tablero plano desde arriba." } }, ["piezas"]),
+  tool("cambiar_material", "Cambia el material del tablero y de las piezas.", { material: { type: "string", enum: ["madera", "mármol", "metal", "ilustrado"] } }, ["material"]),
+  tool("inclinar_tablero", "Cambia la inclinación de la vista: ángulo de la cámara sobre el tablero. 90 = desde arriba (en picado); 64 = la vista normal; 36 = lo más tumbado posible.", { grados: { type: "number" } }, ["grados"]),
+  tool("cambiar_tema", "Tema claro u oscuro.", { tema: { type: "string", enum: ["claro", "oscuro"] } }, ["tema"]),
+  tool("animaciones", "Cuánto se animan las piezas.", { modo: { type: "string", enum: ["completas", "rápidas", "mínimas", "sin"] } }, ["modo"]),
+  tool("ajuste", "Enciende o apaga un ajuste.", { nombre: { type: "string", enum: SWITCHES }, activo: { type: "boolean" } }, ["nombre", "activo"]),
+  tool("cambiar_idioma", "Cambia el idioma de la app.", { idioma: { type: "string", enum: ["es", "en", "fr", "it", "pt", "de", "ru", "ja", "hi", "id"] } }, ["idioma"]),
+  tool("abrir", "Abre una pantalla de la app.", { pantalla: { type: "string", enum: SCREENS } }, ["pantalla"]),
+  tool("ver_partidas_online", "Mira cuánta gente está esperando rival online ahora mismo, por ritmo, y se lo enseña al jugador.", {}),
+  tool("accion_partida", "Botones de la partida en curso.", { accion: { type: "string", enum: ["pista", "deshacer", "explicamelo"] } }, ["accion"]),
+  tool("preguntar_tutor", "Pasa una pregunta de ajedrez sobre la partida al tutor (que la analiza con Stockfish y la contesta).", { pregunta: { type: "string" } }, ["pregunta"]),
+];
+
+const ENUMS = {};
+for (const t of TOOLS) for (const [k, v] of Object.entries(t.input_schema.properties)) if (v.enum) ENUMS[`${t.name}.${k}`] = v.enum;
+
+// Una acción válida (nombre conocido, valores dentro de lo permitido) o null.
+export function cleanAction(name, input, state) {
+  const t = TOOLS.find((x) => x.name === name);
+  if (!t || !input || typeof input !== "object") return null;
+  const out = {};
+  for (const [k, spec] of Object.entries(t.input_schema.properties)) {
+    if (!(k in input)) continue;
+    let v = input[k];
+    if (spec.enum && !spec.enum.includes(v)) return null;
+    if (spec.type === "number" || spec.type === "integer") {
+      v = Number(v);
+      if (!Number.isFinite(v)) return null;
+    }
+    if (spec.type === "boolean" && typeof v !== "boolean") return null;
+    if (spec.type === "string" && typeof v !== "string") return null;
+    out[k] = v;
+  }
+  for (const r of t.input_schema.required || []) if (!(r in out)) return null;
+  if (name === "mover") {
+    const legal = Array.isArray(state?.legal) ? state.legal.map(String) : [];
+    if (!UCI.test(out.uci) || !legal.some((l) => l.endsWith("=" + out.uci))) return null;
+  }
+  if (name === "preguntar_tutor") out.pregunta = out.pregunta.slice(0, 400);
+  return { name, input: out };
+}
+
+export function assistantPrompt(text, state, language) {
+  const s = state && typeof state === "object" ? state : {};
+  const system = [
+    "Eres el asistente de A Chess Way, una app de ajedrez para móvil. El jugador te pide cosas con sus palabras (escritas o dictadas por voz, con posibles faltas) y tú las haces usando las herramientas, que son acciones de la app.",
+    "Reglas:",
+    "- Si lo que pide se puede hacer con las herramientas, úsalas (varias si hace falta, en orden) y escribe además una frase corta diciendo lo que haces.",
+    "- Si no se puede, dilo con amabilidad en una o dos frases y sugiere lo más parecido que sí se puede y cómo hacerlo (qué tocar en la app).",
+    "- Para mover: el jugador puede decir la jugada en notación («e4», «Cf3») o con palabras («peón de rey dos pasos», «enroque corto», «la dama come el alfil»). Elige la jugada de la lista de jugadas legales que te doy; si no está claro cuál es o no es legal, pregunta o explica por qué no se puede, sin mover.",
+    "- No inventes funciones que la app no tiene. Si pide algo peligroso o irreversible (borrar el progreso, rendirse), explica cómo hacerlo él mismo y no lo hagas.",
+    "- Las preguntas de ajedrez sobre la partida (por qué una jugada es mala, qué planea el rival) van al tutor con «preguntar_tutor».",
+    `- Contesta en el idioma ${language}. Sin markdown ni emojis.`,
+    "",
+    "Qué hay en la app: partidas contra la app en cinco niveles (muy fácil, fácil, medio, difícil, muy difícil, cada uno con subniveles), con o sin reloj, con blancas, negras o al azar, y la variante War Chess; partidas online contra personas (por ritmos); problemas para entrenar por nivel y por temas; un curso «Aprende desde cero»; «Finales de campeones» con vídeo; «Mi nivel y mi plan»; «Mis partidas» con el análisis; un tutor con IA en las partidas (marca cada jugada y la explica); piezas «figuras» (3D), «fichas» y «simple» (plano); materiales madera, mármol, metal e ilustrado; tema claro u oscuro; sonido; animaciones; idiomas.",
+  ].join("\n");
+  const lines = [`Estado de la app ahora: ${JSON.stringify({ ...s, legal: undefined })}`];
+  if (Array.isArray(s.legal) && s.legal.length) lines.push(`Jugadas legales del jugador ahora (notación=UCI): ${s.legal.slice(0, 120).join(", ")}`);
+  lines.push("", `Lo que pide el jugador: «${String(text).slice(0, 400)}»`);
+  return { system, user: lines.join("\n") };
+}
+
+export async function assist(input, env) {
+  const text = String(input?.text ?? "").trim();
+  if (text.length < 2) throw Object.assign(new Error("petición vacía"), { status: 400 });
+  if (!env.ANTHROPIC_API_KEY) throw Object.assign(new Error("falta la clave en el servidor"), { status: 500 });
+  const language = String(input?.language ?? "es").slice(0, 5);
+  const state = input?.state && typeof input.state === "object" ? input.state : {};
+  const { system, user } = assistantPrompt(text, state, language);
+  const base = { model: env.MODEL_ASSISTANT || "claude-haiku-5-5", max_tokens: 600, system, tools: TOOLS, messages: [{ role: "user", content: user }] };
+  const call = (body) => fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": env.ANTHROPIC_API_KEY },
+    body: JSON.stringify(body),
+  });
+  let r = await call({ ...base, thinking: { type: "disabled" } });
+  if (r.status === 400) r = await call({ ...base, max_tokens: 3000 });
+  if (!r.ok) throw Object.assign(new Error(`api ${r.status}`), { status: 502 });
+  const data = await r.json();
+  const content = data.content || [];
+  const say = content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim().slice(0, 600);
+  const actions = [];
+  let dropped = 0;
+  for (const c of content.filter((x) => x.type === "tool_use")) {
+    const a = cleanAction(c.name, c.input, state);
+    if (a) actions.push(a);
+    else dropped += 1;
+  }
+  return { say, actions: actions.slice(0, 6), dropped };
+}

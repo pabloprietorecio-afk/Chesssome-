@@ -157,6 +157,7 @@ func _initialize() -> void:
 	# 5. Preguntas libres (servidor simulado: se llama a _on_tutor_answer a mano).
 	demo.coach.cfg = {"endpoint": "", "tutor": "http://127.0.0.1:9/tutor", "tutor_timeout_s": 1, "ask_timeout_s": 1}
 	demo.coach.hold_questions = true
+	demo._refresh()
 	demo._start_game(cfg, 0)
 	await _frames(4)
 	_ok(demo._tutor_can_ask() and _has_text(demo.card_body, "pregúntame lo que quieras"), "desde la primera jugada se puede preguntar")
@@ -220,6 +221,30 @@ func _initialize() -> void:
 	await _frames(2)
 	_ok(Array(demo.view.board.focus_squares()).is_empty(), "al cerrar, nada parpadea")
 	_ok(not CoachAI.question_ok({"answer": "ok bien", "show": {"steps": [{"uci": "e2e5", "fen": GIFT}]}}) and CoachAI.question_ok({"answer": "ok bien", "show": null}), "línea ilegal en la respuesta: se rechaza")
+
+	# 5b. El asistente: órdenes con palabras (servidor simulado).
+	_ok(demo.assistant_button != null and demo.assistant_button.visible, "botón flotante del asistente")
+	demo._open_assistant()
+	await _frames(2)
+	_ok(demo.ask_mode == "assistant" and _has_text(demo.confirm_node, "Asistente") and _has_text(demo.confirm_node, "Peón de rey dos pasos"), "ventana del asistente, con ideas para la partida")
+	var st: Dictionary = demo._assistant_state()
+	_ok(st["pantalla"] == "game" and (st["legal"] as Array).has("f4=f3f4") and st.has("partida"), "el asistente sabe dónde está y qué jugadas hay")
+	demo.ask_text = "mármol y peón de rey dos pasos"
+	demo._send_question()
+	_ok(demo.ask_state == "wait" and demo.ask_mode == "assistant", "esperando al asistente")
+	demo._on_assistant_reply(demo._ask_gen, {"say": "Hecho.", "actions": [{"name": "cambiar_material", "input": {"material": "mármol"}}, {"name": "mover", "input": {"uci": "f3f4"}}]})
+	await _frames(4)
+	_ok(demo.board_style == "marmol" and demo.game_moves.size() >= 1 and str(demo.game_moves[-1]) == "f3f4", "pone el mármol y juega f4")
+	_ok(demo.ask_state == "" and demo.confirm_node == null, "hecho sin más: la ventana se cierra sola")
+	await _until(func() -> bool: return demo.game_state == "play")
+	demo._open_assistant()
+	demo.ask_text = "inclina el tablero 20 grados"
+	demo._send_question()
+	demo._on_assistant_reply(demo._ask_gen, {"say": "Lo inclino.", "actions": [{"name": "inclinar_tablero", "input": {"grados": 20}}]})
+	await _frames(2)
+	_ok(demo.ask_state == "answer" and _has_text(demo.confirm_node, "Lo más inclinado"), "si no se puede del todo, lo explica")
+	demo._close_confirm()
+	demo._set_style_index(0)
 
 	# 6. El interruptor: apagar y encender sin ir a Opciones; en partidas con reloj, apagado y explica por qué.
 	demo._on_tutor_toggle()
