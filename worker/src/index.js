@@ -96,6 +96,29 @@ export default {
     } catch {
       return json({ error: "json no válido" }, 400);
     }
+    if (url.pathname === "/tutor" && url.searchParams.get("debug") === "2") {
+      // Diagnóstico de la conexión con el servicio de Stockfish (sin datos privados).
+      const tries = [];
+      const probe = async (name, target, init) => {
+        const t0 = Date.now();
+        try {
+          const r = await fetch(target, { ...init, signal: AbortSignal.timeout(20000) });
+          const text = await r.text();
+          tries.push({ name, status: r.status, ms: Date.now() - t0, server: r.headers.get("server"), ray: r.headers.get("cf-ray"), body: text.slice(0, 160) });
+        } catch (e) {
+          tries.push({ name, error: String(e?.message || e), ms: Date.now() - t0 });
+        }
+      };
+      const payload = JSON.stringify({ fen: String(body?.fen || "") });
+      await Promise.all([
+        probe("get /", "https://chess-api.com/", {}),
+        probe("post json", "https://chess-api.com/v1", { method: "POST", headers: { "content-type": "application/json" }, body: payload }),
+        probe("post http", "http://chess-api.com/v1", { method: "POST", headers: { "content-type": "application/json" }, body: payload }),
+        probe("stockfish.online", "https://stockfish.online/api/s/v2.php?depth=12&fen=" + encodeURIComponent(String(body?.fen || "")), {}),
+        probe("lichess", "https://lichess.org/api/cloud-eval?fen=" + encodeURIComponent(String(body?.fen || "")), {}),
+      ]);
+      return json({ tries });
+    }
     if (url.pathname !== "/profesor") {
       try {
         return json(url.pathname === "/tutor" ? await judge(body, env, url.searchParams.get("debug") === "1") : await lesson(body, env));
