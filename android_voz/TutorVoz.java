@@ -1,11 +1,7 @@
 package com.pabloprieto.voz;
 
-import android.Manifest;
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -21,24 +17,18 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Preguntas al tutor por voz. Primero, la ventana de dictado del sistema (RecognizerIntent, normalmente la de
- * Google, la misma que el micrófono del teclado): funciona en casi todos los móviles y no necesita permiso propio.
- * Si no hay ninguna, el reconocedor por debajo (SpeechRecognizer), con el permiso del micrófono. En el primer APK se
- * usaba solo este último y en el Xiaomi de Pablo cortaba a los dos segundos con «no te he oído» (21 nov): en esos
- * móviles el reconocedor por defecto es el del fabricante.
- * La app no graba ni guarda audio; el texto reconocido llega a GDScript y se manda como pregunta escrita.
+ * Preguntas al tutor por voz: el reconocimiento de voz del sistema (SpeechRecognizer, normalmente el de Google),
+ * sin interfaz propia. Copiado del complemento de A Tank Story (Tank-Ahead, android_plugins/speech_commands), que
+ * funciona en el móvil de Pablo, y con los mismos extras que el dictado de WakeAgenda. El primer TutorVoz forzaba
+ * EXTRA_LANGUAGE_PREFERENCE y el servicio de Google acababa en «no te he entendido» a los dos segundos (21 nov).
+ * El permiso del micrófono lo pide GDScript (OS.request_permission), como en A Tank Story.
+ * La app no graba ni guarda audio: el texto reconocido llega a GDScript y se manda como pregunta escrita.
  * Desde GDScript: Engine.get_singleton("TutorVoz") (lo usa core/tutor_voice.gd).
- * Lo copia el CI en la plantilla de Gradle, como android_espera/ (ver android_voz/LEEME.md).
  */
 public class TutorVoz extends GodotPlugin {
-
-	private static final int PERMISSION_CODE = 7311;
-	private static final int DICTATION_CODE = 7312;
-	/** Error propio: el jugador cerró la ventana de dictado sin decir nada (no es un fallo). */
-	private static final int CANCELLED = -2;
-	private String pendingLang = null;
 	private SpeechRecognizer recognizer;
-	private boolean listening = false;
+	/** Último texto parcial de la sesión: si el servicio acaba con «no te he entendido», se usa este. */
+	private String lastPartial = "";
 
 	public TutorVoz(Godot godot) {
 		super(godot);
@@ -56,101 +46,47 @@ public class TutorVoz extends GodotPlugin {
 		out.add(new SignalInfo("voz_parcial", String.class));
 		out.add(new SignalInfo("voz_texto", String.class));
 		out.add(new SignalInfo("voz_error", Integer.class));
-		out.add(new SignalInfo("voz_permiso", Boolean.class));
 		return out;
 	}
 
+	/** Hay un servicio de reconocimiento de voz instalado. */
 	@UsedByGodot
 	public boolean available() {
 		Activity a = getActivity();
 		return a != null && SpeechRecognizer.isRecognitionAvailable(a);
 	}
 
+	/** Empieza a escuchar en el idioma indicado (etiqueta BCP 47, p. ej. «es-ES»). */
 	@UsedByGodot
-	public boolean has_permission() {
-		Activity a = getActivity();
-		if (a == null) return false;
-		if (Build.VERSION.SDK_INT < 23) return true;
-		return a.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-	}
-
-	@UsedByGodot
-	public void ask_permission() {
-		Activity a = getActivity();
-		if (a == null) return;
-		if (has_permission()) {
-			emitSignal("voz_permiso", true);
-			return;
-		}
-		a.requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, PERMISSION_CODE);
-	}
-
-	@Override
-	public void onMainRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-		if (requestCode != PERMISSION_CODE) return;
-		boolean ok = grantResults != null && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-		emitSignal("voz_permiso", ok);
-		if (ok && pendingLang != null) listen(pendingLang);
-		pendingLang = null;
-	}
-
-	@Override
-	public void onMainActivityResult(int requestCode, int resultCode, Intent data) {
-		if (requestCode != DICTATION_CODE) return;
-		if (resultCode != Activity.RESULT_OK || data == null) {
-			emitSignal("voz_error", CANCELLED);
-			return;
-		}
-		ArrayList<String> list = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-		String t = list == null || list.isEmpty() || list.get(0) == null ? "" : list.get(0);
-		emitSignal("voz_texto", t);
-	}
-
-	/** Empieza a escuchar. `lang`: etiqueta BCP-47 («es-ES», «en-US»…). */
-	@UsedByGodot
-	public void start(String lang) {
+	public void start(final String lang) {
 		final Activity a = getActivity();
 		if (a == null) return;
 		a.runOnUiThread(() -> {
-			Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
-			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang);
-			i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+			destroyRecognizer();
 			try {
-				a.startActivityForResult(i, DICTATION_CODE);
-				emitSignal("voz_lista");
-				return;
-			} catch (ActivityNotFoundException e) {
-				// Sin ventana de dictado: el reconocedor por debajo.
-			}
-			if (!has_permission()) {
-				pendingLang = lang;
-				a.requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, PERMISSION_CODE);
-				return;
-			}
-			listen(lang);
-		});
-	}
-
-	private void listen(String lang) {
-		final Activity a = getActivity();
-		if (a == null) return;
-		a.runOnUiThread(() -> {
-			if (recognizer == null) {
 				recognizer = SpeechRecognizer.createSpeechRecognizer(a);
-				recognizer.setRecognitionListener(new Listener());
-			} else if (listening) {
-				recognizer.cancel();
+			} catch (Exception e) {
+				recognizer = null;
 			}
+			if (recognizer == null) {
+				emit("voz_error", Integer.valueOf(SpeechRecognizer.ERROR_CLIENT));
+				return;
+			}
+			recognizer.setRecognitionListener(new Listener());
+			// Los mismos extras que A Tank Story y WakeAgenda: sin forzar la preferencia de idioma ni pistas.
 			Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
 			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
-			i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang);
 			i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 			i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-			listening = true;
-			recognizer.startListening(i);
+			i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, a.getPackageName());
+			lastPartial = "";
+			try {
+				recognizer.startListening(i);
+			} catch (Exception e) {
+				destroyRecognizer();
+				emit("voz_error", Integer.valueOf(SpeechRecognizer.ERROR_CLIENT));
+			}
 		});
 	}
 
@@ -160,28 +96,44 @@ public class TutorVoz extends GodotPlugin {
 		Activity a = getActivity();
 		if (a == null) return;
 		a.runOnUiThread(() -> {
-			if (recognizer != null && listening) recognizer.stopListening();
+			if (recognizer != null) recognizer.stopListening();
 		});
 	}
 
+	/** Deja de escuchar y descarta lo oído. */
 	@UsedByGodot
 	public void cancel() {
 		Activity a = getActivity();
 		if (a == null) return;
-		a.runOnUiThread(() -> {
-			listening = false;
-			if (recognizer != null) recognizer.cancel();
-		});
+		a.runOnUiThread(this::destroyRecognizer);
+	}
+
+	@Override
+	public void onMainPause() {
+		super.onMainPause();
+		destroyRecognizer();
 	}
 
 	@Override
 	public void onMainDestroy() {
-		Activity a = getActivity();
-		if (a == null || recognizer == null) return;
-		a.runOnUiThread(() -> {
-			recognizer.destroy();
+		destroyRecognizer();
+		super.onMainDestroy();
+	}
+
+	/** Las señales se emiten en el hilo de Godot, no en el de la interfaz de Android. */
+	private void emit(final String name, final Object... args) {
+		runOnRenderThread(() -> emitSignal(name, args));
+	}
+
+	private void destroyRecognizer() {
+		if (recognizer != null) {
+			try {
+				recognizer.cancel();
+				recognizer.destroy();
+			} catch (Exception ignored) {
+			}
 			recognizer = null;
-		});
+		}
 	}
 
 	private static String first(Bundle b) {
@@ -191,23 +143,40 @@ public class TutorVoz extends GodotPlugin {
 	}
 
 	private class Listener implements RecognitionListener {
-		@Override public void onReadyForSpeech(Bundle params) { emitSignal("voz_lista"); }
+		@Override public void onReadyForSpeech(Bundle params) { emit("voz_lista"); }
 		@Override public void onBeginningOfSpeech() {}
 		@Override public void onRmsChanged(float rmsdB) {}
 		@Override public void onBufferReceived(byte[] buffer) {}
 		@Override public void onEndOfSpeech() {}
-		@Override public void onError(int error) {
-			listening = false;
-			emitSignal("voz_error", error);
+
+		@Override
+		public void onError(int error) {
+			String heard = lastPartial;
+			destroyRecognizer();
+			// Como A Tank Story y WakeAgenda: si el servicio no da resultado final pero ya había entendido algo, vale eso.
+			if ((error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) && !heard.isEmpty()) {
+				emit("voz_texto", heard);
+			} else {
+				emit("voz_error", Integer.valueOf(error));
+			}
 		}
-		@Override public void onResults(Bundle results) {
-			listening = false;
-			emitSignal("voz_texto", first(results));
+
+		@Override
+		public void onResults(Bundle results) {
+			String t = first(results);
+			destroyRecognizer();
+			emit("voz_texto", t.isEmpty() ? lastPartial : t);
 		}
-		@Override public void onPartialResults(Bundle partial) {
+
+		@Override
+		public void onPartialResults(Bundle partial) {
 			String t = first(partial);
-			if (!t.isEmpty()) emitSignal("voz_parcial", t);
+			if (!t.isEmpty()) {
+				lastPartial = t;
+				emit("voz_parcial", t);
+			}
 		}
+
 		@Override public void onEvent(int eventType, Bundle params) {}
 	}
 }

@@ -25,8 +25,11 @@ class AndroidExport extends EditorExportPlugin:
 
 	func _get_android_manifest_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
 		return "\n".join([
-			'<uses-permission android:name="android.permission.RECORD_AUDIO" />',
-			'<queries><intent><action android:name="android.speech.RecognitionService" /></intent><intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent></queries>',
+			# El permiso RECORD_AUDIO va en export_presets.cfg (permissions/record_audio), como en A Tank Story: si se
+			# declarase también aquí, el manifiesto saldría con el elemento repetido.
+			'<queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>',
+			# Como en A Tank Story: el micrófono es opcional (sin esto Play dejaría fuera móviles sin micrófono).
+			'<uses-feature android:name="android.hardware.microphone" android:required="false" />',
 		])
 
 	func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:

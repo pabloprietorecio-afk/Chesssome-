@@ -9193,8 +9193,6 @@ func _on_voice_failed(code: int) -> void:
 		return
 	ask_state = "edit"
 	_build_ask_window()
-	if code == TutorVoice.CANCELLED:
-		return
 	var why := "No te he oído bien. Prueba otra vez, más cerca del micrófono." if TutorVoice.NO_MATCH.has(code) else "No se ha podido usar el micrófono."
 	if code == TutorVoice.PERMISSION_DENIED:
 		why = "Sin permiso para el micrófono: puedes escribir la pregunta o dar el permiso en los ajustes de Android."

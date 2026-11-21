@@ -1,8 +1,9 @@
 class_name TutorVoice
 extends Node
-## Preguntar al tutor hablando: puente con el complemento de Android «TutorVoz» (android_voz/TutorVoz.java), que usa
-## el reconocimiento de voz del sistema. Sin el complemento (escritorio, pruebas, APK sin Gradle) `available()` es
-## false y la app solo ofrece escribir. La app no graba audio: solo recibe el texto.
+## Preguntar al tutor hablando: puente con el complemento de Android «TutorVoz» (android_voz/TutorVoz.java), copiado
+## del de A Tank Story (que funciona en el móvil de Pablo), con el reconocimiento de voz del sistema. El permiso del
+## micrófono se pide aquí, con OS.request_permission, como allí. Sin el complemento (escritorio, pruebas, APK sin
+## Gradle) `available()` es false y la app solo ofrece escribir. La app no graba audio: solo recibe el texto.
 
 signal heard_partial(text: String)
 signal heard(text: String)
@@ -10,17 +11,17 @@ signal failed(code: int)
 signal listening_changed(on: bool)
 
 const SINGLETON := "TutorVoz"
+const PERMISSION := "android.permission.RECORD_AUDIO"
 ## Errores de SpeechRecognizer que significan «no he oído nada» (no es un fallo: se vuelve a intentar).
 const NO_MATCH := [6, 7]
 const PERMISSION_DENIED := 9
-## Se cerró la ventana de dictado sin decir nada: no es un fallo, no se avisa.
-const CANCELLED := -2
 const LOCALES := {"es": "es-ES", "en": "en-US", "pt": "pt-PT", "fr": "fr-FR", "de": "de-DE", "it": "it-IT", "ru": "ru-RU", "hi": "hi-IN", "id": "id-ID", "ja": "ja-JP"}
 
 var listening := false
 var _p: Object
 var _lang := "es-ES"
 var _wired := false
+var _waiting_permission := false
 
 
 func _plugin() -> Object:
@@ -28,10 +29,10 @@ func _plugin() -> Object:
 		_p = Engine.get_singleton(SINGLETON)
 	if _p != null and not _wired:
 		_wired = true
-		_p.connect("voz_parcial", func(t: String) -> void: heard_partial.emit(t))
-		_p.connect("voz_texto", _on_text)
-		_p.connect("voz_error", _on_error)
-		_p.connect("voz_permiso", _on_permission)
+		_p.connect("voz_parcial", func(t: String) -> void: heard_partial.emit(t), CONNECT_DEFERRED)
+		_p.connect("voz_texto", _on_text, CONNECT_DEFERRED)
+		_p.connect("voz_error", _on_error, CONNECT_DEFERRED)
+		get_tree().on_request_permissions_result.connect(_on_permission)
 	return _p
 
 
@@ -50,8 +51,14 @@ func listen(language: String) -> void:
 		failed.emit(-1)
 		return
 	_lang = locale_for(language)
-	# El complemento decide: ventana de dictado del sistema o, si no la hay, el reconocedor (y pide el permiso).
-	_start()
+	_set_listening(true)
+	# La primera vez Android pregunta por el permiso; al concederlo se empieza a escuchar.
+	if not PERMISSION in OS.get_granted_permissions():
+		_waiting_permission = true
+		if not OS.request_permission(PERMISSION):
+			return
+		_waiting_permission = false
+	p.call("start", _lang)
 
 
 func stop() -> void:
@@ -60,18 +67,19 @@ func stop() -> void:
 
 
 func cancel() -> void:
+	_waiting_permission = false
 	if _p != null and listening:
 		_p.call("cancel")
 	_set_listening(false)
 
 
-func _start() -> void:
-	_set_listening(true)
-	_p.call("start", _lang)
-
-
-func _on_permission(ok: bool) -> void:
-	if not ok:
+func _on_permission(permission: String, granted: bool) -> void:
+	if permission != PERMISSION or not _waiting_permission:
+		return
+	_waiting_permission = false
+	if granted:
+		_p.call("start", _lang)
+	else:
 		_set_listening(false)
 		failed.emit(PERMISSION_DENIED)
 
