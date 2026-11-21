@@ -8833,7 +8833,8 @@ func _open_coach_full() -> void:
 	var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
 	var mark := "" if glyph == "" or glyph.begins_with("@") else glyph + " "
 	var head := mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, "Profesor")))
-	var column := _popup(head, "", true)
+	# Semitransparente, como las demás ventanas de la partida: se sigue viendo el tablero debajo.
+	var column := _popup(head, "")
 	column.add_child(_para("Profesor IA" if coach_from_ai else "Profesor", F_SUB, _c("accent_text"), font_semibold))
 	column.add_child(_para(text, F_BODY, _c("ink"), font_regular))
 	column.add_child(_spacer(6.0))
