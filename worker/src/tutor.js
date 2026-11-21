@@ -50,9 +50,10 @@ export function readEngine(d) {
 async function askEngine(fen, env, raw) {
   const r = await fetch(env.STOCKFISH_URL || "https://chess-api.com/v1", {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json", "user-agent": "AChessWay-tutor/1.0 (+https://github.com/pabloprietorecio-afk/Chesssome-)" },
-    body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1 }),
-    signal: AbortSignal.timeout(12000),
+    headers: { "content-type": "application/json" },
+    // taskId: el servicio empareja cada respuesta con su petición.
+    body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1, taskId: Math.random().toString(36).slice(2, 11) }),
+    signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error(`stockfish ${r.status}`);
   const data = await r.json();
@@ -165,7 +166,9 @@ export async function judge(input, env, debug) {
   const after = new Chess(fen);
   if (!play(after, uci)) throw Object.assign(new Error("jugada ilegal"), { status: 400 });
   const raw = debug ? [] : null;
-  const [A, B] = await Promise.all([askEngine(fen, env, raw), after.isGameOver() ? null : askEngine(after.fen(), env, raw)]);
+  // Una consulta detrás de otra: dos a la vez contra el servicio se quedaban colgadas (21 nov).
+  const A = await askEngine(fen, env, raw);
+  const B = after.isGameOver() ? null : await askEngine(after.fen(), env, raw);
   const mine = (e) => (player === "w" ? e.win : 100 - e.win);
   const iMate = (e) => e && e.mate !== null && e.mate > 0 === (player === "w");
   const theyMate = (e) => e && e.mate !== null && e.mate > 0 !== (player === "w");
