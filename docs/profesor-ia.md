@@ -56,7 +56,7 @@ Petición de Pablo: preguntar al tutor en cualquier momento, también por voz.
   de la CI no hay botón «Hablar», pero el teclado de Android deja dictar.
 - Coste estimado (sin medir): 2–4 llamadas a Sonnet 5.5 por pregunta, ~1–2 céntimos de dólar.
 - **Pendiente**: que el tutor recuerde las preguntas anteriores de la partida (hoy cada una va sola); que lea la
-  respuesta en voz alta; traducir los textos nuevos.
+  respuesta en voz alta.
 
 ## Interruptor «Tutor IA» (21 nov)
 En la barra de arriba de todas las partidas contra la app (no en Kids): enciende y apaga el tutor sin ir a
@@ -67,7 +67,8 @@ tocarlo explica por qué.
 Decisión de Pablo: el profesor va gratis en las 5 primeras partidas de cualquier jugador; después, premium
 (`Premium.TRIAL_GAMES`, `trial_used` en user://premium.cfg). Cuenta una partida al mirar la primera jugada y esa
 partida sigue con profesor hasta el final. La tarjeta dice «Profesor IA · gratis 2 de 5»; Opciones, cuántas
-quedan; la tarjeta, «Gratis 2/5». Al acabarse, un aviso una sola vez («hazte premium») y nada más. Kids, online, reloj y variantes: nunca.
+quedan; la tarjeta, «Gratis 2/5». En las partidas gratis la lección de Claude solo se pide al tocar «Explícamelo»
+(en premium, en los fallos se prepara sola). Al acabarse, un aviso una sola vez («hazte premium») y nada más. Kids, online, reloj y variantes: nunca.
 Ojo: la compra aún no existe, así que tras las 5 no hay forma de seguir. Y el servidor no distingue a nadie: lo que
 cuesta la prueba se paga igual (ver Coste).
 Las pruebas y capturas (ejecutable del editor) no llaman al servidor: si no, cada partida de prueba gastaría.
@@ -142,3 +143,9 @@ La suscripción de claude.ai no cubre la API: se paga aparte en Claude Console.
 ## Pruebas
 `godot/tests/test_profesor_ia.gd` (detección, petición, comprobación de la respuesta, cuándo comenta) y
 `godot/tests/test_profesor_app.gd` (la tarjeta en una partida y la sección Premium de Opciones), en la CI.
+
+## Traducciones (21 nov)
+Todos los textos del tutor, Robi y las preguntas, en los nueve idiomas: `tools/i18n/trad/ui_tutor.tsv`. Las 10 frases
+que solo estaban en las tablas van ahora en `tools/i18n/trad/ui_detalle.tsv`, así que `build.py` ya no borra nada.
+Los textos que la app manda a Claude (instrucciones) siguen en español a propósito: Claude contesta en el idioma
+de la app. Los textos de depuración (APK de pruebas) no se traducen.

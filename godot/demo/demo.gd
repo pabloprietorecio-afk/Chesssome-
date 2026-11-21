@@ -8782,8 +8782,10 @@ func _coach_apply_remote(data: Dictionary) -> void:
 		var pos := Chess.from_fen(fen)
 		var bm := pos.find_uci(str(data.get("best", "")))
 		coach_note = (Loc.f("La mejor era %s", SanEs.san(pos, bm)) + ".") if bm >= 0 else ""
-		# El profesor prepara ya la explicación: estará lista cuando se abra.
-		_coach_request_lesson()
+		# Premium: el profesor prepara ya la explicación (estará lista al abrirla). En las partidas gratis, solo si
+		# se pide con «Explícamelo» (decisión de Pablo, 21 nov: cada lección cuesta ~0,6 céntimos).
+		if Premium.active():
+			_coach_request_lesson()
 	else:
 		coach_note = Loc.t({"brilliant": "¡Brillante! Era la mejor jugada, y entregando material.", "best": "La mejor jugada.", "good": "Buena jugada."}.get(verdict, "Buena jugada."))
 	_refresh()

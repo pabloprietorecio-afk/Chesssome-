@@ -209,6 +209,8 @@ func _initialize() -> void:
 	demo.view.show_move("g1e2")
 	demo._game_move("g1e2")
 	_ok(demo.coach_trial_game == 5 and Premium.trial_left() == 0, "quinta partida gratis: con profesor")
+	demo._coach_apply_remote(_fake("blunder"))
+	_ok(demo.coach_verdict == "blunder" and not bool(demo.coach_lesson["asked"]), "partida gratis: la lección no se pide sola, ni en un error grave")
 	await _until(func() -> bool: return demo.coach_verdict != "")
 	_ok(_has_text(demo.card_body, "Gratis 5/5"), "la tarjeta dice qué partida gratis es")
 	await _until(func() -> bool: return demo.game_state == "play")
