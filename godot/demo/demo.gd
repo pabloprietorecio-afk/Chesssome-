@@ -9032,7 +9032,7 @@ func _build_ask_window() -> void:
 		"edit", "listen":
 			ask_edit = LineEdit.new()
 			ask_edit.text = ask_text
-			ask_edit.placeholder_text = Loc.t("Pídeme lo que quieras") if ask_mode == "assistant" else (Loc.t("Escribe tu pregunta") if not tutor_voice.available() else Loc.t("Escribe o pulsa «Hablar»"))
+			ask_edit.placeholder_text = Loc.t("Habla o escríbeme") if ask_mode == "assistant" and tutor_voice.available() else Loc.t("Pídeme lo que quieras") if ask_mode == "assistant" else (Loc.t("Escribe tu pregunta") if not tutor_voice.available() else Loc.t("Escribe o pulsa «Hablar»"))
 			ask_edit.max_length = 400
 			ask_edit.add_theme_font_size_override("font_size", F_BODY)
 			ask_edit.add_theme_font_override("font", font_medium)
@@ -9205,13 +9205,17 @@ func _assistant_available() -> bool:
 	return not kids and CoachAI.assistant_url(coach.cfg) != ""
 
 
-func _open_assistant() -> void:
+func _open_assistant(listen: bool = false) -> void:
 	if not _assistant_available():
 		return
 	if ask_mode != "assistant" or ask_state == "" or ask_state == "answer" or ask_state == "error":
 		ask_text = ""
 		ask_state = "edit"
 	ask_mode = "assistant"
+	# Con el botón de abajo, a escuchar directamente (y la caja sigue ahí para escribir).
+	if listen and tutor_voice.available() and ask_state == "edit":
+		_toggle_listen()
+		return
 	_build_ask_window()
 
 
@@ -9550,7 +9554,7 @@ func _build_lesson_card() -> void:
 	if _tutor_can_ask():
 		# También se pregunta sobre el ejemplo que está en el tablero (el tutor sabe qué paso se ve).
 		var tint := _tint("lilac")
-		var ask_b := _round_button("mic" if tutor_voice.available() else "ask", _open_ask, 80.0, tint[1], Color.WHITE, false)
+		var ask_b := _round_button("ask", _open_ask, 80.0, tint[1], Color.WHITE, false)
 		ask_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		head_row.add_child(ask_b)
 	card_body.add_child(head_row)
@@ -9778,7 +9782,7 @@ func _coach_block() -> PanelContainer:
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if _tutor_can_ask():
 		# Preguntar al tutor, en cualquier momento: botón redondo de color, con el bocadillo (o el micrófono).
-		var ask_b := _round_button("mic" if tutor_voice.available() else "ask", _open_ask, 80.0, tint[1], Color.WHITE, false)
+		var ask_b := _round_button("ask", _open_ask, 80.0, tint[1], Color.WHITE, false)
 		ask_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		head.add_child(ask_b)
 	if coach_waiting:
@@ -9897,7 +9901,9 @@ func _sync_assistant_button() -> void:
 		_assistant_layer = CanvasLayer.new()
 		_assistant_layer.layer = 5
 		add_child(_assistant_layer)
-		assistant_button = _round_button("mic" if tutor_voice.available() else "spark", _open_assistant, 116.0, tint[1], Color.WHITE)
+		# Destellos, no micrófono: el del tutor ya lleva su bocadillo y no deben confundirse (Pablo, 22 nov). Al tocarlo
+		# escucha directamente.
+		assistant_button = _round_button("spark", _open_assistant.bind(true), 116.0, tint[1], Color.WHITE)
 		assistant_button.tooltip_text = Loc.t("Asistente")
 		_assistant_layer.add_child(assistant_button)
 		var tick := Timer.new()
