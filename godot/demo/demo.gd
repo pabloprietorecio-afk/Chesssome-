@@ -330,6 +330,8 @@ var _coach_badge_kind := ""
 var _coach_gen := 0
 var _coach_threads: Array[Thread] = []
 const COACH_SECONDS := 0.8
+## Opacidad del fondo de la ventana de la explicación (las demás ventanas: 0,86).
+const COACH_WINDOW_ALPHA := 0.62
 var _coach_key_edit: LineEdit
 var _game_thread: Thread
 ## Reloj: ritmo elegido (índice de TIME_CONTROLS), el personalizado, y en la partida el tiempo que le queda a
@@ -8833,8 +8835,14 @@ func _open_coach_full() -> void:
 	var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
 	var mark := "" if glyph == "" or glyph.begins_with("@") else glyph + " "
 	var head := mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, "Profesor")))
-	# Semitransparente, como las demás ventanas de la partida: se sigue viendo el tablero debajo.
+	# Más transparente que las demás ventanas (petición de Pablo): se ve bien el tablero debajo.
 	var column := _popup(head, "")
+	var window := column.get_parent().get_parent() as PanelContainer
+	if window != null:
+		var glass := window.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+		glass.bg_color.a = COACH_WINDOW_ALPHA
+		glass.shadow_size = 18
+		window.add_theme_stylebox_override("panel", glass)
 	column.add_child(_para("Profesor IA" if coach_from_ai else "Profesor", F_SUB, _c("accent_text"), font_semibold))
 	column.add_child(_para(text, F_BODY, _c("ink"), font_regular))
 	column.add_child(_spacer(6.0))
