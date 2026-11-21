@@ -85,6 +85,9 @@ jobs:
           r=$(post "/tutor" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")
           echo "TUTOR: $r" | cut -c1-3000
           echo "$r" | jq -e '.verdict' > /dev/null
+          echo "== segunda opinión (searchmoves): consultas en bruto"
+          d=$(post "/tutor?debug=1" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")
+          echo "$d" | jq -c '{verdict, drop, second, n: (.raw | length), moves: [.raw[] | (if type == "array" then (map(select(.type == "bestmove")) | .[0]) else . end) | {move, depth, centipawns, type, error, text}]}' || echo "$d" | cut -c1-1500
           echo "== mate en una para las negras tras 2.g4 (signo del mate)"
           m=$(post "/tutor" '{"fen":"rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2","uci":"g2g4"}')
           echo "MATE: $m" | cut -c1-2500
