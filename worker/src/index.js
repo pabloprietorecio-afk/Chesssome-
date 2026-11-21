@@ -97,6 +97,8 @@ export default {
     if (!r.ok) return json({ error: `api ${r.status}` }, 502);
     const data = await r.json();
     const text = (data.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
+    // Sin texto: datos para diagnosticar (sin la clave ni el prompt).
+    if (!text) return json({ content: [{ type: "text", text: "" }], stop_reason: data.stop_reason ?? null, model: data.model ?? null, types: (data.content || []).map((c) => c.type), usage: data.usage ?? null });
     return json({ content: [{ type: "text", text }] });
   },
 };
