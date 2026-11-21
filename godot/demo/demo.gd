@@ -8895,6 +8895,10 @@ func _coach_window_restore(window: PanelContainer) -> void:
 ## Opciones → Premium. Las pruebas (activar premium sin comprar y pegar una clave de la API) solo salen en las
 ## compilaciones de depuración.
 func _premium_rows(box: VBoxContainer) -> void:
+	# En la versión de publicación, mientras no haya compra real, la sección no sale: anunciaría algo que no se
+	# puede comprar.
+	if not Premium.test_allowed() and not Premium.active():
+		return
 	box.add_child(_caption("Premium"))
 	if Premium.test_allowed():
 		box.add_child(_switch_row("party", "butter", "Premium de prueba", "Solo en el APK de pruebas: activa la versión premium sin comprarla.", Premium.test_on, _set_premium_test))
