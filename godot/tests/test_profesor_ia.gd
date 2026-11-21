@@ -15,6 +15,12 @@ func _init() -> void:
 	_ok(int(m.get("ply", -1)) == 3 and str(m.get("fen", "")) == fen and str(m.get("played", "")) == "d8h4", "el momento lleva jugada, posición y número")
 	_ok(GameReview.analyze_move(fen, "b8c6", 3).is_empty(), "Cc6, jugada normal: el profesor no dice nada")
 	_ok(GameReview.analyze_move(fen, "a1a1", 3).is_empty(), "jugada que no existe: nada")
+	# Un peón suelto (la partida de Pablo, 21-11): 1.e4 Cf6 2.Ch3?, el peón de e4 sigue sin defensa.
+	var pawn_fen := "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2"
+	var pm := GameReview.analyze_move(pawn_fen, "g1h3", 2)
+	_ok(not pm.is_empty() and str(pm["kind"]) == "hang" and str(pm["text"]).contains("e4"), "2.Ch3: el peón de e4 queda a tiro: %s" % str(pm.get("text", "")))
+	_ok(GameReview.analyze_move(pawn_fen, "b1c3", 2).is_empty(), "2.Cc3, que lo defiende: nada")
+	_ok(GameReview.analyze(["rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", pawn_fen, "rnbqkb1r/pppppppp/5n2/8/4P3/7N/PPPP1PPP/RNBQKB1R b KQkq - 2 2"], ["e2e4", "g8f6", "g1h3"], 0).filter(func(x: Dictionary) -> bool: return str(x["kind"]) == "hang").is_empty(), "en el análisis de después, un peón sigue sin ser un momento")
 	# Mate en una que se escapa: la dama blanca da mate en f7 y el jugador juega otra cosa.
 	var mate_fen := "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
 	var mm := GameReview.analyze_move(mate_fen, "g1f3", 6)

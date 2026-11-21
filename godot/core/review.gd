@@ -20,6 +20,8 @@ const NAME := ["", "peón", "caballo", "alfil", "torre", "dama", "rey"]
 const IT := ["", "lo", "lo", "lo", "la", "la", "lo"]
 ## Material mínimo que cuenta como pérdida o ganancia (centipeones): un peón suelto no es un «momento».
 const MIN_GAIN := 200
+## El profesor en vivo (core/coach_ai.gd) sí avisa de un peón suelto: es el error más corriente al empezar.
+const COACH_MIN_GAIN := 100
 const MAX_MOMENTS := 6
 const PRIORITY := {"allowed_mate": 0, "missed_mate": 1, "hang": 2, "missed_capture": 3, "king": 4, "repeat": 5}
 ## Lección del curso y temas de problemas con los que practicar cada clase de momento.
@@ -74,7 +76,7 @@ static func analyze_move(fen: String, uci: String, ply: int) -> Dictionary:
 	var m := before.find_uci(uci)
 	if m < 0:
 		return {}
-	var found := _tactics(before, m, before.after(m), ply)
+	var found := _tactics(before, m, before.after(m), ply, COACH_MIN_GAIN)
 	if found.is_empty():
 		return found
 	found["arrows"] = _arrows(before, m, found)
@@ -86,7 +88,7 @@ static func analyze_move(fen: String, uci: String, ply: int) -> Dictionary:
 	return found
 
 
-static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionary:
+static func _tactics(before: Chess, m: int, after: Chess, ply: int, min_gain: int = MIN_GAIN) -> Dictionary:
 	var me := before.turn
 	var san := SanEs.san(before, m)
 	var n := ply / 2 + 1
@@ -107,9 +109,9 @@ static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionar
 				"text": Loc.f("Tras %s, el rival podía darte jaque mate con %s. Por ejemplo, %s lo evitaba. Antes de mover, pregúntate qué amenaza el rival.", [at, SanEs.san(after, their_mate), SanEs.san(before, safe)])}
 	# Material: lo que gana la jugada contando la mejor captura que deja al rival (una jugada y media de vista).
 	var played_net := net(before, m)
-	if played_net <= -MIN_GAIN:
+	if played_net <= -min_gain:
 		var alt := _best_net_move(before, false)
-		if alt >= 0 and net(before, alt) >= played_net + MIN_GAIN:
+		if alt >= 0 and net(before, alt) >= played_net + min_gain:
 			var loss := best_capture(after)
 			var sq := int(loss["square"])
 			var piece := Chess.type_of(after.b[sq]) if sq >= 0 else Chess.PAWN
@@ -124,7 +126,7 @@ static func _tactics(before: Chess, m: int, after: Chess, ply: int) -> Dictionar
 	var cm := -1 if after.in_check() else _best_net_move(before, true)
 	if cm >= 0 and cm != m:
 		var gain := net(before, cm)
-		if gain >= MIN_GAIN and gain >= played_net + MIN_GAIN:
+		if gain >= min_gain and gain >= played_net + min_gain:
 			var sq := Chess.move_to(cm)
 			return {"kind": "missed_capture", "better": Chess.uci(cm), "square": sq,
 				"text": Loc.f("En la jugada %d, %s capturaba el %s de %s y ganaba material: no estaba bien defendido. Jugaste %s. Antes de mover, mira qué piezas del rival puedes capturar.", [n, SanEs.san(before, cm), NAME[Chess.type_of(before.b[sq])], Chess.sq_name(sq), san])}
