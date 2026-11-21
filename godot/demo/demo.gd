@@ -314,6 +314,14 @@ var _coach_badge_sq := -1
 var _coach_badge_uci := ""
 ## El análisis de la última jugada sigue en marcha: el rival espera a que salga la valoración antes de mover.
 var _coach_pending := false
+## Leyenda de las chapas, encima del tablero (con el profesor): las cinco valoraciones, con la de tu última jugada
+## resaltada. Flota en el hueco entre la barra y el tablero, como la pista de gestos; si no cabe, no sale y la
+## valoración va en la tarjeta.
+var coach_legend: HBoxContainer
+var _coach_legend_key := ""
+var _coach_legend_was := false
+const COACH_LEGEND_H := 112.0
+const COACH_LEGEND := [GameDetail.BEST, GameDetail.GOOD, GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER]
 var _coach_badge_kind := ""
 var _coach_gen := 0
 var _coach_threads: Array[Thread] = []
@@ -1977,6 +1985,9 @@ func _place_tip() -> void:
 	gesture_tip.position = Vector2((size.x - gesture_tip.size.x) * 0.5, y)
 	# Las nubes (o la luna) se quedan por encima de la pista.
 	bg.ornament_bottom = gesture_tip.position.y - 12.0 if gesture_tip.visible and fits else -1.0
+	_sync_coach_legend()
+	if coach_legend != null and coach_legend.visible:
+		bg.ornament_bottom = coach_legend.position.y - 12.0
 	bg.queue_redraw()
 
 
@@ -2142,6 +2153,8 @@ func _refresh(animate: bool = true) -> void:
 	_war_sync_seen()
 	if card_body == null or not is_instance_valid(card_body):
 		return
+	# La leyenda de las chapas (y la pista de gestos) dependen del modo y de la última valoración.
+	_place_tip.call_deferred()
 	var total := puzzles.size()
 	level_pill.visible = false
 	_sync_level_badge()
@@ -8611,6 +8624,118 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 	_refresh()
 
 
+## Si la leyenda de las chapas se ve ahora: partida con profesor, en juego, y con sitio encima del tablero.
+func _coach_legend_shown() -> bool:
+	if mode != "game" or kids or welcome != null or progress != null or not film.is_empty():
+		return false
+	if game_state != "play" and game_state != "think":
+		return false
+	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))):
+		return false
+	if board_slot == null or not is_instance_valid(board_slot) or not board_slot.is_inside_tree():
+		return false
+	if gesture_tip != null and is_instance_valid(gesture_tip) and gesture_tip.visible:
+		return false
+	return _coach_legend_top() - _coach_legend_floor() >= COACH_LEGEND_H + 28.0
+
+
+## Borde de arriba de lo que hay sobre el tablero (las piezas comidas, si se ven) y borde de abajo de la barra.
+func _coach_legend_top() -> float:
+	if cap_top != null and is_instance_valid(cap_top) and cap_top.visible:
+		return cap_top.get_global_rect().position.y
+	return board_slot.get_global_rect().position.y
+
+
+func _coach_legend_floor() -> float:
+	return bar_row.get_global_rect().end.y if bar_row != null and is_instance_valid(bar_row) else 0.0
+
+
+func _sync_coach_legend() -> void:
+	var on := _coach_legend_shown()
+	if on != _coach_legend_was:
+		# La tarjeta lleva la valoración solo cuando no hay leyenda: si la leyenda aparece o desaparece (cambio de
+		# tema, giro de pantalla), la tarjeta se rehace.
+		_coach_legend_was = on
+		if mode == "game" and coach_verdict != "":
+			_refresh.call_deferred(false)
+	if not on:
+		if coach_legend != null and is_instance_valid(coach_legend):
+			coach_legend.visible = false
+		return
+	if coach_legend == null or not is_instance_valid(coach_legend):
+		coach_legend = HBoxContainer.new()
+		coach_legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		coach_legend.add_theme_constant_override("separation", 0)
+		add_child(coach_legend)
+		if gesture_tip != null and is_instance_valid(gesture_tip):
+			# Al nivel de la pista de gestos: por debajo de las páginas y ventanas.
+			move_child(coach_legend, gesture_tip.get_index())
+		_coach_legend_key = ""
+	var key := "%s|%s|%s" % [coach_verdict, str(dark), Loc.language]
+	if key != _coach_legend_key:
+		_coach_legend_key = key
+		for c in coach_legend.get_children():
+			coach_legend.remove_child(c)
+			c.queue_free()
+		for v: String in COACH_LEGEND:
+			coach_legend.add_child(_coach_legend_item(v, coach_verdict == v, coach_verdict != "" and COACH_LEGEND.has(coach_verdict)))
+	var w := size.x - 24.0
+	coach_legend.size = Vector2(w, COACH_LEGEND_H)
+	coach_legend.position = Vector2(12.0, _coach_legend_top() - COACH_LEGEND_H - 14.0)
+	coach_legend.visible = true
+
+
+## Una valoración de la leyenda: la chapa (como en el tablero) y, debajo, su nombre. `current`: es la de tu última
+## jugada (va resaltada); `dim`: hay otra resaltada, esta se apaga.
+func _coach_legend_item(verdict: String, current: bool, dim: bool) -> Control:
+	var def: Array = BADGES[str(GameDetail.BADGE[verdict])]
+	var glyph := str(def[0])
+	var pill := PanelContainer.new()
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	var paper := _c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.92 if current else 0.0)
+	sb.set_corner_radius_all(30)
+	sb.content_margin_top = 8.0
+	sb.content_margin_bottom = 6.0
+	if current:
+		sb.shadow_color = _c("shadow")
+		sb.shadow_size = 10
+	pill.add_theme_stylebox_override("panel", sb)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_theme_constant_override("separation", 4)
+	pill.add_child(column)
+	var disc := PanelContainer.new()
+	disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	disc.custom_minimum_size = Vector2(54.0, 54.0)
+	disc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = def[1]
+	ds.set_corner_radius_all(27)
+	disc.add_theme_stylebox_override("panel", ds)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	disc.add_child(center)
+	if glyph.begins_with("@"):
+		center.add_child(_icon(glyph.substr(1), 34.0, Color.WHITE))
+	else:
+		var g := Label.new()
+		g.text = glyph
+		g.add_theme_font_size_override("font_size", 30)
+		g.add_theme_color_override("font_color", Color.WHITE)
+		g.add_theme_font_override("font", font_display)
+		center.add_child(g)
+	column.add_child(disc)
+	var name_label := _text(str(GameDetail.LABELS[verdict]), F_CAP, _c("ink") if current else _c("quiet"), font_semibold if current else font_medium)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(name_label)
+	if dim and not current:
+		pill.modulate = Color(1.0, 1.0, 1.0, 0.45)
+	return pill
+
+
 ## Pone (o repone) la chapa de la última jugada valorada, si en esa casilla sigue habiendo una pieza del jugador
 ## y se está viendo la partida en directo.
 func _coach_place_badge() -> void:
@@ -9190,7 +9315,9 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(str(game.get("kids", "")) if kids and str(game.get("kids", "")) != "" else str(game["text"]), F_BODY, _c("ink"), font_regular))
 	if game_note != "":
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
-	if coach_verdict != "":
+	# La valoración va en la leyenda de encima del tablero; aquí solo si la leyenda no cabe (o es «única jugada»,
+	# que no está en la leyenda).
+	if coach_verdict != "" and (not COACH_LEGEND.has(coach_verdict) or not _coach_legend_shown()):
 		var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
 		var mark := "" if glyph.begins_with("@") else glyph + " "
 		card_body.add_child(_para(mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, ""))), F_BODY, _c("ink"), font_semibold))

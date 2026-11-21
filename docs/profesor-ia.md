@@ -10,6 +10,11 @@ premium, y poder activarla para probarla.
 - Sale la chapa en el tablero y la valoración en la tarjeta, **en todas las jugadas**: «!» la mejor, marca de
   «buena», «?!» imprecisión, «?» error, «??» error grave. «!!» no: el motor de la app no es lo bastante fuerte para
   afirmar una jugada brillante.
+- **Leyenda encima del tablero** (petición de Pablo, 21 nov): las cinco valoraciones con su chapa y su nombre, y la
+  de tu última jugada resaltada (las demás, apagadas). Flota en el hueco entre la barra y el tablero, como la pista
+  de gestos. En pantallas sin ese hueco (16:9) o con la pista de gestos a la vista no sale, y la valoración va
+  escrita en la tarjeta. La prueba automática corre en 16:9 (sin hueco): la leyenda se comprobó con capturas a
+  1080 × 2400, en claro y en oscuro.
 - La chapa se queda hasta tu siguiente jugada: el tablero la borra con cada movimiento, así que se repone tras la
   jugada del rival (salvo que capture esa pieza) y al volver de mirar jugadas atrás. El rival espera a que salga
   la valoración (y medio segundo más) antes de mover, como mucho 3 s.

@@ -53,7 +53,28 @@ func _initialize() -> void:
 	_ok(demo.coach_verdict == GameDetail.BEST or demo.coach_verdict == GameDetail.GOOD, "Cc6: buena (%s)" % demo.coach_verdict)
 	_ok(demo.coach_note == "" and not demo.coach_waiting, "Cc6: el profesor no dice nada")
 	_ok(demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "Cc6: también lleva chapa (todas las jugadas)")
-	_ok(_has_text(demo, str(GameDetail.LABELS[demo.coach_verdict])), "y la valoración sale en la tarjeta")
+	_ok(_has_text(demo, str(GameDetail.LABELS[demo.coach_verdict])), "y la valoración sale en pantalla")
+	# La leyenda de encima del tablero: las cinco valoraciones, con la de la última jugada resaltada.
+	demo.gesture_hint = false
+	demo._place_tip()
+	await _frames(3)
+	print("hueco sobre el tablero: %d (hacen falta %d)" % [int(demo._coach_legend_top() - demo._coach_legend_floor()), int(demo.COACH_LEGEND_H + 28.0)])
+	if demo._coach_legend_shown():
+		var legend: Control = demo.coach_legend
+		_ok(legend != null and legend.visible and legend.get_child_count() == 5, "leyenda: cinco valoraciones encima del tablero")
+		for v: String in demo.COACH_LEGEND:
+			_ok(_has_text(legend, str(GameDetail.LABELS[v])), "leyenda: %s" % v)
+		var at: int = demo.COACH_LEGEND.find(demo.coach_verdict)
+		var lit := 0
+		for i in legend.get_child_count():
+			if (legend.get_child(i) as Control).modulate.a > 0.9:
+				lit += 1
+		_ok(lit == 1 and (legend.get_child(at) as Control).modulate.a > 0.9, "leyenda: solo la de tu jugada va resaltada")
+		_ok(legend.get_global_rect().end.y <= demo._coach_legend_top() and legend.get_global_rect().position.y >= demo._coach_legend_floor(), "leyenda: entre la barra y el tablero, sin taparlos")
+		_ok(not _has_text(demo.card_body, str(GameDetail.LABELS[demo.coach_verdict])), "con leyenda, la tarjeta no repite la valoración")
+		demo.view.board.anim_mode = Board3D.Anim.NONE
+	else:
+		_ok(_has_text(demo.card_body, str(GameDetail.LABELS[demo.coach_verdict])), "sin sitio para la leyenda: la valoración va en la tarjeta")
 	await _wait_bot(demo)
 	await _frames(4)
 	_ok(demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "Cc6: la chapa sigue tras la jugada del rival")
