@@ -306,6 +306,10 @@ var coach: CoachAI
 var coach_note := ""
 var coach_from_ai := false
 var coach_waiting := false
+## La explicación entera (se abre en una ventana con «Ver completa»); en la tarjeta va `coach_note`, más corta.
+var coach_full := ""
+var _coach_short := ""
+var _coach_verified := ""
 ## Solo en el APK de pruebas: qué ha decidido el profesor con la última jugada y por qué.
 var coach_debug := ""
 ## Valoración de la última jugada (GameDetail: best, good, inaccuracy, mistake, blunder) y su chapa en el tablero.
@@ -8555,6 +8559,7 @@ func _clear_coach() -> void:
 	coach_note = ""
 	coach_from_ai = false
 	coach_waiting = false
+	coach_full = ""
 	coach_verdict = ""
 	_coach_badge_sq = -1
 	_coach_pending = false
@@ -8610,9 +8615,13 @@ func _coach_entry_done(e: Dictionary, uci: String, run: int, gen: int) -> void:
 		_coach_place_badge()
 	var paras: Array = e.get("paras", [])
 	var verified := " ".join(paras).strip_edges()
+	# En la tarjeta, lo que importa: qué permite y cuál era la mejor (sin la primera frase, que cuenta tu jugada).
+	_coach_verified = verified
+	_coach_short = " ".join(paras.slice(1)).strip_edges() if paras.size() > 1 else verified
 	if verdict == GameDetail.INACCURACY:
 		# Imprecisión: basta con el texto comprobado, sin gastar una consulta.
-		coach_note = verified
+		coach_note = _coach_short
+		coach_full = verified
 		coach_from_ai = false
 	elif verdict == GameDetail.MISTAKE or verdict == GameDetail.BLUNDER:
 		var rating := 0.0
@@ -8758,27 +8767,77 @@ func _on_coach_answered(run: int, _ply: int, text: String, from_ai: bool) -> voi
 	if run != run_id or mode != "game" or game_state == "over":
 		return
 	coach_waiting = false
-	coach_note = text
+	# Sin IA (sin red o respuesta descartada), `text` es el texto comprobado: en la tarjeta va su versión corta.
+	coach_note = text if from_ai else _coach_short
+	coach_full = text if from_ai else _coach_verified
 	coach_from_ai = from_ai
 	_refresh()
 
 
 func _coach_block() -> PanelContainer:
-	var paper: Color = _tint("lilac")[0]
+	var tint := _tint("lilac")
+	var paper: Color = tint[0]
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.6)
 	sb.set_corner_radius_all(36)
-	sb.content_margin_left = 22.0
-	sb.content_margin_right = 26.0
-	sb.content_margin_top = 20.0
+	sb.content_margin_left = 26.0
+	sb.content_margin_right = 22.0
+	sb.content_margin_top = 18.0
 	sb.content_margin_bottom = 20.0
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var title := "Profesor IA" if coach_from_ai or coach_waiting else "Profesor"
-	var text := Loc.t("El profesor está mirando tu jugada…") if coach_waiting else coach_note
-	panel.add_child(_icon_row("bulb", "lilac", title, text, 84.0))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(column)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(head)
+	var bulb := _icon("bulb", 52.0, tint[1])
+	bulb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(bulb)
+	var title := _text("Profesor IA" if coach_from_ai or coach_waiting else "Profesor", F_SUB, _c("ink"), font_semibold)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head.add_child(title)
+	if coach_waiting:
+		column.add_child(_para("El profesor está mirando tu jugada…", F_BODY, _c("quiet"), font_medium))
+		return panel
+	# «Ver completa»: un botón con color, bien visible; además, se puede tocar cualquier punto del bloque.
+	var more := _button("eye", "Ver completa", _open_coach_full, _c("accent"), _c("accent_ink"), {"font_size": F_FOOT, "height": 72.0, "icon": 40.0, "radius": 36})
+	more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(more)
+	# En la tarjeta, dos líneas como mucho; lo demás, en la ventana.
+	var body := _para(coach_note, F_BODY, _c("quiet"), font_medium)
+	body.max_lines_visible = 2
+	body.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(body)
+	var tap := Button.new()
+	tap.flat = true
+	tap.focus_mode = Control.FOCUS_NONE
+	for st: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+		tap.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	tap.pressed.connect(_open_coach_full)
+	panel.add_child(tap)
 	return panel
+
+
+## La explicación entera del profesor, en una ventana encima de la partida.
+func _open_coach_full() -> void:
+	var text := coach_full if coach_full != "" else coach_note
+	if text == "":
+		return
+	var glyph := str((BADGES.get(str(GameDetail.BADGE.get(coach_verdict, "")), ["", Color.WHITE]) as Array)[0])
+	var mark := "" if glyph == "" or glyph.begins_with("@") else glyph + " "
+	var head := mark + Loc.t(str(GameDetail.LABELS.get(coach_verdict, "Profesor")))
+	var column := _popup(head, "", true)
+	column.add_child(_para("Profesor IA" if coach_from_ai else "Profesor", F_SUB, _c("accent_text"), font_semibold))
+	column.add_child(_para(text, F_BODY, _c("ink"), font_regular))
+	column.add_child(_spacer(6.0))
+	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
 
 
 ## Opciones → Premium. Las pruebas (activar premium sin comprar y pegar una clave de la API) solo salen en las

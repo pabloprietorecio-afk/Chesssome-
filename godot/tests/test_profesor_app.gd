@@ -37,6 +37,16 @@ func _initialize() -> void:
 		_ok(str(demo.coach_note) != "" and not demo.coach_from_ai, "el profesor lo explica (texto comprobado, sin red): %s" % demo.coach_note)
 		_ok(demo._coach_badge_sq == Chess.sq_index("h4") and demo.view.board._badge != null and is_instance_valid(demo.view.board._badge), "la chapa está puesta en el tablero, en h4")
 		_ok(_has_text(demo, "Profesor") and _has_text(demo, "?"), "en la tarjeta: la valoración y el profesor")
+	if OS.is_debug_build():
+		# En la tarjeta, la versión corta (sin la frase que cuenta tu jugada) y un botón «Ver completa» a la vista.
+		_ok(demo.coach_full.length() > demo.coach_note.length() and demo.coach_full.ends_with(demo.coach_note), "tarjeta: versión corta; completa: %s" % demo.coach_full)
+		_ok(_button_with(demo.card_body, "Ver completa") != null, "botón «Ver completa» en el bloque del profesor")
+		demo._open_coach_full()
+		await _frames(3)
+		_ok(demo.confirm_node != null and is_instance_valid(demo.confirm_node) and _has_text(demo.confirm_node, demo.coach_full), "«Ver completa» abre la ventana con la explicación entera")
+		_ok(_button_with(demo.confirm_node, "Entendido") != null, "con un botón para cerrarla")
+		demo._close_confirm()
+		await _frames(2)
 	await _wait_bot(demo)
 	await _frames(4)
 	_ok(str(demo.coach_note) != "", "la corrección sigue tras la jugada del rival")
@@ -125,6 +135,23 @@ func _wait_bot(demo: Control) -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
+
+
+func _button_with(node: Node, text: String) -> Button:
+	if node is Button and ((node as Button).text.contains(Loc.t(text)) or _label_below(node, Loc.t(text))):
+		return node
+	for c in node.get_children():
+		var f := _button_with(c, text)
+		if f != null:
+			return f
+	return null
+
+
+func _label_below(node: Node, text: String) -> bool:
+	for c in node.get_children():
+		if (c is Label and (c as Label).text.contains(text)) or _label_below(c, text):
+			return true
+	return false
 
 
 func _has_text(node: Node, text: String) -> bool:

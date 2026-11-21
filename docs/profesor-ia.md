@@ -15,6 +15,10 @@ premium, y poder activarla para probarla.
   de gestos. En pantallas sin ese hueco (16:9) o con la pista de gestos a la vista no sale, y la valoración va
   escrita en la tarjeta. La prueba automática corre en 16:9 (sin hueco): la leyenda se comprobó con capturas a
   1080 × 2400, en claro y en oscuro.
+- **En la tarjeta, corto; entero, en una ventana**: el bloque del profesor enseña dos líneas como mucho (en los
+  textos comprobados, sin la primera frase, que cuenta tu propia jugada: «Permite Cxe4. La mejor era Cc3…») y un
+  botón de color «Ver completa»; también vale tocar cualquier punto del bloque. La ventana trae la valoración, la
+  explicación entera y «Entendido».
 - La chapa se queda hasta tu siguiente jugada: el tablero la borra con cada movimiento, así que se repone tras la
   jugada del rival (salvo que capture esa pieza) y al volver de mirar jugadas atrás. El rival espera a que salga
   la valoración (y medio segundo más) antes de mover, como mucho 3 s.
