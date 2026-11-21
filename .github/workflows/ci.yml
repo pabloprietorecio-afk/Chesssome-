@@ -547,7 +547,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/stockfish
-          key: stockfish-${{ env.SF_COMMIT }}-ndk28-v1
+          key: stockfish-${{ env.SF_COMMIT }}-ndk28-armv8
 
       - name: Stockfish 19 para Android (arm64)
         if: steps.cache-sf.outputs.cache-hit != 'true'
@@ -557,8 +557,9 @@ jobs:
           test "$(git -C /tmp/sf rev-parse HEAD)" = "$SF_COMMIT"
           export PATH=$ANDROID_HOME/ndk/28.1.13356709/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
           cd /tmp/sf/src
-          # Binario universal (elige solo la mejor variante del procesador); si no compila, el básico armv8.
-          if make -j4 build ARCH=arm64-universal COMP=ndk > /tmp/sf-build.log 2>&1; then echo "universal"; else tail -30 /tmp/sf-build.log; make clean > /dev/null; make -j4 build ARCH=armv8 COMP=ndk; fi
+          # El básico armv8 (todos los móviles de 64 bits). El «universal» lleva dos copias (armv8 y armv8-dotprod),
+          # cada una con su red: 96 MB, y el APK pasaba de 61 a 153 MB (21 nov).
+          make -j4 build ARCH=armv8 COMP=ndk > /tmp/sf-build.log 2>&1 || { tail -40 /tmp/sf-build.log; exit 1; }
           llvm-strip stockfish || true
           file stockfish
           ls -lh stockfish
