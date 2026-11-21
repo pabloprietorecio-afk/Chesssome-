@@ -91,7 +91,7 @@ jobs:
           [ -n "$base" ] || { echo "Sin endpoint en coach_ai.json"; exit 0; }
           post() { curl -s -m 40 -X POST "$base$1" -H "content-type: application/json" -d "$2"; }
           FEN="r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12"
-          echo "CONEXION: $(post "/tutor?debug=2" "{\\"fen\\":\\"$FEN\\",\\"uci\\":\\"g1e2\\"}")"
+          echo "CONEXION: $(post "/tutor?debug=2" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")"
           echo "== 12.Cge2 regalando e5 (respuesta en bruto de Stockfish incluida)"
           r=$(post "/tutor?debug=1" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")
           echo "TUTOR: $r" | cut -c1-3000
