@@ -668,24 +668,25 @@ export async function answerQuestion(input, env) {
   const messages = [{ role: "user", content: user }];
   const base = { model: env.MODEL_TUTOR || "claude-sonnet-5-5", max_tokens: Number(env.MAX_TOKENS_ASK || 1000), system, tools: [ASK_TOOL] };
   let tools = 0;
-  let retried = false;
-  for (let round = 0; round <= TOOL_ROUNDS; round++) {
+  let retried = 0;
+  for (let round = 0; round <= TOOL_ROUNDS + 2; round++) {
     // En la última vuelta ya no se ofrece la herramienta: tiene que contestar.
-    const body = { ...base, messages, ...(round === TOOL_ROUNDS ? { tool_choice: { type: "none" } } : {}) };
+    const body = { ...base, messages, ...(round >= TOOL_ROUNDS ? { tool_choice: { type: "none" } } : {}) };
     let r = await call({ ...body, thinking: { type: "disabled" } });
     if (r.status === 400) r = await call({ ...body, max_tokens: base.max_tokens + 2500 });
     if (!r.ok) throw Object.assign(new Error(`api ${r.status}`), { status: 502 });
     const data = await r.json();
     const content = data.content || [];
     const uses = content.filter((c) => c.type === "tool_use");
-    if (!uses.length || round === TOOL_ROUNDS) {
+    if (!uses.length || round >= TOOL_ROUNDS) {
       const text = content.filter((c) => c.type === "text").map((c) => c.text).join("");
       const out = parseAnswer(text, ctx);
       if (out) return { ...out, tools };
       // Una segunda oportunidad: casillas que no salen en los datos (o sin el JSON). Se le dice cuáles.
-      if (retried || round === TOOL_ROUNDS) throw Object.assign(new Error("respuesta sin forma"), { status: 502, detail: { stop_reason: data.stop_reason ?? null } });
-      retried = true;
       const strange = [...new Set([...text.matchAll(SQUARE)].map((m) => m[1]).filter((sq) => !ctx.allowed.has(sq)))];
+      // Dos oportunidades para corregirse; después, error (con el motivo, para el registro).
+      if (retried >= 2) throw Object.assign(new Error("respuesta sin forma"), { status: 502, detail: { stop_reason: data.stop_reason ?? null, strange, text: text.slice(0, 300) } });
+      retried += 1;
       messages.push({ role: "assistant", content });
       messages.push({ role: "user", content: strange.length
         ? `Tu respuesta nombra casillas que no salen en los datos ni en lo analizado: ${strange.join(", ")}. Analízalas con la herramienta o quítalas, y devuelve el JSON.`
