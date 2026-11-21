@@ -4,7 +4,7 @@ Decisión de Pablo (21 nov 2026): valorar las jugadas del tutor con Stockfish en
 límites, sin depender de chess-api.com, que solo da 100 ms por análisis).
 
 - **Qué es**: Stockfish 19 (etiqueta `sf_19`, commit `edb0d9db6731067ec50ce619ff372b463bc4dd5d`), **sin cambios**,
-  compilado por la CI con el NDK de Android (`make build ARCH=armv8 COMP=ndk`: el «universal» lleva dos copias y pesaba 96 MB).
+  compilado por la CI con el NDK de Android (`make build ARCH=arm64-universal COMP=ndk`: elige la variante más rápida del procesador). Pesa ~96 MB, casi todo la red neuronal: el APK pasa de ~61 a ~152 MB. Pablo prefiere lo más potente aunque pese (21 nov).
   Va en el APK como `lib/arm64-v8a/libstockfish.so`: Android solo deja ejecutar programas que vienen como librerías
   nativas, y por eso la plantilla de Gradle se ajusta para que se extraigan al instalar (`useLegacyPackaging`).
 - `MotorStockfish.java` (complemento de Godot v2) arranca el programa y habla con él por UCI. GDScript:
