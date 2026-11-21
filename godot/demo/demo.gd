@@ -9886,16 +9886,29 @@ func _coach_window_restore(window: PanelContainer) -> void:
 
 
 ## Botón flotante del asistente: abajo a la derecha, encima de la barra de botones, en todas las pantallas.
+## Va en una capa propia, por encima de todas las páginas: en el móvil de Pablo la página de inicio se dibujaba encima
+## y lo tapaba (22 nov). Se comprueba cuatro veces por segundo si debe verse (páginas y ventanas cambian sin _refresh).
+var _assistant_layer: CanvasLayer
+
+
 func _sync_assistant_button() -> void:
 	if assistant_button == null or not is_instance_valid(assistant_button):
 		var tint := _tint("lilac")
+		_assistant_layer = CanvasLayer.new()
+		_assistant_layer.layer = 5
+		add_child(_assistant_layer)
 		assistant_button = _round_button("mic" if tutor_voice.available() else "spark", _open_assistant, 116.0, tint[1], Color.WHITE)
 		assistant_button.tooltip_text = Loc.t("Asistente")
-		add_child(assistant_button)
-	assistant_button.visible = _assistant_available() and welcome == null
+		_assistant_layer.add_child(assistant_button)
+		var tick := Timer.new()
+		tick.wait_time = 0.25
+		tick.autostart = true
+		tick.timeout.connect(_sync_assistant_button)
+		add_child(tick)
+	# Fuera mientras hay una ventana abierta (también la suya), en Kids y en la bienvenida.
+	assistant_button.visible = _assistant_available() and welcome == null and (confirm_node == null or not is_instance_valid(confirm_node))
 	if not assistant_button.visible:
 		return
-	move_child(assistant_button, get_child_count() - 1)
 	var vp := get_viewport_rect().size
 	var bottom := _insets().y
 	assistant_button.position = Vector2(vp.x - 116.0 - 28.0, vp.y - bottom - BAR_HEIGHT - 116.0 - 64.0)
