@@ -306,6 +306,8 @@ var coach: CoachAI
 var coach_note := ""
 var coach_from_ai := false
 var coach_waiting := false
+## Solo en el APK de pruebas: qué ha decidido el profesor con la última jugada y por qué.
+var coach_debug := ""
 var _coach_key_edit: LineEdit
 var _game_thread: Thread
 ## Reloj: ritmo elegido (índice de TIME_CONTROLS), el personalizado, y en la partida el tiempo que le queda a
@@ -8513,11 +8515,17 @@ func _clear_coach() -> void:
 ## de la IA, la tarjeta dice que el profesor está mirando; si no llega, queda el texto comprobado.
 func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 	_clear_coach()
+	coach_debug = ""
+	if Premium.test_allowed():
+		coach_debug = "Profesor (prueba) · %s · premium %s · activo %s · kids %s · online %s · reloj %s · variante «%s»" % [uci, Premium.active(), Premium.coach_on, kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))]
 	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))):
+		coach_debug += " → no se aplica"
 		return
 	var moment := GameReview.analyze_move(fen_before, uci, ply)
 	if moment.is_empty():
+		coach_debug += " → sin error comprobable (neto %d)" % GameReview.net(Chess.from_fen(fen_before), Chess.from_fen(fen_before).find_uci(uci))
 		return
+	coach_debug += " → error: %s" % str(moment["kind"])
 	var before := Chess.from_fen(fen_before)
 	var played := SanEs.san(before, before.find_uci(uci))
 	var better := ""
@@ -9095,6 +9103,8 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
 	if coach_note != "" or coach_waiting:
 		card_body.add_child(_coach_block())
+	if coach_debug != "" and Premium.test_on:
+		card_body.add_child(_para(coach_debug, F_FOOT, _c("quiet"), font_regular))
 
 
 func _build_game_actions() -> void:
