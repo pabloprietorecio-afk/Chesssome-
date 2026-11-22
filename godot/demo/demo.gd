@@ -650,6 +650,8 @@ class LevelBadge extends Control:
 	var bubble_ink := Color.BLACK
 	var progress := 0.0
 	var level := 0
+	## Texto de la burbuja en vez del nivel (el Elo de juego, «1566»): una píldora más ancha.
+	var label := ""
 	## Sin la burbuja del número (el ordenador o un rival sin nivel).
 	var no_level := false
 	var font: Font
@@ -665,6 +667,22 @@ class LevelBadge extends Control:
 			draw_arc(c, r - w * 0.5 - 1.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(progress, 0.0, 1.0), 64, ring, w, true)
 		# Burbuja con el número, abajo a la derecha.
 		if no_level:
+			return
+		if label != "" and font != null:
+			# Píldora abajo, centrada, con el Elo de juego.
+			var lfs := int(r * 0.36)
+			var ltw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x
+			var ph := lfs * 1.35
+			var rect := Rect2(c.x - ltw * 0.5 - lfs * 0.45, c.y + r - ph - 3.0, ltw + lfs * 0.9, ph)
+			var edge := StyleBoxFlat.new()
+			edge.bg_color = fill
+			edge.set_corner_radius_all(int(ph * 0.5 + 3.0))
+			draw_style_box(edge, rect.grow(3.0))
+			var pill := StyleBoxFlat.new()
+			pill.bg_color = bubble
+			pill.set_corner_radius_all(int(ph * 0.5))
+			draw_style_box(pill, rect)
+			draw_string(font, Vector2(c.x - ltw * 0.5, rect.position.y + ph * 0.5 + lfs * 0.36), label, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs, bubble_ink)
 			return
 		var br := r * 0.36
 		var bc := c + Vector2(r * 0.7, r * 0.7)
@@ -9326,6 +9344,7 @@ func _assistant_state() -> Dictionary:
 		"pantalla": screen, "idioma": Loc.language, "piezas": str(SET_NAMES[maxi(0, SETS.find(piece_set))]),
 		"material": str(STYLE_NAMES[maxi(0, STYLES.find(board_style))]), "tema": "oscuro" if dark else "claro",
 		"inclinacion": roundi(view.board.cam_pitch), "sonido": sound_on, "tutor": Premium.coach_on,
+		"perfil": _assistant_profile(),
 	}
 	if mode == "game" and not game.is_empty():
 		var g := {"titulo": str(game.get("title", "")), "online": bool(game.get("online", false)), "reloj": game_clocked, "color": "blancas" if game_color == 0 else "negras", "estado": game_state}
@@ -9337,6 +9356,27 @@ func _assistant_state() -> Dictionary:
 				legal.append("%s=%s" % [SanEs.san(pos, m), Chess.uci(m)])
 			st["legal"] = legal
 	return st
+
+
+## Lo que el asistente sabe del jugador para recomendar con datos (sin nada personal: niveles, reto y racha).
+func _assistant_profile() -> Dictionary:
+	var p := {"stockfish_en_el_movil": local_engine.available(), "premium": Premium.active(), "tutor_partidas_gratis_quedan": Premium.trial_left()}
+	if _has_player():
+		var r := float(player["rating"]["r"])
+		p["tactica"] = {"nivel": Assessment.level_of(r), "de": Assessment.LEVEL_FLOORS.size() - 1, "puntos": roundi(r), "escala": "problemas de Lichess (no es Elo)", "test_hecho": bool(player.get("done", false))}
+		var s := _prog()
+		var day := _prog_day()
+		Progress.ensure_today(s, day, _prog_ctx())
+		var goals: Array = Progress.goals(s, day)
+		var done := goals.filter(func(g: Dictionary) -> bool: return bool(g["hecho"])).size()
+		p["reto_de_hoy"] = {"hechos": done, "de": goals.size(), "cumplido": bool((s["reto"] as Dictionary)["completo"]), "pasos": goals.map(func(g: Dictionary) -> String: return "%s %d de %d%s" % [str(g["tipo"]), int(g["actual"]), int(g["meta"]), " (hecho)" if bool(g["hecho"]) else ""])}
+		p["racha_dias"] = Progress.streak_now(s, day)
+		p["fallos_por_repasar"] = _pending_fails().size()
+	else:
+		p["tactica"] = "sin medir: no ha hecho el test de nivel"
+	var gr := GameLog.game_rating(_log())
+	p["juego"] = {"elo": roundi(float(gr["r"])), "partidas_que_cuentan": int(gr["n"]), "provisional": bool(gr["provisional"])} if int(gr["n"]) > 0 else "sin partidas contra la app todavía"
+	return p
 
 
 func _send_to_assistant() -> void:
@@ -9468,6 +9508,34 @@ func _run_assistant_action(action: String, a: Dictionary) -> String:
 				"finales_campeones": _open_cine()
 				"como_se_usa": _open_welcome()
 				"licencias": _open_licences()
+				"reto_del_dia":
+					if not _has_player():
+						_open_experience()
+						return Loc.t("Primero, el test de nivel: así el reto del día se ajusta a ti.")
+					_open_day()
+				"test_nivel":
+					if _has_player() and not bool(player.get("done", false)):
+						_home_test()
+					else:
+						_open_experience()
+				"repasar_fallos": _start_review_session()
+				"mi_icono": _open_avatar()
+				"idioma": _open_language_dialog()
+		"entrenar":
+			if kids:
+				return Loc.t("En el modo Kids los problemas están en el curso.")
+			_confirm_on_close = Callable()
+			_close_confirm()
+			if not _has_player():
+				_open_experience()
+				return Loc.t("Primero, el test de nivel: así los problemas se ajustan a ti.")
+			var tema := str(a.get("tema", "mi_nivel"))
+			if Assessment.FAMILIES.has(tema):
+				_train_family(tema)
+			else:
+				train_family = ""
+				train_level = -1
+				_start_training()
 		"ver_partidas_online":
 			var lobby: Dictionary = await online.lobby()
 			if not bool(lobby.get("ok", false)):
@@ -11567,7 +11635,16 @@ func _level_progress(rating: float) -> float:
 	return clampf((rating - lo) / maxf(hi - lo, 1.0), 0.0, 1.0)
 
 
-func _level_badge(rating: float, side: float) -> Control:
+## Elo de juego para la insignia del avatar («1566»), o "" si aún no hay partidas que cuenten (o en Kids): entonces
+## la insignia lleva el nivel de táctica (0–10). Decisión de Pablo (22 nov): el número a la vista, el Elo.
+func _badge_elo() -> String:
+	if kids:
+		return ""
+	var gr := GameLog.game_rating(_log())
+	return str(roundi(float(gr["r"]))) if int(gr["n"]) > 0 else ""
+
+
+func _level_badge(rating: float, side: float, elo_label: String = "") -> Control:
 	var lv := Assessment.level_of(rating)
 	var rank := _rank(lv)
 	var tint := _tint(str(rank[2]))
@@ -11581,6 +11658,7 @@ func _level_badge(rating: float, side: float) -> Control:
 	badge.bubble_ink = Color.WHITE
 	badge.progress = _level_progress(rating)
 	badge.level = lv
+	badge.label = elo_label
 	badge.font = font_display
 	var photo := _avatar_photo() if avatar == "foto" else null
 	if photo != null:
@@ -11724,13 +11802,13 @@ func _sync_level_badge() -> void:
 	if not show:
 		return
 	var r := float(player["rating"]["r"])
-	var key := "%d:%d:%s:%s" % [Assessment.level_of(r), int(_level_progress(r) * 40.0), str(dark), avatar]
+	var key := "%d:%d:%s:%s:%s" % [Assessment.level_of(r), int(_level_progress(r) * 40.0), str(dark), avatar, _badge_elo()]
 	if str(level_slot.get_meta("key", "")) == key:
 		return
 	level_slot.set_meta("key", key)
 	for child in level_slot.get_children():
 		child.queue_free()
-	var badge := _level_badge(r, 112.0)
+	var badge := _level_badge(r, 112.0, _badge_elo())
 	badge.set_anchors_preset(Control.PRESET_FULL_RECT)
 	level_slot.add_child(badge)
 

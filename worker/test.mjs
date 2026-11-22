@@ -364,6 +364,9 @@ test("asistente: acciones válidas; jugada solo si es legal; nombres o valores r
   assert.equal(cleanAction("cambiar_material", { material: "oro" }, state), null);
   assert.equal(cleanAction("borrar_todo", {}, state), null);
   assert.deepEqual(cleanAction("inclinar_tablero", { grados: "55" }, state), { name: "inclinar_tablero", input: { grados: 55 } });
+  assert.deepEqual(cleanAction("abrir", { pantalla: "reto_del_dia" }, state), { name: "abrir", input: { pantalla: "reto_del_dia" } });
+  assert.deepEqual(cleanAction("entrenar", { tema: "mate" }, state), { name: "entrenar", input: { tema: "mate" } });
+  assert.equal(cleanAction("entrenar", { tema: "ajedrez960" }, state), null);
   let sent;
   globalThis.fetch = async (url, init) => {
     sent = JSON.parse(init.body);

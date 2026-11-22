@@ -175,18 +175,20 @@ public class TutorVoz extends GodotPlugin {
 				pcm.write(bytes, 0, bytes.length);
 				double rms = Math.sqrt(sum / n);
 				long now = System.currentTimeMillis();
-				// Ruido de fondo: el de las primeras décimas; hay voz si se supera con holgura.
-				if (floor < 0) floor = rms;
-				else if (!heard && now - start < 400) floor = Math.min(floor, rms);
-				double threshold = Math.max(0.006, floor * 3.0);
+				// Ruido de fondo: la décima más callada hasta ahora (las pausas entre palabras), no las primeras décimas:
+				// si se empezaba a hablar nada más pulsar, la voz pasaba por ruido y las partes suaves por silencio, y
+				// cortaba antes de tiempo (lo vio Pablo, 22 nov).
+				if (floor < 0 || rms < floor) floor = rms;
+				double threshold = Math.max(0.006, Math.min(floor * 2.5, 0.03));
 				if (rms >= threshold) {
 					heard = true;
 					quietSince = -1;
 				} else if (heard && quietSince < 0) {
 					quietSince = now;
 				}
-				if (heard && quietSince > 0 && now - quietSince >= 1300) break;
-				if (now - start >= 12000) break;
+				// 2,2 s de silencio: deja pensar entre palabras («caballo… a efe tres»). Se puede cortar antes tocando.
+				if (heard && quietSince > 0 && now - quietSince >= 2200) break;
+				if (now - start >= 20000) break;
 				if (!heard && now - start >= 7000) {
 					recording = false;
 					cancelled = true;

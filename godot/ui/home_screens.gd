@@ -523,7 +523,7 @@ static func _list_level(d: Variant) -> Button:
 	badge_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge_button.pressed.connect(Callable(d, "_open_avatar"))
 	badge_button.set_meta("label", "Tu icono")
-	var badge: Control = d._level_badge(r, u(60.0))
+	var badge: Control = d._level_badge(r, u(60.0), d._badge_elo())
 	badge.set_anchors_preset(Control.PRESET_FULL_RECT)
 	badge_button.add_child(badge)
 	row.add_child(badge_button)
@@ -796,7 +796,7 @@ static func _grid_header(d: Variant, height: float) -> Control:
 		badge_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		badge_button.pressed.connect(Callable(d, "_open_avatar"))
 		badge_button.set_meta("label", "Tu icono")
-		var badge: Control = d._level_badge(r, u(48.0))
+		var badge: Control = d._level_badge(r, u(48.0), d._badge_elo())
 		badge.set_anchors_preset(Control.PRESET_FULL_RECT)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge_button.add_child(badge)

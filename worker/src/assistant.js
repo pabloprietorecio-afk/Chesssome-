@@ -4,7 +4,8 @@
 
 const LEVELS = ["muy fácil", "fácil", "medio", "difícil", "muy difícil", "experto"];
 const RHYTHMS = ["sin reloj", "3+2", "5+0", "10+0", "15+10", "30+0", "90+30"];
-const SCREENS = ["inicio", "opciones", "jugar", "online", "mis_partidas", "entrenar", "aprender", "mi_nivel", "finales_campeones", "como_se_usa", "licencias"];
+const SCREENS = ["inicio", "opciones", "jugar", "online", "mis_partidas", "entrenar", "aprender", "mi_nivel", "finales_campeones", "como_se_usa", "licencias", "reto_del_dia", "test_nivel", "repasar_fallos", "mi_icono", "idioma"];
+const THEMES = ["mi_nivel", "doble", "linea", "defensor", "mate", "peon", "caza", "otros"];
 const SWITCHES = ["sonido", "contorno", "seguir_movil", "fijar_giro", "pista_gestos", "tutor", "pulsar_reloj"];
 const UCI = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
 
@@ -28,7 +29,10 @@ export const TOOLS = [
   tool("animaciones", "Cuánto se animan las piezas.", { modo: { type: "string", enum: ["completas", "rápidas", "mínimas", "sin"] } }, ["modo"]),
   tool("ajuste", "Enciende o apaga un ajuste.", { nombre: { type: "string", enum: SWITCHES }, activo: { type: "boolean" } }, ["nombre", "activo"]),
   tool("cambiar_idioma", "Cambia el idioma de la app.", { idioma: { type: "string", enum: ["es", "en", "fr", "it", "pt", "de", "ru", "ja", "hi", "id"] } }, ["idioma"]),
-  tool("abrir", "Abre una pantalla de la app.", { pantalla: { type: "string", enum: SCREENS } }, ["pantalla"]),
+  tool("abrir", "Abre una pantalla de la app (ver «Qué hay en la app» para lo que tiene cada una).", { pantalla: { type: "string", enum: SCREENS } }, ["pantalla"]),
+  tool("entrenar", "Empieza a resolver problemas de táctica: a tu nivel o de un tema.", {
+    tema: { type: "string", enum: THEMES, description: "mi_nivel = problemas a su nivel (lo normal); doble = ataques dobles y descubiertas; linea = clavadas y enfiladas; defensor = desviar, atraer y quitar defensas; mate = mates; peon = peones y coronación; caza = piezas sin defensa o atrapadas; otros." },
+  }, ["tema"]),
   tool("ver_partidas_online", "Mira cuánta gente está esperando rival online ahora mismo, por ritmo, y se lo enseña al jugador.", {}),
   tool("accion_partida", "Botones de la partida en curso.", { accion: { type: "string", enum: ["pista", "deshacer", "explicamelo"] } }, ["accion"]),
   tool("preguntar_tutor", "Pasa una pregunta de ajedrez sobre la partida al tutor (que la analiza con Stockfish y la contesta).", { pregunta: { type: "string" } }, ["pregunta"]),
@@ -76,7 +80,22 @@ export function assistantPrompt(text, state, language) {
     "- Las preguntas de ajedrez sobre la partida (por qué una jugada es mala, qué planea el rival) van al tutor con «preguntar_tutor».",
     `- Contesta en el idioma ${language}. Sin markdown ni emojis.`,
     "",
-    "Qué hay en la app: partidas contra la app en cinco niveles (muy fácil, fácil, medio, difícil, muy difícil, cada uno con subniveles) y «experto» (Stockfish dentro del móvil, de Elo 2100 a sin límite; no en War Chess), con o sin reloj, con blancas, negras o al azar, y la variante War Chess; partidas online contra personas (por ritmos); problemas para entrenar por nivel y por temas; un curso «Aprende desde cero»; «Finales de campeones» con vídeo; «Mi nivel y mi plan»; «Mis partidas» con el análisis; un tutor con IA en las partidas (marca cada jugada y la explica); piezas «figuras» (3D), «fichas» y «simple» (plano); materiales madera, mármol, metal e ilustrado; tema claro u oscuro; sonido; animaciones; idiomas.",
+    "Qué hay en la app (pantallas y qué hacer en cada una; úsalo para proponer y hacer cosas):",
+    "- inicio: saludo con el nivel de táctica, la racha de días y el Elo de juego; tarjetas a Reto del día, Entrenar (o el test de nivel si no lo ha hecho), Jugar una partida, Partida online, Aprende desde cero y Mi nivel y mi plan.",
+    "- reto_del_dia: el objetivo de cada día (tres pasos: problemas, una partida, repasar…); cumplirlo mantiene la racha de días.",
+    "- test_nivel: unos problemas para medir su nivel de táctica (si aún no lo ha hecho, o para repetirlo).",
+    "- entrenar (pantalla): el camino de niveles de táctica 0–10, «Repasar mis fallos», «Finales de campeones» y los temas. Para ponerse a resolver directamente, usa la herramienta «entrenar».",
+    "- repasar_fallos: vuelve a los problemas que falló.",
+    "- finales_campeones: momentos de partidas famosas con vídeo; el jugador elige qué jugaría.",
+    "- aprender: el curso «Aprende desde cero» (cómo se mueve cada pieza, jaque, enroque…), lección a lección.",
+    "- jugar: partidas contra la app: niveles muy fácil, fácil, medio, difícil, muy difícil (cada uno con subniveles, 13 en total, con su Elo) y «experto» (Stockfish dentro del móvil, Elo 2100, 2400, 2700 o sin límite; no en War Chess). Con o sin reloj, blancas, negras o al azar, y la variante War Chess (piezas con blindaje). Sin reloj hay deshacer, pista y el tutor IA; con reloj, no. Mejor usar «empezar_partida» si ya sabe qué quiere.",
+    "- online: partidas contra personas por ritmos (3+2, 5+0, 10+0, 15+10…); se espera rival en un ritmo. Sin tutor ni pistas.",
+    "- mis_partidas: el historial, con el análisis jugada a jugada de cada partida (con Stockfish si está en el móvil) y el nivel de juego.",
+    "- mi_nivel: «Mi nivel y mi plan»: nivel de táctica, en qué falla por temas y qué le toca practicar; también su Elo de juego.",
+    "- mi_icono: elegir el icono o foto del avatar.",
+    "- opciones: piezas (figuras 3D, fichas, simple), material (madera, mármol, metal, ilustrado), tema claro/oscuro, inclinación del tablero, animaciones, sonido, idioma, tutor IA y otros ajustes; también «Cómo se usa» y las licencias.",
+    "- El tutor IA (en partidas sin reloj contra la app): marca cada jugada (mejor, buena, imprecisión, error, error grave, oportunidad perdida), «Explícamelo» la enseña en el tablero, «Prueba otra vez» deja repetir una jugada mala y se le pueden hacer preguntas. 5 partidas gratis; después, premium.",
+    "Si lo que pide existe con otro nombre (p. ej. «el desafío de hoy» = reto_del_dia, «ejercicios» o «puzzles» = entrenar, «ver mis errores» = repasar_fallos), hazlo. Antes de decir que algo no existe, repasa esta lista. Usa el «perfil» del estado (nivel, Elo, reto de hoy, racha, si hay Stockfish) para recomendar con datos: p. ej. si el reto de hoy está a medias, dile cuánto le falta.",
   ].join("\n");
   const lines = [`Estado de la app ahora: ${JSON.stringify({ ...s, legal: undefined })}`];
   if (Array.isArray(s.legal) && s.legal.length) lines.push(`Jugadas legales del jugador ahora (notación=UCI): ${s.legal.slice(0, 120).join(", ")}`);

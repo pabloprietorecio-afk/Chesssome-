@@ -304,6 +304,7 @@ func _initialize() -> void:
 	_ok(demo.ask_mode == "assistant" and _has_text(demo.confirm_node, "Asistente") and _has_text(demo.confirm_node, "Peón de rey dos pasos"), "ventana del asistente, con ideas para la partida")
 	var st: Dictionary = demo._assistant_state()
 	_ok(st["pantalla"] == "game" and (st["legal"] as Array).has("f4=f3f4") and st.has("partida"), "el asistente sabe dónde está y qué jugadas hay")
+	_ok(st.has("perfil") and (st["perfil"] as Dictionary).has("juego") and (st["perfil"] as Dictionary).has("stockfish_en_el_movil"), "y el perfil del jugador (niveles, reto, racha): %s" % str(st.get("perfil", {})))
 	demo.ask_text = "mármol y peón de rey dos pasos"
 	demo._send_question()
 	_ok(demo.ask_state == "wait" and demo.ask_mode == "assistant", "esperando al asistente")
