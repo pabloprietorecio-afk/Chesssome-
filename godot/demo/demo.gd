@@ -341,7 +341,7 @@ var assistant_button: Button
 ## Preguntas y respuestas de esta partida ({q, a}), para que el tutor siga el hilo.
 var ask_history: Array = []
 var tutor_voice: TutorVoice
-## La voz del tutor (core/tutor_speech.gd): lee sus respuestas con la voz de A Tank Story. Opciones → Premium.
+## La voz del tutor (core/tutor_speech.gd): lee sus respuestas con el lector de texto del móvil. Opciones → Premium.
 var tutor_speech: TutorSpeech
 var tutor_speech_on := true
 ## Lo que dijo el tutor la última vez (para el botón «Escuchar»).
@@ -1217,7 +1217,6 @@ func _ready() -> void:
 	tutor_voice.failed.connect(_on_voice_failed)
 	tutor_speech = TutorSpeech.new()
 	add_child(tutor_speech)
-	tutor_speech.url = CoachAI.speech_url(coach.cfg)
 	tutor_speech.speaking_changed.connect(_on_speech_changed)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
