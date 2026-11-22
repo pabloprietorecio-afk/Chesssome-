@@ -299,6 +299,30 @@ func _initialize() -> void:
 	# 5b. El asistente: órdenes con palabras (servidor simulado).
 	demo._sync_assistant_button()
 	_ok(demo.assistant_button != null and demo.assistant_button.visible, "botón flotante del asistente")
+	# Se arrastra a otro sitio; el arrastre no abre el asistente.
+	var fab: Button = demo.assistant_button
+	var before: Vector2 = fab.position
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = Vector2(50, 50)
+	demo._on_assistant_fab_input(down)
+	var drag := InputEventMouseMotion.new()
+	drag.button_mask = MOUSE_BUTTON_MASK_LEFT
+	drag.position = Vector2(-250, -450)
+	demo._on_assistant_fab_input(drag)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = Vector2(50, 50)
+	demo._on_assistant_fab_input(up)
+	demo._on_assistant_fab()
+	await _frames(2)
+	_ok(fab.position.distance_to(before) > 200.0 and demo.assistant_spot.x >= 0.0 and demo.ask_mode != "assistant", "el botón del asistente se arrastra a otro sitio (y arrastrarlo no lo abre)")
+	demo._sync_assistant_button()
+	_ok(fab.position.distance_to(before) > 200.0, "y se queda donde se dejó")
+	demo.assistant_spot = Vector2(-1, -1)
+	demo._sync_assistant_button()
 	demo._open_assistant()
 	await _frames(2)
 	_ok(demo.ask_mode == "assistant" and _has_text(demo.confirm_node, "Asistente") and _has_text(demo.confirm_node, "Peón de rey dos pasos"), "ventana del asistente, con ideas para la partida")

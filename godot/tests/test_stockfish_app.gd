@@ -88,6 +88,32 @@ func _initialize() -> void:
 	await _frames(2)
 	_ok(not demo._screen_wanted(t0 + 1000), "en el inicio, como cualquier app")
 
+	# Gesto «?» (22 nov): sin respuesta del rival en 20 s, aviso; si contesta, se acaba.
+	var row: Control = demo._gesture_row(true)
+	var grid: GridContainer = row.get_child(0)
+	var inline: Control = demo._gesture_row()
+	_ok(grid.get_child_count() == 7 and grid.columns == 4 and (grid.get_child(0) as Button).custom_minimum_size.x >= 160.0 and (inline.get_child(0) as GridContainer).columns == 4, "gestos: siete (con «?»), grandes, en dos filas (también en la tarjeta)")
+	inline.free()
+	row.free()
+	demo.online.phase = "playing"
+	var now := Time.get_ticks_msec()
+	demo._ping_at = now - 25000
+	demo._ping_told = false
+	demo.online.rival_alive_at = -1000000
+	demo._ping_tick()
+	_ok(demo._ping_told and demo._ping_at != -1, "«?» sin respuesta en 20 s: se avisa de que parece haber cerrado la app")
+	demo._close_confirm()
+	demo.online.rival_alive_at = Time.get_ticks_msec() + 1
+	demo._ping_tick()
+	_ok(demo._ping_at == -1, "si su app contesta, el aviso se acaba")
+	_ok(demo._thinking_node != null and demo.confirm_node == demo._thinking_node and demo._recheck_button.disabled and (demo._recheck_button.get_meta("label_node") as Label).text.contains("(2"), "y sale «Tu rival está pensando» con «Volver a comprobar (20)» desactivado")
+	demo._recheck_at = Time.get_ticks_msec() - 1
+	demo._recheck_tick()
+	_ok(not demo._recheck_button.disabled and (demo._recheck_button.get_meta("label_node") as Label).text == Loc.t("Volver a comprobar"), "a los 20 s se puede volver a comprobar")
+	demo._close_thinking()
+	_ok(demo.confirm_node == null or not is_instance_valid(demo.confirm_node), "y se quita")
+	demo.online.phase = ""
+
 	print("TODO OK" if fallos == 0 else "FALLOS: %d de %d" % [fallos, hechos])
 	quit(1 if fallos > 0 else 0)
 

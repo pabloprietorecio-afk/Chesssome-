@@ -170,6 +170,17 @@ public class MotorStockfish extends GodotPlugin {
 		return r.toString();
 	}
 
+	/**
+	 * La app pasa a segundo plano: se cierra Stockfish (unos 100 MB con su red) para que Android no cierre la app
+	 * entera por falta de memoria mientras el jugador está fuera (22 nov). Se vuelve a abrir solo con el siguiente
+	 * análisis. Va por la misma cola: si había un análisis en marcha, termina antes.
+	 */
+	@Override
+	public void onMainPause() {
+		super.onMainPause();
+		worker.execute(this::shutdown);
+	}
+
 	private void shutdown() {
 		try {
 			if (in != null) send("quit");

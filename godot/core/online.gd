@@ -51,8 +51,10 @@ const MONTHS := {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Ju
 
 ## Gestos del chat: solo estos, sin texto libre.
 ## «tiempo» («¡Tu tiempo!»): para meter prisa al rival cuando le toca; tiene su propio botón, no va en la fila.
-const GESTURES := ["saludo", "aplauso", "genial", "arriba", "abajo", "buena", "tiempo"]
-const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡Genial!", "arriba": "Bien", "abajo": "Vaya", "buena": "Buena partida", "tiempo": "¡Tu tiempo!"}
+## «pregunta» («¿Sigues ahí?», 22 nov): la app del rival contesta sola con «Sigo aquí» (sigo/<uid>); si no contesta,
+## es que ha cerrado la app o no tiene conexión (lo cuenta demo.gd).
+const GESTURES := ["saludo", "aplauso", "genial", "arriba", "abajo", "buena", "tiempo", "pregunta"]
+const GESTURE_TEXT := {"saludo": "¡Hola!", "aplauso": "¡Bravo!", "genial": "¡Genial!", "arriba": "Bien", "abajo": "Vaya", "buena": "Buena partida", "tiempo": "¡Tu tiempo!", "pregunta": "¿Sigues ahí?"}
 ## Espacios fijos (ritmos); además, cada uno puede abrir el suyo (personalizado).
 const SPACES := ["0+0", "5+3", "10+5", "15+10", "20+0", "30+0"]
 ## Ritmo válido (igual que en las reglas de la base de datos): «0+0» o de 1 a 180 minutos y de 0 a 60 segundos.
@@ -115,6 +117,8 @@ var _turn_key := ""
 var _turn_at := 0
 ## «Sigo aquí» de cada jugador: lo último que se leyó de la base de datos y cuándo se vio cambiar (reloj local).
 var _sigo := {}
+## Última señal de vida del rival (ms de este reloj): su «Sigo aquí», un gesto o una jugada.
+var rival_alive_at := 0
 var _sigo_at := {}
 var _lobby_cleaned := false
 var _hb_t := 0.0
@@ -560,6 +564,7 @@ func _reset() -> void:
 	_turn_key = ""
 	_turn_at = 0
 	_sigo = {}
+	rival_alive_at = 0
 	_sigo_at = {}
 	_lobby_cleaned = false
 	_hb_t = 0.0
@@ -835,6 +840,7 @@ func _on_tree() -> void:
 		_applied += 1
 		# Las jugadas pares son de blancas, las impares de negras; las propias ya se hicieron en el tablero.
 		if i % 2 != my_color:
+			rival_alive_at = Time.get_ticks_msec()
 			move_received.emit(str(moves[i]))
 		if phase != "playing":
 			return
@@ -996,6 +1002,8 @@ func _check_extras(doc: Variant) -> void:
 			if _sigo.get(str(k)) != v:
 				_sigo[str(k)] = v
 				_sigo_at[str(k)] = Time.get_ticks_msec()
+				if str(k) == other:
+					rival_alive_at = Time.get_ticks_msec()
 	var gestos: Variant = d.get("gestos")
 	if gestos is Dictionary:
 		var keys: Array = (gestos as Dictionary).keys()
@@ -1006,6 +1014,8 @@ func _check_extras(doc: Variant) -> void:
 			_seen_gestures[str(k)] = true
 			var g: Variant = (gestos as Dictionary)[k]
 			if g is Dictionary and GESTURES.has(str((g as Dictionary).get("g", ""))):
+				if str((g as Dictionary).get("de", "")) != uid:
+					rival_alive_at = Time.get_ticks_msec()
 				gesture.emit(str((g as Dictionary).get("de", "")) == uid, str((g as Dictionary)["g"]))
 
 

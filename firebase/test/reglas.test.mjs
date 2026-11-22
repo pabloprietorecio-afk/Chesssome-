@@ -141,6 +141,7 @@ test('«Sigo aquí», fin por abandono y gesto «¡Tu tiempo!»', async () => {
   // Gesto nuevo.
   await assertSucceeds(push(ref(db('a'), 'partidas/p1/gestos'), { de: 'a', g: 'tiempo', t: ts() }));
   await assertFails(push(ref(db('a'), 'partidas/p1/gestos'), { de: 'a', g: 'prisa', t: ts() }));
+  await assertSucceeds(push(ref(db('a'), 'partidas/p1/gestos'), { de: 'a', g: 'pregunta', t: ts() }));
   // A gana por abandono de B; después, ni jugadas ni «sigo».
   await assertFails(set(ref(db('a'), 'partidas/p1/fin'), { tipo: 'otro', pierde: 1, de: 'a', t: ts() }));
   await assertSucceeds(set(ref(db('a'), 'partidas/p1/fin'), { tipo: 'abandono', pierde: 1, de: 'a', t: ts() }));

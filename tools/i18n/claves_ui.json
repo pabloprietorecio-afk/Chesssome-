@@ -1077,5 +1077,17 @@
 "Con ayudas, esta partida no cuenta para tu nivel.",
 "Stockfish, el motor de ajedrez, dentro de tu móvil. De muy fuerte a imbatible.",
 "Fuerza máxima: no cuenta para tu nivel",
-"El nivel «Experto» es Stockfish y necesita la app instalada desde el APK completo, en una partida normal (no en War Chess). Prueba con «Muy difícil»."
+"El nivel «Experto» es Stockfish y necesita la app instalada desde el APK completo, en una partida normal (no en War Chess). Prueba con «Muy difícil».",
+"Cargando…",
+"Ya se lo has preguntado. Espera un poco.",
+"No se ha podido preguntar. Revisa tu conexión.",
+"Tu rival sigue en la partida.",
+"Tu rival no contesta: parece que ha cerrado la app o se ha quedado sin conexión.",
+"Tu rival no ha vuelto",
+"No contesta a «¿Sigues ahí?» desde hace %d s: parece que ha cerrado la app. Puedes ganar la partida por abandono o seguir esperando.",
+"Tu rival está pensando",
+"Su app ha contestado: sigue ahí.",
+"Su app ha contestado: sigue ahí. Ahora te toca a ti.",
+"Volver a comprobar",
+"Volver a comprobar (%d)"
 ]

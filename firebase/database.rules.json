@@ -138,7 +138,7 @@
               ".validate": "newData.val() === auth.uid"
             },
             "g": {
-              ".validate": "newData.isString() && newData.val().matches(/^(saludo|aplauso|genial|arriba|abajo|buena|tiempo)$/)"
+              ".validate": "newData.isString() && newData.val().matches(/^(saludo|aplauso|genial|arriba|abajo|buena|tiempo|pregunta)$/)"
             },
             "t": {
               ".validate": "newData.val() === now"

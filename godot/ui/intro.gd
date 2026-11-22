@@ -50,6 +50,14 @@ var _label: Label
 var _rule: Line2D
 var _rule_full := PackedVector2Array()
 var _done := false
+## «Cargando…» con una rueda que gira: sale si el vídeo tarda en arrancar (móviles lentos, 22 nov).
+var _loading: Control
+var _since := 0.0
+var _started := false
+## Si el vídeo no arranca en este tiempo, la intro sigue igual (con el último plan: el título sobre el fondo).
+const START_TIMEOUT := 4.0
+## Sin vídeo aún pasado este tiempo, se enseña «Cargando…» (antes, no: en un móvil rápido no da tiempo a verlo).
+const LOADING_AFTER := 0.25
 
 
 static func available() -> bool:
@@ -96,11 +104,27 @@ func _ready() -> void:
 		_audio.stream = load(SOUND)
 		_audio.volume_db = SOUND_DB
 		add_child(_audio)
+	_loading = Loading.new()
+	_loading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_loading.modulate.a = 0.0
+	(_loading as Loading).text = Loc.t("Cargando…")
+	(_loading as Loading).font = font
+	add_child(_loading)
 	resized.connect(_layout)
 	_layout()
 	_player.play()
 	# Del arranque de Android (mismo papel) al vídeo, sin salto.
 	_player.modulate.a = 0.0
+
+
+## La animación del título va con el vídeo: empieza cuando sale su primer fotograma (en un móvil lento el vídeo
+## tarda en arrancar y el título se escribía antes de tiempo).
+func _start_timeline() -> void:
+	if _started:
+		return
+	_started = true
+	if _loading != null:
+		create_tween().tween_property(_loading, "modulate:a", 0.0, 0.15)
 	create_tween().tween_property(_player, "modulate:a", 1.0, 0.3)
 	var tw := create_tween()
 	tw.tween_interval(WRITE_FROM)
@@ -115,6 +139,15 @@ func _ready() -> void:
 ## El sonido arranca con el primer fotograma del vídeo (el descodificador tarda un poco en empezar), y como mucho
 ## medio segundo después, por si el vídeo no avanza.
 func _process(delta: float) -> void:
+	if not _started:
+		_since += delta
+		if _player.stream_position > 0.0 or _since >= START_TIMEOUT:
+			_start_timeline()
+		elif _since >= LOADING_AFTER and _loading != null and _loading.modulate.a < 1.0:
+			_loading.modulate.a = minf(1.0, _loading.modulate.a + delta * 4.0)
+		if _loading != null:
+			_loading.queue_redraw()
+		return
 	if _audio == null or _audio.playing or _done or _audio_wait < 0.0:
 		return
 	_audio_wait += delta
@@ -141,6 +174,9 @@ func _layout() -> void:
 	var w := size.x
 	if w < 1.0:
 		return
+	if _loading != null:
+		_loading.position = Vector2.ZERO
+		_loading.size = size
 	# El vídeo, a todo el ancho; si la pantalla es más baja que el vídeo, a todo el alto (se recortan los lados).
 	var vw := w
 	var vh := roundf(w * ASPECT)
@@ -230,6 +266,25 @@ func _gui_input(event: InputEvent) -> void:
 	var tap := (event is InputEventMouseButton and (event as InputEventMouseButton).pressed) or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
 	if tap and not _done:
 		_leave()
+
+
+## «Cargando…»: una rueda naranja que gira y el texto debajo, en el centro de la pantalla.
+class Loading extends Control:
+	var text := ""
+	var font: Font
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.05
+		var w := maxf(6.0, r * 0.22)
+		var t := Time.get_ticks_msec() / 1000.0
+		draw_arc(c, r, 0.0, TAU, 48, Color(RULE.r, RULE.g, RULE.b, 0.18), w, true)
+		var a := fmod(t * TAU * 0.9, TAU)
+		draw_arc(c, r, a, a + TAU * 0.3, 32, RULE, w, true)
+		if font != null and text != "":
+			var fs := int(r * 0.9)
+			var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(font, c + Vector2(-tw * 0.5, r + w + fs * 1.3), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, INK)
 
 
 ## Fondo de la pantalla: del color de arriba del vídeo al de abajo.

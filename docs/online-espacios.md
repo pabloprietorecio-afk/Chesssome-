@@ -62,6 +62,15 @@ mucho un minuto a que vuelvas; si no, sigue buscando. Solo en el APK con avisos 
 3. Hasta que se publiquen, la versión nueva de la app no puede jugar online (escribe en `espera`, `listo`, `pulsos`…,
    que las reglas viejas no permiten).
 
+## «¿Sigues ahí?» (gesto «?», 22 nov)
+
+- En la fila de gestos hay un «?»: la app del rival contesta sola con «Sigo aquí» (`sigo/<uid>`, que ya existía).
+- Sin respuesta ni otra señal (jugada o gesto) en 20 s: «Tu rival no contesta: parece que ha cerrado la app…». Si
+  sigue sin dar señales 60 s más y le toca a él, se ofrece ganar por abandono.
+- Las versiones anteriores de la app no contestan al «?»: si el rival tiene una versión vieja, parecerá ausente. Por eso
+  la victoria solo se ofrece en su turno y tras 80 s sin señales.
+- **Hace falta publicar las reglas** (el gesto «pregunta»). Hasta entonces el «?» dice «No se ha podido preguntar».
+
 ## App Check
 
 No se ha activado. Con Godot no hay SDK de Firebase: haría falta un complemento nativo de Android, el proveedor Play

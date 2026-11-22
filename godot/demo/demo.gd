@@ -1392,6 +1392,9 @@ func _load_settings() -> void:
 	lang_asked = bool(cfg.get_value("app", "idioma_preguntado", false))
 	kids = bool(cfg.get_value("app", "kids", false)) and KIDS_ENABLED
 	home_style = str(cfg.get_value("app", "inicio", home_style))
+	var fab: Variant = cfg.get_value("app", "asistente_sitio", Vector2(-1.0, -1.0))
+	if fab is Vector2:
+		assistant_spot = fab
 	intro_mode = str(cfg.get_value("app", "intro", intro_mode))
 	if not intro_mode in INTRO_MODES:
 		intro_mode = INTRO_MODES[0]
@@ -1442,6 +1445,7 @@ func _save_settings() -> void:
 	cfg.set_value("tablero", "animaciones", int(view.board.anim_mode) if view != null else _saved_anim)
 	cfg.set_value("tablero", "animaciones_elegidas", _anim_chosen)
 	cfg.set_value("pantalla", "oscuro", dark)
+	cfg.set_value("app", "asistente_sitio", assistant_spot)
 	cfg.set_value("online", "foto", online_photo)
 	cfg.set_value("online", "nombre", online_name)
 	cfg.set_value("online", "ritmo", online_space)
@@ -7169,6 +7173,7 @@ func _online_retry() -> void:
 
 
 func _online_started(color: int) -> void:
+	_ping_at = -1
 	online_busy = false
 	online_note = ""
 	online_bot_offer = false
@@ -7180,6 +7185,8 @@ func _online_started(color: int) -> void:
 
 ## Jugada del rival, que llega por la red.
 func _online_move(uci: String) -> void:
+	# «Tu rival está pensando»: ya ha movido.
+	_close_thinking()
 	if mode != "game" or not bool(game.get("online", false)) or game_state != "think":
 		return
 	if game_back > 0:
@@ -7265,6 +7272,7 @@ var _idle_snooze_until := 0
 func _online_idle_tick() -> void:
 	if online.phase != "playing":
 		return
+	_ping_tick()
 	var limit := Online.idle_limit_ms(online.base_ms)
 	var mover := online.on_move()
 	if _idle_ask_node != null and not is_instance_valid(_idle_ask_node):
@@ -8053,10 +8061,10 @@ func _hurry_rival() -> void:
 	online.send_gesture("tiempo")
 
 
-## Los gestos, en una ventana (en las partidas con reloj, que no tienen sitio para su fila).
+## Los gestos, en una ventana (en las partidas con reloj, que no tienen sitio para su fila): grandes, en dos filas.
 func _gesture_menu() -> void:
 	var column := _popup("Gestos", "")
-	column.add_child(_gesture_row())
+	column.add_child(_gesture_row(true))
 	column.add_child(_button("back", "Cerrar", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "radius": 52}))
 
 
@@ -8112,35 +8120,159 @@ func _block_rival() -> void:
 	column.add_child(_button("check", "Vale", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
 
 
-## Los gestos del chat: una fila de botones redondos con su dibujo.
-func _gesture_row() -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac"}
+const GESTURE_TINTS := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac", "tiempo": "peach", "pregunta": "sky"}
+
+
+## Dibujo de un gesto: «?» para «¿Sigues ahí?».
+func _gesture_icon(kind: String) -> String:
+	return "why" if kind == "pregunta" else "g_" + kind
+
+
+## Los gestos del chat: botones redondos con su dibujo, grandes y en dos filas (Pablo, 22 nov: «que se vean bien»).
+## En la ventana (`big`), un poco más grandes que en la tarjeta.
+func _gesture_row(big: bool = false) -> Control:
+	var side := 168.0 if big else 150.0
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 22)
+	grid.add_theme_constant_override("v_separation", 18)
+	var box: Container = grid
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for g: String in Online.GESTURES:
 		if g == "tiempo":
 			continue
-		var tint := _tint(str(tints[g]))
-		var b := _round_button("g_" + g, _send_gesture.bind(g), 112.0, tint[0], tint[1], false)
-		b.tooltip_text = str(Online.GESTURE_TEXT[g])
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(b)
-	return row
+		var tint := _tint(str(GESTURE_TINTS[g]))
+		var b := _button(_gesture_icon(g), "", _send_gesture.bind(g), tint[0], tint[1], {"height": side, "icon": side * 0.64, "pad_x": side * 0.18, "radius": int(side * 0.5)})
+		b.custom_minimum_size = Vector2(side, side)
+		b.tooltip_text = Loc.t(str(Online.GESTURE_TEXT[g]))
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(b)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(box)
+	return center
 
 
 func _send_gesture(kind: String) -> void:
 	_close_confirm()
+	if kind == "pregunta":
+		_ask_rival_here()
+		return
 	online.send_gesture(kind)
+
+
+## «¿Sigues ahí?» al rival: su app contesta sola si está abierta. Sin respuesta en PING_SILENT_MS, se avisa de que
+## parece haber cerrado la app; si sigue sin dar señales PING_CLAIM_MS después y le toca a él, se puede ganar por
+## abandono (solo en su turno: si me toca a mí, mi jugada es la que falta).
+const PING_SILENT_MS := 20000
+const PING_CLAIM_MS := 60000
+## Cuándo pregunté «¿Sigues ahí?» (ms) o −1.
+var _ping_at := -1
+var _ping_told := false
+
+
+func _ask_rival_here(again: bool = false) -> void:
+	var now := Time.get_ticks_msec()
+	if not again and _ping_at != -1 and now - _ping_at < 30000:
+		_board_bubble("why", "Ya se lo has preguntado. Espera un poco.", "sky", false)
+		return
+	var ok: bool = await online.send_gesture("pregunta")
+	if not ok:
+		_board_bubble("why", "No se ha podido preguntar. Revisa tu conexión.", "rose", false)
+		return
+	_ping_at = Time.get_ticks_msec()
+	_ping_told = false
+
+
+## Su app ha contestado: «Tu rival está pensando» (o, si me toca a mí, que sigue en la partida), con «Volver a
+## comprobar» que se habilita a los RECHECK_MS con cuenta atrás. Se quita sola si el rival mueve o al tocar fuera.
+const RECHECK_MS := 20000
+var _thinking_node: Control
+var _recheck_button: Button
+var _recheck_at := 0
+
+
+func _show_rival_thinking() -> void:
+	if confirm_node != null and is_instance_valid(confirm_node):
+		_board_bubble("check", "Tu rival sigue en la partida.", "mint", true)
+		return
+	var thinking := online.on_move() != game_color
+	var column := _popup("Tu rival está pensando" if thinking else "Tu rival sigue en la partida", "Su app ha contestado: sigue ahí." if thinking else "Su app ha contestado: sigue ahí. Ahora te toca a ti.")
+	_recheck_at = Time.get_ticks_msec() + RECHECK_MS
+	_recheck_button = _button("why", _recheck_label(), _recheck_rival, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58})
+	_recheck_button.disabled = true
+	_recheck_button.modulate.a = 0.55
+	column.add_child(_recheck_button)
+	_thinking_node = confirm_node
+
+
+func _recheck_label() -> String:
+	var left := ceili(float(_recheck_at - Time.get_ticks_msec()) / 1000.0)
+	return Loc.t("Volver a comprobar") if left <= 0 else Loc.f("Volver a comprobar (%d)", left)
+
+
+func _recheck_tick() -> void:
+	if _thinking_node == null:
+		return
+	if not is_instance_valid(_thinking_node) or confirm_node != _thinking_node:
+		_thinking_node = null
+		return
+	if _recheck_button != null and is_instance_valid(_recheck_button) and _recheck_button.disabled:
+		var label := _recheck_label()
+		var node: Variant = _recheck_button.get_meta("label_node", null)
+		if node is Label and (node as Label).text != label:
+			(node as Label).text = label
+		if Time.get_ticks_msec() >= _recheck_at:
+			_recheck_button.disabled = false
+			_recheck_button.modulate.a = 1.0
+
+
+func _recheck_rival() -> void:
+	_close_thinking()
+	_ask_rival_here(true)
+
+
+func _close_thinking() -> void:
+	if _thinking_node != null and is_instance_valid(_thinking_node) and confirm_node == _thinking_node:
+		_close_confirm()
+	_thinking_node = null
+
+
+func _ping_tick() -> void:
+	_recheck_tick()
+	if _ping_at == -1 or online.phase != "playing":
+		_ping_at = -1
+		return
+	var now := Time.get_ticks_msec()
+	if online.rival_alive_at > _ping_at:
+		_ping_at = -1
+		if _ping_told and confirm_node != null and is_instance_valid(confirm_node) and confirm_node == _idle_offer_node:
+			_close_idle_offer()
+		_show_rival_thinking()
+		return
+	if not _ping_told and now - _ping_at >= PING_SILENT_MS:
+		_ping_told = true
+		Input.vibrate_handheld(200)
+		_board_bubble("why", "Tu rival no contesta: parece que ha cerrado la app o se ha quedado sin conexión.", "rose", true, 4.0)
+	if _ping_told and now - _ping_at >= PING_SILENT_MS + PING_CLAIM_MS and online.on_move() != game_color and _idle_offer_node == null and (confirm_node == null or not is_instance_valid(confirm_node)):
+		var column := _popup("Tu rival no ha vuelto", Loc.f("No contesta a «¿Sigues ahí?» desde hace %d s: parece que ha cerrado la app. Puedes ganar la partida por abandono o seguir esperando.", int((now - _ping_at) / 1000)))
+		var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+		column.add_child(_button("check", "Ganar por abandono", _claim_idle_win, _c("accent"), _c("accent_ink"), opts))
+		column.add_child(_button("clock", "Seguir esperando", _keep_waiting, _c("field"), _c("ink"), opts))
+		_idle_offer_node = confirm_node
+		_ping_at = -1
+		Input.vibrate_handheld(200)
 
 
 ## Globo con el gesto, encima del tablero: arriba los del rival, abajo los míos.
 func _online_gesture(mine: bool, kind: String) -> void:
 	if mode != "game" or not bool(game.get("online", false)):
 		return
-	var tints := {"saludo": "sky", "aplauso": "butter", "genial": "peach", "arriba": "mint", "abajo": "rose", "buena": "lilac", "tiempo": "peach"}
 	var who := Loc.t("Tú") if mine else Loc.t("Rival")
-	_board_bubble("g_" + kind, "%s: %s" % [who, Loc.t(str(Online.GESTURE_TEXT.get(kind, "")))], str(tints.get(kind, "sky")), not mine)
+	_board_bubble(_gesture_icon(kind), "%s: %s" % [who, Loc.t(str(Online.GESTURE_TEXT.get(kind, "")))], str(GESTURE_TINTS.get(kind, "sky")), not mine)
+	if kind == "pregunta" and not mine:
+		# Contesta la app sola: estoy aquí (si no, el rival creería que la he cerrado).
+		online.still_here()
 	if not mine:
 		_sfx("acierto")
 		if kind == "tiempo":
@@ -8173,6 +8305,11 @@ func _board_bubble(icon_name: String, text: String, tint_name: String, top: bool
 	l.autowrap_mode = TextServer.AUTOWRAP_OFF
 	l.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# Un texto largo (los avisos del rival) va en varias líneas, sin salirse de la pantalla.
+	var max_w := maxf(300.0, size.x - 260.0)
+	if l.get_theme_font("font").get_string_size(Loc.t(text), HORIZONTAL_ALIGNMENT_LEFT, -1, F_BODY).x > max_w:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size.x = max_w
 	row.add_child(l)
 	panel.add_child(row)
 	add_child(panel)
@@ -10164,8 +10301,10 @@ func _sync_assistant_button() -> void:
 		add_child(_assistant_layer)
 		# Destellos, no micrófono: el del tutor ya lleva su bocadillo y no deben confundirse (Pablo, 22 nov). Al tocarlo
 		# escucha directamente.
-		assistant_button = _round_button("spark", _open_assistant.bind(true), 116.0, tint[1], Color.WHITE)
+		assistant_button = _round_button("spark", _on_assistant_fab, 116.0, tint[1], Color.WHITE)
 		assistant_button.tooltip_text = Loc.t("Asistente")
+		# Se puede arrastrar a donde se quiera (Pablo, 22 nov); el sitio se guarda.
+		assistant_button.gui_input.connect(_on_assistant_fab_input)
 		_assistant_layer.add_child(assistant_button)
 		var tick := Timer.new()
 		tick.wait_time = 0.25
@@ -10176,9 +10315,76 @@ func _sync_assistant_button() -> void:
 	assistant_button.visible = _assistant_available() and welcome == null and (confirm_node == null or not is_instance_valid(confirm_node))
 	if not assistant_button.visible:
 		return
+	if _fab_drag_from.x >= 0.0:
+		return
+	assistant_button.position = _assistant_fab_position()
+
+
+## Sitio del botón del asistente: el que eligió el jugador (fracción de la pantalla) o, si no, abajo a la derecha,
+## encima de la barra. Siempre dentro de la pantalla (con las barras del sistema).
+func _assistant_fab_position() -> Vector2:
 	var vp := get_viewport_rect().size
-	var bottom := _insets().y
-	assistant_button.position = Vector2(vp.x - 116.0 - 28.0, vp.y - bottom - BAR_HEIGHT - 116.0 - 64.0)
+	var ins := _insets()
+	var side := 116.0
+	var p := Vector2(vp.x - side - 28.0, vp.y - ins.y - BAR_HEIGHT - side - 64.0)
+	if assistant_spot.x >= 0.0:
+		p = Vector2(assistant_spot.x * vp.x, assistant_spot.y * vp.y)
+	return Vector2(clampf(p.x, 12.0, vp.x - side - 12.0), clampf(p.y, ins.x + 12.0, vp.y - ins.y - side - 12.0))
+
+
+## Arrastrar el botón: pasado un umbral es un arrastre y no abre el asistente.
+var assistant_spot := Vector2(-1.0, -1.0)
+var _fab_drag_from := Vector2(-1.0, -1.0)
+var _fab_grab := Vector2.ZERO
+var _fab_dragged := false
+
+
+func _on_assistant_fab_input(event: InputEvent) -> void:
+	var pos := Vector2.ZERO
+	var pressed := false
+	var released := false
+	var moved := false
+	if event is InputEventScreenTouch:
+		pos = (event as InputEventScreenTouch).position
+		pressed = (event as InputEventScreenTouch).pressed
+		released = not pressed
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		pos = (event as InputEventMouseButton).position
+		pressed = (event as InputEventMouseButton).pressed
+		released = not pressed
+	elif event is InputEventScreenDrag:
+		pos = (event as InputEventScreenDrag).position
+		moved = true
+	elif event is InputEventMouseMotion and ((event as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		pos = (event as InputEventMouseMotion).position
+		moved = true
+	else:
+		return
+	# `pos` es local al botón: se pasa a la pantalla.
+	var screen := assistant_button.position + pos
+	if pressed:
+		_fab_drag_from = screen
+		_fab_grab = pos
+		_fab_dragged = false
+	elif moved and _fab_drag_from.x >= 0.0:
+		if not _fab_dragged and screen.distance_to(_fab_drag_from) > 24.0:
+			_fab_dragged = true
+		if _fab_dragged:
+			assistant_button.position = screen - _fab_grab
+			var vp := get_viewport_rect().size
+			assistant_spot = Vector2(assistant_button.position.x / vp.x, assistant_button.position.y / vp.y)
+			assistant_button.position = _assistant_fab_position()
+	elif released:
+		_fab_drag_from = Vector2(-1.0, -1.0)
+		if _fab_dragged:
+			_save_settings()
+
+
+func _on_assistant_fab() -> void:
+	if _fab_dragged:
+		_fab_dragged = false
+		return
+	_open_assistant(true)
 
 
 ## El interruptor «Tutor IA» de la barra: una pastilla con el nombre y el interruptor; se toca entera.
