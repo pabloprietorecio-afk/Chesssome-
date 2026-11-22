@@ -19,7 +19,9 @@ from PIL import Image
 
 def call(url, key, payload):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
-                                 headers={"content-type": "application/json", "x-clave": key})
+                                 headers={"content-type": "application/json", "x-clave": key,
+                                          # Sin esto, Cloudflare rechaza a urllib («error code: 1010»).
+                                          "user-agent": "achessway-estudio/1.0 (+github actions)"})
     with urllib.request.urlopen(req, timeout=180) as r:
         return json.loads(r.read())
 
