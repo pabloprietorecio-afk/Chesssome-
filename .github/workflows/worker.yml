@@ -127,7 +127,7 @@ jobs:
           FEN="r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12"
           echo "== chess-api.com directo desde GitHub (para saber si está caído o solo falla desde Cloudflare)"
           curl -s -m 20 -o /tmp/sf.json -w "HTTP %{http_code} en %{time_total} s\n" -X POST https://chess-api.com/v1 -H "content-type: application/json" -d "{\"fen\":\"$FEN\",\"depth\":18,\"maxThinkingTime\":100}" || echo "sin respuesta en 20 s"
-          head -c 300 /tmp/sf.json 2>/dev/null; echo
+          head -c 300 /tmp/sf.json 2>/dev/null || true; echo
           echo "== 12.Cge2 regalando e5 (respuesta en bruto de Stockfish incluida)"
           r=$(post "/tutor" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")
           echo "TUTOR: $r" | cut -c1-3000
