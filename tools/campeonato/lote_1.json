@@ -1,0 +1,109 @@
+{
+ "descripcion": "Lote 1: el pasillo de cada sala (escuela → hotel) y los 7 rivales de la escuela, para aprobar el estilo.",
+ "items": [
+  {
+   "nombre": "salas/escuela_pasillo",
+   "prompt": "First-person view walking down the central aisle toward the far end of the room, where one table waits with the pieces set up and an empty chair. A public school gymnasium in Spain set up for a small local chess tournament. Rows of folding tables with green-and-white vinyl roll-up chess boards, plastic chess pieces and simple analog chess clocks. Adult amateur players of different ages, teachers, parents and university students, concentrate on their games. Basketball hoops folded against the walls, painted court lines on the wooden floor, colorful paper decorations, large windows with afternoon daylight mixed with fluorescent light. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 101
+  },
+  {
+   "nombre": "salas/centro_civico_pasillo",
+   "prompt": "First-person view walking down the central aisle toward the far end of the room, where one table waits with the pieces set up and an empty chair. The multipurpose hall of a municipal civic center and library in Spain hosting a neighbourhood chess tournament. Light wooden tables in tidy rows, tournament chess sets and digital chess clocks, bookshelves along one wall, potted plants, a few adult spectators standing quietly, soft warm indoor lighting. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 102
+  },
+  {
+   "nombre": "salas/club_pasillo",
+   "prompt": "First-person view walking down the central aisle toward the far end of the room, where one table waits with the pieces set up and an empty chair. A traditional chess club in an old city building in Spain during its club championship. Dark wood paneling, heavy wooden tables, Staunton wooden pieces on wooden boards, green banker's lamps, glass cabinets with old trophies, framed black-and-white photographs on the walls, warm lamplight, a few older members watching in silence. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 103
+  },
+  {
+   "nombre": "salas/casino_pasillo",
+   "prompt": "First-person view walking down the central aisle toward the far end of the room, where one table waits with the pieces set up and an empty chair. The main salon of a 19th-century private social club, a Spanish 'casino', hosting a regional chess championship. High coffered ceiling, crystal chandeliers, red velvet curtains, marble columns, polished herringbone parquet floor, tables with fine wooden boards and pieces and digital clocks, well-dressed spectators behind a red cord, warm golden light. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 104
+  },
+  {
+   "nombre": "salas/palacio_pasillo",
+   "prompt": "First-person view walking down the central aisle toward the far end of the room, where one table waits with the pieces set up and an empty chair. The grand ballroom of a historic European palace hosting a national chess championship. Gilded mirrors, frescoed ceiling, huge crystal chandeliers, tables with white tablecloths, premium wooden boards and digital clocks, arbiters in dark suits, spectators seated in rows behind a velvet rope, discreet television cameras, elegant lighting. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 105
+  },
+  {
+   "nombre": "salas/hotel_pasillo",
+   "prompt": "First-person view walking down the central aisle toward the far end of the room, where one table waits with the pieces set up and an empty chair. The magnificent lobby of a five-star grand hotel transformed into the venue of an international elite chess championship. Double-height marble hall, sweeping staircase, golden chandeliers, a red carpet aisle, tables on a low stage with premium wooden boards and digital clocks, arbiters in tuxedos, photographers and broadcast cameras, spectators in evening wear, warm cinematic light. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 106
+  },
+  {
+   "nombre": "rivales/escuela/lucia",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 34-year-old Spanish woman, a primary school teacher, shoulder-length brown hair, light grey cardigan, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a warm, slightly nervous smile, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 201
+  },
+  {
+   "nombre": "rivales/escuela/tomas",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 67-year-old Spanish man, a retired school caretaker, grey moustache, checked flannel shirt, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a friendly, curious expression, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 202
+  },
+  {
+   "nombre": "rivales/escuela/amara",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 19-year-old Nigerian-Spanish woman, a university student, braided hair tied back, denim jacket, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a confident, playful smile, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 203
+  },
+  {
+   "nombre": "rivales/escuela/kenji",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 45-year-old Japanese man, an office worker, thin-framed glasses, navy sweater, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a calm, polite expression, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 204
+  },
+  {
+   "nombre": "rivales/escuela/sofia",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 52-year-old Mexican woman, a baker, dark hair in a bun, white apron over a floral blouse, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a cheerful, determined look, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 205
+  },
+  {
+   "nombre": "rivales/escuela/marco",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 28-year-old Italian man, a cook, short beard, black t-shirt with rolled sleeves, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a relaxed, cheeky grin, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 206
+  },
+  {
+   "nombre": "rivales/escuela/priya",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 38-year-old Indian woman, a nurse, long black hair in a braid, simple blue blouse, seated at a chess table during a small local chess tournament in a school gymnasium, softly blurred background with other adult players, looking at the camera with a focused, kind expression, natural window light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 207
+  }
+ ]
+}

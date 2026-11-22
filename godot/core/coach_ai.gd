@@ -69,7 +69,7 @@ static func tutor_url(config: Dictionary) -> String:
 	return str(config.get("tutor", ""))
 
 
-const VERDICTS := ["brilliant", "best", "good", "inaccuracy", "mistake", "blunder", "miss"]
+const VERDICTS := ["brilliant", "best", "excellent", "good", "inaccuracy", "mistake", "blunder", "miss"]
 
 
 ## La respuesta del tutor tiene la forma esperada: una valoración conocida y la línea de la jugada, paso a paso.
@@ -162,7 +162,7 @@ static func endpoint_mode(config: Dictionary, key: String, debug: bool) -> Strin
 ## Si el motor ve la jugada tan buena como la mejor (hasta estas centésimas de peón), se le cree aunque deje
 ## material a tiro: o hay compensación o se perdía igual.
 const TRUST_LOSS := 30
-const RANK := {"only": 0, "best": 0, "good": 1, "inaccuracy": 2, "mistake": 3, "blunder": 4}
+const RANK := {"only": 0, "best": 0, "excellent": 1, "good": 1, "inaccuracy": 2, "mistake": 3, "blunder": 4}
 
 
 ## Valoración de una jugada para el profesor en vivo. Junta dos vistas:
@@ -553,7 +553,7 @@ static func material_min_verdict(loss: int, cp_drop: float) -> String:
 	return ""
 
 
-const _RANK := {"best": 0, "brilliant": 0, "good": 1, "inaccuracy": 2, "mistake": 3, "blunder": 4}
+const _RANK := {"best": 0, "brilliant": 0, "excellent": 1, "good": 1, "inaccuracy": 2, "mistake": 3, "blunder": 4}
 
 
 static func at_least(verdict: String, floor: String) -> String:
@@ -572,7 +572,7 @@ static func verdict_for(drop: float, is_best: bool, allows_mate: bool, missed_ma
 		return "mistake"
 	if drop >= 5.0:
 		return "inaccuracy"
-	return "good"
+	return "good" if drop >= 2.0 else "excellent"
 
 
 ## La valoración entera en el móvil, con la misma forma que la del servidor (sin «brillante» ni las flechas de

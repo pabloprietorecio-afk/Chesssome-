@@ -1,0 +1,70 @@
+name: Campeonato · imágenes (FLUX.2 en Workers AI)
+
+# Genera las imágenes fotorrealistas del modo Campeonato (salas y rivales, personas inventadas) con un lote de
+# tools/campeonato (lote_N.json). Despliega un estudio temporal en Cloudflare (tools/campeonato/estudio), lo usa con
+# una clave que crea aquí y lo borra al acabar. Las imágenes van a la rama «campeonato-imagenes» (se acumulan por
+# lotes) para revisarlas antes de meterlas en la app. Coste aproximado: 0,04–0,08 $ por imagen (FLUX.2 [dev]).
+on:
+  workflow_dispatch:
+    inputs:
+      lote:
+        description: "Lote (ruta en el repositorio)"
+        default: "tools/campeonato/lote_1.json"
+
+permissions:
+  contents: write
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Desplegar el estudio temporal
+        working-directory: tools/campeonato/estudio
+        run: |
+          npx --yes wrangler@4 deploy
+          clave=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+          echo "::add-mask::$clave"
+          echo "ESTUDIO_CLAVE=$clave" >> "$GITHUB_ENV"
+          printf '%s' "$clave" | npx --yes wrangler@4 secret put CLAVE
+          sub=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r .result.subdomain)
+          echo "ESTUDIO_URL=https://achessway-estudio.$sub.workers.dev" >> "$GITHUB_ENV"
+      - name: Esperar a que conteste
+        run: |
+          for i in $(seq 1 30); do
+            c=$(curl -s -o /dev/null -w "%{http_code}" "$ESTUDIO_URL" || true)
+            [ "$c" = "403" ] && { echo "Listo"; exit 0; }
+            sleep 4
+          done
+          echo "El estudio no contesta"; exit 1
+      - name: Recuperar lo ya generado (para las referencias)
+        run: |
+          mkdir -p salida
+          if git fetch -q origin campeonato-imagenes 2>/dev/null; then
+            git archive FETCH_HEAD | tar -x -C salida
+          fi
+      - name: Generar
+        run: |
+          pip install --quiet pillow
+          python3 tools/campeonato/generar.py "${{ inputs.lote }}" salida
+      - name: Borrar el estudio
+        if: always()
+        working-directory: tools/campeonato/estudio
+        run: npx --yes wrangler@4 delete --force || true
+      - name: Publicar en la rama campeonato-imagenes
+        if: always()
+        run: |
+          cd salida
+          [ -n "$(ls -A)" ] || exit 0
+          git init -q
+          git checkout -q -b campeonato-imagenes
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Imágenes del Campeonato (${{ inputs.lote }})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" campeonato-imagenes

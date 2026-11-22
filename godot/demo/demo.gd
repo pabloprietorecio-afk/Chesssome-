@@ -3474,7 +3474,7 @@ func _kid_wrong_arrows(e: Dictionary) -> Array:
 ## Chapa con la valoración de la jugada en su casilla de destino, con los signos de anotación de siempre:
 ## «!» buena jugada (aquí, la de la solución), «?» error, «??» error grave (pierde material o permite mate).
 ## Signo (o «@icono») y color de cada chapa.
-const BADGES := {"miss": ["@close", Color("d9577a")], "brilliant": ["!!", Color("1aa3a3")], "best": ["!", Color("2f9e63")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
+const BADGES := {"miss": ["@close", Color("d9577a")], "brilliant": ["!!", Color("1aa3a3")], "best": ["!", Color("2f9e63")], "excellent": ["@g_arriba", Color("2a9d7f")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
 
 
 func _move_badge(uci: String, kind: String) -> void:
@@ -9198,7 +9198,7 @@ func _coach_apply_remote(data: Dictionary) -> void:
 		if Premium.active():
 			_coach_request_lesson()
 	else:
-		coach_note = Loc.t({"brilliant": "¡Brillante! Era la mejor jugada, y entregando material.", "best": "La mejor jugada.", "good": "Buena jugada."}.get(verdict, "Buena jugada."))
+		coach_note = Loc.t({"brilliant": "¡Brillante! Era la mejor jugada, y entregando material.", "best": "La mejor jugada.", "excellent": "Excelente jugada.", "good": "Buena jugada."}.get(verdict, "Buena jugada."))
 	_coach_retry_after(fen, verdict, str(data.get("best", "")))
 	_refresh()
 
@@ -10178,13 +10178,15 @@ func _sync_coach_legend() -> void:
 		for c in coach_legend.get_children():
 			coach_legend.remove_child(c)
 			c.queue_free()
-		var in_legend := COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant" or coach_verdict == "miss"
+		var in_legend := COACH_LEGEND.has(coach_verdict) or coach_verdict in ["brilliant", "miss", GameDetail.EXCELLENT]
 		for v: String in COACH_LEGEND:
-			# «Brillante» (solo la da Stockfish) ocupa el sitio de «La mejor» cuando toca; «Oportunidad perdida», el de
-			# «Error».
+			# «Brillante» (solo la da Stockfish) ocupa el sitio de «La mejor» cuando toca; «Excelente», el de «Buena»;
+			# «Oportunidad perdida», el de «Error».
 			var shown := v
 			if v == GameDetail.BEST and coach_verdict == "brilliant":
 				shown = "brilliant"
+			elif v == GameDetail.GOOD and coach_verdict == GameDetail.EXCELLENT:
+				shown = GameDetail.EXCELLENT
 			elif v == GameDetail.MISTAKE and coach_verdict == "miss":
 				shown = "miss"
 			coach_legend.add_child(_coach_legend_item(shown, coach_verdict == shown, in_legend))
@@ -12576,7 +12578,7 @@ func _show_review_page() -> void:
 		if detail_done and not detail.is_empty():
 			var c := GameDetail.counts(detail)
 			var parts: Array = []
-			for v: String in ["best", "good", "only", "inaccuracy", "mistake", "blunder"]:
+			for v: String in ["best", "excellent", "good", "only", "inaccuracy", "mistake", "blunder"]:
 				if int(c.get(v, 0)) > 0:
 					parts.append("%s: %d" % [str(GameDetail.LABELS[v]), int(c[v])])
 			body.add_child(_para(Loc.t("Tus jugadas") + " · " + " · ".join(parts), F_SUB, _c("quiet"), font_medium))
@@ -12828,7 +12830,7 @@ func _detail_ready(found: Array, my_run: int) -> void:
 		_detail_show(0)
 
 
-const DETAIL_TONES := {"only": "info", "best": "good", "good": "good", "inaccuracy": "mid", "mistake": "bad", "blunder": "bad"}
+const DETAIL_TONES := {"only": "info", "best": "good", "excellent": "good", "good": "good", "inaccuracy": "mid", "mistake": "bad", "blunder": "bad"}
 
 
 ## Una jugada del análisis, con movimiento: si venimos de la anterior, primero se juega la respuesta del rival;

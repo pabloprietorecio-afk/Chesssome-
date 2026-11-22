@@ -204,7 +204,7 @@ function arrows(step, player, lineKind, index, bad) {
 const publicLine = (steps, player, kind, bad) =>
   steps.map((s, i) => ({ uci: s.uci, fen: s.fen, arrows: arrows(s, player, kind, i, bad) }));
 
-// Umbrales de chess.com (modelo de puntos esperados): imprecisión 5–10, error 10–20, error grave 20 o más puntos
+// Umbrales de chess.com (modelo de puntos esperados): excelente menos de 2, buena 2–5, imprecisión 5–10, error 10–20, error grave 20 o más puntos
 // esperados perdidos (puntos.js: según el Elo del jugador, como chess.com). Antes, los de Lichess (error grave desde 15): perder un peón en una posición igualada
 // salía «error grave» y Pablo lo vio exagerado (21 nov).
 export function verdictFor(drop, isBest, allowsMate, missedMate) {
@@ -212,7 +212,7 @@ export function verdictFor(drop, isBest, allowsMate, missedMate) {
   if (allowsMate || drop >= 20) return "blunder";
   if (drop >= 10 || missedMate) return "mistake";
   if (drop >= 5) return "inaccuracy";
-  return "good";
+  return drop >= 2 ? "good" : "excellent";
 }
 
 // Valoración de una jugada con Stockfish. Lanza Error con `status` si la petición no vale.
@@ -379,7 +379,7 @@ function material(steps, player) {
 }
 
 const VERDICT_ES = {
-  brilliant: "brillante: la mejor jugada, y además entrega una pieza", best: "la mejor jugada", good: "buena",
+  brilliant: "brillante: la mejor jugada, y además entrega una pieza", best: "la mejor jugada", excellent: "excelente: casi tan buena como la mejor", good: "buena",
   inaccuracy: "imprecisión", mistake: "error", blunder: "error grave",
   miss: "oportunidad perdida: su jugada no le deja peor que antes, pero el rival le había dejado una jugada mucho mejor que no vio",
 };

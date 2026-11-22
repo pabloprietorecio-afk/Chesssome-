@@ -1,0 +1,8 @@
+# Estudio temporal de imágenes del Campeonato (lo despliega y lo borra campeonato-imagenes.yml).
+name = "achessway-estudio"
+main = "index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[ai]
+binding = "AI"

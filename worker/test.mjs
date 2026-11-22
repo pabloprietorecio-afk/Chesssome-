@@ -373,7 +373,7 @@ test("con Stockfish en el móvil: usa sus análisis; una chapa mala se confirma 
   };
   const r3 = await judge({ fen: start, uci: "g1e2", engine: soft }, {});
   assert.equal(seen.length, 2);
-  assert.equal(r3.verdict, "good");
+  assert.ok(["excellent", "good"].includes(r3.verdict), r3.verdict);
   assert.ok(r3.drop < 5);
 });
 
@@ -531,6 +531,16 @@ test("compras: suscripción y recarga verificadas con Google; la recarga no vale
 
 import { expected, materialAfter, materialFloor } from "./src/puntos.js";
 
+test("umbrales de chess.com: excelente < 2 ≤ buena < 5 ≤ imprecisión < 10 ≤ error < 20 ≤ error grave", () => {
+  assert.equal(verdictFor(0, true, false, false), "best");
+  assert.equal(verdictFor(1.9, false, false, false), "excellent");
+  assert.equal(verdictFor(2, false, false, false), "good");
+  assert.equal(verdictFor(4.9, false, false, false), "good");
+  assert.equal(verdictFor(5, false, false, false), "inaccuracy");
+  assert.equal(verdictFor(10, false, false, false), "mistake");
+  assert.equal(verdictFor(20, false, false, false), "blunder");
+});
+
 // Banco de casos de las chapas (22 nov). Cada caso: posición, lo que dice el motor antes (A, la mejor) y después de la
 // jugada (B), y la nota que no puede salir. El servicio de la segunda opinión contesta lo mismo que el móvil.
 async function grade(fen, uci, A, B, rating = 1500, prev) {
@@ -558,12 +568,13 @@ test("banco: regalar un caballo con la partida perdida nunca es «buena» (Ce4, 
   }
 });
 
-test("banco: una jugada que pierde 20 centipeones en una posición normal es «buena» (Ac4, 22 nov)", async () => {
+test("banco: una jugada que pierde 20 centipeones en una posición normal es «excelente» o «buena» (Ac4, 22 nov)", async () => {
   const fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
   const A = { move: "f1b5", centipawns: 60, mate: null, continuationArr: ["f1b5", "a7a6"] };
   const B = { move: "g8f6", centipawns: 40, mate: null, continuationArr: ["g8f6", "d2d3"] };
   const r = await grade(fen, "f1c4", A, B);
-  assert.equal(r.verdict, "good");
+  // 1,9 puntos con 1500: «excelente» (menos de 2, como en chess.com).
+  assert.equal(r.verdict, "excellent");
 });
 
 test("banco: entregar material con compensación (el motor casi no pierde) no es un error", async () => {

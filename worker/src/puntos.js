@@ -93,7 +93,7 @@ export function materialFloor(lossPawns, cpDrop) {
   return null;
 }
 
-const RANK = { best: 0, brilliant: 0, good: 1, inaccuracy: 2, mistake: 3, blunder: 4 };
+const RANK = { best: 0, brilliant: 0, excellent: 1, good: 1, inaccuracy: 2, mistake: 3, blunder: 4 };
 
 // La peor de dos notas (para aplicar el mínimo del material).
 export function atLeast(verdict, floor) {

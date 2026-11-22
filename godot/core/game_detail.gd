@@ -10,13 +10,15 @@ extends RefCounted
 const ONLY := "only"
 const BEST := "best"
 const GOOD := "good"
+## Casi tan buena como la mejor (pierde menos de 2 puntos esperados), como «Excelente» en chess.com.
+const EXCELLENT := "excellent"
 const INACCURACY := "inaccuracy"
 const MISTAKE := "mistake"
 const BLUNDER := "blunder"
-const LABELS := {"only": "Única jugada", "best": "La mejor", "good": "Buena", "inaccuracy": "Imprecisión", "mistake": "Error", "blunder": "Error grave"}
+const LABELS := {"only": "Única jugada", "best": "La mejor", "excellent": "Excelente", "good": "Buena", "inaccuracy": "Imprecisión", "mistake": "Error", "blunder": "Error grave"}
 ## Chapa de anotación en el tablero (las de demo.gd: best «!», good e only con icono, dubious «?!», wrong «?»,
 ## blunder «??»).
-const BADGE := {"only": "only", "best": "best", "good": "good", "inaccuracy": "dubious", "mistake": "wrong", "blunder": "blunder"}
+const BADGE := {"only": "only", "best": "best", "excellent": "excellent", "good": "good", "inaccuracy": "dubious", "mistake": "wrong", "blunder": "blunder"}
 const NEAR_MATE := Bot.MATE - 300
 
 
@@ -74,7 +76,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 		var v := CoachAI.verdict_for(float(a["drop"]), best == m, allows_mate, missed_mate)
 		if best != m and not allows_mate:
 			v = CoachAI.at_least(v, str(a.get("floor", "")))
-		verdict = {"best": BEST, "inaccuracy": INACCURACY, "mistake": MISTAKE, "blunder": BLUNDER}.get(v, GOOD)
+		verdict = {"best": BEST, "excellent": EXCELLENT, "inaccuracy": INACCURACY, "mistake": MISTAKE, "blunder": BLUNDER}.get(v, GOOD)
 	elif best == m or loss <= 30:
 		verdict = BEST if best == m else GOOD
 	elif allows_mate:
@@ -94,7 +96,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 	var paras: Array = []
 	var arrows: Array = []
 	var played_why := MoveWhy.move_paras(pos, m, color)
-	if verdict == BEST or verdict == GOOD:
+	if verdict == BEST or verdict == EXCELLENT or verdict == GOOD:
 		paras.append_array(_texts(played_why, 2))
 		var idea := principle(pos, m, ply)
 		if idea != "":
