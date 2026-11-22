@@ -34,6 +34,8 @@ signal assisted(gen: int, data: Dictionary)
 signal quota(status: Dictionary)
 ## Pruebas: sustituye al servidor en premium_call (path, payload) -> estado.
 var fake_premium: Callable
+## Elo de juego del jugador (para la curva de puntos esperados de las chapas). Lo pone la app al empezar la partida.
+var player_elo := DEFAULT_ELO
 
 const CONFIG := "res://data/coach_ai.json"
 ## Una casilla suelta o dentro de una jugada («Cxf5+», «exd5»): delante puede ir una pieza o la «x» de captura,
@@ -421,32 +423,146 @@ func judge_remote(fen: String, uci: String, run: int, gen: int, engine: Dictiona
 	var data := {}
 	if url != "":
 		calls += 1
-		var payload := {"fen": fen, "uci": uci}
+		var payload := {"fen": fen, "uci": uci, "rating": roundi(player_elo)}
 		if prev >= 0:
 			payload["prev"] = prev
 		if not engine.is_empty():
 			payload["engine"] = engine
 		data = await _post(url, payload, float(cfg.get("tutor_timeout_s", 7)))
 	if not remote_ok(data) and not engine.is_empty():
-		data = local_judge(fen, uci, engine.get("A", {}), engine.get("B", {}), prev)
+		data = local_judge(fen, uci, engine.get("A", {}), engine.get("B", {}), prev, player_elo)
 	judged.emit(run, gen, data if remote_ok(data) else {})
 
 
 # ---------------------------------------------------------------- valoración con el Stockfish del móvil
 
-## Probabilidad de ganar (0–100) a partir de centésimas de peón: la fórmula de Lichess (como el servidor).
+## Probabilidad de ganar (0–100) a partir de centésimas de peón: la fórmula de Lichess (ya solo para lo que no es
+## una chapa; las chapas usan los puntos esperados por nivel, `expected`).
 static func win_pct(cp: float) -> float:
 	return 50.0 + 50.0 * (2.0 / (1.0 + exp(-0.00368208 * cp)) - 1.0)
 
 
-## Probabilidad de ganar de las blancas según un análisis (forma de LocalEngine / chess-api.com).
+## Puntos esperados según el nivel (22 nov, como chess.com: la evaluación del motor y el Elo de quien juega). La
+## tabla (data/curva_puntos.json) está medida con partidas de Lichess (tools/curva/) y es la misma del servidor
+## (worker/src/puntos.js).
+const DEFAULT_ELO := 1500.0
+static var _curve := {}
+
+
+static func _curve_table() -> Dictionary:
+	if _curve.is_empty():
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/curva_puntos.json"))
+		_curve = data if data is Dictionary else {}
+	return _curve
+
+
+static func _along(xs: Array, x: float) -> Array:
+	if x <= float(xs[0]):
+		return [0, 0, 0.0]
+	var last := xs.size() - 1
+	if x >= float(xs[last]):
+		return [last, last, 0.0]
+	var i := 0
+	while float(xs[i + 1]) < x:
+		i += 1
+	return [i, i + 1, (x - float(xs[i])) / (float(xs[i + 1]) - float(xs[i]))]
+
+
+## Puntos esperados (0–100) del jugador de `elo` con la evaluación `cp` desde su lado, o mate (`mate` ≠ 0, positivo a
+## su favor).
+static func expected(cp: float, mate: int, elo: float = DEFAULT_ELO) -> float:
+	var t := _curve_table()
+	if t.is_empty():
+		return 100.0 if mate > 0 else (0.0 if mate < 0 else win_pct(cp))
+	if elo < 100.0 or elo > 3500.0:
+		elo = DEFAULT_ELO
+	var e: Array = _along(t["elos"], elo)
+	if mate != 0:
+		var row: Array = t["mate_a_favor"] if mate > 0 else t["mate_en_contra"]
+		return 100.0 * lerpf(float(row[e[0]]), float(row[e[1]]), e[2])
+	var c: Array = _along(t["cp"], cp)
+	var rows: Array = t["puntos"]
+	var at := func(i: int) -> float: return lerpf(float(rows[i][c[0]]), float(rows[i][c[1]]), c[2])
+	return 100.0 * lerpf(at.call(e[0]), at.call(e[1]), e[2])
+
+
+## Puntos esperados del jugador `player` (0 blancas, 1 negras) según un análisis (forma de LocalEngine / chess-api.com:
+## valores desde las blancas).
+static func expected_for(e: Dictionary, player: int, elo: float = DEFAULT_ELO) -> float:
+	var sign := 1 if player == 0 else -1
+	if e.get("mate") != null and int(e["mate"]) != 0:
+		return expected(0.0, int(e["mate"]) * sign, elo)
+	return expected(float(e.get("centipawns", 0)) * sign, 0, elo)
+
+
+## Probabilidad de ganar de las blancas según un análisis (con la curva por nivel, para un jugador medio).
 static func white_win(e: Dictionary) -> float:
-	if e.get("mate") != null:
-		return 100.0 if int(e["mate"]) > 0 else 0.0
-	return win_pct(float(e.get("centipawns", 0)))
+	return expected_for(e, 0, DEFAULT_ELO)
 
 
-## Umbrales de chess.com (igual que verdictFor en worker/src/tutor.js).
+## Centipeones desde el lado del jugador (mate: ±10000).
+static func cp_for(e: Dictionary, player: int) -> float:
+	var sign := 1 if player == 0 else -1
+	if e.get("mate") != null and int(e["mate"]) != 0:
+		return 10000.0 if int(e["mate"]) * sign > 0 else -10000.0
+	return float(e.get("centipawns", 0)) * sign
+
+
+## --- Red de seguridad del material (igual que worker/src/puntos.js) ---
+
+const MATERIAL := [0, 1, 3, 3, 5, 9, 0]
+
+
+static func _balance(pos: Chess, player: int) -> int:
+	var s := 0
+	for p: int in pos.b:
+		if p != 0:
+			s += (1 if Chess.color_of(p) == player else -1) * int(MATERIAL[Chess.type_of(p)])
+	return s
+
+
+## Material del jugador al final de una línea, sin cortar a mitad de un cambio: {bal, plies} o {}.
+static func material_after(fen: String, ucis: Array, player: int, max_plies: int = 10) -> Dictionary:
+	var pos := Chess.from_fen(fen)
+	var plies: Array = []
+	for u: Variant in ucis.slice(0, max_plies):
+		var m := pos.find_uci(str(u))
+		if m < 0:
+			break
+		var capture := pos.b[Chess.move_to(m)] != 0 or (m >> 15) == Chess.F_EN_PASSANT
+		pos.apply(m)
+		plies.append({"bal": _balance(pos, player), "capture": capture})
+	if plies.is_empty():
+		return {}
+	for i in range(plies.size() - 1, 0, -1):
+		var next_capture := i + 1 < plies.size() and bool(plies[i + 1]["capture"])
+		if not next_capture:
+			return {"bal": int(plies[i]["bal"]), "plies": plies.size()}
+	return {"bal": int(plies[-1]["bal"]), "plies": plies.size()}
+
+
+## Nota mínima por material perdido sin compensación (el motor confirma al menos 1,5 peones): dos peones o más,
+## «error»; torre o dama, «error grave» (como worker/src/puntos.js).
+static func material_min_verdict(loss: int, cp_drop: float) -> String:
+	if cp_drop < 150.0:
+		return ""
+	if loss >= 5:
+		return "blunder"
+	if loss >= 2:
+		return "mistake"
+	return ""
+
+
+const _RANK := {"best": 0, "brilliant": 0, "good": 1, "inaccuracy": 2, "mistake": 3, "blunder": 4}
+
+
+static func at_least(verdict: String, floor: String) -> String:
+	if floor == "" or verdict == "best" or verdict == "brilliant":
+		return verdict
+	return floor if int(_RANK.get(floor, 0)) > int(_RANK.get(verdict, 0)) else verdict
+
+
+## Umbrales de chess.com sobre los puntos esperados perdidos (igual que verdictFor en worker/src/tutor.js).
 static func verdict_for(drop: float, is_best: bool, allows_mate: bool, missed_mate: bool) -> String:
 	if is_best:
 		return "best"
@@ -461,7 +577,7 @@ static func verdict_for(drop: float, is_best: bool, allows_mate: bool, missed_ma
 
 ## La valoración entera en el móvil, con la misma forma que la del servidor (sin «brillante» ni las flechas de
 ## amenazas: esas las pone el servidor cuando hay conexión).
-static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary, prev: int = -1) -> Dictionary:
+static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary, prev: int = -1, elo: float = DEFAULT_ELO) -> Dictionary:
 	var pos := Chess.from_fen(fen)
 	var m := pos.find_uci(uci)
 	if m < 0 or str(a.get("move", "")).length() < 4:
@@ -470,7 +586,7 @@ static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary, 
 	var after := Chess.from_fen(fen)
 	after.apply(m)
 	var mate_now := after.is_checkmate()
-	var mine := func(e: Dictionary) -> float: return white_win(e) if player == 0 else 100.0 - white_win(e)
+	var mine := func(e: Dictionary) -> float: return expected_for(e, player, elo)
 	var i_mate := func(e: Dictionary) -> bool: return not e.is_empty() and e.get("mate") != null and (int(e["mate"]) > 0) == (player == 0)
 	var they_mate := func(e: Dictionary) -> bool: return not e.is_empty() and e.get("mate") != null and (int(e["mate"]) > 0) != (player == 0)
 	var win_best: float = mine.call(a)
@@ -480,8 +596,20 @@ static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary, 
 	var allows: bool = they_mate.call(b) and not they_mate.call(a)
 	var missed: bool = i_mate.call(a) and absi(int(a["mate"])) <= 3 and not i_mate.call(b) and not mate_now
 	var verdict := verdict_for(drop, is_best, allows, missed)
-	# Oportunidad perdida: no queda peor que antes de la jugada del rival (como en el servidor).
-	if (verdict == "mistake" or verdict == "blunder") and not allows and prev >= 0 and win_played >= float(prev) - 5.0:
+	# Red de seguridad del material (como el servidor).
+	var cp_best := cp_for(a, player)
+	var cp_played := 10000.0 if mate_now else (cp_for(b, player) if not b.is_empty() else 0.0)
+	var played_line: Array = [uci]
+	if not b.is_empty():
+		played_line.append_array(_chain(str(b["move"]), b.get("continuationArr", [])))
+	var mat_best := material_after(fen, _chain(str(a["move"]), a.get("continuationArr", [])), player)
+	var mat_played := material_after(fen, played_line, player)
+	var loss := int(mat_best["bal"]) - int(mat_played["bal"]) if not mat_best.is_empty() and not mat_played.is_empty() else 0
+	if not is_best and not allows and absf(cp_best) < 10000.0 and absf(cp_played) < 10000.0:
+		verdict = at_least(verdict, material_min_verdict(loss, cp_best - cp_played))
+	# Oportunidad perdida: el rival le había regalado algo (10 puntos o más) y no queda peor que antes de su jugada
+	# (como en el servidor).
+	if (verdict == "mistake" or verdict == "blunder") and not allows and prev >= 0 and win_best >= float(prev) + 10.0 and win_played >= float(prev) - 5.0:
 		verdict = "miss"
 	var bad := verdict == "inaccuracy" or verdict == "mistake" or verdict == "blunder"
 	var played: Array = [uci]
@@ -490,7 +618,7 @@ static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary, 
 	var best: Array = [] if is_best else _chain(str(a["move"]), a.get("continuationArr", []))
 	return {
 		"verdict": verdict, "drop": snappedf(drop, 0.1), "win_best": roundi(win_best), "win_played": roundi(win_played),
-		"best": str(a["move"]), "player": "w" if player == 0 else "b", "depth": int(a.get("depth", 0)), "local": true,
+		"best": str(a["move"]), "player": "w" if player == 0 else "b", "depth": int(a.get("depth", 0)), "local": true, "material": loss,
 		"lines": {"played": _line(fen, played, player, "played", bad), "best": _line(fen, best, player, "best", bad)},
 	}
 

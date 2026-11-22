@@ -362,12 +362,13 @@ test("con Stockfish en el móvil: usa sus análisis; una chapa mala se confirma 
     seen.push(fen);
     const isAfter = fen.split(" ")[1] === "b";
     return new Response(JSON.stringify(isAfter
-      ? { type: "bestmove", depth: 18, move: "c7e5", winChance: 71, centipawns: "120", continuationArr: ["c7e5"] }
-      : { type: "bestmove", depth: 18, move: "f3f4", winChance: 72, centipawns: "130", continuationArr: ["f3f4"] }), { status: 200 });
+      ? { type: "bestmove", depth: 18, move: "c7e5", centipawns: "120", continuationArr: ["c7e5"] }
+      : { type: "bestmove", depth: 18, move: "f3f4", centipawns: "130", continuationArr: ["f3f4"] }), { status: 200 });
   };
+  // Valen las evaluaciones (centipeones), no la probabilidad del servicio: la curva es la del nivel del jugador.
   const soft = {
-    A: { type: "bestmove", move: "f3f4", depth: 14, winChance: 74, centipawns: 140, mate: null, continuationArr: ["f3f4"] },
-    B: { type: "bestmove", move: "c7e5", depth: 14, winChance: 66, centipawns: 90, mate: null, continuationArr: ["c7e5"] },
+    A: { type: "bestmove", move: "f3f4", depth: 14, centipawns: 350, mate: null, continuationArr: ["f3f4"] },
+    B: { type: "bestmove", move: "c7e5", depth: 14, centipawns: 100, mate: null, continuationArr: ["c7e5"] },
   };
   const r3 = await judge({ fen: start, uci: "g1e2", engine: soft }, {});
   assert.equal(seen.length, 2);
@@ -525,4 +526,72 @@ test("compras: suscripción y recarga verificadas con Google; la recarga no vale
   await assert.rejects(premiumRoute("/premium/recarga", { cuenta: b, token: "y".repeat(40) }, env), (e) => e.status === 409);
   // Sin cuenta de servicio, no se dan de alta compras.
   await assert.rejects(premiumRoute("/premium/alta", { cuenta: b, token: "z".repeat(40) }, { CUENTAS: env.CUENTAS }), (e) => e.status === 503);
+});
+
+import { expected, materialAfter, materialFloor } from "./src/puntos.js";
+
+// Banco de casos de las chapas (22 nov). Cada caso: posición, lo que dice el motor antes (A, la mejor) y después de la
+// jugada (B), y la nota que no puede salir. El servicio de la segunda opinión contesta lo mismo que el móvil.
+async function grade(fen, uci, A, B, rating = 1500, prev) {
+  globalThis.fetch = async (url, init) => {
+    const f = JSON.parse(init.body).fen;
+    const e = f === fen ? A : B;
+    return new Response(JSON.stringify({ type: "bestmove", depth: 18, ...e }), { status: 200 });
+  };
+  return judge({ fen, uci, rating, prev, engine: { A: { type: "bestmove", depth: 16, ...A }, B: { type: "bestmove", depth: 16, ...B } } }, {});
+}
+
+test("banco: regalar un caballo con la partida perdida nunca es «buena» (Ce4, 22 nov)", async () => {
+  // El blanco va muy perdido (dos torres menos). Ce4 deja el caballo: …Dxe4 Dxe4 Cxe4. Lo mejor perdía solo un peón.
+  const fen = "r4rk1/pp3ppp/5n2/5q2/8/1PN5/P1P1QPPP/6K1 w - - 0 16";
+  const A = { move: "e2e3", centipawns: -650, mate: null, continuationArr: ["e2e3", "f5c2", "e3e7", "c2b2"] };
+  const B = { move: "f5e4", centipawns: -900, mate: null, continuationArr: ["f5e4", "e2e4", "f6e4", "a2a3"] };
+  for (const rating of [800, 1500, 2200]) {
+    const r = await grade(fen, "c3e4", A, B, rating);
+    assert.ok(r.verdict === "mistake" || r.verdict === "blunder", `Elo ${rating}: ${r.verdict} (pierde ${r.material})`);
+    assert.equal(r.material, 2);
+    // Con la partida ya perdida antes de la jugada del rival (no le había regalado nada), tampoco es «oportunidad
+    // perdida»: es su error.
+    const p = await grade(fen, "c3e4", A, B, rating, Math.round(expected(-650, null, rating)));
+    assert.ok(p.verdict === "mistake" || p.verdict === "blunder", `Elo ${rating} con prev: ${p.verdict}`);
+  }
+});
+
+test("banco: una jugada que pierde 20 centipeones en una posición normal es «buena» (Ac4, 22 nov)", async () => {
+  const fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+  const A = { move: "f1b5", centipawns: 60, mate: null, continuationArr: ["f1b5", "a7a6"] };
+  const B = { move: "g8f6", centipawns: 40, mate: null, continuationArr: ["g8f6", "d2d3"] };
+  const r = await grade(fen, "f1c4", A, B);
+  assert.equal(r.verdict, "good");
+});
+
+test("banco: entregar material con compensación (el motor casi no pierde) no es un error", async () => {
+  // Cxf7 entrega el caballo (…Rxf7) pero el motor apenas pierde nada: la red del material no salta.
+  const fen = "r1bqk2r/pppp1ppp/2n2n2/2b1p1N1/2B1P3/8/PPPP1PPP/RNBQK2R w KQkq - 6 5";
+  const A = { move: "g5f7", centipawns: 40, mate: null, continuationArr: ["g5f7", "e8f7", "c4f7"] };
+  const B = { move: "e8f7", centipawns: 0, mate: null, continuationArr: ["e8f7", "d1h5", "g7g6"] };
+  const r = await grade(fen, "d2d3", A, B);
+  assert.equal(materialFloor(3, 40), null);
+  assert.ok(r.verdict !== "mistake" && r.verdict !== "blunder", r.verdict);
+});
+
+test("banco: dejar una torre yendo muy por delante es «error grave», aunque se siga ganando", async () => {
+  // Blancas con dama y torre de más. Tb2?? deja la torre a un peón (…axb2); lo mejor no perdía nada.
+  const fen = "6k1/5ppp/8/8/8/p7/3PQPPP/1R4K1 w - - 0 30";
+  const A = { move: "h2h3", centipawns: 1400, mate: null, continuationArr: ["h2h3", "a3a2", "b1a1"] };
+  const B = { move: "a3b2", centipawns: 900, mate: null, continuationArr: ["a3b2", "e2b5", "g8f8"] };
+  const r = await grade(fen, "b1b2", A, B);
+  assert.equal(r.material, 5);
+  assert.equal(r.verdict, "blunder");
+});
+
+test("puntos esperados: la curva sube con la evaluación y es simétrica en el 0", () => {
+  for (const elo of [800, 1500, 2300]) {
+    assert.ok(Math.abs(expected(0, null, elo) - 50) < 1.5, `Elo ${elo}: ${expected(0, null, elo)}`);
+    assert.ok(expected(300, null, elo) > expected(100, null, elo));
+    assert.ok(expected(-800, null, elo) > 0 && expected(-800, null, elo) < expected(-300, null, elo));
+    assert.ok(Math.abs(expected(400, null, elo) + expected(-400, null, elo) - 100) < 2);
+    assert.ok(expected(0, 3, elo) >= expected(2000, null, elo) && expected(0, -3, elo) <= expected(-2000, null, elo));
+  }
+  assert.equal(materialAfter("8/8/8/8/8/8/8/4K2k w - - 0 1", ["e1e2"], "w").bal, 0);
 });

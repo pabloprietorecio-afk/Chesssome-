@@ -7,6 +7,7 @@
 // una jugada (qué pieza mueve, qué captura, qué ataca) lo calcula aquí chess.js; Claude solo lo cuenta.
 import { Chess } from "chess.js";
 import { noCredit, noCreditError } from "./credit.js";
+import { expectedFor, materialAfter, materialFloor, atLeast, cleanElo } from "./puntos.js";
 
 export const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
 const UCI = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
@@ -177,8 +178,8 @@ function arrows(step, player, lineKind, index, bad) {
 const publicLine = (steps, player, kind, bad) =>
   steps.map((s, i) => ({ uci: s.uci, fen: s.fen, arrows: arrows(s, player, kind, i, bad) }));
 
-// Umbrales de chess.com (modelo de puntos esperados): imprecisión 5–10, error 10–20, error grave 20 o más puntos de
-// probabilidad de ganar perdidos. Antes, los de Lichess (error grave desde 15): perder un peón en una posición igualada
+// Umbrales de chess.com (modelo de puntos esperados): imprecisión 5–10, error 10–20, error grave 20 o más puntos
+// esperados perdidos (puntos.js: según el Elo del jugador, como chess.com). Antes, los de Lichess (error grave desde 15): perder un peón en una posición igualada
 // salía «error grave» y Pablo lo vio exagerado (21 nov).
 export function verdictFor(drop, isBest, allowsMate, missedMate) {
   if (isBest) return "best";
@@ -216,7 +217,11 @@ export async function judge(input, env, debug) {
   const A = localA || (await askEngine(fen, env, raw));
   const B = after.isGameOver() ? null : localB || (await askEngine(after.fen(), env, raw));
   const fromPhone = Boolean(localA && (localB || after.isGameOver()));
-  const mine = (e) => (player === "w" ? e.win : 100 - e.win);
+  // Puntos esperados según el nivel del jugador (puntos.js: curva medida por Elo, como chess.com), no una curva única.
+  const elo = cleanElo(input?.rating);
+  const mine = (e) => expectedFor(e, player, elo);
+  // Evaluación en centipeones desde el lado del jugador (mate: ±10000), para la red de seguridad del material.
+  const cpMine = (e) => (e.mate !== null ? ((e.mate > 0) === (player === "w") ? 10000 : -10000) : player === "w" ? e.cp : -e.cp);
   const iMate = (e) => e && e.mate !== null && e.mate > 0 === (player === "w");
   const theyMate = (e) => e && e.mate !== null && e.mate > 0 !== (player === "w");
   let winBest = mine(A);
@@ -225,7 +230,18 @@ export async function judge(input, env, debug) {
   let drop = isBest ? 0 : Math.max(0, winBest - winPlayed);
   const allowsMate = theyMate(B) && !theyMate(A);
   const missedMate = iMate(A) && Math.abs(A.mate) <= 3 && !iMate(B) && !after.isCheckmate();
-  let verdict = verdictFor(drop, isBest, allowsMate, missedMate);
+  // Red de seguridad: material al final de la línea jugada frente a la mejor (sin cortar a mitad de un cambio).
+  let cpBest = cpMine(A);
+  let cpPlayed = after.isCheckmate() ? 10000 : B ? cpMine(B) : 0;
+  const matBest = materialAfter(fen, chain(A.move, A.line), player);
+  const matPlayed = materialAfter(fen, [uci, ...(B ? chain(B.move, B.line) : [])], player);
+  const materialLoss = matBest && matPlayed ? matBest.bal - matPlayed.bal : 0;
+  const noMate = () => Math.abs(cpBest) < 10000 && Math.abs(cpPlayed) < 10000;
+  const grade = () => {
+    const v = verdictFor(drop, isBest, allowsMate, missedMate);
+    return isBest || allowsMate || !noMate() ? v : atLeast(v, materialFloor(materialLoss, cpBest - cpPlayed));
+  };
+  let verdict = grade();
   // Segunda opinión antes de llamar «error» a una jugada: otro análisis de la posición tras la jugada (con 100 ms, un
   // análisis suelto puede salir corto; al repetir la posición el servicio suele llegar más hondo: 15 → 18). Vale la
   // valoración más favorable al alumno; un mate permitido no se discute. (Se probó `searchmoves` para valorar la jugada
@@ -240,13 +256,15 @@ export async function judge(input, env, debug) {
       const P = await askEngine(after.fen(), env, raw);
       confirmed = mine(P);
       if (confirmed > winPlayed) winPlayed = confirmed;
+      if (cpMine(P) > cpPlayed) cpPlayed = cpMine(P);
       if (fromPhone) {
         const Q = await askEngine(fen, env, raw);
         if (Q.move === uci) isBest = true;
         if (mine(Q) < winBest) winBest = mine(Q);
+        if (cpMine(Q) < cpBest) cpBest = cpMine(Q);
       }
       drop = isBest ? 0 : Math.max(0, winBest - winPlayed);
-      verdict = verdictFor(drop, isBest, allowsMate, missedMate);
+      verdict = grade();
     } catch (e) {
       // Sin segunda opinión: vale la primera.
       if (raw) raw.push({ error: String(e?.message || e) });
@@ -257,8 +275,12 @@ export async function judge(input, env, debug) {
   // rival (`prev`: su probabilidad tras su jugada anterior), pero el rival le había dejado algo mucho mejor. No es un
   // error suyo: no ha estropeado nada, no ha visto el regalo (Pablo, 22 nov: d3 marcada «error grave» cuando el rival
   // acababa de permitir e6+).
+  // Además, el rival tiene que haberle regalado algo (al menos 10 puntos, lo que chess.com llama un error del rival):
+  // si la posición ya estaba perdida y no ha cambiado, perder una pieza no es una oportunidad perdida (Pablo, 22 nov:
+  // Ce4 con un 8 % → 4 %).
   const prev = Number(input?.prev);
-  if ((verdict === "mistake" || verdict === "blunder") && !allowsMate && Number.isFinite(prev) && prev >= 0 && prev <= 100 && winPlayed >= prev - 5) {
+  const gift = Number.isFinite(prev) && prev >= 0 && prev <= 100 && winBest >= prev + 10;
+  if ((verdict === "mistake" || verdict === "blunder") && !allowsMate && gift && winPlayed >= prev - 5) {
     verdict = "miss";
   }
   const bad = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder" || verdict === "miss";
@@ -284,7 +306,7 @@ export async function judge(input, env, debug) {
   }
   const out = {
     verdict, drop: Math.round(drop * 10) / 10, win_best: Math.round(winBest), win_played: Math.round(winPlayed),
-    best: A.move, player, depth: A.depth, ...(confirmed !== null ? { second: Math.round(confirmed) } : {}), ...(fromPhone ? { phone: true } : {}),
+    best: A.move, player, depth: A.depth, elo, material: materialLoss, ...(confirmed !== null ? { second: Math.round(confirmed) } : {}), ...(fromPhone ? { phone: true } : {}),
     lines: {
       played: publicLine(playedSteps, player, "played", bad && verdict !== "miss"),
       best: publicLine(bestSteps, player, "best", bad),

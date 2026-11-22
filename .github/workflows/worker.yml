@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, profesor-ia]
-    paths: ["worker/**", ".github/workflows/worker.yml", "godot/data/coach_ai.json"]
+    paths: ["worker/**", ".github/workflows/worker.yml", "godot/data/coach_ai.json", "godot/data/curva_puntos.json"]
 
 jobs:
   deploy:

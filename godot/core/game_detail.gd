@@ -72,6 +72,8 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 	var allows_mate := ps <= -NEAR_MATE and bs > -NEAR_MATE
 	if a.has("drop"):
 		var v := CoachAI.verdict_for(float(a["drop"]), best == m, allows_mate, missed_mate)
+		if best != m and not allows_mate:
+			v = CoachAI.at_least(v, str(a.get("floor", "")))
 		verdict = {"best": BEST, "inaccuracy": INACCURACY, "mistake": MISTAKE, "blunder": BLUNDER}.get(v, GOOD)
 	elif best == m or loss <= 30:
 		verdict = BEST if best == m else GOOD
@@ -147,7 +149,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 ## La valoración de Stockfish (LocalEngine: valores desde las blancas) en la forma de Bot.analyse, para `entry`:
 ## `a` es el análisis de la posición y `b` el de después de la jugada ({} si allí ya no hay jugadas). Además, «drop»
 ## (lo que baja la probabilidad de ganar, en puntos) y «reply» (la mejor respuesta del rival, o −1).
-static func pre_from_engine(pos: Chess, m: int, a: Dictionary, b: Dictionary) -> Dictionary:
+static func pre_from_engine(pos: Chess, m: int, a: Dictionary, b: Dictionary, elo: float = CoachAI.DEFAULT_ELO) -> Dictionary:
 	var best := pos.find_uci(str(a.get("move", "")))
 	if best < 0:
 		return {}
@@ -156,22 +158,39 @@ static func pre_from_engine(pos: Chess, m: int, a: Dictionary, b: Dictionary) ->
 	var bs := _engine_score(a) * sign
 	var ps := 0
 	var reply := -1
-	var w_after := 50.0
+	# Puntos esperados del jugador según su nivel (como chess.com; CoachAI.expected).
+	var player := pos.turn
+	var w_after := CoachAI.expected(0.0, 0, elo)
+	var cp_played := 0.0
 	if b.is_empty():
 		if not after.legal_moves().is_empty():
 			return {}
 		# Mate o ahogado con tu jugada.
 		ps = Bot.MATE if after.in_check() else 0
-		w_after = (100.0 if sign > 0 else 0.0) if after.in_check() else 50.0
+		if after.in_check():
+			w_after = 100.0
+			cp_played = 10000.0
 	else:
 		ps = _engine_score(b) * sign
 		reply = after.find_uci(str(b.get("move", "")))
-		w_after = CoachAI.white_win(b)
+		w_after = CoachAI.expected_for(b, player, elo)
+		cp_played = CoachAI.cp_for(b, player)
 	if best == m:
 		ps = bs
-	var w_before := CoachAI.white_win(a)
-	var drop := (w_before - w_after) * float(sign)
-	return {"best": best, "best_score": bs, "played_score": ps, "depth": maxi(1, int(a.get("depth", 1))), "reply": reply, "drop": maxf(0.0, drop) if best != m else 0.0}
+	var w_before := CoachAI.expected_for(a, player, elo)
+	var drop := w_before - w_after
+	# Red de seguridad del material (como el tutor): la línea jugada acaba con menos material que la mejor.
+	var floor := ""
+	var cp_best := CoachAI.cp_for(a, player)
+	if best != m and absf(cp_best) < 10000.0 and absf(cp_played) < 10000.0:
+		var line: Array = [Chess.uci(m)]
+		if not b.is_empty():
+			line.append_array(CoachAI._chain(str(b["move"]), b.get("continuationArr", [])))
+		var mb := CoachAI.material_after(pos.fen(), CoachAI._chain(str(a["move"]), a.get("continuationArr", [])), player)
+		var mp := CoachAI.material_after(pos.fen(), line, player)
+		if not mb.is_empty() and not mp.is_empty():
+			floor = CoachAI.material_min_verdict(int(mb["bal"]) - int(mp["bal"]), cp_best - cp_played)
+	return {"best": best, "best_score": bs, "played_score": ps, "depth": maxi(1, int(a.get("depth", 1))), "reply": reply, "drop": maxf(0.0, drop) if best != m else 0.0, "floor": floor}
 
 
 ## Puntuación de un análisis de Stockfish desde las blancas, en la escala de Bot (mate = ±(MATE − jugadas)).

@@ -32,6 +32,22 @@ func _initialize() -> void:
 	var e_even := GameDetail.entry(null, pos, m, 0, 22, 0.6, even)
 	_ok(e_even["verdict"] == GameDetail.BLUNDER and e_even["best_san"] == "f4" and str(e_even["paras"]).contains("Dxe5"), "igualado y pierdes una pieza: error grave, la mejor era f4 y permite Dxe5 (%s)" % str(e_even["paras"]))
 
+	# Banco de casos de las chapas (22 nov), igual que en el servidor (worker/test.mjs): regalar un caballo con la
+	# partida perdida nunca es «buena», y la curva de puntos esperados es la misma tabla.
+	var ce4 := "r4rk1/pp3ppp/5n2/5q2/8/1PN5/P1P1QPPP/6K1 w - - 0 16"
+	var ce4_a := {"move": "e2e3", "centipawns": -650, "mate": null, "depth": 16, "continuationArr": ["e2e3", "f5c2", "e3e7", "c2b2"]}
+	var ce4_b := {"move": "f5e4", "centipawns": -900, "mate": null, "depth": 16, "continuationArr": ["f5e4", "e2e4", "f6e4", "a2a3"]}
+	for elo: float in [800.0, 1500.0, 2200.0]:
+		var j := CoachAI.local_judge(ce4, "c3e4", ce4_a, ce4_b, -1, elo)
+		_ok(j["verdict"] == "mistake" or j["verdict"] == "blunder", "Ce4 regalando el caballo (Elo %d): %s, pierde %d" % [elo, j["verdict"], int(j.get("material", 0))])
+		# Ya perdida antes de la jugada del rival: no le había regalado nada, así que no es «oportunidad perdida».
+		var jp := CoachAI.local_judge(ce4, "c3e4", ce4_a, ce4_b, roundi(CoachAI.expected(-650.0, 0, elo)), elo)
+		_ok(jp["verdict"] == "mistake" or jp["verdict"] == "blunder", "Ce4 con la partida ya perdida antes (Elo %d): %s" % [elo, jp["verdict"]])
+	var pos_ce4 := Chess.from_fen(ce4)
+	var pre_ce4 := GameDetail.pre_from_engine(pos_ce4, pos_ce4.find_uci("c3e4"), ce4_a, ce4_b, 1500.0)
+	var e_ce4 := GameDetail.entry(null, pos_ce4, pos_ce4.find_uci("c3e4"), 0, 30, 0.6, pre_ce4)
+	_ok(e_ce4["verdict"] == GameDetail.MISTAKE or e_ce4["verdict"] == GameDetail.BLUNDER, "y en el análisis de la partida: %s" % e_ce4["verdict"])
+	_ok(absf(CoachAI.expected(0.0, 0, 1500.0) - 50.0) < 1.5 and CoachAI.expected(300.0, 0, 1500.0) > CoachAI.expected(100.0, 0, 1500.0), "curva de puntos esperados cargada")
 	var demo: Control = (load("res://demo/demo.tscn") as PackedScene).instantiate()
 	demo.use_settings = false
 	root.add_child(demo)

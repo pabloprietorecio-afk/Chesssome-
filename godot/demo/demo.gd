@@ -8446,6 +8446,9 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	_ask_gen += 1
 	ask_history = []
 	_coach_prev_win = -1
+	# Las chapas miden los puntos esperados según el nivel del jugador (su Elo de juego; sin partidas, 1500).
+	var gr := GameLog.game_rating(_log())
+	coach.player_elo = float(gr["r"]) if int(gr["n"]) > 0 else CoachAI.DEFAULT_ELO
 	game_serial += 1
 	game_helped = false
 	_retry = {}
@@ -12776,7 +12779,7 @@ func _detail_with_sf(fens: Array, moves: Array, color: int, my_run: int) -> void
 				if my_run != run_id or mode != "game":
 					return
 			pair.append(seen[f])
-		var pre := GameDetail.pre_from_engine(pos, m, pair[0], pair[1])
+		var pre := GameDetail.pre_from_engine(pos, m, pair[0], pair[1], coach.player_elo)
 		found.append(GameDetail.entry(null, pos, m, color, i, 0.6, pre))
 	_detail_ready(found, my_run)
 

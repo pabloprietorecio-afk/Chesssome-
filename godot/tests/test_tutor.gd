@@ -50,7 +50,7 @@ func _initialize() -> void:
 	_ok(eb["centipawns"] == -150, "juegan negras: el valor se da la vuelta (desde las blancas)")
 	_ok(LocalEngine.parse("move=e2e4;depth=9;mate=2;pv=e2e4", GIFT_AFTER)["mate"] == -2 and LocalEngine.parse("error=IOException", GIFT).is_empty(), "mate desde las blancas; un error, vacío")
 	var lj := CoachAI.local_judge(GIFT, "g1e2", ea, eb)
-	_ok(lj["verdict"] == "blunder" and lj["win_best"] == 61 and lj["local"] and CoachAI.remote_ok(lj), "valoración en el móvil (sin servidor): error grave, de 61 %%")
+	_ok(lj["verdict"] == "blunder" and lj["win_best"] == roundi(CoachAI.expected(120.0, 0, CoachAI.DEFAULT_ELO)) and lj["local"] and CoachAI.remote_ok(lj), "valoración en el móvil (sin servidor): error grave, %d %% con la mejor" % int(lj["win_best"]))
 	_ok((lj["lines"]["played"] as Array).map(func(x: Dictionary) -> String: return x["uci"]) == ["g1e2", "c7e5", "d1d2"] and (lj["lines"]["best"] as Array).size() == 3, "con sus dos líneas")
 	var miss := CoachAI.local_judge(GIFT, "g1e2", {"type": "bestmove", "move": "f3f4", "centipawns": 400, "mate": null, "continuationArr": ["f3f4"]}, {"type": "bestmove", "move": "c7e5", "centipawns": 40, "mate": null, "continuationArr": ["c7e5"]}, 52)
 	_ok(miss["verdict"] == "miss" and CoachAI.remote_ok(miss), "oportunidad perdida (sin conexión): no empeora respecto a antes del rival")
