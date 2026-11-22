@@ -1,0 +1,28 @@
+name: Campeonato · sonidos
+
+# Descarga los sonidos del Campeonato (tools/campeonato/sonidos.sh: BigSoundBank CC0 y BudgetPixel CC BY 4.0),
+# los prepara con ffmpeg y los deja en la rama «campeonato-sonidos» para revisarlos antes de meterlos en la app.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sonidos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar y preparar
+        run: |
+          sudo apt-get install -y -qq ffmpeg bc > /dev/null
+          bash tools/campeonato/sonidos.sh
+      - name: Publicar en la rama campeonato-sonidos
+        run: |
+          cd build/sonidos
+          [ -n "$(ls -A)" ] || exit 1
+          git init -q
+          git checkout -q -b campeonato-sonidos
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Sonidos del Campeonato"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" campeonato-sonidos
