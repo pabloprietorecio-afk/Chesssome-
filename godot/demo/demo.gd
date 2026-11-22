@@ -6554,7 +6554,11 @@ func _open_game_options() -> void:
 	_game_opts_scroll.add_child(_game_opts_box)
 	_fill_game_options()
 	column.add_child(_spacer(6.0))
-	var ok := _button("check", "OK", _close_confirm, _c("accent"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58})
+	# «OK» lleva al paso siguiente, elegir el nivel, en otra ventana igual (Pablo, 22 nov: la página de después
+	# despistaba). Tocar fuera solo cierra.
+	var ok := _button("check", "OK", func() -> void:
+		_pick_level_next = true
+		_close_confirm(), _c("accent"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58})
 	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(ok)
 	_confirm_on_close = func() -> void:
@@ -6562,6 +6566,24 @@ func _open_game_options() -> void:
 		_game_opts_scroll = null
 		if progress != null and is_instance_valid(progress) and progress_kind == "game_setup":
 			_reopen_game_setup()
+			if _pick_level_next:
+				_open_level_picker.call_deferred()
+		_pick_level_next = false
+
+
+var _pick_level_next := false
+
+
+## Elegir el nivel del rival, en una ventana: los cinco niveles (cada uno abre sus subniveles).
+func _open_level_picker() -> void:
+	var column := _popup(Loc.t("Elige el nivel del rival"), "")
+	for g in Bot.GROUPS.size():
+		var text := Loc.t(str(GAME_LEVEL_TEXT[g]))
+		var span := _group_elo_span(g)
+		if span != "":
+			text += "\n" + span
+		column.add_child(_option_button(str(GROUP_ICONS[g]), str(GROUP_TINTS[g]), str(Bot.GROUPS[g]), text, _pick_sublevel.bind(g)))
+	column.add_child(_button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
 
 
 func _fill_game_options() -> void:
