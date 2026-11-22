@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
-"""Ajusta la curva de puntos esperados (tools/curva/medir.py → curva_cruda.json) y escribe la tabla que usan el
+"""Convierte la medición de tools/curva/medir.py (curva_cruda.json) en la tabla de puntos esperados que usan el
 servidor y la app (godot/data/curva_puntos.json).
 
-Para cada tramo de Elo: puntos = suelo + (1 − 2·suelo) / (1 + exp(−k·cp)) — una curva en S (como la de Lichess)
-con su pendiente k y un suelo (lo que se sigue sacando con la partida perdida: errores del rival, tiempo…). Se ajusta
-con mínimos cuadrados ponderados por el número de posiciones; después, k y el suelo se suavizan a lo largo del Elo.
-Los mates (a favor / en contra) se toman tal cual, por tramo.
+La tabla es la media real de puntos por tramo de Elo y evaluación, sin forzar una fórmula. Se probó a ajustar una
+curva en S (como la de Lichess) por tramo, pero los datos no tienen esa forma: con evaluaciones grandes, los
+aficionados siguen sacando bastantes más puntos de los que da la S, y la S ajustada se quedaba corta justo donde
+importa (con 1500: −650 → 0,197 de verdad frente a 0,165 de la S; −900 → 0,092 frente a 0,112). Con la S, regalar
+un caballo con −6,5 bajaba 5 puntos; con los datos, 10.
 
-Uso: python3 ajustar.py curva_cruda.json [--ritmo l|b|todo] > informe.txt   (escribe la tabla)
+Pasos:
+1. Media ponderada con un núcleo gaussiano en Elo (60) y evaluación (25 cp), descontando la diferencia de Elo con
+   el rival (regresión en la diferencia y el valor en 0: es lo que se espera contra uno del mismo nivel). Si en un punto hay menos de MIN_N
+   posiciones (los extremos, los niveles altos), el núcleo se ensancha hasta tenerlas.
+2. Simetría: E(cp) = (E(cp) + 1 − E(−cp)) / 2 (lo que saca uno lo pierde el otro).
+3. Monótona en la evaluación y en el Elo (regresión isótona: con ventaja, el más fuerte saca al menos lo mismo).
+4. Mates a favor / en contra: la media por tramo, suavizada igual; un mate vale al menos lo mejor de la tabla.
+
+Uso: python3 ajustar.py curva_cruda.json [--ritmo l|b|todo] [--out godot/data/curva_puntos.json]
 """
 import argparse
 import json
@@ -15,114 +24,150 @@ import math
 import sys
 
 import numpy as np
-from scipy.optimize import least_squares
 
 ELOS = list(range(600, 2701, 100))
-GRID = list(range(-2000, 2001, 50))
+GRID = list(range(-2000, 2001, 25))
+MIN_N = 4000
 
 
-def curve(cp, k, floor):
-    return floor + (1 - 2 * floor) / (1 + np.exp(-k * cp))
+def lichess(cp):
+    return 1 / (1 + math.exp(-0.00368208 * cp))
+
+
+def isotonic(y, w):
+    """Regresión isótona creciente (PAV), ponderada."""
+    blocks = []  # [suma y·w, suma w, cuántos]
+    for yi, wi in zip(y, w):
+        blocks.append([yi * wi, wi, 1])
+        while len(blocks) > 1 and blocks[-2][0] / blocks[-2][1] > blocks[-1][0] / blocks[-1][1]:
+            a = blocks.pop()
+            blocks[-1][0] += a[0]
+            blocks[-1][1] += a[1]
+            blocks[-1][2] += a[2]
+    out = []
+    for s, ws, n in blocks:
+        out += [s / ws] * n
+    return np.array(out)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("raw")
-    ap.add_argument("--ritmo", default="todo", choices=["l", "b", "todo"])
+    ap.add_argument("--ritmo", default="l", choices=["l", "b", "todo"])
     ap.add_argument("--out", default="godot/data/curva_puntos.json")
-    ap.add_argument("--min", type=int, default=200, help="posiciones mínimas por casilla")
     a = ap.parse_args()
     raw = json.load(open(a.raw))
     cats = ["l", "b"] if a.ritmo == "todo" else [a.ritmo]
-    cells = raw["celdas"]
 
-    fits = {}
-    mates = {}
-    print(f"Partidas usadas: {raw['partidas_usadas']} (de {raw['partidas_leidas']} leídas); ritmo: {a.ritmo}")
-    print("Elo   posiciones    k (1/cp)   suelo   ±error   mate+   mate-   E(-700)  E(-900)  E(+300)")
-    for elo in ELOS:
-        xs, ys, ws = [], [], []
-        mp = [0, 0.0]
-        mm = [0, 0.0]
-        for cat in cats:
-            for key, (n, s) in cells.items():
-                c, e, b = key.split("|")
-                if c != cat or int(e) != elo:
-                    continue
-                if b == "M+":
-                    mp[0] += n
-                    mp[1] += s
-                elif b == "M-":
-                    mm[0] += n
-                    mm[1] += s
-                else:
-                    xs.append(float(b))
-                    ys.append(s / n)
-                    ws.append(n)
-        # Casillas iguales de varios ritmos: se suman.
-        agg = {}
-        for x, y, w in zip(xs, ys, ws):
-            t = agg.setdefault(x, [0, 0.0])
-            t[0] += w
-            t[1] += y * w
-        X = np.array(sorted(x for x in agg if agg[x][0] >= a.min))
-        if len(X) < 20:
-            print(f"{elo:5d}   pocas posiciones: se interpola")
+    # Casillas: (elo, diferencia con el rival, cp) → [n, suma]; los mates, con cp = ±inf. Las mediciones antiguas no
+    # traen la diferencia (clave de tres partes): cuentan como diferencia 0.
+    cells = {}
+    for key, (n, s) in raw["celdas"].items():
+        parts = key.split("|")
+        c, e, b = parts[0], int(parts[1]), parts[-1]
+        g = int(parts[2]) if len(parts) == 4 else 0
+        if c not in cats:
             continue
-        W = np.array([agg[x][0] for x in X], dtype=float)
-        Y = np.array([agg[x][1] / agg[x][0] for x in X])
-        sw = np.sqrt(W)
-        res = least_squares(lambda p: (curve(X, p[0], p[1]) - Y) * sw, x0=[0.004, 0.05], bounds=([1e-4, 0.0], [0.05, 0.3]))
-        k, floor = res.x
-        err = float(np.sqrt(np.sum(W * (curve(X, k, floor) - Y) ** 2) / np.sum(W)))
-        fits[elo] = {"k": float(k), "suelo": float(floor), "n": int(W.sum()), "error": err}
-        mates[elo] = (mp[1] / mp[0] if mp[0] >= a.min else None, mm[1] / mm[0] if mm[0] >= a.min else None)
-        f = lambda cp: curve(np.array([cp]), k, floor)[0]
-        print(f"{elo:5d}  {int(W.sum()):11d}   {k:.6f}   {floor:.3f}   {err:.3f}   "
-              f"{mates[elo][0] if mates[elo][0] is not None else float('nan'):.3f}   {mates[elo][1] if mates[elo][1] is not None else float('nan'):.3f}   "
-              f"{f(-700):.3f}    {f(-900):.3f}    {f(300):.3f}")
+        x = math.inf if b == "M+" else -math.inf if b == "M-" else float(b)
+        t = cells.setdefault((e, g, x), [0, 0.0])
+        t[0] += n
+        t[1] += s
+    keys = list(cells)
+    E = np.array([k[0] for k in keys], dtype=float)
+    G = np.array([k[1] for k in keys], dtype=float)
+    C = np.array([k[2] for k in keys], dtype=float)
+    N = np.array([cells[k][0] for k in keys], dtype=float)
+    Y = np.array([cells[k][1] / cells[k][0] for k in keys])
+    finite = np.isfinite(C)
+    with_gap = bool((G != 0).any())
 
-    if not fits:
-        sys.exit("sin datos")
-    # Suavizado a lo largo del Elo (media ponderada con vecinos) e interpolación de los tramos sin datos.
-    known = sorted(fits)
-    def smooth(field):
-        out = {}
+    def estimate(w):
+        """Puntos con el rival del mismo Elo: regresión ponderada en la diferencia, y el valor en 0."""
+        sw = w.sum()
+        if not with_gap:
+            return float((w * Y).sum() / sw)
+        gm = (w * G).sum() / sw
+        ym = (w * Y).sum() / sw
+        var = (w * (G - gm) ** 2).sum()
+        slope = (w * (G - gm) * (Y - ym)).sum() / var if var > 0 else 0.0
+        return float(ym - slope * gm)
+
+    def kernel(elo, cp):
+        se, sc = 60.0, 25.0
+        for _ in range(12):
+            w = np.where(finite, N * np.exp(-(((E - elo) / se) ** 2) - ((np.where(finite, C, 0) - cp) / sc) ** 2), 0.0)
+            if w.sum() >= MIN_N:
+                break
+            se *= 1.4
+            sc *= 1.4
+        return estimate(w), float(w.sum())
+
+    rows = []
+    weights = []
+    for elo in ELOS:
+        vals, ns = zip(*(kernel(elo, cp) for cp in GRID))
+        v = np.array(vals)
+        v = (v + 1 - v[::-1]) / 2  # GRID es simétrica: v[::-1] es E(−cp)
+        nn = np.array(ns)
+        nn = (nn + nn[::-1]) / 2
+        rows.append(isotonic(v, nn))
+        weights.append(nn)
+
+    # Monótona también en el Elo: con ventaja, un jugador más fuerte saca al menos lo mismo (y con desventaja, como
+    # mucho lo mismo). Arregla el ruido de los tramos altos, con pocas partidas lentas (2500+).
+    R = np.array(rows)
+    Wr = np.array([w.sum() for w in weights])
+    for j, cp in enumerate(GRID):
+        if cp > 0:
+            R[:, j] = isotonic(R[:, j], Wr)
+        elif cp < 0:
+            R[:, j] = -isotonic(-R[:, j], Wr)
+    rows = [isotonic(r, w) for r, w in zip(R, weights)]
+
+    def mate_row(x):
+        out = []
+        sel = C == x
+        se = 60.0
         for elo in ELOS:
-            num = den = 0.0
-            for e in known:
-                w = fits[e]["n"] * math.exp(-((e - elo) / 150.0) ** 2)
-                num += w * fits[e][field]
-                den += w
-            out[elo] = num / den
+            se = 60.0
+            while True:
+                w = np.where(sel, N * np.exp(-(((E - elo) / se) ** 2)), 0.0)
+                if w.sum() >= MIN_N or se > 2000:
+                    break
+                se *= 1.4
+            out.append(estimate(w) if w.sum() > 0 else (0.97 if x > 0 else 0.03))
         return out
-    ks = smooth("k")
-    fl = smooth("suelo")
-    mp_known = [(e, mates[e][0]) for e in known if mates[e][0] is not None]
-    mm_known = [(e, mates[e][1]) for e in known if mates[e][1] is not None]
-    def interp(pts, elo, default):
-        if not pts:
-            return default
-        es = [p[0] for p in pts]
-        vs = [p[1] for p in pts]
-        return float(np.interp(elo, es, vs))
+
+    mp = mate_row(math.inf)
+    mm = mate_row(-math.inf)
+    # Simetría de los mates y, como mucho / como poco, lo de la tabla.
+    mate_for = [max((p + 1 - m) / 2, r[-1]) for p, m, r in zip(mp, mm, rows)]
+    mate_against = [min(1 - f, r[0]) for f, r in zip(mate_for, rows)]
+
+    total = N.sum()
+    print(f"Partidas usadas: {raw['partidas_usadas']} (de {raw['partidas_leidas']} leídas); ritmo: {a.ritmo}; {int(total)} posiciones; "
+          + ("descontando la diferencia con el rival" if with_gap else "sin la diferencia con el rival"))
+    show = [-900, -650, -300, -100, 0, 100, 300, 650, 900]
+    print("Elo    " + "  ".join(f"{c:>6d}" for c in show) + "   mate+   mate-   Ce4(-650→-900)")
+    for i, elo in enumerate(ELOS):
+        r = rows[i]
+        at = {c: r[GRID.index(c)] for c in show}
+        print(f"{elo:4d}   " + "  ".join(f"{at[c]:6.3f}" for c in show) + f"   {mate_for[i]:.3f}   {mate_against[i]:.3f}   {100 * (at[-650] - at[-900]):5.1f}")
+    print("Lichess" + "  ".join(f"{lichess(c):6.3f}" for c in show) + f"                   {100 * (lichess(-650) - lichess(-900)):5.1f}")
+
     table = {
-        "fuente": f"Partidas de Lichess con evaluación ({raw['partidas_usadas']} partidas; volcado en volcado.txt del flujo «Curva de puntos esperados»); ritmo {a.ritmo}; tools/curva/ajustar.py",
-        "modelo": "puntos = suelo + (1 - 2·suelo) / (1 + exp(-k·cp)), por tramo de Elo (del jugador que juega)",
+        "fuente": f"Partidas de Lichess con evaluación ({raw['partidas_usadas']} partidas, {int(total)} posiciones; ritmo {a.ritmo}); tools/curva/medir.py y tools/curva/ajustar.py",
+        "modelo": "media real de puntos del jugador por tramo de Elo y evaluación desde su lado (suavizada, simétrica y monótona)",
         "elos": ELOS,
         "cp": GRID,
-        "k": [round(ks[e], 7) for e in ELOS],
-        "suelo": [round(fl[e], 4) for e in ELOS],
-        "puntos": [[round(float(curve(np.array([c]), ks[e], fl[e])[0]), 4) for c in GRID] for e in ELOS],
+        "puntos": [[round(float(x), 4) for x in r] for r in rows],
+        "mate_a_favor": [round(x, 4) for x in mate_for],
+        "mate_en_contra": [round(x, 4) for x in mate_against],
     }
-    top = [row[-1] for row in table["puntos"]]
-    bottom = [row[0] for row in table["puntos"]]
-    # Un mate a favor vale al menos lo que la mejor evaluación de la tabla (y uno en contra, como mucho la peor).
-    table["mate_a_favor"] = [round(max(interp(mp_known, e, 0.97), top[i]), 4) for i, e in enumerate(ELOS)]
-    table["mate_en_contra"] = [round(min(interp(mm_known, e, 0.03), bottom[i]), 4) for i, e in enumerate(ELOS)]
-    json.dump(table, open(a.out, "w"), ensure_ascii=False, separators=(",", ":"))
-    print(f"\nTabla escrita en {a.out}")
+    if a.out != "-":
+        json.dump(table, open(a.out, "w"), ensure_ascii=False, separators=(",", ":"))
+        print(f"\nTabla escrita en {a.out}")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

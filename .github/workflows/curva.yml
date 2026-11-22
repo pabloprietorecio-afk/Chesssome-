@@ -2,39 +2,80 @@ name: Curva de puntos esperados (Lichess)
 
 # Mide cuántos puntos saca de verdad un jugador de cada nivel con cada evaluación del motor (tools/curva/medir.py),
 # con partidas públicas de Lichess que traen evaluación. Es la base del clasificador de jugadas (como el «Expected
-# Points» de chess.com, que no publica su curva). Solo se lanza a mano; el resultado queda como artefacto.
+# Points» de chess.com, que no publica su curva). Solo se lanza a mano. Lee varios meses a la vez (un trabajo por
+# mes) y deja la suma en la rama «curva-resultado» (curva_cruda.json), para ajustarla con tools/curva/ajustar.py.
 on:
   workflow_dispatch:
     inputs:
-      partidas:
-        description: "Partidas con evaluación que leer"
-        default: "1500000"
-      mes:
-        description: "Mes del volcado (AAAA-MM); vacío = el último publicado"
-        default: ""
+      meses:
+        description: "Meses del volcado, en JSON"
+        default: '["2026-10", "2026-09", "2026-08"]'
+      minutos:
+        description: "Minutos de lectura por mes"
+        default: "100"
+      ritmos:
+        description: "Ritmos: b (blitz), l (rápidas y clásicas)"
+        default: "l"
+
+permissions:
+  contents: write
 
 jobs:
   medir:
     runs-on: ubuntu-latest
-    timeout-minutes: 200
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        mes: ${{ fromJSON(inputs.meses) }}
     steps:
       - uses: actions/checkout@v4
       - name: Medir
         run: |
           sudo apt-get install -y zstd > /dev/null
-          if [ -n "${{ inputs.mes }}" ]; then
-            url="https://database.lichess.org/standard/lichess_db_standard_rated_${{ inputs.mes }}.pgn.zst"
-          else
-            url=$(curl -sfL https://database.lichess.org/standard/list.txt | head -1)
-          fi
+          url="https://database.lichess.org/standard/lichess_db_standard_rated_${{ matrix.mes }}.pgn.zst"
           echo "Volcado: $url"
-          [ -n "$url" ]
-          curl -sfL "$url" | zstd -dc 2>/dev/null | python3 tools/curva/medir.py --games "${{ inputs.partidas }}" --minutes 170 > curva_cruda.json || true
-          python3 -c "import json; d=json.load(open('curva_cruda.json')); print(d['partidas_usadas'], 'partidas usadas de', d['partidas_leidas'], '-', len(d['celdas']), 'casillas')"
-          echo "$url" > volcado.txt
+          curl -sfL "$url" | zstd -dc 2>/dev/null | python3 tools/curva/medir.py --games 100000000 --minutes "${{ inputs.minutos }}" --ritmos "${{ inputs.ritmos }}" > curva_${{ matrix.mes }}.json || true
+          python3 -c "import json; d=json.load(open('curva_${{ matrix.mes }}.json')); print(d['partidas_usadas'], 'partidas usadas de', d['partidas_leidas'], '-', len(d['celdas']), 'casillas')"
       - uses: actions/upload-artifact@v4
         with:
-          name: curva-cruda
-          path: |
-            curva_cruda.json
-            volcado.txt
+          name: curva-${{ matrix.mes }}
+          path: curva_${{ matrix.mes }}.json
+
+  juntar:
+    needs: medir
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: curva-*
+          path: /tmp/curva
+          merge-multiple: true
+      - name: Sumar los meses y publicar en la rama curva-resultado
+        run: |
+          python3 - <<'PY'
+          import glob, json
+          total = {"partidas_leidas": 0, "partidas_usadas": 0, "paso_cp": 25, "celdas": {}, "meses": []}
+          for f in sorted(glob.glob("/tmp/curva/curva_*.json")):
+              d = json.load(open(f))
+              total["meses"].append(f.split("curva_")[1][:-5])
+              total["partidas_leidas"] += d["partidas_leidas"]
+              total["partidas_usadas"] += d["partidas_usadas"]
+              for k, (n, s) in d["celdas"].items():
+                  c = total["celdas"].setdefault(k, [0, 0.0])
+                  c[0] += n
+                  c[1] += s
+          json.dump(total, open("/tmp/curva_cruda.json", "w"))
+          print(total["meses"], total["partidas_usadas"], "partidas usadas de", total["partidas_leidas"], "-", len(total["celdas"]), "casillas")
+          PY
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan curva-resultado
+          git rm -rf . -q
+          cp /tmp/curva_cruda.json .
+          echo "${{ github.run_id }}" > ejecucion.txt
+          git add curva_cruda.json ejecucion.txt
+          git commit -qm "Medición de la curva (ejecución ${{ github.run_id }})"
+          git push -f origin curva-resultado

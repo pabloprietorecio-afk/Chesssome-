@@ -37,6 +37,7 @@ def main() -> None:
     ap.add_argument("--games", type=int, default=1_500_000, help="partidas con evaluación que leer")
     ap.add_argument("--minutes", type=float, default=150.0, help="tope de tiempo")
     ap.add_argument("--max-gap", type=int, default=150, help="diferencia máxima de Elo entre los dos")
+    ap.add_argument("--ritmos", default="bl", help="ritmos que apuntar: b (blitz), l (lento)")
     a = ap.parse_args()
     cells: dict = {}
     head = {}
@@ -61,7 +62,7 @@ def main() -> None:
         sw = {b"1-0": 1.0, b"0-1": 0.0, b"1/2-1/2": 0.5}.get(res)
         cat = category(head.get(b"TimeControl", b""))
         term = head.get(b"Termination", b"")
-        if sw is None or not cat or abs(we - be) > a.max_gap or term in (b"Abandoned", b"Rules infraction"):
+        if sw is None or not cat or cat not in a.ritmos or abs(we - be) > a.max_gap or term in (b"Abandoned", b"Rules infraction"):
             continue
         evals = EVAL.findall(line)
         if len(evals) < 10:
@@ -70,8 +71,9 @@ def main() -> None:
         for ply, e in enumerate(evals):
             if ply < 4:
                 continue  # las primeras jugadas: todo es ≈ 0
-            for color, elo, score in ((1, we, sw), (-1, be, 1.0 - sw)):
+            for color, elo, score, gap in ((1, we, sw, we - be), (-1, be, 1.0 - sw, be - we)):
                 rb = max(600, min(2700, (elo // 100) * 100))
+                gb = int(round(gap / 50.0)) * 50
                 if e.startswith(b"#"):
                     n = int(e[1:])
                     key = "M+" if n * color > 0 else "M-"
@@ -79,7 +81,7 @@ def main() -> None:
                     cp = float(e) * 100.0 * color
                     cp = max(-CP_MAX, min(CP_MAX, cp))
                     key = str(int(round(cp / CP_STEP)) * CP_STEP)
-                k = f"{cat}|{rb}|{key}"
+                k = f"{cat}|{rb}|{gb}|{key}"
                 c = cells.get(k)
                 if c is None:
                     cells[k] = [1, score]
