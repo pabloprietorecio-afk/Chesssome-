@@ -1,0 +1,40 @@
+name: Curva de puntos esperados (Lichess)
+
+# Mide cuántos puntos saca de verdad un jugador de cada nivel con cada evaluación del motor (tools/curva/medir.py),
+# con partidas públicas de Lichess que traen evaluación. Es la base del clasificador de jugadas (como el «Expected
+# Points» de chess.com, que no publica su curva). Solo se lanza a mano; el resultado queda como artefacto.
+on:
+  workflow_dispatch:
+    inputs:
+      partidas:
+        description: "Partidas con evaluación que leer"
+        default: "1500000"
+      mes:
+        description: "Mes del volcado (AAAA-MM); vacío = el último publicado"
+        default: ""
+
+jobs:
+  medir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Medir
+        run: |
+          sudo apt-get install -y zstd > /dev/null
+          if [ -n "${{ inputs.mes }}" ]; then
+            url="https://database.lichess.org/standard/lichess_db_standard_rated_${{ inputs.mes }}.pgn.zst"
+          else
+            url=$(curl -sfL https://database.lichess.org/standard/list.txt | head -1)
+          fi
+          echo "Volcado: $url"
+          [ -n "$url" ]
+          curl -sfL "$url" | zstd -dc 2>/dev/null | python3 tools/curva/medir.py --games "${{ inputs.partidas }}" --minutes 170 > curva_cruda.json || true
+          python3 -c "import json; d=json.load(open('curva_cruda.json')); print(d['partidas_usadas'], 'partidas usadas de', d['partidas_leidas'], '-', len(d['celdas']), 'casillas')"
+          echo "$url" > volcado.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: curva-cruda
+          path: |
+            curva_cruda.json
+            volcado.txt
