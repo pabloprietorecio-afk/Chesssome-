@@ -1,0 +1,333 @@
+{
+ "descripcion": "Lote 2: la entrada de cada sala y los rivales del resto de salas (35).",
+ "items": [
+  {
+   "nombre": "salas/escuela_entrada",
+   "prompt": "First-person view arriving at the open double doors of a Spanish public school gymnasium on a Saturday morning for a small local chess tournament. A folding registration table with blank sheets and a coffee urn, a few adults chatting with paper cups, a simple poster with only a drawing of a chess knight, bright daylight. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 301
+  },
+  {
+   "nombre": "salas/centro_civico_entrada",
+   "prompt": "First-person view arriving at the glass entrance of a modern municipal civic center in a Spanish neighbourhood at dusk for a neighbourhood chess tournament. Adults walking in, warm interior light visible through the glass, bicycles parked outside, a few trees. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 302
+  },
+  {
+   "nombre": "salas/club_entrada",
+   "prompt": "First-person view climbing a narrow old wooden staircase with a worn handrail toward a traditional chess club on the first floor of an old city building in Spain. Warm light spills from an open door at the top, framed old photographs on the stairwell walls. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 303
+  },
+  {
+   "nombre": "salas/casino_entrada",
+   "prompt": "First-person view entering a 19th-century private social club in Spain for a regional chess championship: a grand marble staircase, brass lamps, a uniformed doorman holding the door, a red carpet runner, well-dressed guests arriving, warm evening light. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 304
+  },
+  {
+   "nombre": "salas/palacio_entrada",
+   "prompt": "First-person view entering the monumental entrance hall of a historic European palace at night for a national chess championship: tall open doors, marble floor, guards in dark uniforms, elegantly dressed guests arriving, illuminated stone facade behind. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 305
+  },
+  {
+   "nombre": "salas/hotel_entrada",
+   "prompt": "First-person view arriving at night at the entrance of a five-star grand hotel hosting an international elite chess championship: doormen in uniforms, photographers with flashes, velvet ropes along a red carpet leading through tall glass doors into a glowing marble lobby. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 306
+  },
+  {
+   "nombre": "rivales/centro_civico/jorge",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 41-year-old Spanish man, a bus driver, short dark hair with grey temples, light blue work shirt, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with a friendly, relaxed smile, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 401
+  },
+  {
+   "nombre": "rivales/centro_civico/ines",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 29-year-old Portuguese woman, a librarian, round glasses, wavy auburn hair, mustard sweater, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with a shy, thoughtful smile, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 402
+  },
+  {
+   "nombre": "rivales/centro_civico/samuel",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 33-year-old Ghanaian man, an electrician, short hair, olive green work jacket, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with a calm, patient expression, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 403
+  },
+  {
+   "nombre": "rivales/centro_civico/elena",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 58-year-old Romanian woman, a seamstress, short silver-blonde hair, knitted cardigan with a brooch, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with a kind but sharp look, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 404
+  },
+  {
+   "nombre": "rivales/centro_civico/raul",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 24-year-old Spanish man, a delivery rider, curly black hair, sporty windbreaker, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with an energetic grin, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 405
+  },
+  {
+   "nombre": "rivales/centro_civico/mei",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 47-year-old Taiwanese woman, an accountant, neat bob haircut, white blouse, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with a focused, precise expression, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 406
+  },
+  {
+   "nombre": "rivales/centro_civico/andre",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 70-year-old French man, a retired postman, white hair, beret, tweed jacket, seated at a chess table facing the camera as if waiting for the opponent, in the multipurpose hall of a municipal civic center during a neighbourhood chess tournament, light wooden tables and bookshelves softly blurred behind, other adult players in the background, looking at the camera with a mischievous smile, soft warm indoor light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 407
+  },
+  {
+   "nombre": "rivales/club/carmen",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 61-year-old Spanish woman, a retired mathematics teacher, short grey hair, reading glasses on a chain, burgundy blazer, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a confident, slightly stern look, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 408
+  },
+  {
+   "nombre": "rivales/club/lukas",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 36-year-old German man, an engineer, blond hair, neatly trimmed beard, grey quarter-zip sweater, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a serious, analytical expression, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 409
+  },
+  {
+   "nombre": "rivales/club/diego",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 27-year-old Argentinian man, a programmer, messy dark hair, hoodie, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a quick, cheeky smile, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 410
+  },
+  {
+   "nombre": "rivales/club/fatima",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 31-year-old Moroccan woman, a pharmacist, wearing a soft beige hijab and a navy blazer, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a calm, determined look, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 411
+  },
+  {
+   "nombre": "rivales/club/ivan",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 55-year-old Bulgarian man, a taxi driver, heavy build, moustache, leather jacket, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a warm, knowing smile, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 412
+  },
+  {
+   "nombre": "rivales/club/hana",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 23-year-old Japanese woman, a music student, long straight black hair, cream turtleneck, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a gentle, concentrated expression, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 413
+  },
+  {
+   "nombre": "rivales/club/pedro",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 44-year-old Brazilian man, an architect, shaved head, black-framed glasses, linen shirt, seated at a chess table facing the camera as if waiting for the opponent, in a traditional chess club with dark wood paneling, green banker's lamps and glass trophy cabinets softly blurred behind, other members in the background, looking at the camera with a relaxed, friendly look, warm lamplight, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 414
+  },
+  {
+   "nombre": "rivales/casino/alvaro",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 50-year-old Spanish man, a notary, slicked-back greying hair, navy suit and tie, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with a composed, slightly smug look, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 415
+  },
+  {
+   "nombre": "rivales/casino/natasha",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 39-year-old Latvian woman, a chess coach, light brown hair in a high ponytail, black blazer, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with a cool, confident expression, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 416
+  },
+  {
+   "nombre": "rivales/casino/rahul",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 26-year-old Indian man, a financial analyst, short black hair, crisp white shirt and dark waistcoat, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with an intense, focused look, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 417
+  },
+  {
+   "nombre": "rivales/casino/claire",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 45-year-old French woman, a doctor, chin-length chestnut hair, elegant silk blouse, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with a serene, attentive expression, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 418
+  },
+  {
+   "nombre": "rivales/casino/tiago",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 35-year-old Portuguese man, a journalist, stubble, dark curly hair, corduroy jacket, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with a curious half smile, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 419
+  },
+  {
+   "nombre": "rivales/casino/yuki",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 30-year-old Japanese woman, a translator, sleek bob haircut, charcoal dress, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with a poised, unreadable expression, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 420
+  },
+  {
+   "nombre": "rivales/casino/omar",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 57-year-old Lebanese man, a jeweller, salt-and-pepper beard, dark suit with a pocket square, seated at a chess table facing the camera as if waiting for the opponent, in the grand salon of a 19th-century social club during a regional chess championship, crystal chandeliers and red velvet curtains softly blurred behind, well-dressed spectators in the background, looking at the camera with a warm, gracious smile, warm golden light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 421
+  },
+  {
+   "nombre": "rivales/palacio/sebastian",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 32-year-old Chilean man, a chess master, dark wavy hair, slim black suit, open collar, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a confident, competitive look, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 422
+  },
+  {
+   "nombre": "rivales/palacio/anna",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 28-year-old Polish woman, a chess master, long blonde hair, fitted dark green dress, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a fierce, focused stare, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 423
+  },
+  {
+   "nombre": "rivales/palacio/david",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 48-year-old Israeli man, a university professor, curly greying hair, tweed jacket, glasses, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a thoughtful, amused expression, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 424
+  },
+  {
+   "nombre": "rivales/palacio/valentina",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 34-year-old Italian woman, a chess coach, dark hair in an elegant bun, white blouse and black blazer, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a calm, assured smile, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 425
+  },
+  {
+   "nombre": "rivales/palacio/kwame",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 37-year-old Ghanaian man, a software engineer, short beard, dark blue suit, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a quiet, determined look, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 426
+  },
+  {
+   "nombre": "rivales/palacio/erik",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 52-year-old Swedish man, a composer, long grey hair tied back, black turtleneck, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a dreamy, contemplative expression, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 427
+  },
+  {
+   "nombre": "rivales/palacio/leila",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 29-year-old Iranian woman, an architect, dark hair loosely covered with a silk scarf, elegant dark coat, seated at a chess table facing the camera as if waiting for the opponent, in the grand ballroom of a historic palace during a national chess championship, at a table with a white tablecloth and a digital chess clock, gilded mirrors, chandeliers and seated spectators softly blurred behind, looking at the camera with a sharp, intelligent look, elegant soft light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 428
+  },
+  {
+   "nombre": "rivales/hotel/viktor",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 35-year-old Czech man, a chess grandmaster, short dark hair, impeccable charcoal three-piece suit, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a cold, supremely confident stare, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 429
+  },
+  {
+   "nombre": "rivales/hotel/mariana",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 30-year-old Brazilian woman, a chess grandmaster, long dark curly hair, elegant black evening dress, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a bold, fiery look, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 430
+  },
+  {
+   "nombre": "rivales/hotel/arjun",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 22-year-old Indian man, a chess grandmaster, neat black hair, navy suit with a tie, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a calm, prodigious focus, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 431
+  },
+  {
+   "nombre": "rivales/hotel/sophie",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 41-year-old Swiss woman, a chess master, short platinum hair, tailored white jacket, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a refined, calculating expression, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 432
+  },
+  {
+   "nombre": "rivales/hotel/daisuke",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 46-year-old Japanese man, a chess grandmaster, silver-streaked hair, dark suit, rimless glasses, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a patient, impassive expression, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 433
+  },
+  {
+   "nombre": "rivales/hotel/isabel",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 27-year-old Spanish woman, a chess master, long dark hair, deep red evening dress, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a determined, slightly nervous smile, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 434
+  },
+  {
+   "nombre": "rivales/hotel/lin",
+   "prompt": "Photorealistic head-and-shoulders portrait of a 38-year-old Chinese man, a chess master, short hair, black suit with a mandarin collar, seated at a chess table facing the camera as if waiting for the opponent, on the stage of an international elite chess championship in the marble lobby of a five-star hotel, at a table with a premium wooden board and a digital clock, golden chandeliers and broadcast cameras softly blurred behind, looking at the camera with a quiet, serious expression, warm cinematic light, 85mm lens, shallow depth of field, realistic skin texture. Photorealistic documentary photograph, full-frame camera, natural colors, realistic lighting, textures and proportions, no text, no readable signs, no logos, no watermark.",
+   "width": 1024,
+   "height": 1024,
+   "steps": 28,
+   "seed": 435
+  }
+ ]
+}
