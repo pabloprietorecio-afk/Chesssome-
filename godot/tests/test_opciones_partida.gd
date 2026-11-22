@@ -39,8 +39,10 @@ func _initialize() -> void:
 
 	_buttons(demo.confirm_node, ["OK"])[0].emit_signal("pressed")
 	await _frames(4)
-	_ok(demo.confirm_node == null, "«OK» cierra la ventana")
-	_ok(demo.progress_kind == "game_setup" and demo.mode != "game", "y deja elegir el nivel")
+	_ok(demo.confirm_node != null and _has_text(demo.confirm_node, "Elige el nivel del rival") and _has_text(demo.confirm_node, "Muy difícil"), "«OK» lleva a la ventana «Elige el nivel del rival»")
+	_ok(demo.progress_kind == "game_setup" and demo.mode != "game", "con la página de la partida debajo")
+	demo._close_confirm()
+	await _frames(2)
 	var summary: String = demo._game_options_summary()
 	_ok(summary.contains(Loc.t("War Chess")) and summary.contains(Loc.t("Negras")), "la ficha resume lo elegido: %s" % summary)
 	_ok(_has_text(demo.progress, summary), "y está en la página")
