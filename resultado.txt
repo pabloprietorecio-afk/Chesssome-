@@ -1,0 +1,48 @@
+OK     Se abre una partida de prueba
+OK     El rival se une
+OK     Las reglas publicadas aceptan el gesto «pregunta» (¿Sigues ahí?) — HTTP 200
+OK     Siguen aceptando los gestos de siempre («saludo») — HTTP 200
+OK     Rechazan un gesto inventado («prisa») — HTTP 401
+OK     Nadie puede mandar un gesto en nombre del otro — HTTP 401
+OK     La partida de prueba se borra — HTTP 200
+RESULTADO: todo correcto
+OK     A abre partida (partida + lista de abiertas) — HTTP 200/200
+OK     B ve la partida abierta con su latido reciente — HTTP 200, diferencia con el reloj del servidor: 74 ms
+OK     Sin sesión no se ve la lista — HTTP 401
+OK     El creador no puede unirse a su propia partida — HTTP 401
+OK     Sin rival no se aceptan jugadas — HTTP 401
+       ronda 1: B=200 C=401
+       ronda 2: B=200 C=401
+       ronda 3: B=200 C=401
+       ronda 4: B=401 C=200
+       ronda 5: B=200 C=401
+OK     Carrera: siempre entra exactamente uno (5 rondas)
+OK     La partida queda con creador, rival y hora de unión
+       hora de unión 1795319042548 → blancas: creador
+OK     El rival abre la escucha en directo — HTTP 200
+OK     5 jugadas llegan al rival en directo — escritura→llegada (incluye el envío): mediana 98 ms, máximo 99 ms
+OK     No se puede cambiar una jugada escrita — HTTP 401
+OK     El jugador que no entró no puede escribir jugadas — HTTP 401
+OK     Jugada demasiado larga rechazada — HTTP 401
+OK     Solo el creador actualiza el latido (otro, no) — HTTP 401
+OK     El creador actualiza su latido — HTTP 200
+OK     Otro jugador no puede quitar la partida de la lista — HTTP 401
+OK     El creador la quita de la lista al llegar el rival — HTTP 200
+OK     Quien no juega no puede borrar la partida — HTTP 401
+OK     Un jugador borra la partida al terminar — HTTP 200
+OK     La partida ya no existe
+OK     Fuera de «partidas» y «abiertas» todo denegado — HTTP 401
+RESULTADO: todo correcto
+
+=== Módulo src/online contra Firebase ===
+OK     A abre partida y espera
+OK     B entra y los dos pasan a jugar — 1704 ms desde que A empezó
+OK     colores opuestos y misma partida — A=w B=b
+OK     mate del loco: los dos ven el final
+OK     resultado: jaque mate y ganan negras
+OK     latencia de cada jugada (escribir + llegar al rival) — 97 ms, 97 ms, 97 ms, 97 ms
+OK     la partida terminada se borra — HTTP 200
+OK     abandono: el otro se entera
+OK     dos jugadores a la vez se encuentran
+OK     la lista de abiertas queda sin restos de esta prueba — 0 partidas abiertas
+RESULTADO: TODO OK
