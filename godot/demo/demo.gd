@@ -1525,6 +1525,15 @@ func _tint(tint_name: String) -> Array:
 	return tints.get(tint_name, tints["peach"])
 
 
+## Cursor de escritura bien visible (el del tema por defecto es casi blanco y no se veía sobre las cajas claras;
+## lo vio Pablo, 22 nov): del color de acento, más grueso y parpadeando.
+func _show_caret(edit: LineEdit) -> void:
+	edit.add_theme_color_override("caret_color", _tint("peach")[1])
+	edit.add_theme_constant_override("caret_width", 5)
+	edit.caret_blink = true
+	edit.caret_blink_interval = 0.55
+
+
 ## Línea que mide lo que su texto (no se recorta): para filas cortas dentro de un contenedor horizontal.
 func _line(text: String, font_size: int, color: Color, font: Font) -> Label:
 	var l := _text(text, font_size, color, font)
@@ -7343,6 +7352,7 @@ func _name_block() -> VBoxContainer:
 	box.add_theme_constant_override("separation", 16)
 	box.add_child(_centered(_para("¿Cómo quieres que te vean tus rivales?", F_HEAD, _c("ink"), font_semibold)))
 	_name_edit = LineEdit.new()
+	_show_caret(_name_edit)
 	_name_edit.placeholder_text = "Tu nombre (2 a 16 letras)"
 	_name_edit.max_length = 16
 	_name_edit.text = online_name
@@ -9187,7 +9197,10 @@ func _build_ask_window() -> void:
 	match ask_state:
 		"edit", "listen":
 			ask_edit = LineEdit.new()
+			_show_caret(ask_edit)
 			ask_edit.text = ask_text
+			# El cursor, al final de lo escrito (también tras dictar).
+			ask_edit.caret_column = ask_text.length()
 			ask_edit.placeholder_text = Loc.t("Habla o escríbeme") if ask_mode == "assistant" and tutor_voice.available() else Loc.t("Pídeme lo que quieras") if ask_mode == "assistant" else (Loc.t("Escribe tu pregunta") if not tutor_voice.available() else Loc.t("Escribe o pulsa «Hablar»"))
 			ask_edit.max_length = 400
 			ask_edit.add_theme_font_size_override("font_size", F_BODY)
@@ -10278,6 +10291,7 @@ func _coach_key_block() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	_coach_key_edit = LineEdit.new()
+	_show_caret(_coach_key_edit)
 	_coach_key_edit.placeholder_text = "Clave de la API de Claude (sk-ant-…)"
 	_coach_key_edit.secret = true
 	_coach_key_edit.text = Premium.test_key
