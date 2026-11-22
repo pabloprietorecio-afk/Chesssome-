@@ -65,10 +65,10 @@ mucho un minuto a que vuelvas; si no, sigue buscando. Solo en el APK con avisos 
 ## «¿Sigues ahí?» (gesto «?», 22 nov)
 
 - En la fila de gestos hay un «?»: la app del rival contesta sola con «Sigo aquí» (`sigo/<uid>`, que ya existía).
-- Sin respuesta ni otra señal (jugada o gesto) en 20 s: «Tu rival no contesta: parece que ha cerrado la app…». Si
-  sigue sin dar señales 60 s más y le toca a él, se ofrece ganar por abandono.
+- Sin respuesta ni otra señal (jugada o gesto) en 20 s: sale la ventana de abandono («Ganar por abandono» o «Seguir
+  esperando»), sea el turno de quien sea. Si contesta después, se cierra y sale «Tu rival está pensando».
 - Las versiones anteriores de la app no contestan al «?»: si el rival tiene una versión vieja, parecerá ausente. Por eso
-  la victoria solo se ofrece en su turno y tras 80 s sin señales.
+  conviene que todos actualicen la app.
 - **Hace falta publicar las reglas** (el gesto «pregunta»). Hasta entonces el «?» dice «No se ha podido preguntar».
 
 ## App Check

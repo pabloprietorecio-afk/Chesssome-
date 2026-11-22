@@ -101,7 +101,9 @@ func _initialize() -> void:
 	demo._ping_told = false
 	demo.online.rival_alive_at = -1000000
 	demo._ping_tick()
-	_ok(demo._ping_told and demo._ping_at != -1, "«?» sin respuesta en 20 s: se avisa de que parece haber cerrado la app")
+	_ok(demo._ping_told and demo._ping_at != -1 and demo._idle_offer_node != null and demo.confirm_node == demo._idle_offer_node and _has_button(demo.confirm_node, "Ganar por abandono"), "«?» sin respuesta en 20 s: sale la ventana de abandono (ganar o seguir esperando)")
+	demo._online_idle_tick()
+	_ok(demo.confirm_node == demo._idle_offer_node and demo._ping_offer, "y la lógica del turno no la cierra")
 	demo._close_confirm()
 	demo.online.rival_alive_at = Time.get_ticks_msec() + 1
 	demo._ping_tick()
@@ -116,6 +118,15 @@ func _initialize() -> void:
 
 	print("TODO OK" if fallos == 0 else "FALLOS: %d de %d" % [fallos, hechos])
 	quit(1 if fallos > 0 else 0)
+
+
+func _has_button(node: Node, text: String) -> bool:
+	if node is Button and str(node.get_meta("label", "")) == text:
+		return true
+	for c in node.get_children():
+		if _has_button(c, text):
+			return true
+	return false
 
 
 func _until(cond: Callable) -> void:

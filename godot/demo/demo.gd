@@ -7283,7 +7283,8 @@ func _online_idle_tick() -> void:
 		_idle_offer_node = null
 		_idle_snooze_until = Time.get_ticks_msec() + 60000
 	if mover == game_color:
-		_close_idle_offer()
+		if not _ping_offer:
+			_close_idle_offer()
 		var idle := online.idle_ms(game_color)
 		if idle > limit and _idle_ask_node == null:
 			_ask_still_here()
@@ -7294,7 +7295,7 @@ func _online_idle_tick() -> void:
 		var idle2 := online.idle_ms(mover)
 		if idle2 > limit + Online.IDLE_ANSWER_MS + Online.IDLE_GRACE_MS and _idle_offer_node == null and Time.get_ticks_msec() >= _idle_snooze_until:
 			_offer_idle_win(idle2)
-		elif idle2 <= limit and _idle_offer_node != null:
+		elif idle2 <= limit and _idle_offer_node != null and not _ping_offer:
 			_close_idle_offer()
 
 
@@ -7343,6 +7344,7 @@ func _close_idle_ask() -> void:
 
 
 func _close_idle_offer() -> void:
+	_ping_offer = false
 	if _idle_offer_node != null and is_instance_valid(_idle_offer_node) and confirm_node == _idle_offer_node:
 		_close_confirm()
 	_idle_offer_node = null
@@ -8161,14 +8163,14 @@ func _send_gesture(kind: String) -> void:
 	online.send_gesture(kind)
 
 
-## «¿Sigues ahí?» al rival: su app contesta sola si está abierta. Sin respuesta en PING_SILENT_MS, se avisa de que
-## parece haber cerrado la app; si sigue sin dar señales PING_CLAIM_MS después y le toca a él, se puede ganar por
-## abandono (solo en su turno: si me toca a mí, mi jugada es la que falta).
+## «¿Sigues ahí?» al rival: su app contesta sola si está abierta. Sin respuesta en PING_SILENT_MS, sale la ventana de
+## abandono (ganar o seguir esperando). Si contesta después, la ventana se cierra y sale «Tu rival está pensando».
 const PING_SILENT_MS := 20000
-const PING_CLAIM_MS := 60000
 ## Cuándo pregunté «¿Sigues ahí?» (ms) o −1.
 var _ping_at := -1
 var _ping_told := false
+## La ventana de abandono abierta viene del «?» (la lógica del turno no la cierra).
+var _ping_offer := false
 
 
 func _ask_rival_here(again: bool = false) -> void:
@@ -8250,17 +8252,16 @@ func _ping_tick() -> void:
 			_close_idle_offer()
 		_show_rival_thinking()
 		return
-	if not _ping_told and now - _ping_at >= PING_SILENT_MS:
+	# Sin respuesta: la ventana de abandono de siempre («Ganar por abandono» / «Seguir esperando»), al momento y sea
+	# el turno de quien sea (Pablo, 22 nov). Si hay otra ventana abierta, espera a que se cierre.
+	if not _ping_told and now - _ping_at >= PING_SILENT_MS and _idle_offer_node == null and (confirm_node == null or not is_instance_valid(confirm_node)):
 		_ping_told = true
-		Input.vibrate_handheld(200)
-		_board_bubble("why", "Tu rival no contesta: parece que ha cerrado la app o se ha quedado sin conexión.", "rose", true, 4.0)
-	if _ping_told and now - _ping_at >= PING_SILENT_MS + PING_CLAIM_MS and online.on_move() != game_color and _idle_offer_node == null and (confirm_node == null or not is_instance_valid(confirm_node)):
-		var column := _popup("Tu rival no ha vuelto", Loc.f("No contesta a «¿Sigues ahí?» desde hace %d s: parece que ha cerrado la app. Puedes ganar la partida por abandono o seguir esperando.", int((now - _ping_at) / 1000)))
+		var column := _popup("Tu rival no contesta", Loc.t("Tu rival no contesta: parece que ha cerrado la app o se ha quedado sin conexión.") + " " + Loc.t("Puedes ganar la partida por abandono o seguir esperando."))
 		var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
 		column.add_child(_button("check", "Ganar por abandono", _claim_idle_win, _c("accent"), _c("accent_ink"), opts))
 		column.add_child(_button("clock", "Seguir esperando", _keep_waiting, _c("field"), _c("ink"), opts))
 		_idle_offer_node = confirm_node
-		_ping_at = -1
+		_ping_offer = true
 		Input.vibrate_handheld(200)
 
 
