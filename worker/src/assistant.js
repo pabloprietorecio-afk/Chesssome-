@@ -2,7 +2,7 @@
 // medio», «pon el tablero de mármol», «peón de rey dos pasos») y Claude elige acciones de una lista fija. La app
 // las ejecuta (y las comprueba); aquí solo se validan su forma y sus valores. Petición de Pablo (21 nov).
 
-const LEVELS = ["muy fácil", "fácil", "medio", "difícil", "muy difícil"];
+const LEVELS = ["muy fácil", "fácil", "medio", "difícil", "muy difícil", "experto"];
 const RHYTHMS = ["sin reloj", "3+2", "5+0", "10+0", "15+10", "30+0", "90+30"];
 const SCREENS = ["inicio", "opciones", "jugar", "online", "mis_partidas", "entrenar", "aprender", "mi_nivel", "finales_campeones", "como_se_usa", "licencias"];
 const SWITCHES = ["sonido", "contorno", "seguir_movil", "fijar_giro", "pista_gestos", "tutor", "pulsar_reloj"];
@@ -12,7 +12,7 @@ const tool = (name, description, properties, required = []) => ({ name, descript
 
 export const TOOLS = [
   tool("empezar_partida", "Empieza una partida contra la app.", {
-    nivel: { type: "string", enum: LEVELS, description: "Nivel del rival. «Intermedio» = medio; «principiante» = muy fácil." },
+    nivel: { type: "string", enum: LEVELS, description: "Nivel del rival. «Intermedio» = medio; «principiante» = muy fácil; «experto» = Stockfish (subniveles 1–3 con Elo 2100, 2400 y 2700; el 4, sin límite)." },
     subnivel: { type: "integer", description: "Escalón dentro del nivel (1 = el más fácil). Opcional." },
     color: { type: "string", enum: ["blancas", "negras", "azar"] },
     ritmo: { type: "string", enum: RHYTHMS },
@@ -76,7 +76,7 @@ export function assistantPrompt(text, state, language) {
     "- Las preguntas de ajedrez sobre la partida (por qué una jugada es mala, qué planea el rival) van al tutor con «preguntar_tutor».",
     `- Contesta en el idioma ${language}. Sin markdown ni emojis.`,
     "",
-    "Qué hay en la app: partidas contra la app en cinco niveles (muy fácil, fácil, medio, difícil, muy difícil, cada uno con subniveles), con o sin reloj, con blancas, negras o al azar, y la variante War Chess; partidas online contra personas (por ritmos); problemas para entrenar por nivel y por temas; un curso «Aprende desde cero»; «Finales de campeones» con vídeo; «Mi nivel y mi plan»; «Mis partidas» con el análisis; un tutor con IA en las partidas (marca cada jugada y la explica); piezas «figuras» (3D), «fichas» y «simple» (plano); materiales madera, mármol, metal e ilustrado; tema claro u oscuro; sonido; animaciones; idiomas.",
+    "Qué hay en la app: partidas contra la app en cinco niveles (muy fácil, fácil, medio, difícil, muy difícil, cada uno con subniveles) y «experto» (Stockfish dentro del móvil, de Elo 2100 a sin límite; no en War Chess), con o sin reloj, con blancas, negras o al azar, y la variante War Chess; partidas online contra personas (por ritmos); problemas para entrenar por nivel y por temas; un curso «Aprende desde cero»; «Finales de campeones» con vídeo; «Mi nivel y mi plan»; «Mis partidas» con el análisis; un tutor con IA en las partidas (marca cada jugada y la explica); piezas «figuras» (3D), «fichas» y «simple» (plano); materiales madera, mármol, metal e ilustrado; tema claro u oscuro; sonido; animaciones; idiomas.",
   ].join("\n");
   const lines = [`Estado de la app ahora: ${JSON.stringify({ ...s, legal: undefined })}`];
   if (Array.isArray(s.legal) && s.legal.length) lines.push(`Jugadas legales del jugador ahora (notación=UCI): ${s.legal.slice(0, 120).join(", ")}`);

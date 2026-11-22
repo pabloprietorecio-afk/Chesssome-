@@ -11,6 +11,8 @@ const THINK_MS := 800
 
 ## Pruebas: un Callable(fen, millis) -> String con la respuesta en bruto del complemento («move=…;cp=…;pv=…»).
 var fake: Callable
+## Pruebas: el Elo de la última jugada pedida con play().
+var last_play_elo := -1
 var _p: Object
 var _wired := false
 var _next := 0
@@ -51,6 +53,33 @@ func analyze(fen: String, millis: int = THINK_MS) -> Dictionary:
 	var raw: String = _results[id]
 	_results.erase(id)
 	return parse(raw, fen)
+
+
+## Jugada del rival (UCI) pensada `millis` ms con la fuerza limitada a `elo` (0: sin límite). "" si no hay motor o
+## falla (entonces juega el rival de la app).
+func play(fen: String, millis: int, elo: int) -> String:
+	last_play_elo = elo
+	var raw := ""
+	if fake.is_valid():
+		await get_tree().process_frame
+		raw = str(fake.call(fen, millis))
+	else:
+		var p := _plugin()
+		if p == null:
+			return ""
+		_next += 1
+		var id := _next
+		p.call("play", id, fen, millis, elo)
+		while not _results.has(id):
+			await _arrived
+		raw = _results[id]
+		_results.erase(id)
+	# Del rival solo hace falta la jugada (sin puntuación, que con poca reflexión puede no venir).
+	for part in raw.split(";", false):
+		if part.begins_with("move="):
+			var mv := part.substr(5)
+			return mv if mv.length() >= 4 and mv != "(none)" else ""
+	return ""
 
 
 func _on_result(id: int, raw: String) -> void:

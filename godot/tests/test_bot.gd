@@ -46,14 +46,16 @@ func _init() -> void:
 	var counts: Array = []
 	for g in Bot.GROUPS.size():
 		counts.append(Bot.group_levels(g).size())
-	_comprueba(Bot.LEVELS.size() == 13 and counts == [3, 4, 3, 2, 1], "13 niveles: %s" % str(counts))
+	_comprueba(Bot.LEVELS.size() == 17 and counts == [3, 4, 3, 2, 1, 4], "13 niveles de la app y 4 de Stockfish: %s" % str(counts))
+	_comprueba(Bot.uses_stockfish(13) and Bot.sf_elo(13) == 2100 and Bot.sf_elo(16) == 0 and not Bot.uses_stockfish(4), "«Experto»: Stockfish con su Elo (el último, sin límite)")
+	_comprueba(not Bot.uses_stockfish(Bot.closest_level(3000.0)), "el rival de la espera online nunca es Stockfish")
 	for g in 5:
 		_comprueba(Bot.group_levels(g)[-1] == g, "el nivel de siempre %d es el último escalón de su grupo" % g)
 	_comprueba(Bot.level_name(10) == "Medio 1" and Bot.level_name(2) == "Medio 3" and Bot.level_name(4) == "Muy difícil", "nombres: «Medio 1», «Medio 3», «Muy difícil»")
 	_comprueba(Bot.level_elo(2) == 1630 and Bot.level_elo(10) == 1230, "Elo medido, redondeado a la decena")
 	# Todos medidos y, dentro de cada grupo y entre grupos, de menos a más.
 	var ladder: Array = []
-	for g in Bot.GROUPS.size():
+	for g in Bot.APP_GROUPS:
 		for lv: int in Bot.group_levels(g):
 			ladder.append(float(Bot.LEVELS[lv].get("elo", -1.0)))
 	var rising := not ladder.has(-1.0)

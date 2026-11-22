@@ -50,9 +50,31 @@ const LEVELS := [
 	{"name": "Medio", "sub": 1, "depth": 3, "noise": 110, "random": 0.05, "think": 1.5, "elo": 1229.0, "rd": 36.5},
 	{"name": "Medio", "sub": 2, "depth": 3, "noise": 45, "random": 0.01, "think": 1.5, "elo": 1442.0, "rd": 45.5},
 	{"name": "Difícil", "sub": 1, "depth": 4, "noise": 0, "random": 0.0, "think": 2.5, "elo": 1733.0, "rd": 42.0},
+	# «Experto» (22 nov, decisión de Pablo): juega Stockfish 19 dentro del móvil (android_motor/), con la fuerza
+	# limitada por UCI_Elo («sf_elo»; 0 = sin límite). Es la misma escala con la que se midieron los niveles de arriba
+	# (Stockfish con UCI_Elo, 60 s + 0,6 s), pero en el móvil piensa «think» segundos por jugada y no está medido en
+	# la app: de ahí el rd grande. El último, sin límite, no tiene «elo» y no cuenta para el nivel de juego. Sin
+	# Stockfish (escritorio, pruebas) juegan como «Muy difícil», pero la app no los ofrece (demo.gd, _level_groups).
+	{"name": "Experto", "sub": 1, "depth": 12, "noise": 0, "random": 0.0, "think": 1.5, "sf_elo": 2100, "elo": 2100.0, "rd": 100.0},
+	{"name": "Experto", "sub": 2, "depth": 12, "noise": 0, "random": 0.0, "think": 1.5, "sf_elo": 2400, "elo": 2400.0, "rd": 100.0},
+	{"name": "Experto", "sub": 3, "depth": 12, "noise": 0, "random": 0.0, "think": 2.0, "sf_elo": 2700, "elo": 2700.0, "rd": 100.0},
+	{"name": "Experto", "sub": 4, "depth": 12, "noise": 0, "random": 0.0, "think": 2.0, "sf_elo": 0},
 ]
-## Los cinco grupos, de más fácil a más difícil.
-const GROUPS := ["Muy fácil", "Fácil", "Medio", "Difícil", "Muy difícil"]
+## Los grupos, de más fácil a más difícil. Los cinco primeros son del rival de la app; «Experto» es Stockfish
+## (solo si está en el móvil).
+const GROUPS := ["Muy fácil", "Fácil", "Medio", "Difícil", "Muy difícil", "Experto"]
+## Grupos del rival de la app (sin Stockfish).
+const APP_GROUPS := 5
+
+
+## El nivel lo juega Stockfish.
+static func uses_stockfish(lvl: int) -> bool:
+	return lvl >= 0 and lvl < LEVELS.size() and (LEVELS[lvl] as Dictionary).has("sf_elo")
+
+
+## Elo de Stockfish del nivel (0 = sin límite).
+static func sf_elo(lvl: int) -> int:
+	return int((LEVELS[clampi(lvl, 0, LEVELS.size() - 1)] as Dictionary).get("sf_elo", 0))
 
 
 ## Índices de los niveles de un grupo, del escalón más fácil al más difícil.
@@ -87,7 +109,7 @@ static func closest_level(rating: float) -> int:
 	var best := 0
 	var gap := INF
 	for i in LEVELS.size():
-		if not LEVELS[i].has("elo"):
+		if not LEVELS[i].has("elo") or LEVELS[i].has("sf_elo"):
 			continue
 		var d := absf(float(LEVELS[i]["elo"]) - rating)
 		if d < gap:

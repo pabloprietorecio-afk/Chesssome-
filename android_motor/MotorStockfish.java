@@ -67,7 +67,26 @@ public class MotorStockfish extends GodotPlugin {
 		worker.execute(() -> {
 			String result;
 			try {
-				result = run(fen, millis);
+				result = run(fen, millis, 0);
+			} catch (Exception e) {
+				shutdown();
+				result = "error=" + e.getClass().getSimpleName();
+			}
+			final String r = result;
+			runOnRenderThread(() -> emitSignal("analisis", id, r));
+		});
+	}
+
+	/**
+	 * Juega como rival: la jugada elegida en `millis` ms con la fuerza limitada a `elo` (UCI_LimitStrength y UCI_Elo,
+	 * de 1320 a 3190 en Stockfish) o sin límite con `elo` 0. Llega por la misma señal «analisis» (move=…).
+	 */
+	@UsedByGodot
+	public void play(final int id, final String fen, final int millis, final int elo) {
+		worker.execute(() -> {
+			String result;
+			try {
+				result = run(fen, millis, elo);
 			} catch (Exception e) {
 				shutdown();
 				result = "error=" + e.getClass().getSimpleName();
@@ -108,8 +127,15 @@ public class MotorStockfish extends GodotPlugin {
 		waitFor("readyok");
 	}
 
-	private String run(String fen, int millis) throws Exception {
+	private String run(String fen, int millis, int elo) throws Exception {
 		if (process == null || !process.isAlive()) start();
+		// El análisis (tutor, pistas) siempre a toda fuerza; el rival, con su Elo.
+		if (elo > 0) {
+			send("setoption name UCI_LimitStrength value true");
+			send("setoption name UCI_Elo value " + Math.max(1320, Math.min(3190, elo)));
+		} else {
+			send("setoption name UCI_LimitStrength value false");
+		}
 		send("position fen " + fen);
 		send("go movetime " + Math.max(50, Math.min(millis, 5000)));
 		String last = "";

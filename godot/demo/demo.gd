@@ -6422,6 +6422,7 @@ const GAME_LEVEL_TEXT := [
 	"Calcula un par de jugadas y no regala piezas.",
 	"Calcula más lejos y casi no falla en lo sencillo.",
 	"Lo más fuerte que tiene la app. Piensa unos segundos.",
+	"Stockfish, el motor de ajedrez, dentro de tu móvil. De muy fuerte a imbatible.",
 ]
 
 
@@ -6441,8 +6442,17 @@ func _is_last_of_unit(lesson_id: String) -> bool:
 	return str(lessons[lessons.size() - 1]["id"]) == lesson_id
 
 
-const GROUP_TINTS := ["mint", "sky", "butter", "peach", "rose"]
-const GROUP_ICONS := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen"]
+const GROUP_TINTS := ["mint", "sky", "butter", "peach", "rose", "lilac"]
+const GROUP_ICONS := ["piece_pawn", "piece_knight", "piece_bishop", "piece_rook", "piece_queen", "piece_king"]
+
+
+## Grupos de nivel que se ofrecen: los cinco de la app y «Experto» (Stockfish) si está en el móvil, fuera de Kids
+## y de War Chess (Stockfish no sabe jugar con blindajes).
+func _level_groups() -> Array:
+	var out: Array = range(Bot.APP_GROUPS)
+	if local_engine != null and local_engine.available() and not kids and not game_war:
+		out.append(Bot.APP_GROUPS)
+	return out
 ## Último subnivel elegido en cada grupo (se guarda): sale marcado en la ventana de subniveles.
 var game_sublevels := {}
 
@@ -6473,6 +6483,8 @@ func _pick_sublevel(g: int) -> void:
 	for lv: int in levels:
 		var elo := Bot.level_elo(lv)
 		var text := Loc.f("Elo %d", elo) if elo >= 0 else Loc.t("Elo por medir")
+		if Bot.uses_stockfish(lv) and Bot.sf_elo(lv) == 0:
+			text = Loc.t("Fuerza máxima: no cuenta para tu nivel")
 		var icon := "check" if lv == last else str(GROUP_ICONS[g])
 		var b := _option_button(icon, str(GROUP_TINTS[g]), Bot.level_name(lv), text, func() -> void:
 			_close_confirm()
@@ -6517,8 +6529,8 @@ func _open_game_setup(ask: bool = false) -> void:
 	body.add_child(_spacer(30.0))
 	body.add_child(_text("RIVAL", F_CAP, _c("quiet"), font_semibold))
 	body.add_child(_spacer(12.0))
-	# Los cinco grupos de siempre; cada uno abre sus subniveles (Bot.group_levels).
-	for g in Bot.GROUPS.size():
+	# Los cinco grupos de siempre (y «Experto» con Stockfish); cada uno abre sus subniveles (Bot.group_levels).
+	for g: int in _level_groups():
 		var text := Loc.t(str(GAME_LEVEL_TEXT[g]))
 		var span := _group_elo_span(g)
 		if span != "":
@@ -6591,7 +6603,7 @@ var _pick_level_next := false
 ## Elegir el nivel del rival, en una ventana: los cinco niveles (cada uno abre sus subniveles).
 func _open_level_picker() -> void:
 	var column := _popup(Loc.t("Elige el nivel del rival"), "")
-	for g in Bot.GROUPS.size():
+	for g: int in _level_groups():
 		var text := Loc.t(str(GAME_LEVEL_TEXT[g]))
 		var span := _group_elo_span(g)
 		if span != "":
@@ -8373,9 +8385,28 @@ func _game_bot_turn() -> void:
 	# Con reloj, el rival reparte su tiempo: una treintava parte de lo que le queda, más casi todo el incremento.
 	if game_clocked:
 		game_bot.time_cap = maxf(0.2, game_clock[1 - game_color] / 1000.0 / 30.0 + game_inc_ms / 1000.0 * 0.8)
-	_game_thread = Thread.new()
 	var started := Time.get_ticks_msec()
+	if Bot.uses_stockfish(game_bot.level) and str(game.get("variant", "")) == "" and local_engine.available():
+		_game_sf_turn(pos, my_run, started)
+		return
+	_game_thread = Thread.new()
 	_game_thread.start(_game_think.bind(game_bot, pos, my_run, started))
+
+
+## Rival «Experto»: juega Stockfish del móvil con su Elo. Si falla, el rival de la app.
+func _game_sf_turn(pos: Chess, my_run: int, started: int) -> void:
+	var ms := int(float(Bot.LEVELS[game_bot.level]["think"]) * 1000.0)
+	if game_clocked:
+		ms = mini(ms, int(maxf(0.2, game_clock[1 - game_color] / 1000.0 / 30.0 + game_inc_ms / 1000.0 * 0.8) * 1000.0))
+	var uci := await local_engine.play(pos.fen(), maxi(100, ms), Bot.sf_elo(game_bot.level))
+	if my_run != run_id or mode != "game":
+		return
+	var m := pos.find_uci(uci)
+	if m < 0:
+		_game_thread = Thread.new()
+		_game_thread.start(_game_think.bind(game_bot, pos, my_run, started))
+		return
+	_game_bot_done(pos, m, my_run, started)
 
 
 
@@ -9360,7 +9391,9 @@ func _run_assistant_action(action: String, a: Dictionary) -> String:
 		"empezar_partida":
 			if kids:
 				return Loc.t("En el modo Kids las partidas se eligen desde el curso.")
-			var g := maxi(0, ["muy fácil", "fácil", "medio", "difícil", "muy difícil"].find(str(a.get("nivel", "medio"))))
+			var g := maxi(0, ["muy fácil", "fácil", "medio", "difícil", "muy difícil", "experto"].find(str(a.get("nivel", "medio"))))
+			if g == Bot.APP_GROUPS and not _level_groups().has(g):
+				return Loc.t("El nivel «Experto» es Stockfish y necesita la app instalada desde el APK completo, en una partida normal (no en War Chess). Prueba con «Muy difícil».")
 			var levels := Bot.group_levels(g)
 			var lv := int(levels[clampi(int(a.get("subnivel", 1)) - 1, 0, levels.size() - 1)]) if a.has("subnivel") else int(game_sublevels.get(str(g), levels[0]))
 			if a.has("color"):
@@ -10368,13 +10401,29 @@ func _coach_retry() -> void:
 	_refresh()
 
 
-## Pista: la mejor jugada que encuentra el rival «Medio» (sin sus errores a propósito), con una flecha.
+const HINT_MS := 600
+var _hint_busy := false
+
+
+## Pista: con Stockfish del móvil, su mejor jugada; si no, la mejor jugada que encuentra el rival «Medio» (sin sus errores a propósito), con una flecha.
 func _game_hint() -> void:
-	if game_state != "play":
+	if game_state != "play" or _hint_busy:
 		return
-	var helper := Bot.new(2, str(game.get("variant", "")))
-	helper.exact = true
-	var m := helper.choose(view.board.chess.copy())
+	var m := -1
+	if str(game.get("variant", "")) == "" and local_engine.available():
+		# Con Stockfish del móvil: la mejor de verdad (medio segundo).
+		_hint_busy = true
+		var my_run := run_id
+		var fen := view.board.chess.fen()
+		var a: Dictionary = await local_engine.analyze(fen, HINT_MS)
+		_hint_busy = false
+		if my_run != run_id or game_state != "play" or view.board.chess.fen() != fen:
+			return
+		m = view.board.chess.find_uci(str(a.get("move", "")))
+	if m < 0:
+		var helper := Bot.new(2, str(game.get("variant", "")))
+		helper.exact = true
+		m = helper.choose(view.board.chess.copy())
 	if m < 0:
 		return
 	if WarChess.is_armor_move(m):
@@ -12121,9 +12170,46 @@ func _open_detail() -> void:
 	body.add_child(_detail_progress)
 	body.add_child(_spacer(8.0, true))
 	_stop_game_thread()
-	_review_thread = Thread.new()
 	var my_run := run_id
+	if str(game.get("variant", "")) == "" and local_engine.available():
+		_detail_with_sf(game_history.duplicate(), game_moves.duplicate(), game_color, my_run)
+		return
+	_review_thread = Thread.new()
 	_review_thread.start(_detail_work.bind(game_history.duplicate(), game_moves.duplicate(), game_color, my_run))
+
+
+## Análisis jugada a jugada con Stockfish del móvil: cada posición de la partida se analiza una vez (la de después
+## de tu jugada es la de antes de la del rival). Los textos salen igual que con el motor de la app (GameDetail).
+func _detail_with_sf(fens: Array, moves: Array, color: int, my_run: int) -> void:
+	var mine: Array = []
+	for i in moves.size():
+		if i < fens.size() and Chess.from_fen(str(fens[i])).turn == color:
+			mine.append(i)
+	var seen := {}
+	var found: Array = []
+	var done := 0
+	for i: int in mine:
+		var pos := Chess.from_fen(str(fens[i]))
+		var m := pos.find_uci(str(moves[i]))
+		done += 1
+		_detail_tick(done, mine.size())
+		if m < 0:
+			continue
+		var after_fen := str(fens[i + 1]) if i + 1 < fens.size() else pos.after(m).fen()
+		var pair: Array = []
+		for f: String in [pos.fen(), after_fen]:
+			if not seen.has(f):
+				seen[f] = await local_engine.analyze(f, DETAIL_MS) if not Chess.from_fen(f).legal_moves().is_empty() else {}
+				if my_run != run_id or mode != "game":
+					return
+			pair.append(seen[f])
+		var pre := GameDetail.pre_from_engine(pos, m, pair[0], pair[1])
+		found.append(GameDetail.entry(null, pos, m, color, i, 0.6, pre))
+	_detail_ready(found, my_run)
+
+
+## Tiempo de Stockfish por posición en el análisis (unos 40 posiciones en una partida de 40 jugadas: ~20 s).
+const DETAIL_MS := 500
 
 
 func _detail_work(fens: Array, moves: Array, color: int, my_run: int) -> void:

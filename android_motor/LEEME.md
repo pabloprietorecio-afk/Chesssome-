@@ -23,3 +23,11 @@ antes de publicar):
   la app; las órdenes de compilación están en `.github/workflows/ci.yml`.
 - Si algún día se cambia el código de Stockfish, hay que publicar esos cambios y enlazarlos ahí.
 - La app habla con Stockfish como programa aparte (UCI), como cualquier interfaz de ajedrez.
+
+## Más allá del tutor (22 nov)
+
+- **Rival «Experto»** (core/bot.gd, niveles 13–16): `play(id, fen, millis, elo)` juega con `UCI_LimitStrength` y
+  `UCI_Elo` (2100, 2400, 2700; 0 = sin límite). Solo se ofrece si Stockfish está en el móvil y fuera de Kids y War Chess.
+- **«Pista»**: la mejor jugada de Stockfish (600 ms); sin él, la del rival «Medio» de la app.
+- **Análisis de la partida**: cada posición una vez (500 ms) y la nota por la caída de la probabilidad de ganar,
+  con los umbrales de chess.com, como el tutor (GameDetail.pre_from_engine).

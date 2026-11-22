@@ -42,7 +42,10 @@ static func analyze(fens: Array, moves: Array, color: int, seconds: float = 0.6,
 	return out
 
 
-static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: float) -> Dictionary:
+## `pre`: la valoración ya hecha con Stockfish (pre_from_engine); sin ella, la calcula `bot`. Con Stockfish la
+## nota sale de cuánto baja la probabilidad de ganar (umbrales de chess.com, como el tutor: CoachAI.verdict_for),
+## no de los centipeones: así un error en una posición ya ganada no sale como «error grave».
+static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: float, pre: Dictionary = {}) -> Dictionary:
 	var san := SanEs.san(pos, m)
 	var legal := pos.legal_moves()
 	var e := {"ply": ply, "n": ply / 2 + 1, "san": san, "fen": pos.fen(), "uci": Chess.uci(m), "paras": [], "arrows": []}
@@ -54,7 +57,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 		e["paras"] = _texts(w["paras"], 3)
 		e["arrows"] = [{"from": from, "to": to, "tone": "good"}]
 		return _finish(e)
-	var a := bot.analyse(pos, m, 4, seconds)
+	var a := pre if not pre.is_empty() else (bot.analyse(pos, m, 4, seconds) if bot != null else {})
 	if a.is_empty() or int(a.get("depth", 0)) == 0:
 		e["verdict"] = GOOD
 		e["paras"] = _texts(MoveWhy.move_paras(pos, m, color), 2)
@@ -67,7 +70,10 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 	var verdict := GOOD
 	var missed_mate := bs >= NEAR_MATE and ps < NEAR_MATE
 	var allows_mate := ps <= -NEAR_MATE and bs > -NEAR_MATE
-	if best == m or loss <= 30:
+	if a.has("drop"):
+		var v := CoachAI.verdict_for(float(a["drop"]), best == m, allows_mate, missed_mate)
+		verdict = {"best": BEST, "inaccuracy": INACCURACY, "mistake": MISTAKE, "blunder": BLUNDER}.get(v, GOOD)
+	elif best == m or loss <= 30:
 		verdict = BEST if best == m else GOOD
 	elif allows_mate:
 		verdict = BLUNDER
@@ -109,7 +115,7 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 			else:
 				paras.append("Deja al rival un mate forzado.")
 		else:
-			var r := bot.analyse(after, -1, 3, seconds * 0.5)
+			var r := {"best": int(a["reply"])} if a.has("reply") and int(a["reply"]) >= 0 else ({} if a.has("reply") or bot == null else bot.analyse(after, -1, 3, seconds * 0.5))
 			if not r.is_empty():
 				var reply := int(r["best"])
 				var tag := MoveWhy.short_tag(after, reply)
@@ -136,6 +142,44 @@ static func entry(bot: Bot, pos: Chess, m: int, color: int, ply: int, seconds: f
 		# Para enseñar la mejor en el tablero, con cómo seguiría la partida.
 		e["best_uci"] = Chess.uci(best)
 	return _finish(e)
+
+
+## La valoración de Stockfish (LocalEngine: valores desde las blancas) en la forma de Bot.analyse, para `entry`:
+## `a` es el análisis de la posición y `b` el de después de la jugada ({} si allí ya no hay jugadas). Además, «drop»
+## (lo que baja la probabilidad de ganar, en puntos) y «reply» (la mejor respuesta del rival, o −1).
+static func pre_from_engine(pos: Chess, m: int, a: Dictionary, b: Dictionary) -> Dictionary:
+	var best := pos.find_uci(str(a.get("move", "")))
+	if best < 0:
+		return {}
+	var sign := 1 if pos.turn == 0 else -1
+	var after := pos.after(m)
+	var bs := _engine_score(a) * sign
+	var ps := 0
+	var reply := -1
+	var w_after := 50.0
+	if b.is_empty():
+		if not after.legal_moves().is_empty():
+			return {}
+		# Mate o ahogado con tu jugada.
+		ps = Bot.MATE if after.in_check() else 0
+		w_after = (100.0 if sign > 0 else 0.0) if after.in_check() else 50.0
+	else:
+		ps = _engine_score(b) * sign
+		reply = after.find_uci(str(b.get("move", "")))
+		w_after = CoachAI.white_win(b)
+	if best == m:
+		ps = bs
+	var w_before := CoachAI.white_win(a)
+	var drop := (w_before - w_after) * float(sign)
+	return {"best": best, "best_score": bs, "played_score": ps, "depth": maxi(1, int(a.get("depth", 1))), "reply": reply, "drop": maxf(0.0, drop) if best != m else 0.0}
+
+
+## Puntuación de un análisis de Stockfish desde las blancas, en la escala de Bot (mate = ±(MATE − jugadas)).
+static func _engine_score(e: Dictionary) -> int:
+	if e.get("mate") != null:
+		var n := int(e["mate"])
+		return (Bot.MATE - absi(n)) * (1 if n > 0 else -1)
+	return int(e.get("centipawns", 0))
 
 
 ## Lo que se dice de la posición a la que llevaba la mejor jugada (que no se jugó).
