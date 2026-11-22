@@ -1,0 +1,38 @@
+name: Curva de puntos esperados (datos a una rama)
+
+# Copia la medición de una ejecución de «Curva de puntos esperados (Lichess)» a la rama «curva-resultado»
+# (curva_cruda.json y volcado.txt), para poder ajustarla con tools/curva/ajustar.py sin descargar artefactos.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Número de la ejecución de la medición"
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  copiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: curva-cruda
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: /tmp/curva
+      - name: Publicar en la rama curva-resultado
+        run: |
+          python3 -c "import json; d=json.load(open('/tmp/curva/curva_cruda.json')); print(d['partidas_usadas'], 'partidas usadas de', d['partidas_leidas'], '-', len(d['celdas']), 'casillas')"
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan curva-resultado
+          git rm -rf . -q
+          cp /tmp/curva/curva_cruda.json /tmp/curva/volcado.txt .
+          echo "${{ inputs.run_id }}" > ejecucion.txt
+          git add curva_cruda.json volcado.txt ejecucion.txt
+          git commit -qm "Medición de la curva (ejecución ${{ inputs.run_id }})"
+          git push -f origin curva-resultado
