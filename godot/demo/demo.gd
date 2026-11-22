@@ -315,6 +315,8 @@ var game_note := ""
 ## Profesor IA (premium, core/coach_ai.gd): la corrección de la última jugada del jugador, aparte de game_note
 ## (que dice qué ha jugado el rival). coach_from_ai: la ha redactado la IA (si no, es el texto comprobado).
 var coach: CoachAI
+## Compras en Google Play (Premium y recargas).
+var pagos: Pagos
 var coach_note := ""
 var coach_from_ai := false
 var coach_waiting := false
@@ -1191,6 +1193,12 @@ func _ready() -> void:
 	coach.lesson_ready.connect(_on_coach_lesson)
 	coach.asked.connect(_on_tutor_answer)
 	coach.assisted.connect(_on_assistant_reply)
+	coach.quota.connect(_on_quota)
+	pagos = Pagos.new()
+	add_child(pagos)
+	pagos.setup(coach)
+	pagos.changed.connect(_on_pagos_changed)
+	pagos.note.connect(_on_pagos_note)
 	tutor_voice = TutorVoice.new()
 	add_child(tutor_voice)
 	tutor_voice.server_url = CoachAI.voice_url(coach.cfg)
@@ -1212,6 +1220,10 @@ func _ready() -> void:
 	if use_settings:
 		_load_settings()
 		_load_course_progress()
+		# Compras y estado de la cuenta (Premium, cupo): al abrir la app, sin esperar a nada.
+		pagos.start()
+		if CoachAI.tutor_url(coach.cfg) != "":
+			coach.premium_call("/premium/estado", {})
 	Loc.apply(language)
 
 	bg = SkyBackdrop.new()
@@ -6505,6 +6517,11 @@ func _group_elo_span(g: int) -> String:
 ## Al tocar un nivel: sus subniveles, con su Elo, en una ventana semitransparente con «Cancelar». Un nivel de un
 ## solo escalón («Muy difícil») empieza directamente.
 func _pick_sublevel(g: int) -> void:
+	# «Experto» (Stockfish) es de Premium.
+	if g == Bot.APP_GROUPS and not Premium.active():
+		_close_confirm()
+		_open_premium_offer("experto")
+		return
 	var levels := Bot.group_levels(g)
 	if levels.size() == 1:
 		_start_level(int(levels[0]))
@@ -8981,7 +8998,6 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 		coach_debug = "Profesor (prueba) · %s · premium %s · activo %s · kids %s · online %s · reloj %s · variante «%s»" % [uci, Premium.active(), Premium.coach_on, kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))]
 	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), game_serial):
 		coach_debug += " → no se aplica"
-		_coach_trial_over()
 		return
 	coach_trial_game = Premium.use_trial(game_serial)
 	coach_debug += " → analizando…"
@@ -9006,17 +9022,17 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 
 ## Se acabaron las partidas gratis con profesor: se avisa una vez, en el bloque del profesor de la tarjeta.
 func _coach_trial_over() -> void:
-	if Premium.active() or Premium.trial_left() > 0 or Premium.trial_told or not Premium.coach_on:
+	if Premium.explain_allowed(game_serial) or Premium.trial_told or not Premium.coach_on:
 		return
 	if kids or bool(game.get("online", false)) or game_clocked or str(game.get("variant", "")) != "":
 		return
 	Premium.trial_told = true
 	Premium.save_state()
 	coach_trial_game = 0
-	coach_note = Loc.f("Has jugado tus %d partidas gratis con el profesor. Para seguir con él, hazte premium.", [Premium.TRIAL_GAMES])
+	# Debajo de la chapa de la jugada (las chapas siguen siendo gratis).
+	var told := Loc.f("Has jugado tus %d partidas gratis con explicaciones. Las chapas de cada jugada siguen gratis; para las explicaciones y las preguntas, hazte Premium.", [Premium.TRIAL_GAMES])
+	coach_note = (coach_note + "\n\n" + told) if coach_note != "" else told
 	coach_full = coach_note
-	coach_from_ai = false
-	_refresh()
 
 
 ## En otro hilo: el análisis de la jugada (unos segundos como mucho).
@@ -9183,6 +9199,10 @@ func _on_coach_lesson(run: int, gen: int, data: Dictionary) -> void:
 	if run != run_id or gen != _coach_gen or mode != "game" or coach_lesson.is_empty():
 		return
 	coach_lesson["ready"] = true
+	if int(data.get("_error", 0)) == 402:
+		_close_lesson()
+		_open_premium_offer(str(data.get("_motivo", "premium")))
+		return
 	if data.is_empty():
 		_refresh()
 		return
@@ -9220,6 +9240,9 @@ func _lesson_steps(line: String = "") -> Array:
 ## jugada, con flechas; después, si había una mejor, enseña la mejor. Solo en tu turno (el rival no se interrumpe).
 func _open_lesson() -> void:
 	if coach_lesson.is_empty() or mode != "game" or game_state != "play" or _lesson_steps("played").is_empty():
+		return
+	if not Premium.explain_allowed(game_serial):
+		_open_premium_offer("premium")
 		return
 	_close_confirm()
 	_coach_request_lesson()
@@ -9312,6 +9335,9 @@ func _tutor_can_ask() -> bool:
 
 func _open_ask() -> void:
 	if not _tutor_can_ask():
+		return
+	if not Premium.explain_allowed(game_serial):
+		_open_premium_offer("premium")
 		return
 	if ask_mode != "tutor":
 		ask_mode = "tutor"
@@ -9628,6 +9654,9 @@ func _run_assistant_action(action: String, a: Dictionary) -> String:
 			if kids:
 				return Loc.t("En el modo Kids las partidas se eligen desde el curso.")
 			var g := maxi(0, ["muy fácil", "fácil", "medio", "difícil", "muy difícil", "experto"].find(str(a.get("nivel", "medio"))))
+			if g == Bot.APP_GROUPS and _level_groups().has(g) and not Premium.active():
+				_open_premium_offer("experto")
+				return Loc.t("El rival «Experto» (Stockfish) es de Premium.")
 			if g == Bot.APP_GROUPS and not _level_groups().has(g):
 				return Loc.t("El nivel «Experto» es Stockfish y necesita la app instalada desde el APK completo, en una partida normal (no en War Chess). Prueba con «Muy difícil».")
 			var levels := Bot.group_levels(g)
@@ -9793,6 +9822,12 @@ func _ask_judged() -> Dictionary:
 
 func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:
 	if run != run_id or gen != _ask_gen or ask_state != "wait":
+		return
+	if int(data.get("_error", 0)) == 402:
+		# Sin cupo: no es un error, es la oferta de Premium (o de una recarga).
+		ask_state = ""
+		_close_confirm()
+		_open_premium_offer(str(data.get("_motivo", "premium")))
 		return
 	if data.has("_error"):
 		ask_state = "error"
@@ -10448,8 +10483,6 @@ func _tutor_blocked_reason() -> String:
 		return "Con reloj no hay tutor, como en una partida oficial. Juega una partida sin reloj para tenerlo."
 	if str(game.get("variant", "")) != "":
 		return "El tutor solo va en las partidas de ajedrez normal, no en las variantes."
-	if not Premium.coach_allowed(game_serial):
-		return Loc.f("Has jugado tus %d partidas gratis con el tutor. Para seguir con él, hace falta la versión premium.", [Premium.TRIAL_GAMES])
 	return ""
 
 
@@ -10478,6 +10511,74 @@ func _on_tutor_toggle() -> void:
 	_refresh()
 
 
+## El servidor manda el estado de la cuenta (Premium y cupo).
+func _on_quota(st: Dictionary) -> void:
+	Premium.set_status(st)
+	_sync_sheet()
+
+
+func _on_pagos_changed() -> void:
+	_sync_sheet()
+	if _premium_offer_node != null and is_instance_valid(_premium_offer_node) and confirm_node == _premium_offer_node:
+		_open_premium_offer(_premium_offer_reason)
+
+
+func _on_pagos_note(text: String) -> void:
+	var column := _popup("A Chess Way Premium", text)
+	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
+
+
+## Ventana de Premium: qué trae, precio (el de Google Play) y comprar, recargar o restaurar. `reason`: «premium»
+## (no tiene explicaciones), «cupo» (ha gastado las del mes), «experto» (el rival Stockfish) u «opciones».
+var _premium_offer_node: Control
+var _premium_offer_reason := ""
+
+
+func _open_premium_offer(reason: String = "opciones") -> void:
+	_premium_offer_reason = reason
+	var head: String = {
+		"premium": "Las explicaciones y las preguntas al tutor son de Premium.",
+		"cupo": "Has usado las explicaciones de este mes.",
+		"experto": "El rival «Experto» (Stockfish) es de Premium.",
+	}.get(reason, "")
+	var column := _popup("A Chess Way Premium", head)
+	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	var st := Premium.server
+	if Premium.active():
+		column.add_child(_para(Loc.f("Premium activo: te quedan %d explicaciones este mes.", int(st.get("quedan", 0))) + (" " + Loc.f("Y %d de recargas.", int(st.get("extra", 0))) if int(st.get("extra", 0)) > 0 else ""), F_BODY, _c("ink"), font_semibold))
+	else:
+		for line: String in ["%d explicaciones o preguntas al tutor cada mes", "Rival «Experto»: Stockfish, de muy fuerte a imbatible", "Las chapas de cada jugada y el asistente, gratis para todos"]:
+			column.add_child(_para("• " + (Loc.f(line, _premium_monthly()) if line.contains("%d") else Loc.t(line)), F_BODY, _c("ink"), font_regular))
+		var price := str(pagos.prices.get(Pagos.SUB, ""))
+		var label := Loc.f("Hazte Premium · %s/mes", price) if price != "" else Loc.t("Hazte Premium")
+		column.add_child(_button("party", label, _buy.bind(Pagos.SUB), _c("accent"), _c("accent_ink"), opts))
+		column.add_child(_para(Loc.t("Se renueva cada mes. Puedes cancelarla cuando quieras en Google Play."), F_FOOT, _c("quiet"), font_regular))
+	if Premium.active() or reason == "cupo" or int(st.get("extra", 0)) > 0:
+		var pack := str(pagos.prices.get(Pagos.PACK, ""))
+		var tint := _tint("sky")
+		column.add_child(_button("bulb", Loc.f("100 explicaciones más · %s", pack) if pack != "" else Loc.t("100 explicaciones más"), _buy.bind(Pagos.PACK), tint[0], tint[1], opts))
+	column.add_child(_button("retry", "Restaurar compras", _restore_purchases, _c("field"), _c("ink"), opts))
+	if not pagos.available():
+		column.add_child(_para(Loc.t("Las compras solo funcionan en la app instalada desde Google Play."), F_FOOT, _c("quiet"), font_regular))
+	_premium_offer_node = confirm_node
+
+
+func _premium_monthly() -> int:
+	return int(Premium.server.get("mes", 300))
+
+
+func _buy(id: String) -> void:
+	_close_confirm()
+	pagos.buy(id)
+
+
+func _restore_purchases() -> void:
+	_close_confirm()
+	pagos.restore()
+	if CoachAI.tutor_url(coach.cfg) != "":
+		coach.premium_call("/premium/estado", {})
+
+
 ## Opciones → Premium. Las pruebas (activar premium sin comprar y pegar una clave de la API) solo salen en las
 ## compilaciones de depuración.
 func _premium_rows(box: VBoxContainer) -> void:
@@ -10486,12 +10587,15 @@ func _premium_rows(box: VBoxContainer) -> void:
 	box.add_child(_caption("Premium"))
 	if Premium.test_allowed():
 		box.add_child(_switch_row("party", "butter", "Premium de prueba", "Solo en el APK de pruebas: activa la versión premium sin comprarla.", Premium.test_on, _set_premium_test))
-	if not Premium.active() and Premium.trial_left() <= 0:
-		box.add_child(_para(Loc.f("Has jugado tus %d partidas gratis con el profesor IA. Para seguir con él, hace falta la versión premium.", [Premium.TRIAL_GAMES]), F_SUB, _c("quiet"), font_regular))
-		return
-	var sub := "Te explica tus errores mientras juegas contra el rival (partidas sin reloj)."
-	if not Premium.active():
-		sub = Loc.t(sub) + " " + Loc.f("Te quedan %d de %d partidas gratis.", [Premium.trial_left(), Premium.TRIAL_GAMES])
+	var st := Premium.server
+	var state := Loc.f("Premium activo: te quedan %d explicaciones este mes.", int(st.get("quedan", 0))) if Premium.active() \
+		else Loc.f("Te quedan %d de %d partidas gratis con explicaciones.", [Premium.trial_left(), Premium.TRIAL_GAMES])
+	if int(st.get("extra", 0)) > 0:
+		state += " " + Loc.f("Y %d de recargas.", int(st.get("extra", 0)))
+	box.add_child(_para(state, F_SUB, _c("ink"), font_semibold))
+	var tint := _tint("butter")
+	box.add_child(_button("party", "Ver Premium" if not Premium.active() else "Premium y recargas", _open_premium_offer.bind("opciones"), tint[0], tint[1], {"font_size": F_SUB, "height": 104.0, "icon": 50.0}))
+	var sub := "Te marca cada jugada y te explica tus errores mientras juegas contra el rival (partidas sin reloj)."
 	box.add_child(_switch_row("bulb", "lilac", "Profesor IA en las partidas", sub, Premium.coach_on, _set_coach_on))
 	if Premium.test_allowed() and CoachAI.endpoint_mode(coach.cfg, "", true) != "server":
 		box.add_child(_coach_key_block())
@@ -10707,6 +10811,8 @@ func _coach_retry_after(fen: String, verdict: String, best: String) -> void:
 	_retry_target = {}
 	if bad and best != "" and fen != "":
 		_retry = {"fen": fen, "best": best}
+	# Se acabaron las partidas gratis con explicaciones: se dice una vez, con la primera chapa.
+	_coach_trial_over()
 
 
 ## Misma posición (piezas, turno, enroques y al paso; sin los contadores de jugadas).

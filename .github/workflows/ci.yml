@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video test_dia test_retos test_espera test_niveles test_neon test_reloj test_war test_war_app test_opciones_partida test_volver_analisis test_practica test_repaso_fallos test_defensas test_por_que test_idioma_ventana test_notas test_profesor_ia test_profesor_app test_espera_bot test_tutor test_stockfish_app; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video test_dia test_retos test_espera test_niveles test_neon test_reloj test_war test_war_app test_opciones_partida test_volver_analisis test_practica test_repaso_fallos test_defensas test_por_que test_idioma_ventana test_notas test_profesor_ia test_profesor_app test_espera_bot test_tutor test_stockfish_app test_premium; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -483,7 +483,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/godot/addons
           cp -r res/addons/* $GITHUB_WORKSPACE/godot/addons/
           cd $GITHUB_WORKSPACE
-          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/tutor_voz/plugin.cfg", "res://addons/motor_stockfish/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/NotificationSchedulerPlugin/plugin.cfg", "res://addons/espera_online/plugin.cfg", "res://addons/tutor_voz/plugin.cfg", "res://addons/motor_stockfish/plugin.cfg", "res://addons/pagos_google/plugin.cfg", "res://addons/youtube_cine/plugin.cfg")\n' >> godot/project.godot
           tail -4 godot/project.godot
           ls godot/addons
 
@@ -535,6 +535,11 @@ jobs:
           mkdir -p $ROOT/com/pabloprieto/motor
           cp android_motor/*.java $ROOT/com/pabloprieto/motor/
           ls -la $ROOT/com/pabloprieto/motor
+          # Compras en Google Play (android_pagos/LEEME.md): Premium y recargas; la librería de facturación la añade
+          # res://addons/pagos_google al exportar.
+          mkdir -p $ROOT/com/pabloprieto/pagos
+          cp android_pagos/*.java $ROOT/com/pabloprieto/pagos/
+          ls -la $ROOT/com/pabloprieto/pagos
           # Las librerías nativas van comprimidas y Android las extrae al instalar: Stockfish es un programa que la
           # app arranca (lib/arm64-v8a/libstockfish.so), y solo se puede ejecutar si está extraído en disco.
           printf '\nandroid {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }\n}\n' >> godot/android/build/build.gradle
@@ -629,6 +634,8 @@ jobs:
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/cine"; then echo "OK YouTubeCine dentro del APK"; else echo "FALTA YouTubeCine en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/voz"; then echo "OK TutorVoz dentro del APK"; else echo "FALTA TutorVoz en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/motor"; then echo "OK MotorStockfish dentro del APK"; else echo "FALTA MotorStockfish en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/pagos"; then echo "OK PagosGoogle dentro del APK"; else echo "FALTA PagosGoogle en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/android/billingclient"; then echo "OK Play Billing dentro del APK"; else echo "FALTA Play Billing en el APK"; exit 1; fi
           if grep -q "lib/arm64-v8a/libstockfish.so" build/avisos-log/apk-contenido.txt; then echo "OK Stockfish dentro del APK"; else echo "FALTA Stockfish en el APK"; exit 1; fi
           grep "lib/arm64-v8a/libstockfish.so\|lib/arm64-v8a/libgodot" build/avisos-log/apk-contenido.txt || true
           if grep -q "data/licencias/gpl-3.0.txt" build/avisos-log/apk-contenido.txt; then echo "OK licencia GPL"; else echo "FALTA la licencia GPL"; exit 1; fi
@@ -636,7 +643,7 @@ jobs:
           $AAPT dump xmltree $A --file AndroidManifest.xml > build/avisos-log/manifiesto.txt
           grep -n "extractNativeLibs" build/avisos-log/manifiesto.txt || echo "(sin extractNativeLibs: por defecto se extraen)"
           if grep -E -q 'extractNativeLibs.*(=false|\)0x0$)' build/avisos-log/manifiesto.txt; then echo "Las librerías no se extraen: Stockfish no podría arrancar"; exit 1; fi
-          for f in "org.godotengine.plugin.v2.MotorStockfish" "org.godotengine.plugin.v2.TutorVoz" "android.permission.RECORD_AUDIO" "android.speech.RecognitionService" "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
+          for f in "org.godotengine.plugin.v2.PagosGoogle" "com.android.vending.BILLING" "com.google.android.play.billingclient.version" "org.godotengine.plugin.v2.MotorStockfish" "org.godotengine.plugin.v2.TutorVoz" "android.permission.RECORD_AUDIO" "android.speech.RecognitionService" "org.godotengine.plugin.v2.EsperaOnline" "org.godotengine.plugin.v2.YouTubeCine" "com.pabloprieto.espera.EsperaService" "com.pabloprieto.espera.AvisoReceiver" "FOREGROUND_SERVICE_DATA_SYNC" "POST_NOTIFICATIONS" "android.permission.VIBRATE"; do
             if grep -q "$f" build/avisos-log/manifiesto.txt; then echo "OK manifiesto: $f"; else echo "FALTA en el manifiesto: $f"; exit 1; fi
           done
           # El icono de la notificación: sin él Android puede descartar el aviso.
@@ -742,6 +749,9 @@ jobs:
           done
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/poingstudios/godot/admob" && echo "OK AdMob en el AAB" || { echo "FALTA AdMob en el AAB"; exit 1; }
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/pabloprieto/espera" && echo "OK EsperaOnline en el AAB" || { echo "FALTA EsperaOnline en el AAB"; exit 1; }
+          unzip -p $B 'base/dex/*.dex' | grep -a -q "com/pabloprieto/pagos" && echo "OK PagosGoogle en el AAB" || { echo "FALTA PagosGoogle en el AAB"; exit 1; }
+          unzip -p $B 'base/dex/*.dex' | grep -a -q "com/android/billingclient" && echo "OK Play Billing en el AAB" || { echo "FALTA Play Billing en el AAB"; exit 1; }
+          unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "com.android.vending.BILLING" && echo "OK permiso BILLING en el AAB" || { echo "FALTA el permiso BILLING en el AAB"; exit 1; }
           unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "com.pabloprieto.chessome" && echo "OK paquete com.pabloprieto.chessome" || { echo "paquete distinto en el AAB"; exit 1; }
           # Play bloquea la versión si la pantalla vertical queda como función obligatoria (20 nov): debe ir declarada.
           unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "android.hardware.screen.portrait" && echo "OK screen.portrait declarada (opcional)" || { echo "FALTA uses-feature screen.portrait required=false en el AAB"; exit 1; }

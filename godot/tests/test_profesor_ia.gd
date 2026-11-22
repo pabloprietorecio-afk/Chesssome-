@@ -89,7 +89,16 @@ func _init() -> void:
 	for r in [102, 103, 104, 105]:
 		Premium.use_trial(r)
 	_ok(Premium.trial_left() == 0 and Premium.coach_applies(false, false, false, "", 105), "la quinta sigue con profesor hasta el final")
-	_ok(not Premium.coach_applies(false, false, false, "", 106) and Premium.use_trial(106) == 0, "la sexta ya no: hace falta premium")
+	_ok(Premium.explain_allowed(105) and not Premium.explain_allowed(106), "la quinta sigue con explicaciones; la sexta ya no")
+	_ok(Premium.coach_applies(false, false, false, "", 106) and Premium.use_trial(106) == 0, "la sexta: chapas sí (gratis para todos), sin gastar partida gratis")
+	Premium.server = {"extra": 20}
+	_ok(Premium.explain_allowed(106), "con recargas, explicaciones aunque no sea premium")
+	Premium.server = {}
+	Premium.set_status({"premium": true, "quedan": 299, "extra": 0, "gratis": 0, "caduca": 0, "mes": 300})
+	_ok(Premium.purchased and Premium.active(), "el servidor dice premium: premium")
+	Premium.set_status({"premium": false, "quedan": 0, "extra": 0, "gratis": 0, "caduca": 0, "mes": 300})
+	_ok(not Premium.purchased, "y si deja de serlo, deja de serlo")
+	_ok(Premium.account_id().length() == 32 and Premium.account_id() == Premium.account, "cuenta anónima de 32 cifras, siempre la misma")
 	_ok(not Premium.coach_applies(true, false, false, "", 105), "Kids: nunca, tampoco gratis")
 	Premium.test_on = true
 	_ok(Premium.active() == OS.is_debug_build(), "premium de prueba: solo en depuración")

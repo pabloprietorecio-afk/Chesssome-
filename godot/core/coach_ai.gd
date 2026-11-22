@@ -29,6 +29,11 @@ signal lesson_ready(run: int, gen: int, data: Dictionary)
 signal asked(run: int, gen: int, data: Dictionary)
 ## Respuesta del asistente ({say, actions} o {_error}).
 signal assisted(gen: int, data: Dictionary)
+## El servidor manda el estado de la cuenta (Premium y cupo) con cada explicación, al darse de alta una compra o
+## al consultarlo: la app lo guarda (Premium.set_status).
+signal quota(status: Dictionary)
+## Pruebas: sustituye al servidor en premium_call (path, payload) -> estado.
+var fake_premium: Callable
 
 const CONFIG := "res://data/coach_ai.json"
 ## Una casilla suelta o dentro de una jugada («Cxf5+», «exd5»): delante puede ir una pieza o la «x» de captura,
@@ -371,9 +376,38 @@ func _post(url: String, payload: Dictionary, seconds: float) -> Dictionary:
 	if int(r[0]) != HTTPRequest.RESULT_SUCCESS or int(r[1]) != 200:
 		if int(r[1]) != 0:
 			push_warning("Tutor: respuesta %d" % int(r[1]))
-		return {"_error": int(r[1])}
+		var err_out := {"_error": int(r[1])}
+		# 402 (sin cupo): el motivo («premium» o «cupo») y el cupo, para ofrecer Premium o una recarga.
+		var body: Variant = JSON.parse_string((r[3] as PackedByteArray).get_string_from_utf8()) if int(r[1]) != 0 else null
+		if body is Dictionary and (body as Dictionary).get("detail") is Dictionary:
+			var detail: Dictionary = body["detail"]
+			err_out["_motivo"] = str(detail.get("motivo", ""))
+			if detail.get("cupo") is Dictionary:
+				quota.emit(detail["cupo"])
+		return err_out
 	var data: Variant = JSON.parse_string((r[3] as PackedByteArray).get_string_from_utf8())
+	if data is Dictionary and (data as Dictionary).get("cupo") is Dictionary:
+		quota.emit(data["cupo"])
 	return data if data is Dictionary else {}
+
+
+## Estado de la cuenta en el servidor (Premium, cupo) y alta de compras: /premium/estado, /premium/alta,
+## /premium/recarga. Devuelve el estado o {"_error": código}.
+func premium_call(path: String, payload: Dictionary) -> Dictionary:
+	if fake_premium.is_valid():
+		var faked: Dictionary = await fake_premium.call(path, payload)
+		if not faked.has("_error"):
+			quota.emit(faked)
+		return faked
+	var url := tutor_url(cfg)
+	if url == "":
+		return {"_error": -1}
+	var body := payload.duplicate()
+	body["cuenta"] = Premium.account_id()
+	var data := await _post(url.trim_suffix("/tutor") + path, body, 20.0)
+	if not data.has("_error"):
+		quota.emit(data)
+	return data
 
 
 ## Pide a Stockfish (por el servidor) la valoración de una jugada. Siempre acaba emitiendo `judged`.
@@ -498,8 +532,11 @@ func lesson_remote(payload: Dictionary, run: int, gen: int) -> void:
 		lesson_ready.emit(run, gen, {})
 		return
 	calls += 1
-	var data := await _post(url + "/leccion", payload, float(cfg.get("lesson_timeout_s", 30)))
-	lesson_ready.emit(run, gen, data if data.get("played") is Array else {})
+	var body := payload.duplicate()
+	body["cuenta"] = Premium.account_id()
+	var data := await _post(url + "/leccion", body, float(cfg.get("lesson_timeout_s", 30)))
+	# Sin lección: {} (la app sigue con sus textos), salvo «sin cupo» (402), que se le dice al jugador.
+	lesson_ready.emit(run, gen, data if data.get("played") is Array else (data if int(data.get("_error", 0)) == 402 else {}))
 
 
 ## Pregunta libre: la partida (las últimas 16 jugadas como mucho, desde la posición de antes), el color del alumno
@@ -552,9 +589,11 @@ func ask_remote(payload: Dictionary, run: int, gen: int) -> void:
 	calls += 1
 	if hold_questions:
 		return
-	var data := await _post(url + "/pregunta", payload, float(cfg.get("ask_timeout_s", 60)))
+	var body := payload.duplicate()
+	body["cuenta"] = Premium.account_id()
+	var data := await _post(url + "/pregunta", body, float(cfg.get("ask_timeout_s", 60)))
 	if data.has("_error") or not question_ok(data):
-		asked.emit(run, gen, {"_error": int(data.get("_error", 502))})
+		asked.emit(run, gen, {"_error": int(data.get("_error", 502)), "_motivo": str(data.get("_motivo", ""))})
 		return
 	asked.emit(run, gen, data)
 
