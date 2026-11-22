@@ -258,6 +258,18 @@ var _name_error := ""
 ## anotó.
 var game_log := {}
 var game_recorded := false
+## Número de la partida (solo cambia al empezar otra; `run_id` cambia también al deshacer): las partidas gratis con
+## el tutor se cuentan con él, para que deshacer no gaste otra.
+var game_serial := 0
+## La partida ha tenido ayudas (deshacer, pista, «Prueba otra vez»): se guarda, pero no cuenta para el nivel de juego.
+var game_helped := false
+## «Prueba otra vez»: la jugada mala que se puede repetir {fen (antes de jugarla), best (UCI)}; y, tras deshacerla, la
+## posición que se está repitiendo (para celebrarlo si ahora aciertas).
+var _retry := {}
+var _retry_target := {}
+## Pista del tutor tras deshacer («Busca algo mejor…») y la línea de celebración del nuevo intento.
+var coach_hint := ""
+var coach_retry_line := ""
 ## Adónde vuelve «Mis partidas»: "online" o "setup" (la página de jugar contra el ordenador).
 var my_games_back := "online"
 ## Filtros de «Mis partidas»: resultado ("", "ganadas", "tablas", "perdidas") y cómo terminó (GameLog.reason).
@@ -391,6 +403,8 @@ var clock_up := 1.0
 var _digits_font: FontVariation
 ## Ventana de confirmación abierta (rendirse, salir).
 var confirm_node: Control
+## La ventana de preguntas (o del asistente) está abierta.
+var _ask_window_up := false
 ## Pulsar el reloj tras cada jugada, como en una partida de verdad (ajuste; por defecto, sí), y avisar si no se
 ## pulsa en PRESS_REMINDER segundos (ajuste; por defecto, sí). Bando cuyo reloj corre ahora.
 var press_clock := true
@@ -7487,6 +7501,8 @@ func _record_game() -> void:
 		"inicio": str(game_history[0]) if not game_history.is_empty() else Board3D.START_FEN,
 		"jugadas": game_moves.duplicate(),
 	}
+	if game_helped:
+		g["ayudas"] = true
 	GameLog.add(_log(), g, rival_info)
 	GameLog.save_log(_log())
 	# Una partida que abandonas no cuenta para el reto del día (si abandona el rival, sí: tú la has jugado).
@@ -8221,6 +8237,10 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	_ask_gen += 1
 	ask_history = []
 	_coach_prev_win = -1
+	game_serial += 1
+	game_helped = false
+	_retry = {}
+	_retry_target = {}
 	if color < 0:
 		color = game_pick_color if game_pick_color < 2 else _rng.randi_range(0, 1)
 		# Partida elegida en la página: con el ritmo elegido allí.
@@ -8696,6 +8716,9 @@ func _clear_coach() -> void:
 	coach_full = ""
 	coach_verdict = ""
 	coach_lesson = {}
+	coach_hint = ""
+	coach_retry_line = ""
+	_retry = {}
 	_coach_local = {}
 	_coach_remote_wait = false
 	lesson_open = false
@@ -8709,6 +8732,7 @@ func _clear_coach() -> void:
 ## tarjeta; si es un error o un error grave, el profesor lo explica a partir de los hechos del análisis.
 func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 	_clear_coach()
+	view.board.set_focus([])
 	coach_debug = ""
 	coach_verdict = ""
 	if _coach_badge_sq >= 0:
@@ -8716,11 +8740,11 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 		_coach_badge_sq = -1
 	if Premium.test_allowed():
 		coach_debug = "Profesor (prueba) · %s · premium %s · activo %s · kids %s · online %s · reloj %s · variante «%s»" % [uci, Premium.active(), Premium.coach_on, kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", ""))]
-	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), run_id):
+	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), game_serial):
 		coach_debug += " → no se aplica"
 		_coach_trial_over()
 		return
-	coach_trial_game = Premium.use_trial(run_id)
+	coach_trial_game = Premium.use_trial(game_serial)
 	coach_debug += " → analizando…"
 	_coach_gen += 1
 	_coach_pending = true
@@ -8842,6 +8866,7 @@ func _coach_apply_local() -> void:
 	var verdict := str(e.get("verdict", ""))
 	coach_debug = coach_debug.replace(" → analizando…", " → %s (motor local: pierde %d%s)" % [verdict, int(e.get("loss", 0)), (" · a la vista: " + str(e["moment"])) if e.has("moment") else ""])
 	_coach_set_verdict(verdict, _coach_local_uci)
+	_coach_retry_after(str(e.get("fen", "")), verdict, str(e.get("best_uci", "")))
 	var verified := str(e.get("full", ""))
 	_coach_verified = verified
 	_coach_short = str(e.get("short", verified))
@@ -8902,6 +8927,7 @@ func _coach_apply_remote(data: Dictionary) -> void:
 			_coach_request_lesson()
 	else:
 		coach_note = Loc.t({"brilliant": "¡Brillante! Era la mejor jugada, y entregando material.", "best": "La mejor jugada.", "good": "Buena jugada."}.get(verdict, "Buena jugada."))
+	_coach_retry_after(fen, verdict, str(data.get("best", "")))
 	_refresh()
 
 
@@ -9042,7 +9068,7 @@ func _close_lesson() -> void:
 ## Se puede preguntar: partida con tutor (premium o partida gratis), contra la app.
 func _tutor_can_ask() -> bool:
 	return mode == "game" and not kids and not game.is_empty() and game_state != "over" and CoachAI.tutor_url(coach.cfg) != "" \
-		and Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), run_id)
+		and Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), game_serial)
 
 
 func _open_ask() -> void:
@@ -9064,6 +9090,7 @@ func _build_ask_window() -> void:
 	_confirm_on_close = Callable()
 	var column := _glass_popup("Asistente" if ask_mode == "assistant" else "Pregunta al tutor", ask_state == "answer" or ask_state == "error")
 	_confirm_on_close = _ask_closed
+	_ask_window_up = true
 	var tint := _tint("lilac")
 	var btn := {"font_size": F_SUB, "height": 104.0, "icon": 50.0, "radius": 52}
 	match ask_state:
@@ -9479,12 +9506,14 @@ func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:
 		ask_history.append({"q": ask_text, "a": str(data.get("answer", ""))})
 		if ask_history.size() > 3:
 			ask_history = ask_history.slice(-3)
-	# La respuesta sale aunque se hubiera cerrado la ventana mientras pensaba.
-	if mode == "game" and not lesson_open:
+	# La respuesta sale aunque se hubiera cerrado la ventana mientras pensaba. Con la ventana abierta, siempre: también
+	# durante la lección (antes se quedaba en «El tutor está preparando tu respuesta»; lo vio Pablo, 22 nov).
+	if (_ask_window_up and is_instance_valid(confirm_node)) or (mode == "game" and not lesson_open):
 		_build_ask_window()
 
 
 func _ask_closed() -> void:
+	_ask_window_up = false
 	tutor_voice.cancel()
 	if ask_state == "edit" or ask_state == "listen":
 		ask_state = ""
@@ -9660,7 +9689,7 @@ func _coach_legend_shown() -> bool:
 		return false
 	if game_state != "play" and game_state != "think":
 		return false
-	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), run_id):
+	if not Premium.coach_applies(kids, bool(game.get("online", false)), game_clocked, str(game.get("variant", "")), game_serial):
 		return false
 	if board_slot == null or not is_instance_valid(board_slot) or not board_slot.is_inside_tree():
 		return false
@@ -9843,6 +9872,11 @@ func _coach_block() -> PanelContainer:
 	if coach_waiting:
 		column.add_child(_para("El profesor está mirando tu jugada…", F_BODY, _c("quiet"), font_medium))
 		return panel
+	if coach_hint != "":
+		var hint := _para(coach_hint, F_BODY, _c("ink"), font_semibold)
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(hint)
+		return panel
 	if coach_note == "" and coach_lesson.is_empty():
 		column.add_child(_para("Toca el bocadillo y pregúntame lo que quieras: por qué una jugada es buena o mala, qué planea el rival…", F_BODY, _c("quiet"), font_medium))
 		return panel
@@ -9862,7 +9896,16 @@ func _coach_block() -> PanelContainer:
 	body.max_lines_visible = 2
 	body.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if coach_retry_line != "":
+		var cheer := _para(coach_retry_line, F_BODY, _c("ink"), font_semibold)
+		cheer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(cheer)
 	column.add_child(body)
+	if _retry_ready():
+		# Aprender de la jugada mala: se deshace (con la respuesta del rival) y se vuelve a intentar, con pista.
+		var again := _button("retry", "Prueba otra vez", _coach_retry, _c("field"), _c("ink"), {"font_size": F_FOOT, "height": 72.0, "icon": 40.0, "radius": 36})
+		again.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		column.add_child(again)
 	var tap := Button.new()
 	tap.flat = true
 	tap.focus_mode = Control.FOCUS_NONE
@@ -10033,7 +10076,7 @@ func _tutor_blocked_reason() -> String:
 		return "Con reloj no hay tutor, como en una partida oficial. Juega una partida sin reloj para tenerlo."
 	if str(game.get("variant", "")) != "":
 		return "El tutor solo va en las partidas de ajedrez normal, no en las variantes."
-	if not Premium.coach_allowed(run_id):
+	if not Premium.coach_allowed(game_serial):
 		return Loc.f("Has jugado tus %d partidas gratis con el tutor. Para seguir con él, hace falta la versión premium.", [Premium.TRIAL_GAMES])
 	return ""
 
@@ -10261,12 +10304,67 @@ func _game_undo() -> void:
 	view.set_fen(str(game_history[keep]))
 	view.board.set_arrows([])
 	game_state = "play"
-	game_note = "Jugada deshecha."
+	game_note = Loc.t("Jugada deshecha.") + _mark_helped()
 	_clear_coach()
 	view.interactive = view.board.chess.turn == game_color
 	if not view.interactive:
 		_game_bot_turn()
 		return
+	_refresh()
+
+
+## La partida pasa a tener ayudas: no contará para el nivel de juego. La primera vez se avisa (texto para la nota).
+func _mark_helped() -> String:
+	if game_helped or kids:
+		return ""
+	game_helped = true
+	return " " + Loc.t("Con ayudas, esta partida no cuenta para tu nivel.")
+
+
+## Tras valorar una jugada: si es mala, se ofrece «Prueba otra vez»; si era un nuevo intento, el tutor lo celebra.
+func _coach_retry_after(fen: String, verdict: String, best: String) -> void:
+	var bad := [GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER, "miss"].has(verdict)
+	if not _retry_target.is_empty() and _same_position(str(_retry_target["fen"]), fen):
+		if verdict == "best" or verdict == "brilliant":
+			coach_retry_line = Loc.t("¡Ahora sí! Era la mejor jugada.")
+		elif not bad:
+			coach_retry_line = Loc.t("¡Mucho mejor! Buena jugada.")
+		else:
+			coach_retry_line = Loc.t("Todavía no: puedes volver a probar.")
+	_retry_target = {}
+	if bad and best != "" and fen != "":
+		_retry = {"fen": fen, "best": best}
+
+
+## Misma posición (piezas, turno, enroques y al paso; sin los contadores de jugadas).
+func _same_position(a: String, b: String) -> bool:
+	return Array(a.split(" ")).slice(0, 4) == Array(b.split(" ")).slice(0, 4)
+
+
+## Se puede repetir la jugada mala: partida en curso sin reloj (en las demás no hay deshacer) y ya en tu turno.
+func _retry_ready() -> bool:
+	return not _retry.is_empty() and mode == "game" and game_state == "play" and not game_clocked and not kids \
+		and not bool(game.get("online", false)) and game_history.size() >= 2 and view.board.chess.turn == game_color
+
+
+## «Prueba otra vez»: deshace tu jugada (y la respuesta del rival) y el tutor da una pista sin decir la jugada: la
+## pieza que conviene mover parpadea en rosa.
+func _coach_retry() -> void:
+	if not _retry_ready():
+		return
+	var r := _retry.duplicate()
+	_game_undo()
+	if not _same_position(view.board.chess.fen(), str(r["fen"])):
+		return
+	_retry_target = r
+	var pos := view.board.chess
+	var bm := pos.find_uci(str(r["best"]))
+	if bm >= 0:
+		var from := Chess.move_from(bm)
+		coach_hint = Loc.f("Busca algo mejor. Pista: fíjate en tu %s de %s.", [Loc.t(_piece_noun(pos.b[from])), Chess.sq_name(from)])
+		view.board.set_focus([from])
+	else:
+		coach_hint = Loc.t("Busca algo mejor.")
 	_refresh()
 
 
@@ -10283,11 +10381,11 @@ func _game_hint() -> void:
 		# Blindarse no tiene flecha: se señala la pieza con la chapa del escudo.
 		view.board.set_arrows([])
 		view.board.set_badge(Chess.move_from(m), "", Color("e0453f"), UiIcons.texture("shield"))
-		game_note = Loc.f("Pista: blinda tu %s de %s.", [Loc.t(_piece_noun(view.board.chess.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))])
+		game_note = Loc.f("Pista: blinda tu %s de %s.", [Loc.t(_piece_noun(view.board.chess.b[Chess.move_from(m)])), Chess.sq_name(Chess.move_from(m))]) + _mark_helped()
 		_refresh()
 		return
 	view.board.set_arrows([{"from": Chess.move_from(m), "to": Chess.move_to(m), "tone": "info"}])
-	game_note = _kid_line("gameHint") if kids else Loc.f("Pista: %s.", SanEs.san(view.board.chess, m))
+	game_note = _kid_line("gameHint") if kids else Loc.f("Pista: %s.", SanEs.san(view.board.chess, m)) + _mark_helped()
 	_say([_kid_line("gameHint")])
 	_refresh()
 

@@ -57,7 +57,7 @@ const RATED_MIN := 10
 
 ## Nivel de juego: Glicko-2 con las partidas, de la más antigua a la más reciente. Contra el ordenador, cada nivel
 ## cuenta con su fuerza medida (Bot.LEVELS: «elo» y «rd»; tools/calibrar), y los que no la tienen no cuentan; online,
-## con el nivel de juego que enseñó el rival (su desviación, como poco 60, para que un número dudoso pese menos). `levels` es para las pruebas. Devuelve {r, rd, n (partidas que cuentan), provisional}.
+## con el nivel de juego que enseñó el rival (su desviación, como poco 60, para que un número dudoso pese menos). Las partidas con ayudas no cuentan. `levels` es para las pruebas. Devuelve {r, rd, n (partidas que cuentan), provisional}.
 static func game_rating(log: Dictionary, levels: Array = []) -> Dictionary:
 	if levels.is_empty():
 		levels = Bot.LEVELS
@@ -66,6 +66,9 @@ static func game_rating(log: Dictionary, levels: Array = []) -> Dictionary:
 	var games: Array = log.get("partidas", [])
 	for i in range(games.size() - 1, -1, -1):
 		var g: Dictionary = games[i]
+		# Con ayudas (deshacer, pistas, «Prueba otra vez») la partida se guarda, pero no mide tu nivel.
+		if bool(g.get("ayudas", false)):
+			continue
 		var id := str(g.get("rival_id", ""))
 		var opp := {}
 		if id.begins_with("bot:"):

@@ -160,6 +160,34 @@ func _initialize() -> void:
 	_ok(demo._coach_prev_win == 42, "se guarda cómo quedó para la jugada siguiente")
 	await _until(func() -> bool: return demo.game_state == "play")
 
+	# 4c. «Prueba otra vez»: deshace, pista en rosa sin decir la jugada, y celebra si ahora aciertas.
+	demo._start_game(cfg, 0)
+	await _frames(4)
+	demo.view.show_move("g1e2")
+	demo._game_move("g1e2")
+	demo._coach_apply_remote(_fake("blunder"))
+	await _until(func() -> bool: return demo.game_state == "play")
+	demo._refresh()
+	await _frames(2)
+	_ok(demo._retry_ready() and _has_text(demo.card_body, "Prueba otra vez"), "tras un error grave: botón «Prueba otra vez»")
+	var used_before := Premium.trial_left()
+	demo._coach_retry()
+	await _frames(3)
+	_ok(demo._same_position(demo.view.board.chess.fen(), GIFT) and demo.view.interactive, "se deshace tu jugada y la del rival")
+	_ok(Array(demo.view.board.focus_squares()) == [Chess.sq_index("f3")] and demo.coach_hint.contains("f3") and not demo.coach_hint.contains("f4"), "pista: la pieza que conviene mover, en rosa, sin la jugada (%s)" % demo.coach_hint)
+	_ok(demo.game_helped and demo.game_note.contains(Loc.t("Con ayudas, esta partida no cuenta para tu nivel.")), "con ayudas, la partida no cuenta para el nivel (y se avisa)")
+	demo.view.show_move("f3f4")
+	demo._game_move("f3f4")
+	_ok(Array(demo.view.board.focus_squares()).is_empty(), "al jugar, deja de parpadear")
+	var good := _fake("best")
+	good["lines"]["played"][0]["uci"] = "f3f4"
+	demo._coach_apply_remote(good)
+	_ok(demo.coach_retry_line == Loc.t("¡Ahora sí! Era la mejor jugada.") and not demo._retry_ready(), "si ahora aciertas, el tutor lo celebra")
+	_ok(Premium.active() or Premium.trial_left() == used_before, "deshacer no gasta otra partida gratis (%d → %d)" % [used_before, Premium.trial_left()])
+	await _until(func() -> bool: return demo.game_state == "play")
+	var helped_log := {"partidas": [{"rival_id": "bot:3", "resultado": 1, "ayudas": true}, {"rival_id": "bot:3", "resultado": 1}], "rivales": {}}
+	_ok(int(GameLog.game_rating(helped_log, [{}, {}, {}, {"elo": 1500.0, "rd": 60.0}])["n"]) == 1, "las partidas con ayudas no cuentan para el nivel de juego")
+
 	# 4b. Con Stockfish en el móvil y sin servidor: la valoración sale igual (Stockfish simulado).
 	demo.local_engine.fake = func(fen: String, _ms: int) -> String:
 		return "move=f3f4;depth=20;cp=120;pv=f3f4,f8g7,g1f3" if fen == GIFT else "move=c7e5;depth=20;cp=150;pv=c7e5,d1d2"
@@ -221,6 +249,18 @@ func _initialize() -> void:
 	_ok(_has_round_ask(demo.card_body, demo), "en la lección también hay botón para preguntar")
 	var p2 := CoachAI.ask_payload(demo.game_history, demo.game_moves, 0, "¿y si le como el peón?", 0, "es", shown, demo.ask_history)
 	_ok(p2.has("shown") and (p2["previous"] as Array).size() == 1, "la pregunta lleva lo que se ve y el hilo")
+	# Preguntar con la lección abierta: la respuesta tiene que salir en la ventana (se quedaba «preparando», 22 nov).
+	demo._open_ask()
+	await _frames(2)
+	demo.ask_text = "¿Por qué ha movido la dama?"
+	demo._send_question()
+	await _frames(2)
+	_ok(demo.lesson_open and demo.ask_state == "wait", "pregunta desde la lección: esperando")
+	demo._on_tutor_answer(demo.run_id, demo._ask_gen, {"answer": "Para defender el peón de h3.", "show": null})
+	await _frames(2)
+	_ok(demo.ask_state == "answer" and _has_text(demo.confirm_node, "Para defender el peón de h3"), "con la lección abierta, la respuesta sale en la ventana")
+	demo._close_confirm()
+	await _frames(2)
 	# Apagar el tutor con la lección abierta: el tablero vuelve a la partida (antes se quedaba el ejemplo).
 	demo._on_tutor_toggle()
 	await _frames(3)
