@@ -9816,7 +9816,13 @@ func _build_lesson_actions() -> void:
 	var label := "Siguiente"
 	if lesson_step >= _lesson_steps().size() - 1:
 		label = "Ver la mejor" if lesson_line == "played" and not _lesson_steps("best").is_empty() else "Terminar"
-	var next := _button("next" if _lesson_has_next() else "check", label, _lesson_next, _c("accent"), _c("accent_ink"), go)
+	# «Ver la mejor», en verde: pasa a la jugada buena (Pablo, 22 nov). Lo demás, con el color de siempre.
+	var to_best := label == "Ver la mejor"
+	var next_bg := _c("good") if to_best else _c("accent")
+	var next_ink := (Color("10241a") if dark else Color.WHITE) if to_best else _c("accent_ink")
+	if to_best:
+		go["glow"] = Color(next_bg.r, next_bg.g, next_bg.b, 0.35)
+	var next := _button("next" if _lesson_has_next() else "check", label, _lesson_next, next_bg, next_ink, go)
 	left_button = close
 	right_button = next
 	for b: Button in [close, prev, next]:
