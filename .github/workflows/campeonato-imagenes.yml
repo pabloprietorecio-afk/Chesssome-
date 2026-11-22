@@ -29,11 +29,12 @@ jobs:
       - name: Desplegar el estudio temporal
         working-directory: tools/campeonato/estudio
         run: |
-          npx --yes wrangler@4 deploy
+          # Justo después de borrarlo (ejecución anterior), Cloudflare puede tardar en dejar crearlo otra vez.
+          for i in 1 2 3 4; do npx --yes wrangler@4 deploy && break; [ $i = 4 ] && exit 1; sleep 20; done
           clave=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
           echo "::add-mask::$clave"
           echo "ESTUDIO_CLAVE=$clave" >> "$GITHUB_ENV"
-          printf '%s' "$clave" | npx --yes wrangler@4 secret put CLAVE
+          for i in 1 2 3 4; do printf '%s' "$clave" | npx --yes wrangler@4 secret put CLAVE && break; [ $i = 4 ] && exit 1; sleep 15; done
           sub=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r .result.subdomain)
           echo "ESTUDIO_URL=https://achessway-estudio.$sub.workers.dev" >> "$GITHUB_ENV"
       - name: Esperar a que conteste
