@@ -60,6 +60,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
+          # Wrangler 4: la acción instalaba la 3.90, que ignoraba los límites por IP («ratelimits») y no montaba bien
+          # el Durable Object de las cuentas (22 nov).
+          wranglerVersion: "4"
           secrets: |
             ANTHROPIC_API_KEY
         env:
@@ -75,7 +78,7 @@ jobs:
           if [ -z "$SA" ]; then echo "::warning::Sin GOOGLE_PLAY_SA: el servidor no puede verificar compras (Premium y recargas)."; exit 0; fi
           echo "$SA" | jq -e '.client_email and .private_key' > /dev/null || { echo "GOOGLE_PLAY_SA no parece una clave de cuenta de servicio (JSON)"; exit 1; }
           npm ci --silent
-          printf '%s' "$SA" | npx wrangler secret put GOOGLE_PLAY_SA
+          printf '%s' "$SA" | npx --yes wrangler@4 secret put GOOGLE_PLAY_SA
       - name: Probar las cuentas (cupo) en el servidor desplegado
         if: steps.secrets.outputs.ok == 'true'
         run: |
