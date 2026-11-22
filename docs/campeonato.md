@@ -8,6 +8,7 @@ Stockfish propio). Todavía no hay nada hecho.
 - **Campeonato contra el móvil.** El jugador participa en un campeonato contra rivales de la app.
 - **Rivales con perfil propio.** Varios jugadores, cada uno con su perfil y una foto realista hecha por IA.
 - **Por niveles.** Campeonatos de distintos niveles.
+- **Premium a partir de la tercera ronda.** Las dos primeras rondas son gratis; para seguir hace falta Premium.
 - **Ambientación de torneo real.**
   - El jugador avanza por una sala con jugadores hasta llegar a su mesa, donde le espera el rival.
   - Sonido de ambiente y murmullos.
