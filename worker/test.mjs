@@ -104,13 +104,14 @@ test("umbrales: un peón, imprecisión; una pieza, error grave", () => {
   assert.equal(verdictFor(1, false, false, true), "mistake");
 });
 
-test("12.Cge2 regalando e5: imprecisión, con las dos líneas y sus flechas", async () => {
+test("12.Cge2 regalando e5: imprecisión o error (nunca «buena»), con las dos líneas y sus flechas", async () => {
   globalThis.fetch = fakeEngine({
     [GIFT]: { move: "f3f4", centipawns: "30", continuationArr: ["f3f4", "d7d6", "g1f3"] },
     [GIFT_AFTER]: { move: "c7e5", centipawns: "-75", continuationArr: ["c7e5", "e1g1", "f8g7"] },
   });
   const r = await judge({ fen: GIFT, uci: "g1e2" }, {});
-  assert.equal(r.verdict, "inaccuracy");
+  // Con la curva medida, un peón limpio cerca del 0 cuesta unos 10 puntos: justo en la frontera (1500: 10,5).
+  assert.ok(["inaccuracy", "mistake"].includes(r.verdict), r.verdict);
   assert.equal(r.best, "f3f4");
   assert.equal(r.player, "w");
   assert.deepEqual(r.lines.played.map((s) => s.uci), ["g1e2", "c7e5", "e1g1", "f8g7"]);
@@ -205,7 +206,7 @@ test("rutas del tutor: /tutor y /tutor/leccion", async () => {
   const req = (path, b) => new Request("https://x.dev" + path, { method: "POST", body: JSON.stringify(b), headers: { "content-type": "application/json" } });
   const r = await worker.fetch(req("/tutor", { fen: GIFT, uci: "g1e2" }), {});
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).verdict, "inaccuracy");
+  assert.ok(["inaccuracy", "mistake"].includes((await r.json()).verdict));
   assert.equal((await worker.fetch(req("/tutor", { fen: "x", uci: "e2e4" }), {})).status, 400);
   assert.equal((await worker.fetch(req("/tutor", { fen: GIFT, uci: "g1e2" }), { TUTOR_IP: { limit: async () => ({ success: false }) } })).status, 429);
 });
@@ -431,11 +432,11 @@ test("oportunidad perdida: la jugada no empeora respecto a antes del rival, pero
   const miss = await judge({ fen: start, uci: "g1e2", engine, prev: 52 }, {});
   assert.equal(miss.verdict, "miss");
   assert.equal(miss.lines.played[0].arrows[0].tone, "good", "su jugada no se pinta como error");
-  // Si estaba mucho mejor antes (80 %), sí ha empeorado: error grave.
+  // Si estaba mucho mejor antes (80 %), sí ha empeorado: es un error suyo.
   const bad = await judge({ fen: start, uci: "g1e2", engine, prev: 80 }, {});
-  assert.equal(bad.verdict, "blunder");
+  assert.ok(bad.verdict === "mistake" || bad.verdict === "blunder", bad.verdict);
   // Sin dato de antes (primera jugada), como siempre.
-  assert.equal((await judge({ fen: start, uci: "g1e2", engine }, {})).verdict, "blunder");
+  assert.ok(["mistake", "blunder"].includes((await judge({ fen: start, uci: "g1e2", engine }, {})).verdict));
 });
 
 test("sin saldo en la API de Claude: 503 «tutor no disponible», sin reintentar", async () => {
@@ -594,4 +595,40 @@ test("puntos esperados: la curva sube con la evaluación y es simétrica en el 0
     assert.ok(expected(0, 3, elo) >= expected(2000, null, elo) && expected(0, -3, elo) <= expected(-2000, null, elo));
   }
   assert.equal(materialAfter("8/8/8/8/8/8/8/4K2k w - - 0 1", ["e1e2"], "w").bal, 0);
+});
+
+test("Stockfish propio (MOTOR): se usa antes que chess-api.com y, si falla, se pasa a chess-api.com", async () => {
+  const fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+  const after = "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+  const asked = [];
+  const motor = {
+    fetch: async (url, init) => {
+      const { fen: f, ms } = JSON.parse(init.body);
+      asked.push({ url, ms });
+      const d = f === fen ? { move: "f1b5", centipawns: 45, continuationArr: ["f1b5", "a7a6"] } : { move: "a7a6", centipawns: 40, continuationArr: ["a7a6", "b5a4"] };
+      return new Response(JSON.stringify({ type: "bestmove", depth: 20, mate: null, fuente: "motor", ...d }), { status: 200 });
+    },
+  };
+  let api = 0;
+  globalThis.fetch = async () => {
+    api++;
+    return new Response("{}", { status: 500 });
+  };
+  const r = await judge({ fen, uci: "f1b5" }, { MOTOR: motor });
+  assert.equal(r.verdict, "best");
+  assert.equal(api, 0, "no se pregunta a chess-api.com");
+  assert.equal(asked[0].url, "https://motor/analizar");
+  assert.equal(asked[0].ms, 1000);
+  // El propio no contesta: chess-api.com.
+  const broken = { fetch: async () => { throw new Error("apagado"); } };
+  globalThis.fetch = async (url, init) => {
+    api++;
+    const f = JSON.parse(init.body).fen;
+    const d = f === fen ? { move: "f1b5", centipawns: 45, continuationArr: ["f1b5"] } : { move: "a7a6", centipawns: 40, continuationArr: ["a7a6"] };
+    return new Response(JSON.stringify({ type: "bestmove", depth: 18, mate: null, ...d }), { status: 200 });
+  };
+  const raw = await judge({ fen, uci: "f1b5" }, { MOTOR: broken }, true);
+  assert.equal(raw.verdict, "best");
+  assert.ok(api >= 1, "se pasa a chess-api.com");
+  assert.ok(raw.raw.some((x) => String(x?.error || "").startsWith("motor:")), "y queda apuntado que el propio falló");
 });

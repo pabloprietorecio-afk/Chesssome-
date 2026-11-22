@@ -25,9 +25,10 @@ era la mejor) y distinguir la jugada brillante.
   las jugadas buenas, al tocar el botón. Mientras Claude no contesta (o si falla), cada paso lleva el texto que la
   app sabe decir de esa jugada (MoveWhy).
 - Límites del servidor: `/tutor` 40 por minuto por IP; `/tutor/leccion` 10.
-- **Pendiente**: chess-api.com es un servicio de terceros sin condiciones de uso claras: vale para el prototipo; antes
-  de publicar, Stockfish propio (p. ej. Cloud Run). Sin probar en un móvil real. Preguntas libres con micrófono:
-  siguiente etapa.
+- Stockfish propio (22 nov, tras más de una hora sin respuesta de chess-api.com): `worker/motor`, Stockfish 19 en un
+  contenedor de Cloudflare (Containers, plan Workers Paid de 5 $/mes; 1 vCPU y 6 GiB, 1 s por posición, se apaga
+  tras 3 minutos sin consultas). El servidor llega a él por un service binding (`MOTOR`) y, si no contesta, pasa a
+  chess-api.com. Si el contenedor no se puede desplegar, el servidor se despliega igual, solo con chess-api.com.
 - Coste (precios de octubre de 2026): la lección son unos 900 tokens de entrada y 350 de salida con Sonnet 5.5
   (2 $ / 10 $ por millón): ~0,5 céntimos de dólar por lección.
 - Pruebas: `worker/test.mjs` (16, con el motor y Claude simulados), las del despliegue (12.Cge2 de la partida de

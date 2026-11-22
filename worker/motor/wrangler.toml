@@ -1,0 +1,21 @@
+# Stockfish propio del profesor, en un contenedor (Cloudflare Containers, plan Workers Paid). Sin dirección pública
+# (workers_dev = false): solo lo usa el servidor del profesor, con un service binding.
+name = "achessway-motor"
+main = "index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+
+[[containers]]
+class_name = "Motor"
+image = "./Dockerfile"
+# 1 vCPU y 6 GiB. Una sola instancia atiende todo (la segunda, para los cambios de versión).
+instance_type = "standard-2"
+max_instances = 2
+
+[[durable_objects.bindings]]
+name = "MOTOR"
+class_name = "Motor"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Motor"]

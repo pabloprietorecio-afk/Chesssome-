@@ -13,8 +13,9 @@ Pasos:
    el rival (regresión en la diferencia y el valor en 0: es lo que se espera contra uno del mismo nivel). Si en un punto hay menos de MIN_N
    posiciones (los extremos, los niveles altos), el núcleo se ensancha hasta tenerlas.
 2. Simetría: E(cp) = (E(cp) + 1 − E(−cp)) / 2 (lo que saca uno lo pierde el otro).
-3. Monótona en la evaluación y en el Elo (regresión isótona: con ventaja, el más fuerte saca al menos lo mismo).
-4. Mates a favor / en contra: la media por tramo, suavizada igual; un mate vale al menos lo mejor de la tabla.
+3. Los tramos de Elo con menos de un millón de posiciones copian el más cercano que sí las tiene.
+4. Monótona en la evaluación y en el Elo (regresión isótona: con ventaja, el más fuerte saca al menos lo mismo).
+5. Mates a favor / en contra: la media por tramo, suavizada igual; un mate vale al menos lo mejor de la tabla.
 
 Uso: python3 ajustar.py curva_cruda.json [--ritmo l|b|todo] [--out godot/data/curva_puntos.json]
 """
@@ -28,6 +29,7 @@ import numpy as np
 ELOS = list(range(600, 2701, 100))
 GRID = list(range(-2000, 2001, 25))
 MIN_N = 4000
+MIN_ROW = 1_000_000  # posiciones para que un tramo de Elo tenga fila propia
 
 
 def lichess(cp):
@@ -112,6 +114,16 @@ def main():
         nn = (nn + nn[::-1]) / 2
         rows.append(isotonic(v, nn))
         weights.append(nn)
+
+    # Tramos con muy pocas posiciones (las partidas lentas de 2500+ son pocas): copian el tramo fiable más cercano.
+    per_elo = {elo: float(N[(E == elo)].sum()) for elo in ELOS}
+    good = [i for i, elo in enumerate(ELOS) if per_elo[elo] >= MIN_ROW]
+    if good:
+        for i, elo in enumerate(ELOS):
+            if per_elo[elo] < MIN_ROW:
+                j = min(good, key=lambda g: abs(g - i))
+                rows[i] = rows[j].copy()
+                weights[i] = weights[j]
 
     # Monótona también en el Elo: con ventaja, un jugador más fuerte saca al menos lo mismo (y con desventaja, como
     # mucho lo mismo). Arregla el ruido de los tramos altos, con pocas partidas lentas (2500+).

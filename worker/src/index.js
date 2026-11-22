@@ -84,9 +84,12 @@ const json = (obj, status = 200) =>
 const ROUTES = { "/profesor": "PER_IP", "/tutor": "TUTOR_IP", "/tutor/leccion": "PER_IP", "/tutor/pregunta": "PER_IP", "/asistente": "ASSIST_IP", "/voz": "ASSIST_IP", "/premium/estado": "ASSIST_IP", "/premium/alta": "ASSIST_IP", "/premium/recarga": "ASSIST_IP" };
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (!(url.pathname in ROUTES)) return json({ error: "no existe" }, 404);
+    // Mientras el alumno juega con el tutor, el Stockfish propio (worker/motor) se mantiene encendido: así una
+    // pregunta no espera a que arranque. Se apaga solo tras 3 minutos sin consultas.
+    if (url.pathname === "/tutor" && env.MOTOR && ctx?.waitUntil) ctx.waitUntil(env.MOTOR.fetch("https://motor/ping").catch(() => {}));
     if (request.method !== "POST") return json({ error: "solo POST" }, 405);
     const limiter = env[ROUTES[url.pathname]];
     if (limiter) {

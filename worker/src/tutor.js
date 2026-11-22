@@ -50,19 +50,45 @@ export function readEngine(d) {
   return { move, cp, mate, win, line, depth: Number(d.depth) || 0 };
 }
 
-async function askEngine(fen, env, raw) {
+// Stockfish: el propio (worker/motor, un contenedor de Cloudflare) si está montado; si no contesta, chess-api.com.
+// `ms`: lo que se espera como mucho a cada uno.
+async function askEngine(fen, env, raw, ms = 10000) {
+  if (env.MOTOR) {
+    try {
+      return await askOwnEngine(fen, env, raw, ms);
+    } catch (e) {
+      if (raw) raw.push({ error: `motor: ${String(e?.message || e)}` });
+    }
+  }
   const r = await fetch(env.STOCKFISH_URL || "https://chess-api.com/v1", {
     method: "POST",
     headers: { "content-type": "application/json" },
     // taskId: el servicio empareja cada respuesta con su petición.
     body: JSON.stringify({ fen, depth: Number(env.STOCKFISH_DEPTH || 18), maxThinkingTime: 100, variants: 1, taskId: Math.random().toString(36).slice(2, 11) }),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(env.MOTOR ? Math.min(ms, 5000) : ms),
   });
   if (!r.ok) throw new Error(`stockfish ${r.status}`);
   const data = await r.json();
   if (raw) raw.push(data);
   const out = readEngine(data);
   if (!out) throw new Error("stockfish sin jugada");
+  return out;
+}
+
+// Nuestro Stockfish (worker/motor/servidor.py): misma forma de respuesta que chess-api.com. Piensa `MOTOR_MS`
+// (1 s por defecto; chess-api.com piensa 0,1 s, pero con muchos más núcleos).
+async function askOwnEngine(fen, env, raw, ms) {
+  const r = await env.MOTOR.fetch("https://motor/analizar", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ fen, ms: Number(env.MOTOR_MS || 1000) }),
+    signal: AbortSignal.timeout(ms),
+  });
+  if (!r.ok) throw new Error(`motor ${r.status}`);
+  const data = await r.json();
+  if (raw) raw.push(data);
+  const out = readEngine(data);
+  if (!out) throw new Error("motor sin jugada");
   return out;
 }
 
@@ -253,12 +279,14 @@ export async function judge(input, env, debug) {
   const doubtful = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder";
   if (doubtful && !allowsMate && !after.isGameOver()) {
     try {
-      const P = await askEngine(after.fen(), env, raw);
+      // 5 s como mucho: si el servicio no contesta, vale el primer análisis y la chapa no se queda esperando
+      // (22 nov: chess-api.com estuvo más de una hora sin contestar desde Cloudflare).
+      const P = await askEngine(after.fen(), env, raw, 5000);
       confirmed = mine(P);
       if (confirmed > winPlayed) winPlayed = confirmed;
       if (cpMine(P) > cpPlayed) cpPlayed = cpMine(P);
       if (fromPhone) {
-        const Q = await askEngine(fen, env, raw);
+        const Q = await askEngine(fen, env, raw, 5000);
         if (Q.move === uci) isBest = true;
         if (mine(Q) < winBest) winBest = mine(Q);
         if (cpMine(Q) < cpBest) cpBest = cpMine(Q);

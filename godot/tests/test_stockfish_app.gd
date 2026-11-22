@@ -27,7 +27,12 @@ func _initialize() -> void:
 	var m := pos.find_uci("g1e2")
 	var won := GameDetail.pre_from_engine(pos, m, {"move": "f3f4", "centipawns": 900, "mate": null, "depth": 20}, {"move": "c7e5", "centipawns": 600, "mate": null, "depth": 20})
 	var e_won := GameDetail.entry(null, pos, m, 0, 22, 0.6, won)
-	_ok(float(won["drop"]) < 10.0 and (e_won["verdict"] == GameDetail.GOOD or e_won["verdict"] == GameDetail.INACCURACY), "ganando de sobra, perder 3 peones de ventaja es como mucho una imprecisión (%s, baja %.1f)" % [e_won["verdict"], float(won["drop"])])
+	# Con la curva medida (22 nov), un 1500 convierte +6 bastante peor que +9 (un 80 % frente a un 91 %): puede ser
+	# «error», pero nunca «error grave». Un 2200 convierte casi igual: como mucho, imprecisión.
+	_ok(float(won["drop"]) < 20.0 and e_won["verdict"] != GameDetail.BLUNDER, "ganando de sobra, perder 3 peones de ventaja no es error grave (%s, baja %.1f)" % [e_won["verdict"], float(won["drop"])])
+	var won_2200 := GameDetail.pre_from_engine(pos, m, {"move": "f3f4", "centipawns": 900, "mate": null, "depth": 20}, {"move": "c7e5", "centipawns": 600, "mate": null, "depth": 20}, 2200.0)
+	var e_won_2200 := GameDetail.entry(null, pos, m, 0, 22, 0.6, won_2200)
+	_ok(e_won_2200["verdict"] == GameDetail.GOOD or e_won_2200["verdict"] == GameDetail.INACCURACY, "y para un 2200, como mucho imprecisión (%s, baja %.1f)" % [e_won_2200["verdict"], float(won_2200["drop"])])
 	var even := GameDetail.pre_from_engine(pos, m, {"move": "f3f4", "centipawns": 40, "mate": null, "depth": 20}, {"move": "c7e5", "centipawns": -300, "mate": null, "depth": 20})
 	var e_even := GameDetail.entry(null, pos, m, 0, 22, 0.6, even)
 	_ok(e_even["verdict"] == GameDetail.BLUNDER and e_even["best_san"] == "f4" and str(e_even["paras"]).contains("Dxe5"), "igualado y pierdes una pieza: error grave, la mejor era f4 y permite Dxe5 (%s)" % str(e_even["paras"]))

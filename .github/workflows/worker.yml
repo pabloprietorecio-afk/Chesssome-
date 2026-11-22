@@ -14,7 +14,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,6 +53,24 @@ jobs:
             echo "No se pudo con $name: $(echo "$r" | jq -c .errors)"
           done
           exit 1
+      # Stockfish propio (worker/motor): un contenedor de Cloudflare (plan Workers Paid). Si no se puede desplegar
+      # (permisos del token, plan…), el servidor sigue con chess-api.com: este paso no para el despliegue.
+      - name: Desplegar el Stockfish propio (contenedor)
+        id: motor
+        if: steps.secrets.outputs.ok == 'true'
+        continue-on-error: true
+        working-directory: worker/motor
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm ci --no-audit --no-fund
+          npx --yes wrangler@4 deploy
+      - name: Conectar el servidor con el Stockfish propio
+        if: steps.secrets.outputs.ok == 'true' && steps.motor.outcome == 'success'
+        run: |
+          printf '\n# Stockfish propio (worker/motor), añadido al desplegar si se pudo desplegar.\n[[services]]\nbinding = "MOTOR"\nservice = "achessway-motor"\n' >> worker/wrangler.toml
+          tail -4 worker/wrangler.toml
       - name: Desplegar en Cloudflare
         if: steps.secrets.outputs.ok == 'true'
         uses: cloudflare/wrangler-action@v3
@@ -107,13 +125,16 @@ jobs:
           [ -n "$base" ] || { echo "Sin endpoint en coach_ai.json"; exit 0; }
           post() { curl -s -m 40 -X POST "$base$1" -H "content-type: application/json" -d "$2"; }
           FEN="r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12"
+          echo "== chess-api.com directo desde GitHub (para saber si está caído o solo falla desde Cloudflare)"
+          curl -s -m 20 -o /tmp/sf.json -w "HTTP %{http_code} en %{time_total} s\n" -X POST https://chess-api.com/v1 -H "content-type: application/json" -d "{\"fen\":\"$FEN\",\"depth\":18,\"maxThinkingTime\":100}" || echo "sin respuesta en 20 s"
+          head -c 300 /tmp/sf.json 2>/dev/null; echo
           echo "== 12.Cge2 regalando e5 (respuesta en bruto de Stockfish incluida)"
           r=$(post "/tutor" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")
           echo "TUTOR: $r" | cut -c1-3000
           echo "$r" | jq -e '.verdict' > /dev/null
           echo "== segunda opinión (searchmoves): consultas en bruto"
           d=$(post "/tutor?debug=1" "{\"fen\":\"$FEN\",\"uci\":\"g1e2\"}")
-          echo "$d" | jq -c '{verdict, drop, second, n: (.raw | length), moves: [.raw[] | (if type == "array" then (map(select(.type == "bestmove")) | .[0]) else . end) | {move, depth, centipawns, type, error, text}]}' || echo "$d" | cut -c1-1500
+          echo "$d" | jq -c '{verdict, drop, second, n: (.raw | length), moves: [.raw[] | (if type == "array" then (map(select(.type == "bestmove")) | .[0]) else . end) | {fuente, move, depth, centipawns, type, error, text}]}' || echo "$d" | cut -c1-1500
           echo "== mate en una para las negras tras 2.g4 (signo del mate)"
           m=$(post "/tutor" '{"fen":"rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2","uci":"g2g4"}')
           echo "MATE: $m" | cut -c1-2500
