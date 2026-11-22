@@ -61,6 +61,8 @@ func _initialize() -> void:
 	_ok(not Campeonato.needs_premium(t2, false), "la semifinal es gratis")
 	Campeonato.record(st2, "escuela", 1.0, rng)
 	_ok(int(t2["ronda"]) == 2 and Campeonato.needs_premium(t2, false) and not Campeonato.needs_premium(t2, true), "la final es Premium")
+	var th := Campeonato.start({"torneos": {}, "titulos": {}}, "hotel", 2300.0, rng)
+	_ok(Campeonato.needs_premium(th, false, "hotel") and not Campeonato.needs_premium(th, true, "hotel"), "en el hotel (Stockfish, «Experto») es Premium desde los cuartos")
 	var wf := Campeonato.record(st2, "escuela", 1.0, rng)
 	_ok(str(wf["estado"]) == "campeon" and Campeonato.champion(t2) == Campeonato.YOU and int(st2["titulos"]["escuela"]) == 1, "campeón: se apunta el título")
 	_ok(Campeonato.current_match(t2, "escuela").is_empty(), "y ya no hay partida")

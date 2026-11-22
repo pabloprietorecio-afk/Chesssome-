@@ -40,3 +40,23 @@ Stockfish propio). Todavía no hay nada hecho.
 `.github/workflows/campeonato-imagenes.yml` genera un lote (`tools/campeonato/lote_N.json`) con un estudio temporal en
 Cloudflare que se borra al acabar, y deja las imágenes en la rama `campeonato-imagenes` para revisarlas. Lote 1: el
 pasillo de las seis salas y los siete rivales de la escuela, para aprobar el estilo.
+
+## Hecho (23 nov)
+
+- `core/campeonato.gd`: datos (6 salas, 42 rivales con Elo y nivel del rival de la app), cuadro por cabezas de serie,
+  desempate (5+3, colores cambiados) y armagedón (4+2, las negras pasan con tablas), simulación de las otras partidas
+  por Elo, final Premium (en el hotel, todo el torneo: sus rivales son «Experto»), salas que se abren al ganar la
+  anterior o al llegar al Elo de su rival más flojo. Estado en `user://campeonato.json`.
+- `ui/campeonato_ui.gd`: lista de salas con su foto, cuadro, paseo (entrada → pasillo → rival, con movimiento de
+  cámara y fundidos; un toque lo salta), tarjeta del rival (siempre «Bot»), reacciones del público y sonido de sala.
+- En la partida: reloj de la sala, sin tutor ni pistas (como toda partida con reloj); abandonar cuenta como derrota;
+  al acabar, «Seguir el torneo» (sin «Otra»). El resultado se apunta una sola vez, al acabar.
+- Inicio: «Campeonato» en la lista y una tarjeta con foto en la rejilla.
+- Fotos: `godot/campeonato/` (JPEG con extensión .bin, 5,8 MB), con `tools/campeonato/a_la_app.py`.
+
+## Pendiente
+
+- Sonidos (murmullo por sala, exclamaciones, aplausos, lamento) en `godot/campeonato/sonidos/`: sin ellos la app
+  funciona en silencio. Hay que buscarlos con licencia libre (CC0) o generarlos.
+- Vídeos de Pablo con PixVerse (el rival da la mano): `godot/campeonato/rivales/<sala>/<id>.ogv` sustituirá a la foto.
+- Más rivales por sala (Pablo hará más caras con PixVerse) y traducir los textos nuevos a los nueve idiomas.

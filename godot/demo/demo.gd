@@ -5826,6 +5826,7 @@ func _home_items() -> Array:
 		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
 	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 13 niveles.", _open_game_setup.bind(true)])
 	if not kids:
+		items.append(["crown", "butter", "Campeonato", "Eliminatoria de 8: de la escuela al gran hotel.", _open_campeonato])
 		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
 	if not kids and not _has_player():
 		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
@@ -5973,6 +5974,7 @@ func _go_home() -> void:
 
 
 func _go_home_now() -> void:
+	CampeonatoUI.ambient_stop()
 	if online.phase != "idle":
 		online.leave()
 	online_busy = false
@@ -7569,6 +7571,8 @@ func _record_game() -> void:
 		var lv := int(game.get("level", 0))
 		rid = "bot:%d" % lv
 		rname = Loc.f("Ordenador · %s", Bot.level_name(lv))
+		if str(game.get("campeonato", "")) != "":
+			rname = Loc.f("%s (bot) · %s", [str(game.get("rival_nombre", "")), Loc.t(str(Campeonato.tournament(str(game["campeonato"])).get("name", "")))])
 	var g := {
 		"fecha": int(Time.get_unix_time_from_system()),
 		"tipo": "online" if is_online else "ordenador",
@@ -8532,6 +8536,8 @@ func _game_move(uci: String) -> void:
 	if is_online:
 		# Con reloj y pulsado automático, la jugada y la pulsación van juntas; a mano, la pulsación va después.
 		online.play(uci, game_clocked and not press_clock)
+	if str(game.get("campeonato", "")) != "" and m >= 0:
+		CampeonatoUI.react(self, before, m)
 	if _game_check_end(before, m):
 		return
 	_coach_move(str(game_history[game_history.size() - 2]), uci, game_history.size() - 2)
@@ -8851,6 +8857,8 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	if m < 0:
 		_game_check_end(null, -1)
 		return
+	if str(game.get("campeonato", "")) != "":
+		CampeonatoUI.react(self, pos, m)
 	if game_back > 0:
 		# Mirando jugadas anteriores: al directo, para ver la jugada del rival.
 		game_back = 0
@@ -8967,6 +8975,129 @@ func _wait_bot_farewell() -> void:
 		if run != run_id or mode != "game":
 			return
 		_bot_bubble(kind)
+
+
+# ---------------------------------------------------------------- campeonato (core/campeonato.gd, ui/campeonato_ui.gd)
+
+var _camp_state := {}
+var _camp_loaded := false
+
+
+func campeonato_state() -> Dictionary:
+	if not _camp_loaded:
+		_camp_state = Campeonato.load_state()
+		_camp_loaded = true
+	return _camp_state
+
+
+func campeonato_save() -> void:
+	Campeonato.save_state(campeonato_state())
+
+
+## Tu Elo para el cuadro y para abrir salas: tu nivel de juego (0 si aún no has jugado partidas).
+func campeonato_elo() -> float:
+	var gr := GameLog.game_rating(_log())
+	return float(gr["r"]) if int(gr["n"]) > 0 else 0.0
+
+
+## Stockfish en el móvil (los rivales del hotel son «Experto»).
+func campeonato_stockfish() -> bool:
+	return local_engine != null and local_engine.available()
+
+
+func _open_campeonato() -> void:
+	CampeonatoUI.ambient_stop()
+	CampeonatoUI.open_list(self)
+
+
+func _open_campeonato_room(key: String, news: String = "") -> void:
+	CampeonatoUI.open_room(self, key, news)
+
+
+func _campeonato_locked(text: String) -> void:
+	var column := _popup(Loc.t("Sala cerrada"), text)
+	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
+
+
+func _campeonato_new(key: String) -> void:
+	var you := campeonato_elo()
+	if you <= 0.0:
+		# Sin partidas: entras al cuadro como el rival más flojo de la sala.
+		you = float(CampeonatoUI._elo_span(key)[0])
+	Campeonato.start(campeonato_state(), key, you, _rng)
+	campeonato_save()
+	_campeonato_play(key)
+
+
+func _campeonato_play(key: String) -> void:
+	var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary).get(key, {})
+	if tour.is_empty() or Campeonato.current_match(tour, key).is_empty():
+		_open_campeonato_room(key)
+		return
+	if Campeonato.needs_premium(tour, Premium.active(), key):
+		_open_premium_offer("campeonato")
+		return
+	_close_progress()
+	CampeonatoUI.walk(self, key)
+
+
+func _campeonato_start_game(key: String, lv: int) -> void:
+	var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary)[key]
+	var m := Campeonato.current_match(tour, key)
+	var rival := Campeonato.rival(key, str(m["rival"]))
+	var round_name := Loc.t(str(Campeonato.ROUNDS[int(m["ronda"])]))
+	CampeonatoUI.ambient_volume(-18.0)
+	var cfg := {"variant": "", "level": lv, "title": "%s · %s (bot)" % [round_name, str(rival.get("name", ""))], "text": "", "kids": "",
+		"unit": "", "clock": m["clock"], "campeonato": key, "rival_nombre": str(rival.get("name", ""))}
+	_start_game(cfg, int(m["color"]))
+
+
+## Apunta el resultado en el torneo una sola vez (al acabar o al abandonar) y hace sonar a la sala.
+func _campeonato_record_once() -> void:
+	var key := str(game.get("campeonato", ""))
+	if key == "" or bool(game.get("camp_done", false)):
+		return
+	game["camp_done"] = true
+	var score := 1.0 if game_won > 0 else (0.5 if game_won == 0 else 0.0)
+	var r := Campeonato.record(campeonato_state(), key, score, _rng)
+	campeonato_save()
+	game["camp_news"] = _campeonato_news(key, r)
+	CampeonatoUI.ambient_volume(-10.0)
+	if game_won > 0:
+		CampeonatoUI.effect(self, "aplausos", -2.0)
+	elif game_won < 0:
+		CampeonatoUI.effect(self, "lamento", -4.0)
+	else:
+		CampeonatoUI.effect(self, "exclamacion", -6.0)
+
+
+func _campeonato_news(key: String, r: Dictionary) -> String:
+	if r.is_empty():
+		return ""
+	if not bool(r["decided"]):
+		return "Tablas: toca desempate, con los colores cambiados." if int(r["tiebreak"]) == 1 else "Tablas otra vez: armagedón. Si hay tablas, pasan las negras."
+	if str(r["estado"]) == "campeon":
+		return Loc.f("¡Campeón del %s!", Loc.t(str(Campeonato.tournament(key)["name"])).to_lower())
+	if bool(r["won"]):
+		var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary)[key]
+		return Loc.f("¡Has ganado! Pasas a la %s.", Loc.t(str(Campeonato.ROUNDS[int(tour["ronda"])])).to_lower())
+	return "Te has quedado fuera esta vez. ¡A por el siguiente!"
+
+
+func _campeonato_after_game() -> void:
+	var key := str(game.get("campeonato", ""))
+	_campeonato_record_once()
+	var news := str(game.get("camp_news", ""))
+	CampeonatoUI.ambient_stop()
+	_stop_game_thread()
+	run_id += 1
+	view.interactive = false
+	view.board.set_arrows([])
+	game_state = ""
+	view.set_orientation(0)
+	mode = "free"
+	_idle()
+	_open_campeonato_room(key, news)
 
 
 # ---------------------------------------------------------------- profesor IA (premium)
@@ -10651,6 +10782,7 @@ func _open_premium_offer(reason: String = "opciones") -> void:
 		"premium": "Las explicaciones y las preguntas al tutor son de Premium.",
 		"cupo": "Has usado las explicaciones de este mes.",
 		"experto": "El rival «Experto» (Stockfish) es de Premium.",
+		"campeonato": "La final del Campeonato (y el torneo del gran hotel, con Stockfish) es de Premium.",
 	}.get(reason, "")
 	var column := _popup("A Chess Way Premium", head)
 	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
@@ -11030,6 +11162,16 @@ func _ask_leave(then: Callable = _leave_game) -> void:
 		return
 	var online_game := bool(game.get("online", false))
 	var go := then
+	if str(game.get("campeonato", "")) != "":
+		_confirm("¿Abandonar la partida?", "La gana el rival y quedas fuera del torneo.", "close", "Abandonar", func() -> void:
+			game_won = -1
+			game_result = "Has abandonado la partida."
+			game_state = "over"
+			_record_game()
+			_campeonato_record_once()
+			CampeonatoUI.ambient_stop()
+			then.call())
+		return
 	if online_game:
 		go = func() -> void:
 			# Se guarda como perdida por abandono (si ya se había jugado algo).
@@ -11153,6 +11295,7 @@ func _game_again() -> void:
 
 
 func _leave_game() -> void:
+	CampeonatoUI.ambient_stop()
 	if bool(game.get("online", false)):
 		online.leave()
 	_stop_game_thread()
@@ -11237,7 +11380,7 @@ func _build_game_card() -> void:
 		chess_clock.pressed_mine.connect(_on_clock_pressed)
 		chess_clock.pressed_early.connect(_on_clock_early)
 		var is_online := bool(game.get("online", false))
-		var who := str(online_rival.get("nombre", "")) if is_online else Bot.level_name(int(game.get("level", 0)))
+		var who := str(online_rival.get("nombre", "")) if is_online else (str(game["rival_nombre"]).split(" ")[0] if game.has("rival_nombre") else Bot.level_name(int(game.get("level", 0))))
 		chess_clock.labels = ["TÚ", who.to_upper().left(14) if who != "" else "RIVAL"]
 		card_body.add_child(chess_clock)
 		if is_online:
@@ -11360,6 +11503,17 @@ func _build_game_actions() -> void:
 		var det0 := _tool_button("line", "Jugada a jugada", _open_detail_from_over, "sky")
 		right_button = _button("trend", "Mis partidas", _back_to_my_games, _c("accent"), _c("accent_ink"), go)
 		row = [left_button, det0, right_button]
+	elif game_state == "over" and str(game.get("campeonato", "")) != "":
+		_record_game()
+		_campeonato_record_once()
+		var go_on := _button("next", "Seguir el torneo", _campeonato_after_game, _c("accent"), _c("accent_ink"), go)
+		row = []
+		if game_moves.size() >= 2:
+			row.append(_tool_button("chart", "Análisis", _open_review, "lilac"))
+			row.append(_tool_button("line", "Jugada a jugada", _open_detail_from_over, "sky"))
+		row.append(go_on)
+		left_button = row[0]
+		right_button = go_on
 	elif game_state == "over":
 		_record_game()
 		var next: Button
@@ -13466,6 +13620,10 @@ func _leave_progress() -> void:
 		_open_home()
 	elif progress_kind == "cine":
 		_open_train_hub()
+	elif progress_kind == "campeonato":
+		_open_home()
+	elif progress_kind == "campeonato_sala":
+		_open_campeonato()
 	elif progress_kind == "progress" or (progress_kind == "course" and mode == "learn" and not lesson.is_empty()):
 		_close_progress()
 	elif progress_kind in ["course", "experience"] and use_settings:

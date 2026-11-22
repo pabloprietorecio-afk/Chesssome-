@@ -691,6 +691,8 @@ static func build_grid(d: Variant) -> void:
 	for def: Array in _grid_items(d):
 		grid.add_child(_grid_card(d, def, cell_w, card_h))
 	body.add_child(grid)
+	if not bool(d.kids):
+		body.add_child(_grid_campeonato(d, banner_h + u(20.0)))
 	body.add_child(_grid_banner(d, banner_h))
 	column.add_child(_inset(_grid_nav(d, nav_h), air))
 
@@ -1090,6 +1092,31 @@ static func _grid_card(d: Variant, def: Array, width: float, height: float) -> B
 
 
 ## Franja del reto de la semana, con el trofeo.
+## Tarjeta del Campeonato (core/campeonato.gd): la foto del salón del gran hotel, el título y una línea.
+static func _grid_campeonato(d: Variant, height: float) -> Button:
+	var dark: bool = d.dark
+	var bg := Color("2a2a33")
+	var card := _card(_box(bg, u(18.0), Color(1, 1, 1, 0.92 if not dark else 0.08), 3, Color(0.2, 0.2, 0.3, 0.2) if not dark else d._c("shadow"), 20, 8.0), Callable(d, "_open_campeonato"), "Campeonato", height)
+	var clip := _panel(_box(bg, u(17.0)))
+	clip.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	card.add_child(_fill(clip, 3.0, 3.0, 3.0, 3.0))
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip.add_child(_fill(holder))
+	var pic := CampeonatoUI.cover(CampeonatoUI.photo(Campeonato.room_path("hotel", "pasillo")))
+	holder.add_child(pic)
+	var shade := CampeonatoUI._shade(0.25, 0.85)
+	holder.add_child(shade)
+	var col := _vbox(0.0)
+	col.alignment = BoxContainer.ALIGNMENT_END
+	holder.add_child(_fill(col, u(16.0), u(8.0), u(16.0), u(10.0)))
+	var head: Label = d._line("Campeonato", int(u(24.0)), Color.WHITE, d.font_display)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(head)
+	col.add_child(_wrap(d, "Eliminatoria de 8: de la escuela al gran hotel.", u(13.0), Color(1, 1, 1, 0.88), d.font_medium, 2, u(16.0)))
+	return card
+
+
 static func _grid_banner(d: Variant, height: float) -> Button:
 	var dark: bool = d.dark
 	var ink: Color = d._c("ink")

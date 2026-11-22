@@ -26,17 +26,18 @@ const ARMAGEDDON_CLOCK := [4, 2]
 const BOT_DRAW := 0.15
 
 ## Las salas, de la más sencilla a la más elegante; una por grupo de nivel del rival (Bot.GROUPS). «clock»:
-## minutos e incremento en segundos. Imágenes en res://campeonato/salas/<clave>_*.jpg.
+## minutos e incremento en segundos. Imágenes en res://campeonato/salas/<clave>_entrada.bin y _pasillo.bin (JPEG).
 const TOURNAMENTS := [
 	{"key": "escuela", "group": 0, "name": "Torneo de la escuela", "place": "El gimnasio de una escuela", "clock": [10, 5]},
 	{"key": "centro_civico", "group": 1, "name": "Torneo del barrio", "place": "La sala del centro cívico", "clock": [10, 5]},
 	{"key": "club", "group": 2, "name": "Campeonato del club", "place": "Un club de ajedrez de los de siempre", "clock": [15, 10]},
 	{"key": "casino", "group": 3, "name": "Campeonato regional", "place": "El salón de un casino histórico", "clock": [15, 10]},
 	{"key": "palacio", "group": 4, "name": "Campeonato nacional", "place": "El salón de baile de un palacio", "clock": [20, 10]},
-	{"key": "hotel", "group": 5, "name": "Gran Torneo Internacional", "place": "El hall de un hotel de cinco estrellas", "clock": [25, 10]},
+	# Los rivales del hotel son «Experto» (Stockfish en el móvil), que es de Premium entero: todo el torneo lo es.
+	{"key": "hotel", "group": 5, "name": "Gran Torneo Internacional", "place": "El hall de un hotel de cinco estrellas", "clock": [25, 10], "premium_from": 0},
 ]
 
-## Rivales por sala (personas inventadas, todas adultas). Retrato en res://campeonato/rivales/<sala>/<id>.jpg.
+## Rivales por sala (personas inventadas, todas adultas). Retrato en res://campeonato/rivales/<sala>/<id>.bin (JPEG).
 const RIVALS := {
 	"escuela": [
 		{"id": "lucia", "name": "Lucía Martín", "age": 34, "from": "Valencia (España)", "job": "Maestra", "bio": "Aprendió a jugar enseñando a sus alumnos.", "elo": 470},
@@ -231,9 +232,15 @@ static func current_match(t: Dictionary, key: String) -> Dictionary:
 	return {}
 
 
-## Hace falta Premium para jugar la ronda en curso (la final).
-static func needs_premium(t: Dictionary, premium: bool) -> bool:
-	return not premium and str(t.get("estado", "")) == "en_curso" and int(t.get("ronda", 0)) >= PREMIUM_ROUND
+## Primera ronda de Premium de una sala: la final (en el hotel, todas).
+static func premium_from(key: String) -> int:
+	return int(tournament(key).get("premium_from", PREMIUM_ROUND))
+
+
+## Hace falta Premium para jugar la ronda en curso.
+static func needs_premium(t: Dictionary, premium: bool, key: String = "") -> bool:
+	var first := premium_from(key) if key != "" else PREMIUM_ROUND
+	return not premium and str(t.get("estado", "")) == "en_curso" and int(t.get("ronda", 0)) >= first
 
 
 ## Resultado al azar de una partida entre dos rivales (puntuación esperada de Elo; con tablas, desempate al azar).
@@ -308,8 +315,8 @@ static func display_name(key: String, id: String) -> String:
 
 ## Retrato de un rival (vacío si aún no está en la app).
 static func portrait_path(key: String, id: String) -> String:
-	return "res://campeonato/rivales/%s/%s.jpg" % [key, id]
+	return "res://campeonato/rivales/%s/%s.bin" % [key, id]
 
 
 static func room_path(key: String, shot: String) -> String:
-	return "res://campeonato/salas/%s_%s.jpg" % [key, shot]
+	return "res://campeonato/salas/%s_%s.bin" % [key, shot]
