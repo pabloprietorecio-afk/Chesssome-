@@ -52,6 +52,8 @@ func _initialize() -> void:
 	var lj := CoachAI.local_judge(GIFT, "g1e2", ea, eb)
 	_ok(lj["verdict"] == "blunder" and lj["win_best"] == 61 and lj["local"] and CoachAI.remote_ok(lj), "valoración en el móvil (sin servidor): error grave, de 61 %%")
 	_ok((lj["lines"]["played"] as Array).map(func(x: Dictionary) -> String: return x["uci"]) == ["g1e2", "c7e5", "d1d2"] and (lj["lines"]["best"] as Array).size() == 3, "con sus dos líneas")
+	var miss := CoachAI.local_judge(GIFT, "g1e2", {"type": "bestmove", "move": "f3f4", "centipawns": 400, "mate": null, "continuationArr": ["f3f4"]}, {"type": "bestmove", "move": "c7e5", "centipawns": 40, "mate": null, "continuationArr": ["c7e5"]}, 52)
+	_ok(miss["verdict"] == "miss" and CoachAI.remote_ok(miss), "oportunidad perdida (sin conexión): no empeora respecto a antes del rival")
 	_ok(CoachAI.verdict_for(19.0, false, false, false) == "mistake" and CoachAI.verdict_for(20.0, false, false, false) == "blunder", "umbrales de chess.com, como el servidor")
 
 	Premium._loaded = true
@@ -144,6 +146,19 @@ func _initialize() -> void:
 	_ok(demo._tutor_text(demo.coach_lesson["lines"]["played"][0]) != "", "sin texto del profesor: el de la app")
 	demo._close_lesson()
 	await _frames(2)
+
+	# 4a. Oportunidad perdida: su chapa, su nombre y el texto.
+	demo._start_game(cfg, 0)
+	await _frames(4)
+	demo.view.show_move("g1e2")
+	demo._game_move("g1e2")
+	var md := _fake("blunder")
+	md["verdict"] = "miss"
+	demo._coach_apply_remote(md)
+	_ok(demo.coach_verdict == "miss" and demo._coach_label("miss") == Loc.t("Oportunidad perdida") and demo.BADGES.has(demo._coach_badge_for("miss")), "oportunidad perdida: chapa y nombre")
+	_ok(demo.coach_note.contains("No pierdes nada") and demo.coach_note.contains("f4"), "y el texto: no pierdes nada, había algo mejor (%s)" % demo.coach_note)
+	_ok(demo._coach_prev_win == 42, "se guarda cómo quedó para la jugada siguiente")
+	await _until(func() -> bool: return demo.game_state == "play")
 
 	# 4b. Con Stockfish en el móvil y sin servidor: la valoración sale igual (Stockfish simulado).
 	demo.local_engine.fake = func(fen: String, _ms: int) -> String:

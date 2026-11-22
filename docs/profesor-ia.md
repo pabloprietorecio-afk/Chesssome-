@@ -183,3 +183,11 @@ Decisión de Pablo: Stockfish 19 en el propio móvil en vez de un servidor (Clou
 las líneas con esos análisis (sin chess-api.com) y Claude escribe. Sin conexión, las chapas salen igual (valoración
 en el móvil, sin «brillante» ni flechas de amenazas). Las preguntas libres siguen con el Stockfish del servidor.
 Opciones → Licencias: aviso de Stockfish, GPL v3 entera y enlace al código de sf_19.
+
+## Oportunidad perdida (22 nov)
+Pablo vio «error grave» en 12.d3, una jugada tranquila que no perdía nada: el rival acababa de jugar Ab7 y dejaba e6+
+con ataque. Stockfish compara con la mejor jugada, y perder esa ocasión cae como un error. Ahora, como el «Miss» de
+chess.com: si la jugada sería error o error grave pero no deja al alumno peor que antes de la jugada del rival (`prev`:
+su probabilidad tras su jugada anterior, con 5 puntos de margen), se marca «Oportunidad perdida» (chapa rosa con una
+X; en la leyenda, en el sitio de «Error»). El texto: «No pierdes nada, pero el rival te había dejado algo mucho mejor:
+e6+». Claude lo explica así (no dice que la jugada sea mala). En el servidor y sin conexión (local_judge).

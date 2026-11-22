@@ -62,7 +62,7 @@ static func tutor_url(config: Dictionary) -> String:
 	return str(config.get("tutor", ""))
 
 
-const VERDICTS := ["brilliant", "best", "good", "inaccuracy", "mistake", "blunder"]
+const VERDICTS := ["brilliant", "best", "good", "inaccuracy", "mistake", "blunder", "miss"]
 
 
 ## La respuesta del tutor tiene la forma esperada: una valoración conocida y la línea de la jugada, paso a paso.
@@ -380,17 +380,21 @@ func _post(url: String, payload: Dictionary, seconds: float) -> Dictionary:
 ## `engine`: los análisis de Stockfish ya hechos en el móvil ({A, B}, forma de LocalEngine): el servidor solo
 ## prepara las líneas y sus flechas, sin volver a analizar. Si el servidor no contesta, la valoración se hace aquí
 ## mismo con esos análisis (local_judge): las chapas salen igual sin conexión.
-func judge_remote(fen: String, uci: String, run: int, gen: int, engine: Dictionary = {}) -> void:
+## `prev`: probabilidad de ganar del alumno tras su jugada anterior (−1 si no hay): para distinguir la oportunidad
+## perdida del error.
+func judge_remote(fen: String, uci: String, run: int, gen: int, engine: Dictionary = {}, prev: int = -1) -> void:
 	var url := tutor_url(cfg)
 	var data := {}
 	if url != "":
 		calls += 1
 		var payload := {"fen": fen, "uci": uci}
+		if prev >= 0:
+			payload["prev"] = prev
 		if not engine.is_empty():
 			payload["engine"] = engine
 		data = await _post(url, payload, float(cfg.get("tutor_timeout_s", 7)))
 	if not remote_ok(data) and not engine.is_empty():
-		data = local_judge(fen, uci, engine.get("A", {}), engine.get("B", {}))
+		data = local_judge(fen, uci, engine.get("A", {}), engine.get("B", {}), prev)
 	judged.emit(run, gen, data if remote_ok(data) else {})
 
 
@@ -423,7 +427,7 @@ static func verdict_for(drop: float, is_best: bool, allows_mate: bool, missed_ma
 
 ## La valoración entera en el móvil, con la misma forma que la del servidor (sin «brillante» ni las flechas de
 ## amenazas: esas las pone el servidor cuando hay conexión).
-static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary) -> Dictionary:
+static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary, prev: int = -1) -> Dictionary:
 	var pos := Chess.from_fen(fen)
 	var m := pos.find_uci(uci)
 	if m < 0 or str(a.get("move", "")).length() < 4:
@@ -442,6 +446,9 @@ static func local_judge(fen: String, uci: String, a: Dictionary, b: Dictionary) 
 	var allows: bool = they_mate.call(b) and not they_mate.call(a)
 	var missed: bool = i_mate.call(a) and absi(int(a["mate"])) <= 3 and not i_mate.call(b) and not mate_now
 	var verdict := verdict_for(drop, is_best, allows, missed)
+	# Oportunidad perdida: no queda peor que antes de la jugada del rival (como en el servidor).
+	if (verdict == "mistake" or verdict == "blunder") and not allows and prev >= 0 and win_played >= float(prev) - 5.0:
+		verdict = "miss"
 	var bad := verdict == "inaccuracy" or verdict == "mistake" or verdict == "blunder"
 	var played: Array = [uci]
 	if not b.is_empty():

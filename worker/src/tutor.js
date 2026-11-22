@@ -247,7 +247,15 @@ export async function judge(input, env, debug) {
     }
   }
 
-  const bad = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder";
+  // Oportunidad perdida (como «Miss» en chess.com): la jugada no deja al alumno peor que antes de la jugada del
+  // rival (`prev`: su probabilidad tras su jugada anterior), pero el rival le había dejado algo mucho mejor. No es un
+  // error suyo: no ha estropeado nada, no ha visto el regalo (Pablo, 22 nov: d3 marcada «error grave» cuando el rival
+  // acababa de permitir e6+).
+  const prev = Number(input?.prev);
+  if ((verdict === "mistake" || verdict === "blunder") && !allowsMate && Number.isFinite(prev) && prev >= 0 && prev <= 100 && winPlayed >= prev - 5) {
+    verdict = "miss";
+  }
+  const bad = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder" || verdict === "miss";
   // Dos líneas para enseñar, cortas (cuatro jugadas): lo que jugó y cómo sigue, y la mejor. Si Stockfish no dio
   // la continuación de la mejor (con poco tiempo a veces solo da la primera jugada), se le pregunta.
   const playedSteps = buildLine(fen, [uci, ...(B ? chain(B.move, B.line) : [])], LINE_MAX);
@@ -272,7 +280,7 @@ export async function judge(input, env, debug) {
     verdict, drop: Math.round(drop * 10) / 10, win_best: Math.round(winBest), win_played: Math.round(winPlayed),
     best: A.move, player, depth: A.depth, ...(confirmed !== null ? { second: Math.round(confirmed) } : {}), ...(fromPhone ? { phone: true } : {}),
     lines: {
-      played: publicLine(playedSteps, player, "played", bad),
+      played: publicLine(playedSteps, player, "played", bad && verdict !== "miss"),
       best: publicLine(bestSteps, player, "best", bad),
     },
   };
@@ -317,6 +325,7 @@ function material(steps, player) {
 const VERDICT_ES = {
   brilliant: "brillante: la mejor jugada, y además entrega una pieza", best: "la mejor jugada", good: "buena",
   inaccuracy: "imprecisión", mistake: "error", blunder: "error grave",
+  miss: "oportunidad perdida: su jugada no le deja peor que antes, pero el rival le había dejado una jugada mucho mejor que no vio",
 };
 
 export function lessonPrompt(fen, played, best, info) {
@@ -332,6 +341,7 @@ export function lessonPrompt(fen, played, best, info) {
     "Reglas estrictas:",
     "- Usa SOLO los hechos que te doy: los ha comprobado Stockfish y un programa. No calcules jugadas ni evalúes por tu cuenta.",
     "- No nombres casillas, piezas ni jugadas que no aparezcan en los datos. Escribe las jugadas exactamente como te las doy.",
+    "- Si la valoración es «oportunidad perdida», no digas que su jugada es mala ni que pierde algo: di que no pierde nada, pero que el rival le había dejado una ocasión mucho mejor, y enséñala.",
     "- Cada texto: 1 o 2 frases cortas. Empieza por lo MÁS importante de esa jugada: si para un jaque, si defiende o salva una pieza amenazada, si captura, si deja algo sin defensa. Si hace varias cosas a la vez (p. ej. para el jaque y además defiende una pieza), dilo: es lo que el alumno tiene que aprender.",
     "- No digas lo obvio (de qué casilla sale la pieza) si hay algo más importante que decir.",
     `- Escribe en ${LANGUAGES[lang]}. Sin markdown ni emojis.`,

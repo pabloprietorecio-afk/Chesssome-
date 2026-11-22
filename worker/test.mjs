@@ -395,3 +395,21 @@ test("dictado: Whisper con el vocabulario de ajedrez; audio raro, 400", async ()
   assert.equal(got.params.language, "es");
   await assert.rejects(transcribe({ audio: "hola" }, env), (e) => e.status === 400);
 });
+
+test("oportunidad perdida: la jugada no empeora respecto a antes del rival, pero había algo mucho mejor", async () => {
+  const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
+  const engine = {
+    A: { type: "bestmove", move: "f3f4", depth: 20, centipawns: 400, mate: null, continuationArr: ["f3f4"] },
+    B: { type: "bestmove", move: "c7e5", depth: 20, centipawns: 40, mate: null, continuationArr: ["c7e5"] },
+  };
+  globalThis.fetch = async () => new Response("{}", { status: 500 });
+  // Antes de la jugada del rival, el alumno estaba en un 52 %: sigue igual → oportunidad perdida.
+  const miss = await judge({ fen: start, uci: "g1e2", engine, prev: 52 }, {});
+  assert.equal(miss.verdict, "miss");
+  assert.equal(miss.lines.played[0].arrows[0].tone, "good", "su jugada no se pinta como error");
+  // Si estaba mucho mejor antes (80 %), sí ha empeorado: error grave.
+  const bad = await judge({ fen: start, uci: "g1e2", engine, prev: 80 }, {});
+  assert.equal(bad.verdict, "blunder");
+  // Sin dato de antes (primera jugada), como siempre.
+  assert.equal((await judge({ fen: start, uci: "g1e2", engine }, {})).verdict, "blunder");
+});

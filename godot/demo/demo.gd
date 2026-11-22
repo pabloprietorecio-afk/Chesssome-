@@ -330,6 +330,9 @@ var tutor_voice: TutorVoice
 ## Stockfish 19 dentro del móvil (android_motor/): valora las jugadas del tutor sin depender del servidor.
 var local_engine: LocalEngine
 var _ask_gen := 0
+## Probabilidad de ganar del jugador tras su jugada anterior (la última valoración); −1 si no hay. Sirve para
+## distinguir la oportunidad perdida del error.
+var _coach_prev_win := -1
 ## Partida gratis con profesor en curso (1…5), o 0 (premium, o sin prueba).
 var coach_trial_game := 0
 var coach_lesson := {}
@@ -3400,7 +3403,7 @@ func _kid_wrong_arrows(e: Dictionary) -> Array:
 ## Chapa con la valoración de la jugada en su casilla de destino, con los signos de anotación de siempre:
 ## «!» buena jugada (aquí, la de la solución), «?» error, «??» error grave (pierde material o permite mate).
 ## Signo (o «@icono») y color de cada chapa.
-const BADGES := {"brilliant": ["!!", Color("1aa3a3")], "best": ["!", Color("2f9e63")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
+const BADGES := {"miss": ["@close", Color("d9577a")], "brilliant": ["!!", Color("1aa3a3")], "best": ["!", Color("2f9e63")], "good": ["@check", Color("3fa06a")], "only": ["@target", Color("7c5cfa")], "wrong": ["?", Color("e08a2b")], "blunder": ["??", Color("d1453b")], "dubious": ["?!", Color("d9a521")]}
 
 
 func _move_badge(uci: String, kind: String) -> void:
@@ -8195,6 +8198,7 @@ func _start_game(cfg: Dictionary, color: int) -> void:
 	ask_answer = {}
 	_ask_gen += 1
 	ask_history = []
+	_coach_prev_win = -1
 	if color < 0:
 		color = game_pick_color if game_pick_color < 2 else _rng.randi_range(0, 1)
 		# Partida elegida en la página: con el ritmo elegido allí.
@@ -8711,7 +8715,7 @@ func _coach_move(fen_before: String, uci: String, ply: int) -> void:
 			coach_debug += " (Stockfish del móvil)"
 			_coach_with_local_sf(fen_before, uci, run_id, _coach_gen)
 		else:
-			coach.judge_remote(fen_before, uci, run_id, _coach_gen)
+			coach.judge_remote(fen_before, uci, run_id, _coach_gen, {}, _coach_prev_win)
 		_coach_remote_deadline(_coach_gen, COACH_REMOTE_S + (4.0 if sf else 0.0))
 
 
@@ -8763,7 +8767,7 @@ func _coach_with_local_sf(fen: String, uci: String, run: int, gen: int) -> void:
 			b = await local_engine.analyze(after.fen())
 	if run != run_id or gen != _coach_gen:
 		return
-	coach.judge_remote(fen, uci, run, gen, {} if a.is_empty() else {"A": a, "B": b})
+	coach.judge_remote(fen, uci, run, gen, {} if a.is_empty() else {"A": a, "B": b}, _coach_prev_win)
 
 
 func _coach_remote_deadline(gen: int, seconds: float = COACH_REMOTE_S) -> void:
@@ -8784,10 +8788,14 @@ func _coach_rating() -> float:
 
 ## Chapa del tablero y nombre de una valoración (las de GameDetail, más «brillante», que solo da Stockfish).
 func _coach_badge_for(verdict: String) -> String:
-	return "brilliant" if verdict == "brilliant" else str(GameDetail.BADGE.get(verdict, ""))
+	if verdict == "brilliant" or verdict == "miss":
+		return verdict
+	return str(GameDetail.BADGE.get(verdict, ""))
 
 
 func _coach_label(verdict: String) -> String:
+	if verdict == "miss":
+		return Loc.t("Oportunidad perdida")
 	return Loc.t("Brillante") if verdict == "brilliant" else Loc.t(str(GameDetail.LABELS.get(verdict, "")))
 
 
@@ -8858,11 +8866,14 @@ func _coach_apply_remote(data: Dictionary) -> void:
 	_coach_set_verdict(verdict, uci)
 	coach_from_ai = false
 	coach_full = ""
-	var bad := [GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER].has(verdict)
+	_coach_prev_win = int(data.get("win_played", -1))
+	var bad := [GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER, "miss"].has(verdict)
 	if bad:
 		var pos := Chess.from_fen(fen)
 		var bm := pos.find_uci(str(data.get("best", "")))
 		coach_note = (Loc.f("La mejor era %s", SanEs.san(pos, bm)) + ".") if bm >= 0 else ""
+		if verdict == "miss" and bm >= 0:
+			coach_note = Loc.f("No pierdes nada, pero el rival te había dejado algo mucho mejor: %s.", SanEs.san(pos, bm))
 		# Premium: el profesor prepara ya la explicación (estará lista al abrirla). En las partidas gratis, solo si
 		# se pide con «Explícamelo» (decisión de Pablo, 21 nov: cada lección cuesta ~0,6 céntimos).
 		if Premium.active():
@@ -9674,10 +9685,15 @@ func _sync_coach_legend() -> void:
 		for c in coach_legend.get_children():
 			coach_legend.remove_child(c)
 			c.queue_free()
-		var in_legend := COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant"
+		var in_legend := COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant" or coach_verdict == "miss"
 		for v: String in COACH_LEGEND:
-			# «Brillante» (solo la da Stockfish) ocupa el sitio de «La mejor» cuando toca.
-			var shown := "brilliant" if v == GameDetail.BEST and coach_verdict == "brilliant" else v
+			# «Brillante» (solo la da Stockfish) ocupa el sitio de «La mejor» cuando toca; «Oportunidad perdida», el de
+			# «Error».
+			var shown := v
+			if v == GameDetail.BEST and coach_verdict == "brilliant":
+				shown = "brilliant"
+			elif v == GameDetail.MISTAKE and coach_verdict == "miss":
+				shown = "miss"
 			coach_legend.add_child(_coach_legend_item(shown, coach_verdict == shown, in_legend))
 	var w := size.x - 24.0
 	coach_legend.size = Vector2(w, COACH_LEGEND_H)
@@ -9728,7 +9744,8 @@ func _coach_legend_item(verdict: String, current: bool, dim: bool) -> Control:
 		g.add_theme_font_override("font", font_display)
 		center.add_child(g)
 	column.add_child(disc)
-	var name_label := _text(_coach_label(verdict), F_CAP, _c("ink") if current else _c("quiet"), font_semibold if current else font_medium)
+	# En la leyenda no cabe «Oportunidad perdida»: «Oportunidad».
+	var name_label := _text(Loc.t("Oportunidad") if verdict == "miss" else _coach_label(verdict), F_CAP, _c("ink") if current else _c("quiet"), font_semibold if current else font_medium)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(name_label)
 	if dim and not current:
@@ -10207,6 +10224,7 @@ func _game_bare() -> bool:
 func _game_undo() -> void:
 	if game_state == "think" or game_history.size() < 2:
 		return
+	_coach_prev_win = -1
 	run_id += 1
 	var keep := game_history.size() - 1
 	while keep > 0:
@@ -10568,7 +10586,7 @@ func _build_game_card() -> void:
 		card_body.add_child(_para(game_note, F_BODY, _c("quiet"), font_medium))
 	# La valoración va en la leyenda de encima del tablero; aquí solo si la leyenda no cabe (o es «única jugada»,
 	# que no está en la leyenda).
-	if coach_verdict != "" and (not (COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant") or not _coach_legend_shown()):
+	if coach_verdict != "" and (not (COACH_LEGEND.has(coach_verdict) or coach_verdict == "brilliant" or coach_verdict == "miss") or not _coach_legend_shown()):
 		var glyph := str((BADGES.get(_coach_badge_for(coach_verdict), ["", Color.WHITE]) as Array)[0])
 		var mark := "" if glyph.begins_with("@") else glyph + " "
 		card_body.add_child(_para(mark + _coach_label(coach_verdict), F_BODY, _c("ink"), font_semibold))
