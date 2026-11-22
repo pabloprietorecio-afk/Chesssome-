@@ -70,6 +70,24 @@ func _initialize() -> void:
 	await _until(func() -> bool: return demo.detail_done)
 	_ok(demo.detail_done and demo.detail.size() == 1 and str(demo.detail[0]["uci"]) == "g1e2" and str(demo.detail[0]["verdict"]) != "", "análisis con Stockfish: %s" % str(demo.detail.map(func(x: Dictionary) -> String: return "%s %s" % [x["san"], x["verdict"]])))
 
+	# Pantalla encendida: en la partida sin reloj mientras se toca; a los 5 minutos sin tocar, ya no; en un menú, no.
+	var t0 := Time.get_ticks_msec()
+	demo._close_progress()
+	demo.mode = "game"
+	demo.game_state = "play"
+	demo._last_touch_ms = t0
+	_ok(demo._screen_wanted(t0 + 1000), "partida sin reloj, tocando: encendida")
+	_ok(not demo._screen_wanted(t0 + demo.SCREEN_IDLE_MS + 1000), "5 minutos sin tocar: se deja apagar")
+	demo.game_clocked = true
+	_ok(demo._screen_wanted(t0 + demo.SCREEN_IDLE_MS + 1000), "con reloj: siempre encendida")
+	demo.game_state = "over"
+	_ok(not demo._screen_wanted(t0 + 61000), "online o con reloj, partida terminada y sin tocar: se deja apagar")
+	demo.game_state = "play"
+	demo.game_clocked = false
+	demo._open_home()
+	await _frames(2)
+	_ok(not demo._screen_wanted(t0 + 1000), "en el inicio, como cualquier app")
+
 	print("TODO OK" if fallos == 0 else "FALLOS: %d de %d" % [fallos, hechos])
 	quit(1 if fallos > 0 else 0)
 

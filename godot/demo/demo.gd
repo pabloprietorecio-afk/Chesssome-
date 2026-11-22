@@ -8474,8 +8474,50 @@ func _sync_captures() -> void:
 		strip.queue_redraw()
 
 
+## Pantalla encendida (decisión de Pablo, 22 nov; antes no se apagaba nunca con la app abierta): siempre en una
+## partida online o con reloj; en el tablero (partida sin reloj, problemas, lecciones, vídeos) mientras se use, hasta
+## SCREEN_IDLE_MS sin tocar; en los menús, como cualquier app.
+const SCREEN_IDLE_MS := 300000
+const SCREEN_OVER_IDLE_MS := 60000
+var _last_touch_ms := 0
+var _screen_kept := false
+var _screen_check := 0.0
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton or event is InputEventKey:
+		_last_touch_ms = Time.get_ticks_msec()
+
+
+func _screen_wanted(now_ms: int) -> bool:
+	var page := progress != null and is_instance_valid(progress)
+	if page:
+		return false
+	if mode == "game" and game_state in ["play", "think", "press"] and (bool(game.get("online", false)) or game_clocked):
+		return true
+	if not film.is_empty():
+		return true
+	# Partida terminada (p. ej. online, se fue y perdió por tiempo): a un minuto sin tocar, se deja apagar.
+	if mode == "game" and game_state == "over":
+		return now_ms - _last_touch_ms < SCREEN_OVER_IDLE_MS
+	var on_board := mode in ["game", "train", "test", "learn", "free", "tutor"]
+	return on_board and now_ms - _last_touch_ms < SCREEN_IDLE_MS
+
+
+func _sync_keep_screen(delta: float) -> void:
+	_screen_check -= delta
+	if _screen_check > 0.0:
+		return
+	_screen_check = 1.0
+	var want := _screen_wanted(Time.get_ticks_msec())
+	if want != _screen_kept:
+		_screen_kept = want
+		DisplayServer.screen_set_keep_on(want)
+
+
 func _process(delta: float) -> void:
 	ads.tick(delta)
+	_sync_keep_screen(delta)
 	if not film.is_empty():
 		_film_tick()
 	_sync_captures()
