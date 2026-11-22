@@ -24,11 +24,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Reglas publicadas — gesto «pregunta» (¿Sigues ahí?)
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/firebase-gesto.mjs 2>&1 | tee resultado.txt
+
       - name: Prueba de reglas y retraso
         shell: bash
         run: |
           set -o pipefail
-          node scripts/firebase-prueba.mjs 2>&1 | tee resultado.txt
+          node scripts/firebase-prueba.mjs 2>&1 | tee -a resultado.txt
 
       - name: Prueba del módulo online (emparejamiento y partida)
         shell: bash
