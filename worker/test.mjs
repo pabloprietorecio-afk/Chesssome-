@@ -332,7 +332,7 @@ test("segunda opinión: un «error grave» que un segundo análisis más hondo n
   assert.ok(asked >= 3);
 });
 
-test("con Stockfish en el móvil: usa sus análisis y no llama al servicio", async () => {
+test("con Stockfish en el móvil: usa sus análisis; una chapa mala se confirma con el servicio", async () => {
   const start = "r3kbnr/1bqppp1p/p5p1/p1pPP3/2B5/2N2P2/PPP3PP/R2QK1NR w KQkq - 0 12";
   let calls = 0;
   globalThis.fetch = async () => {
@@ -344,7 +344,8 @@ test("con Stockfish en el móvil: usa sus análisis y no llama al servicio", asy
     B: { type: "bestmove", move: "c7e5", depth: 20, centipawns: -150, mate: null, continuationArr: ["c7e5", "d1d2"] },
   };
   const r = await judge({ fen: start, uci: "g1e2", engine }, {});
-  assert.equal(calls, 0);
+  // La segunda opinión falla (servicio caído): vale lo del móvil.
+  assert.ok(calls >= 1);
   assert.equal(r.phone, true);
   assert.equal(r.verdict, "blunder");
   assert.deepEqual(r.lines.played.map((s) => s.uci), ["g1e2", "c7e5", "d1d2"]);
@@ -353,6 +354,25 @@ test("con Stockfish en el móvil: usa sus análisis y no llama al servicio", asy
   globalThis.fetch = async () => new Response(JSON.stringify({ type: "bestmove", depth: 15, move: "f3f4", centipawns: "40", continuationArr: [] }), { status: 200 });
   const r2 = await judge({ fen: start, uci: "g1e2", engine: { A: { ...engine.A, move: "a1a8" }, B: engine.B } }, {});
   assert.notEqual(r2.phone, true);
+  // El móvil ve una imprecisión (de 74% a 66%) que el servicio no confirma (de 72% a 71%): no hay chapa mala
+  // (Ac4, 22 nov: la chapa decía imprecisión y la explicación, que no).
+  const seen = [];
+  globalThis.fetch = async (url, init) => {
+    const fen = JSON.parse(init.body).fen;
+    seen.push(fen);
+    const isAfter = fen.split(" ")[1] === "b";
+    return new Response(JSON.stringify(isAfter
+      ? { type: "bestmove", depth: 18, move: "c7e5", winChance: 71, centipawns: "120", continuationArr: ["c7e5"] }
+      : { type: "bestmove", depth: 18, move: "f3f4", winChance: 72, centipawns: "130", continuationArr: ["f3f4"] }), { status: 200 });
+  };
+  const soft = {
+    A: { type: "bestmove", move: "f3f4", depth: 14, winChance: 74, centipawns: 140, mate: null, continuationArr: ["f3f4"] },
+    B: { type: "bestmove", move: "c7e5", depth: 14, winChance: 66, centipawns: 90, mate: null, continuationArr: ["c7e5"] },
+  };
+  const r3 = await judge({ fen: start, uci: "g1e2", engine: soft }, {});
+  assert.equal(seen.length, 2);
+  assert.equal(r3.verdict, "good");
+  assert.ok(r3.drop < 5);
 });
 
 import { assist, cleanAction, TOOLS } from "./src/assistant.js";

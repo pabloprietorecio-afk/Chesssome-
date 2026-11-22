@@ -218,9 +218,9 @@ export async function judge(input, env, debug) {
   const mine = (e) => (player === "w" ? e.win : 100 - e.win);
   const iMate = (e) => e && e.mate !== null && e.mate > 0 === (player === "w");
   const theyMate = (e) => e && e.mate !== null && e.mate > 0 !== (player === "w");
-  const winBest = mine(A);
+  let winBest = mine(A);
   let winPlayed = after.isCheckmate() ? 100 : B ? mine(B) : 50;
-  const isBest = uci === A.move || after.isCheckmate();
+  let isBest = uci === A.move || after.isCheckmate();
   let drop = isBest ? 0 : Math.max(0, winBest - winPlayed);
   const allowsMate = theyMate(B) && !theyMate(A);
   const missedMate = iMate(A) && Math.abs(A.mate) <= 3 && !iMate(B) && !after.isCheckmate();
@@ -229,18 +229,23 @@ export async function judge(input, env, debug) {
   // análisis suelto puede salir corto; al repetir la posición el servicio suele llegar más hondo: 15 → 18). Vale la
   // valoración más favorable al alumno; un mate permitido no se discute. (Se probó `searchmoves` para valorar la jugada
   // desde la misma posición que la mejor, pero chess-api.com lo ignora: devolvía la mejor, 21 nov.)
+  // Desde el 22 nov, también para las imprecisiones y cuando el análisis viene del móvil (0,8 s por posición: Ac4
+  // salió «imprecisión» y al preguntar, el análisis del servidor daba 1–2 puntos; Pablo: la chapa y la explicación no
+  // pueden contradecirse). Con el móvil se repiten aquí las dos posiciones, la de antes y la de después.
   let confirmed = null;
-  if (!fromPhone && (verdict === "mistake" || verdict === "blunder") && !allowsMate && !after.isGameOver()) {
+  const doubtful = verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder";
+  if (doubtful && !allowsMate && !after.isGameOver()) {
     try {
       const P = await askEngine(after.fen(), env, raw);
-      {
-        confirmed = mine(P);
-        if (confirmed > winPlayed) {
-          winPlayed = confirmed;
-          drop = Math.max(0, winBest - winPlayed);
-          verdict = verdictFor(drop, isBest, allowsMate, missedMate);
-        }
+      confirmed = mine(P);
+      if (confirmed > winPlayed) winPlayed = confirmed;
+      if (fromPhone) {
+        const Q = await askEngine(fen, env, raw);
+        if (Q.move === uci) isBest = true;
+        if (mine(Q) < winBest) winBest = mine(Q);
       }
+      drop = isBest ? 0 : Math.max(0, winBest - winPlayed);
+      verdict = verdictFor(drop, isBest, allowsMate, missedMate);
     } catch (e) {
       // Sin segunda opinión: vale la primera.
       if (raw) raw.push({ error: String(e?.message || e) });
@@ -615,8 +620,8 @@ export function askPrompt(ctx, question, rating, previous = []) {
     const nums = Number.isFinite(j.win_best) && Number.isFinite(j.win_played) && j.win_best >= 0 ? ` (según ese análisis, su probabilidad de ganar pasó de ${j.win_best}% a ${j.win_played}%)` : "";
     lines.push(
       "",
-      `La app marcó la última jugada del alumno (${j.uci}) como «${VERDICT_ES[j.verdict]}», con un análisis rápido de Stockfish${nums}. El alumno ve esa marca.`,
-      "Si te pregunta por ella y al analizarla con la herramienta te sale otra cosa, no la contradigas sin más: di qué has comprobado y con qué datos (p. ej. «mirándola con más calma, pierde menos de lo que parecía: …»).",
+      `La app marcó la última jugada del alumno (${j.uci}) como «${VERDICT_ES[j.verdict]}», con el análisis de Stockfish${nums}. El alumno ve esa marca y es la valoración de la app: tu respuesta no puede contradecirla.`,
+      `Si pregunta por la marca, explícala con esos números (cuánto bajó su probabilidad de ganar) y con lo que hacía mejor la mejor jugada. No digas que no es una ${VERDICT_ES[j.verdict]}, ni que «no es mala jugada», ni que «mirándola con más calma» es otra cosa. Si la herramienta te da cifras algo distintas (cada análisis llega a una profundidad), no las uses para corregir la marca.`,
     );
   }
   const prev = (Array.isArray(previous) ? previous : []).slice(-3);
