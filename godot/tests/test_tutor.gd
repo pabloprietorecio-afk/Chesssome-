@@ -256,6 +256,9 @@ func _initialize() -> void:
 	demo._send_question()
 	await _frames(2)
 	_ok(demo.lesson_open and demo.ask_state == "wait", "pregunta desde la lección: esperando")
+	demo.ask_error = 503
+	_ok(demo._ask_error_text() == Loc.t("El tutor no está disponible en este momento. Vuelve a intentarlo más tarde."), "sin IA en el servidor (503): «el tutor no está disponible», no «sin conexión»")
+	demo.ask_error = 0
 	demo._on_tutor_answer(demo.run_id, demo._ask_gen, {"answer": "Para defender el peón de h3.", "show": null})
 	await _frames(2)
 	_ok(demo.ask_state == "answer" and _has_text(demo.confirm_node, "Para defender el peón de h3"), "con la lección abierta, la respuesta sale en la ventana")

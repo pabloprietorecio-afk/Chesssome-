@@ -6,6 +6,7 @@
 import { judge, lesson, answerQuestion } from "./tutor.js";
 import { assist } from "./assistant.js";
 import { transcribe } from "./voice.js";
+import { noCredit, noCreditError } from "./credit.js";
 
 export const KINDS = {
   missed_mate: "tenía jaque mate en una jugada y no lo dio",
@@ -122,8 +123,8 @@ export default {
       body: JSON.stringify(body),
     });
     let r = await ask({ ...base, thinking: { type: "disabled" } });
-    if (r.status === 400) r = await ask({ ...base, max_tokens: Number(env.MAX_TOKENS_THINKING || 1500) });
-    if (!r.ok) return json({ error: `api ${r.status}` }, 502);
+    if (r.status === 400 && !(await noCredit(r))) r = await ask({ ...base, max_tokens: Number(env.MAX_TOKENS_THINKING || 1500) });
+    if (!r.ok) return (await noCredit(r)) ? json({ error: "tutor no disponible (sin saldo)" }, 503) : json({ error: `api ${r.status}` }, 502);
     const data = await r.json();
     const text = (data.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
     // Sin texto: datos para diagnosticar (sin la clave ni el prompt).

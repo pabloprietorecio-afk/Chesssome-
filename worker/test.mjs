@@ -436,3 +436,13 @@ test("oportunidad perdida: la jugada no empeora respecto a antes del rival, pero
   // Sin dato de antes (primera jugada), como siempre.
   assert.equal((await judge({ fen: start, uci: "g1e2", engine }, {})).verdict, "blunder");
 });
+
+test("sin saldo en la API de Claude: 503 «tutor no disponible», sin reintentar", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits." } }), { status: 400 });
+  };
+  await assert.rejects(assist({ text: "pon el tablero de mármol", state: { pantalla: "inicio" }, language: "es" }, { ANTHROPIC_API_KEY: "x" }), (e) => e.status === 503);
+  assert.equal(calls, 1);
+});

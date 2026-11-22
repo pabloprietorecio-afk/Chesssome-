@@ -6,6 +6,7 @@
 // Stockfish se consulta en un servicio externo (STOCKFISH_URL; por defecto chess-api.com). Todo lo que se dice de
 // una jugada (qué pieza mueve, qué captura, qué ataca) lo calcula aquí chess.js; Claude solo lo cuenta.
 import { Chess } from "chess.js";
+import { noCredit, noCreditError } from "./credit.js";
 
 export const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
 const UCI = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
@@ -423,8 +424,8 @@ export async function lesson(input, env) {
     body: JSON.stringify(body),
   });
   let r = await ask({ ...base, thinking: { type: "disabled" } });
-  if (r.status === 400) r = await ask({ ...base, max_tokens: base.max_tokens + 2500 });
-  if (!r.ok) throw Object.assign(new Error(`api ${r.status}`), { status: 502 });
+  if (r.status === 400 && !(await noCredit(r))) r = await ask({ ...base, max_tokens: base.max_tokens + 2500 });
+  if (!r.ok) throw (await noCredit(r)) ? noCreditError() : Object.assign(new Error(`api ${r.status}`), { status: 502 });
   const data = await r.json();
   const text = (data.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
   const out = parseLesson(text, played.length, best.length, allowed);
@@ -688,8 +689,8 @@ export async function answerQuestion(input, env) {
     // En la última vuelta ya no se ofrece la herramienta: tiene que contestar.
     const body = { ...base, messages, ...(round >= TOOL_ROUNDS ? { tool_choice: { type: "none" } } : {}) };
     let r = await call({ ...body, thinking: { type: "disabled" } });
-    if (r.status === 400) r = await call({ ...body, max_tokens: base.max_tokens + 2500 });
-    if (!r.ok) throw Object.assign(new Error(`api ${r.status}`), { status: 502 });
+    if (r.status === 400 && !(await noCredit(r))) r = await call({ ...body, max_tokens: base.max_tokens + 2500 });
+    if (!r.ok) throw (await noCredit(r)) ? noCreditError() : Object.assign(new Error(`api ${r.status}`), { status: 502 });
     const data = await r.json();
     const content = data.content || [];
     const uses = content.filter((c) => c.type === "tool_use");

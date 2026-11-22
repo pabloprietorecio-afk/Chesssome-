@@ -1,6 +1,7 @@
 // Asistente de A Chess Way (/asistente): el jugador pide cosas con sus palabras («empieza una partida en nivel
 // medio», «pon el tablero de mármol», «peón de rey dos pasos») y Claude elige acciones de una lista fija. La app
 // las ejecuta (y las comprueba); aquí solo se validan su forma y sus valores. Petición de Pablo (21 nov).
+import { noCredit, noCreditError } from "./credit.js";
 
 const LEVELS = ["muy fácil", "fácil", "medio", "difícil", "muy difícil", "experto"];
 const RHYTHMS = ["sin reloj", "3+2", "5+0", "10+0", "15+10", "30+0", "90+30"];
@@ -117,8 +118,8 @@ export async function assist(input, env) {
     body: JSON.stringify(body),
   });
   let r = await call({ ...base, thinking: { type: "disabled" } });
-  if (r.status === 400) r = await call({ ...base, max_tokens: 3000 });
-  if (!r.ok) throw Object.assign(new Error(`api ${r.status}`), { status: 502 });
+  if (r.status === 400 && !(await noCredit(r))) r = await call({ ...base, max_tokens: 3000 });
+  if (!r.ok) throw (await noCredit(r)) ? noCreditError() : Object.assign(new Error(`api ${r.status}`), { status: 502 });
   const data = await r.json();
   const content = data.content || [];
   const say = content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim().slice(0, 600);

@@ -9472,6 +9472,9 @@ func _ask_error_text() -> String:
 		return Loc.t("Has hecho muchas preguntas seguidas. Espera un minuto y vuelve a preguntar.")
 	if ask_error == 400:
 		return Loc.t("No he entendido la pregunta. Prueba a decirla de otra forma.")
+	# 503: el servidor no puede usar la IA (p. ej. sin saldo en la API). No es la conexión del jugador.
+	if ask_error == 503:
+		return Loc.t("El tutor no está disponible en este momento. Vuelve a intentarlo más tarde.")
 	return Loc.t("No he podido contestar: sin conexión o el servidor tarda. Prueba otra vez.")
 
 
