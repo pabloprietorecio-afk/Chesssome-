@@ -19,6 +19,10 @@ boot_splash/bg_color=Color(0.906, 0.894, 0.945, 1)
 boot_splash/show_image=false
 
 
+[audio]
+
+general/text_to_speech=true
+
 [display]
 
 window/size/viewport_width=1080

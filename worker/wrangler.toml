@@ -15,6 +15,10 @@ MODEL_ASSISTANT = "claude-haiku-5-5"
 PACKAGE_NAME = "com.pabloprieto.chessome"
 # "1": las explicaciones exigen cuenta (cuando todas las versiones de la app la manden). Mientras, "0".
 REQUIRE_ACCOUNT = "0"
+# La voz del tutor (src/speech.js): Kokoro-82M en un proveedor con API como la de OpenAI. La clave, en el secreto
+# TTS_API_KEY (GitHub → secretos del repositorio; el despliegue la sube a Cloudflare).
+TTS_URL = "https://api.deepinfra.com/v1/audio/speech"
+TTS_MODEL = "hexgrad/Kokoro-82M"
 
 # Como mucho 10 peticiones por minuto por IP (más que suficiente para corregir errores de una partida).
 [[ratelimits]]
@@ -45,6 +49,15 @@ namespace_id = "4473"
 
   [ratelimits.simple]
   limit = 20
+  period = 60
+
+# La voz del tutor (src/speech.js): hasta 40 frases por minuto por IP (una lección son unas 8).
+[[ratelimits]]
+name = "SPEAK_IP"
+namespace_id = "4474"
+
+  [ratelimits.simple]
+  limit = 40
   period = 60
 
 # Cuentas y cupo de las explicaciones (src/cuentas.js): un Durable Object por cuenta, con almacenamiento SQLite.

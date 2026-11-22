@@ -341,6 +341,11 @@ var assistant_button: Button
 ## Preguntas y respuestas de esta partida ({q, a}), para que el tutor siga el hilo.
 var ask_history: Array = []
 var tutor_voice: TutorVoice
+## La voz del tutor (core/tutor_speech.gd): lee sus respuestas con la voz de A Tank Story. Opciones → Premium.
+var tutor_speech: TutorSpeech
+var tutor_speech_on := true
+## Lo que dijo el tutor la última vez (para el botón «Escuchar»).
+var _speech_text := ""
 ## Stockfish 19 dentro del móvil (android_motor/): valora las jugadas del tutor sin depender del servidor.
 var local_engine: LocalEngine
 var _ask_gen := 0
@@ -384,6 +389,8 @@ const COACH_WINDOW_ALPHA := 0.62
 ## Ventanas con texto largo (respuestas, explicación entera): casi opacas, para leer sin las piezas detrás (Pablo,
 ## 22 nov). Las cortas (escribir, esperando) siguen al COACH_WINDOW_ALPHA para ver el tablero.
 const READING_WINDOW_ALPHA := 0.88
+## Largo máximo de una frase del asistente en el aviso breve (más larga, en la ventana).
+const TOAST_MAX := 60
 ## La ventana de la explicación se puede arrastrar (para destapar el tablero); se acuerda de dónde se dejó.
 var _coach_window_pos := Vector2.INF
 var _coach_window_drag := false
@@ -1208,6 +1215,10 @@ func _ready() -> void:
 	tutor_voice.heard_partial.connect(_on_voice_partial)
 	tutor_voice.heard.connect(_on_voice_heard)
 	tutor_voice.failed.connect(_on_voice_failed)
+	tutor_speech = TutorSpeech.new()
+	add_child(tutor_speech)
+	tutor_speech.url = CoachAI.speech_url(coach.cfg)
+	tutor_speech.speaking_changed.connect(_on_speech_changed)
 	voice_player = AudioStreamPlayer.new()
 	add_child(voice_player)
 	voice_player.finished.connect(_voice_next)
@@ -1436,6 +1447,9 @@ func _load_settings() -> void:
 	press_clock = bool(cfg.get_value("partida", "pulsar_reloj", true))
 	press_reminder = bool(cfg.get_value("partida", "aviso_reloj", true))
 	voice_on = bool(cfg.get_value("sonido", "voz", true))
+	tutor_speech_on = bool(cfg.get_value("sonido", "voz_tutor", true))
+	if tutor_speech != null:
+		tutor_speech.enabled = tutor_speech_on
 	music_on = bool(cfg.get_value("sonido", "musica", true))
 	gesture_hint = bool(cfg.get_value("vista", "pista_de_gestos", gesture_hint))
 	_saved_lock = bool(cfg.get_value("vista", "giro_fijado", false))
@@ -1480,6 +1494,7 @@ func _save_settings() -> void:
 	cfg.set_value("partida", "subniveles", game_sublevels)
 	cfg.set_value("partida", "aviso_reloj", press_reminder)
 	cfg.set_value("sonido", "voz", voice_on)
+	cfg.set_value("sonido", "voz_tutor", tutor_speech_on)
 	cfg.set_value("sonido", "musica", music_on)
 	cfg.set_value("vista", "pista_de_gestos", gesture_hint)
 	cfg.set_value("vista", "giro_fijado", _saved_lock)
@@ -9220,7 +9235,11 @@ func _on_coach_lesson(run: int, gen: int, data: Dictionary) -> void:
 		coach_note = str(coach_lesson["summary"])
 		coach_from_ai = true
 	if lesson_open and not _lesson_steps().is_empty():
-		view.board.set_focus(_tutor_focus(_lesson_steps()[clampi(lesson_step, 0, _lesson_steps().size() - 1)]))
+		var now: Dictionary = _lesson_steps()[clampi(lesson_step, 0, _lesson_steps().size() - 1)]
+		view.board.set_focus(_tutor_focus(now))
+		# Llega el texto del profesor con la lección ya abierta: se dice ese, no el que la app tenía preparado.
+		if _tutor_text(now) != _speech_text:
+			_speak_tutor(_tutor_text(now))
 	_refresh()
 
 
@@ -9260,6 +9279,7 @@ func _lesson_show(i: int) -> void:
 	lesson_step = clampi(i, 0, steps.size() - 1)
 	var step: Dictionary = steps[lesson_step]
 	_lesson_token += 1
+	_speak_tutor(_tutor_text(step))
 	var token := _lesson_token
 	view.set_fen(str(step["fen"]))
 	view.board.set_arrows([])
@@ -9313,6 +9333,7 @@ func _close_lesson() -> void:
 	if not lesson_open:
 		return
 	lesson_open = false
+	_stop_tutor_speech()
 	_lesson_token += 1
 	view.set_fen(str(game_history[-1]))
 	view.board.set_arrows([])
@@ -9412,6 +9433,9 @@ func _build_ask_window() -> void:
 		"answer":
 			column.add_child(_para("«%s»" % ask_text, F_SUB, _c("quiet"), font_medium))
 			column.add_child(_para(str(ask_answer.get("answer", "")), F_BODY, _c("ink"), font_medium))
+			var listen := _speech_button(str(ask_answer.get("answer", "")))
+			if listen != null:
+				column.add_child(listen)
 			if ask_mode == "tutor" and not _lesson_steps("answer").is_empty():
 				var show := _button("play", "Enséñamelo en el tablero", _open_answer_lesson, _c("accent"), _c("accent_ink"), btn)
 				show.disabled = game_state != "play"
@@ -9635,15 +9659,19 @@ func _on_assistant_reply(gen: int, data: Dictionary) -> void:
 		return
 	ask_state = "answer"
 	ask_answer = {"answer": "\n\n".join(([say] if say != "" else []) + notes)}
-	# Hecho sin nada más que contar: la ventana se cierra y la frase sale en un aviso breve.
-	if notes.is_empty() and not (data.get("actions", []) as Array).is_empty():
+	# Hecho sin nada más que contar: la ventana se cierra y la frase sale en un aviso breve. Solo si la frase es
+	# corta: una respuesta larga en el aviso se salía de la pantalla por los dos lados (Pablo, 22 nov); esa se queda
+	# en la ventana semitransparente, como las demás respuestas.
+	if notes.is_empty() and not (data.get("actions", []) as Array).is_empty() and fits_toast(say):
 		ask_state = ""
 		_confirm_on_close = Callable()
 		_close_confirm()
 		if say != "":
 			_prog_toast(say, "", false)
+			_speak_tutor(say)
 		return
 	_build_ask_window()
+	_speak_tutor(str(ask_answer["answer"]))
 
 
 ## Ejecuta una acción del asistente. Devuelve un texto para el jugador si hay algo que contar (un resultado o por
@@ -9835,6 +9863,7 @@ func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:
 	else:
 		ask_state = "answer"
 		ask_answer = data
+		_speak_tutor(str(data.get("answer", "")))
 		ask_history.append({"q": ask_text, "a": str(data.get("answer", ""))})
 		if ask_history.size() > 3:
 			ask_history = ask_history.slice(-3)
@@ -9844,9 +9873,82 @@ func _on_tutor_answer(run: int, gen: int, data: Dictionary) -> void:
 		_build_ask_window()
 
 
+## Una frase cabe en el aviso breve (una línea, sin saltos): si no, va en la ventana.
+static func fits_toast(text: String) -> bool:
+	return text.length() <= TOAST_MAX and not text.contains("\n")
+
+
+# ---------------------------------------------------------------- la voz del tutor
+
+## Lee en voz alta lo que dice el tutor (si la voz está puesta y no es Kids). Corta lo que estuviera diciendo.
+func _speak_tutor(text: String) -> void:
+	if tutor_speech == null or kids or not tutor_speech_on:
+		return
+	_speech_text = text
+	tutor_speech.say(text, Loc.language)
+
+
+func _stop_tutor_speech() -> void:
+	if tutor_speech != null:
+		tutor_speech.stop()
+
+
+## «Escuchar» / «Parar» debajo de un texto del tutor (null con la voz quitada).
+func _speech_button(text: String) -> Button:
+	if kids or not tutor_speech_on or text.strip_edges() == "":
+		return null
+	var tint := _tint("sky")
+	var on := tutor_speech.speaking and _speech_text == text
+	var b := _button("sound", "Parar la voz" if on else "Escuchar", _toggle_speech.bind(text), tint[0], tint[1], {"font_size": F_SUB, "height": 88.0, "icon": 44.0, "radius": 44})
+	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	b.set_meta("speech", text)
+	return b
+
+
+func _toggle_speech(text: String) -> void:
+	if tutor_speech.speaking and _speech_text == text:
+		_stop_tutor_speech()
+	else:
+		_speak_tutor(text)
+
+
+## Cambia el rótulo de los botones «Escuchar» que haya a la vista.
+func _on_speech_changed(_on: bool) -> void:
+	if confirm_node == null or not is_instance_valid(confirm_node):
+		return
+	var stack: Array = [confirm_node]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Button and n.has_meta("speech"):
+			var on := tutor_speech.speaking and _speech_text == str(n.get_meta("speech"))
+			_set_button_text(n as Button, "Parar la voz" if on else "Escuchar")
+		stack.append_array(n.get_children())
+
+
+## El texto de un botón hecho con _button (va en una etiqueta dentro).
+func _set_button_text(b: Button, text: String) -> void:
+	var stack: Array = [b]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Label:
+			(n as Label).text = Loc.t(text)
+			return
+		stack.append_array(n.get_children())
+
+
+func _set_tutor_speech(on: bool) -> void:
+	tutor_speech_on = on
+	tutor_speech.enabled = on
+	if not on:
+		_stop_tutor_speech()
+	_save_settings()
+	_sync_sheet()
+
+
 func _ask_closed() -> void:
 	_ask_window_up = false
 	tutor_voice.cancel()
+	_stop_tutor_speech()
 	if ask_state == "edit" or ask_state == "listen":
 		ask_state = ""
 	view.board.set_focus([])
@@ -10266,8 +10368,13 @@ func _open_coach_full() -> void:
 	var mark := "" if glyph == "" or glyph.begins_with("@") else glyph + " "
 	var head := mark + (_coach_label(coach_verdict) if coach_verdict != "" else Loc.t("Profesor"))
 	var column := _glass_popup(head, true)
+	_confirm_on_close = _stop_tutor_speech
+	_speak_tutor(text)
 	column.add_child(_para("Profesor IA" if coach_from_ai else "Profesor", F_SUB, _c("accent_text"), font_semibold))
 	column.add_child(_para(text, F_BODY, _c("ink"), font_medium))
+	var listen := _speech_button(text)
+	if listen != null:
+		column.add_child(listen)
 	column.add_child(_spacer(6.0))
 	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}))
 	var hint := _para("Arrastra la ventana para moverla", F_CAP, _c("quiet"), font_medium)
@@ -10597,6 +10704,7 @@ func _premium_rows(box: VBoxContainer) -> void:
 	box.add_child(_button("party", "Ver Premium" if not Premium.active() else "Premium y recargas", _open_premium_offer.bind("opciones"), tint[0], tint[1], {"font_size": F_SUB, "height": 104.0, "icon": 50.0}))
 	var sub := "Te marca cada jugada y te explica tus errores mientras juegas contra el rival (partidas sin reloj)."
 	box.add_child(_switch_row("bulb", "lilac", "Profesor IA en las partidas", sub, Premium.coach_on, _set_coach_on))
+	box.add_child(_switch_row("sound", "sky", "Voz del tutor", "Lee en voz alta sus respuestas, sus explicaciones y la lección en el tablero.", tutor_speech_on, _set_tutor_speech))
 	if Premium.test_allowed() and CoachAI.endpoint_mode(coach.cfg, "", true) != "server":
 		box.add_child(_coach_key_block())
 
@@ -11514,6 +11622,16 @@ func _prog_toast(title: String, sub: String, party: bool, wait_left: int = 150) 
 	words.add_child(_line(title, F_HEAD, _c("ink"), font_display))
 	if sub != "":
 		words.add_child(_line(sub, F_SUB, tint[1], font_semibold))
+	# Nunca más ancho que la pantalla: un texto largo baja de línea (antes se salía por los dos lados).
+	var room := maxf(300.0, size.x * 0.9 - 44.0 * 2.0 - 64.0 - 20.0)
+	for lab: Node in words.get_children():
+		var l := lab as Label
+		if l == null:
+			continue
+		var wide := l.get_theme_font("font").get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.get_theme_font_size("font_size")).x
+		if wide > room:
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size.x = room
 	row.add_child(words)
 	toast.add_child(pill)
 	_prog_toast_place.call_deferred()

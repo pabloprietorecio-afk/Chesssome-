@@ -604,6 +604,12 @@ static func voice_url(config: Dictionary) -> String:
 	return t.trim_suffix("/tutor") + "/voz" if t != "" else ""
 
 
+## Dirección de la voz del tutor (/voz/decir), en el mismo servidor.
+static func speech_url(config: Dictionary) -> String:
+	var t := tutor_url(config)
+	return t.trim_suffix("/tutor") + "/voz/decir" if t != "" else ""
+
+
 ## Dirección del asistente (la del servidor del tutor, en /asistente).
 static func assistant_url(config: Dictionary) -> String:
 	var t := tutor_url(config)

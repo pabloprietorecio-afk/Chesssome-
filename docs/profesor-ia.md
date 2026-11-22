@@ -55,8 +55,8 @@ Petición de Pablo: preguntar al tutor en cualquier momento, también por voz.
   permiso del micrófono la primera vez. Solo en el APK con Gradle (el de «APK (Gradle…)»); en el APK sencillo
   de la CI no hay botón «Hablar», pero el teclado de Android deja dictar.
 - Coste estimado (sin medir): 2–4 llamadas a Sonnet 5.5 por pregunta, ~1–2 céntimos de dólar.
-- **Pendiente**: que el tutor recuerde las preguntas anteriores de la partida (hoy cada una va sola); que lea la
-  respuesta en voz alta.
+- **Pendiente**: que el tutor recuerde las preguntas anteriores de la partida (hoy cada una va sola). Leer la
+  respuesta en voz alta: hecho el 22 nov (docs/voz-tutor.md).
 
 ## Interruptor «Tutor IA» (21 nov)
 En la barra de arriba de todas las partidas contra la app (no en Kids): enciende y apaga el tutor sin ir a

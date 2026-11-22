@@ -3,6 +3,8 @@
 #   CLOUDFLARE_API_TOKEN  · token de Cloudflare con la plantilla «Edit Cloudflare Workers»
 #   CLOUDFLARE_ACCOUNT_ID · el «Account ID» de Cloudflare
 #   ANTHROPIC_API_KEY     · la clave de la API de Claude (Claude Console). Solo vive aquí y en Cloudflare.
+#   TTS_API_KEY           · (opcional) la clave de DeepInfra para la voz del tutor (Kokoro). Sin ella, la app usa la
+#                           voz del sistema del móvil.
 name: Servidor del profesor IA
 
 on:
@@ -79,6 +81,29 @@ jobs:
           echo "$SA" | jq -e '.client_email and .private_key' > /dev/null || { echo "GOOGLE_PLAY_SA no parece una clave de cuenta de servicio (JSON)"; exit 1; }
           npm ci --silent
           printf '%s' "$SA" | npx --yes wrangler@4 secret put GOOGLE_PLAY_SA
+      - name: Clave de la voz del tutor (Kokoro), si está
+        if: steps.secrets.outputs.ok == 'true'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          K: ${{ secrets.TTS_API_KEY }}
+        run: |
+          if [ -z "$K" ]; then echo "::warning::Sin TTS_API_KEY: el tutor habla con la voz del sistema del móvil, no con la de A Tank Story."; exit 0; fi
+          npm ci --silent
+          printf '%s' "$K" | npx --yes wrangler@4 secret put TTS_API_KEY
+      - name: Probar la voz del tutor desplegada
+        if: steps.secrets.outputs.ok == 'true'
+        env:
+          K: ${{ secrets.TTS_API_KEY }}
+        run: |
+          [ -n "$K" ] || { echo "Sin TTS_API_KEY: no se prueba."; exit 0; }
+          base=$(jq -r .endpoint godot/data/coach_ai.json | sed 's#/profesor$##')
+          r=$(curl -s -m 40 -X POST "$base/voz/decir" -H "content-type: application/json" -d '{"text":"Hola. La mejor jugada era Cf3: desarrolla el caballo y defiende e5.","language":"es"}')
+          echo "$r" | jq -c '{voice, bytes: ((.audio // "") | length), error, detail}'
+          echo "$r" | jq -r '.audio' | base64 -d > voz.mp3
+          head -c 3 voz.mp3 | od -An -c
+          [ "$(stat -c %s voz.mp3)" -gt 2000 ]
       - name: Probar las cuentas (cupo) en el servidor desplegado
         if: steps.secrets.outputs.ok == 'true'
         run: |
