@@ -64,6 +64,29 @@ jobs:
             ANTHROPIC_API_KEY
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Cuenta de servicio de Google Play (verificar compras), si está
+        if: steps.secrets.outputs.ok == 'true'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SA: ${{ secrets.GOOGLE_PLAY_SA }}
+        run: |
+          if [ -z "$SA" ]; then echo "::warning::Sin GOOGLE_PLAY_SA: el servidor no puede verificar compras (Premium y recargas)."; exit 0; fi
+          echo "$SA" | jq -e '.client_email and .private_key' > /dev/null || { echo "GOOGLE_PLAY_SA no parece una clave de cuenta de servicio (JSON)"; exit 1; }
+          npm ci --silent
+          printf '%s' "$SA" | npx wrangler secret put GOOGLE_PLAY_SA
+      - name: Probar las cuentas (cupo) en el servidor desplegado
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          base=$(jq -r .endpoint godot/data/coach_ai.json | sed 's#/profesor$##')
+          c=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+          r=$(curl -s -m 20 -X POST "$base/premium/estado" -H "content-type: application/json" -d "{\"cuenta\":\"$c\"}")
+          echo "Cuenta nueva: $r"
+          echo "$r" | jq -e '.premium == false and .gratis == 40' > /dev/null
+          bad=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$base/premium/alta" -H "content-type: application/json" -d "{\"cuenta\":\"$c\",\"token\":\"falso-falso-falso-falso-falso\"}")
+          echo "Alta con una compra falsa: $bad (400 si Google la rechaza; 503 si aún no hay cuenta de servicio)"
+          [ "$bad" = "400" ] || [ "$bad" = "503" ]
       - name: Probar el servidor desplegado
         if: steps.secrets.outputs.ok == 'true'
         run: |

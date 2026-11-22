@@ -7,6 +7,8 @@ import { judge, lesson, answerQuestion } from "./tutor.js";
 import { assist } from "./assistant.js";
 import { transcribe } from "./voice.js";
 import { noCredit, noCreditError } from "./credit.js";
+import { premiumRoute, withQuota } from "./cuentas.js";
+export { Cuentas } from "./cuentas.js";
 
 export const KINDS = {
   missed_mate: "tenía jaque mate en una jugada y no lo dio",
@@ -79,7 +81,7 @@ const json = (obj, status = 200) =>
 
 // Rutas: /profesor (redactar un error ya comprobado por la app), /tutor (Stockfish valora la jugada) y
 // /tutor/leccion (Claude la explica jugada a jugada) y /tutor/pregunta (preguntas libres del alumno). Cada una con su límite por IP.
-const ROUTES = { "/profesor": "PER_IP", "/tutor": "TUTOR_IP", "/tutor/leccion": "PER_IP", "/tutor/pregunta": "PER_IP", "/asistente": "ASSIST_IP", "/voz": "ASSIST_IP" };
+const ROUTES = { "/profesor": "PER_IP", "/tutor": "TUTOR_IP", "/tutor/leccion": "PER_IP", "/tutor/pregunta": "PER_IP", "/asistente": "ASSIST_IP", "/voz": "ASSIST_IP", "/premium/estado": "ASSIST_IP", "/premium/alta": "ASSIST_IP", "/premium/recarga": "ASSIST_IP" };
 
 export default {
   async fetch(request, env) {
@@ -106,7 +108,9 @@ export default {
         if (url.pathname === "/asistente") return json(await assist(body, env));
         if (url.pathname === "/voz") return json(await transcribe(body, env));
         if (url.pathname === "/tutor") return json(await judge(body, env, url.searchParams.get("debug") === "1"));
-        return json(url.pathname === "/tutor/pregunta" ? await answerQuestion(body, env) : await lesson(body, env));
+        if (url.pathname.startsWith("/premium/")) return json(await premiumRoute(url.pathname, body, env));
+        // Las explicaciones gastan cupo (cuentas.js); si fallan, se devuelve.
+        return json(await withQuota(body, env, () => (url.pathname === "/tutor/pregunta" ? answerQuestion(body, env) : lesson(body, env))));
       } catch (e) {
         return json({ error: String(e?.message || e), ...(e?.detail ? { detail: e.detail } : {}) }, e?.status || 502);
       }

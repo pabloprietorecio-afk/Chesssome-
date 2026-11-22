@@ -446,3 +446,83 @@ test("sin saldo en la API de Claude: 503 «tutor no disponible», sin reintentar
   await assert.rejects(assist({ text: "pon el tablero de mármol", state: { pantalla: "inicio" }, language: "es" }, { ANTHROPIC_API_KEY: "x" }), (e) => e.status === 503);
   assert.equal(calls, 1);
 });
+
+import { spend, refund, status, emptyRecord, Cuentas, withQuota, premiumRoute, PREMIUM_MONTHLY, FREE_TOTAL, PACK_SIZE, monthOf } from "./src/cuentas.js";
+
+// Durable Objects de mentira, en memoria (uno por nombre).
+function fakeCuentas() {
+  const objs = new Map();
+  return {
+    idFromName: (n) => n,
+    get: (n) => {
+      if (!objs.has(n)) {
+        const data = new Map();
+        objs.set(n, new Cuentas({ storage: { get: async (k) => data.get(k), put: async (k, v) => data.set(k, structuredClone(v)) } }));
+      }
+      const o = objs.get(n);
+      return { fetch: (url, init) => o.fetch(new Request(url, init)) };
+    },
+  };
+}
+
+test("cupo: gratis, premium al mes, recargas y devolución", () => {
+  const now = Date.parse("2026-11-22T10:00:00Z");
+  let rec = emptyRecord();
+  for (let i = 0; i < FREE_TOTAL; i++) rec = spend(rec, now).rec;
+  assert.deepEqual(spend(rec, now), { ok: false, reason: "premium" });
+  rec = { ...rec, sub: { token: "t", expiry: now + 86400000 } };
+  const s = spend(rec, now);
+  assert.equal(s.from, "mes");
+  assert.equal(status(s.rec, now).quedan, PREMIUM_MONTHLY - 1);
+  assert.equal(status(refund(s.rec, "mes", now), now).quedan, PREMIUM_MONTHLY);
+  rec = { ...s.rec, used: PREMIUM_MONTHLY };
+  assert.deepEqual(spend(rec, now), { ok: false, reason: "cupo" });
+  rec = { ...rec, extra: PACK_SIZE };
+  assert.equal(spend(rec, now).from, "extra");
+  // Mes nuevo: el cupo vuelve.
+  const next = Date.parse("2026-12-01T00:00:01Z");
+  rec = { ...rec, sub: { token: "t", expiry: next + 86400000 } };
+  assert.equal(spend(rec, next).from, "mes");
+  assert.equal(monthOf(next), "2026-12");
+});
+
+test("cuentas: las explicaciones gastan cupo; si fallan, se devuelve; sin cupo, 402", async () => {
+  const env = { CUENTAS: fakeCuentas() };
+  const cuenta = "a".repeat(32);
+  const ok = await withQuota({ cuenta }, env, async () => ({ answer: "hola" }));
+  assert.equal(ok.cupo.gratis, FREE_TOTAL - 1);
+  await assert.rejects(withQuota({ cuenta }, env, async () => { throw Object.assign(new Error("api 502"), { status: 502 }); }), (e) => e.status === 502);
+  const after = await premiumRoute("/premium/estado", { cuenta }, env);
+  assert.equal(after.gratis, FREE_TOTAL - 1);
+  for (let i = 0; i < FREE_TOTAL - 1; i++) await withQuota({ cuenta }, env, async () => ({}));
+  await assert.rejects(withQuota({ cuenta }, env, async () => ({})), (e) => e.status === 402 && e.detail.motivo === "premium");
+  // Sin cuenta (app antigua): pasa, salvo que el servidor la exija.
+  assert.deepEqual(await withQuota({}, env, async () => ({ x: 1 })), { x: 1 });
+  await assert.rejects(withQuota({}, { ...env, REQUIRE_ACCOUNT: "1" }, async () => ({})), (e) => e.status === 426);
+});
+
+test("compras: suscripción y recarga verificadas con Google; la recarga no vale dos veces ni para otra cuenta", async () => {
+  const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  const der = Buffer.from(await crypto.subtle.exportKey("pkcs8", pair.privateKey)).toString("base64");
+  const sa = JSON.stringify({ client_email: "pagos@x.iam.gserviceaccount.com", private_key: `-----BEGIN PRIVATE KEY-----\n${der}\n-----END PRIVATE KEY-----\n`, token_uri: "https://oauth2.googleapis.com/token" });
+  const env = { CUENTAS: fakeCuentas(), GOOGLE_PLAY_SA: sa };
+  const expiry = Date.now() + 30 * 86400000;
+  globalThis.fetch = async (url) => {
+    url = String(url);
+    if (url.includes("oauth2")) return new Response(JSON.stringify({ access_token: "tok", expires_in: 3600 }));
+    if (url.includes("subscriptionsv2")) return new Response(JSON.stringify({ subscriptionState: "SUBSCRIPTION_STATE_ACTIVE", lineItems: [{ productId: "premium_mensual", expiryTime: new Date(expiry).toISOString() }] }));
+    if (url.includes("/products/explicaciones_100/")) return new Response(JSON.stringify({ purchaseState: 0 }));
+    return new Response("{}", { status: 404 });
+  };
+  const a = "b".repeat(32), b = "c".repeat(32);
+  const st = await premiumRoute("/premium/alta", { cuenta: a, token: "x".repeat(40) }, env);
+  assert.equal(st.premium, true);
+  assert.equal(st.quedan, PREMIUM_MONTHLY);
+  const r1 = await premiumRoute("/premium/recarga", { cuenta: a, token: "y".repeat(40) }, env);
+  assert.equal(r1.extra, PACK_SIZE);
+  const r2 = await premiumRoute("/premium/recarga", { cuenta: a, token: "y".repeat(40) }, env);
+  assert.equal(r2.extra, PACK_SIZE);
+  await assert.rejects(premiumRoute("/premium/recarga", { cuenta: b, token: "y".repeat(40) }, env), (e) => e.status === 409);
+  // Sin cuenta de servicio, no se dan de alta compras.
+  await assert.rejects(premiumRoute("/premium/alta", { cuenta: b, token: "z".repeat(40) }, { CUENTAS: env.CUENTAS }), (e) => e.status === 503);
+});

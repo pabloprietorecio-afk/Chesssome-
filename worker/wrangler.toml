@@ -11,6 +11,10 @@ MAX_TOKENS = "220"
 MODEL_TUTOR = "claude-sonnet-5-5"
 # El asistente (órdenes del jugador): rápido y barato.
 MODEL_ASSISTANT = "claude-haiku-5-5"
+# Paquete de la app en Google Play (para verificar compras).
+PACKAGE_NAME = "com.pabloprieto.chessome"
+# "1": las explicaciones exigen cuenta (cuando todas las versiones de la app la manden). Mientras, "0".
+REQUIRE_ACCOUNT = "0"
 
 # Como mucho 10 peticiones por minuto por IP (más que suficiente para corregir errores de una partida).
 [[ratelimits]]
@@ -42,3 +46,12 @@ namespace_id = "4473"
   [ratelimits.simple]
   limit = 20
   period = 60
+
+# Cuentas y cupo de las explicaciones (src/cuentas.js): un Durable Object por cuenta, con almacenamiento SQLite.
+[[durable_objects.bindings]]
+name = "CUENTAS"
+class_name = "Cuentas"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Cuentas"]
