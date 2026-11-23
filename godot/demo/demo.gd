@@ -3891,6 +3891,8 @@ func _build_sheet() -> void:
 	box.add_child(how_pad)
 	var licences := _button("info", "Licencias", _open_licences, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 50.0})
 	box.add_child(licences)
+	if not kids:
+		box.add_child(_button("send", "Copia de seguridad", _open_backup, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 50.0}))
 	var about := _para(Loc.f("A Chess Way · %s", app_version), F_CAP, _c("quiet"), font_regular)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(about)
@@ -3935,6 +3937,127 @@ func _open_licence_text() -> void:
 	scroll.add_child(text)
 	column.add_child(scroll)
 	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 96.0, "icon": 46.0, "radius": 48}))
+
+
+# ---------------------------------------------------------------- copia de seguridad
+
+## Opciones → «Copia de seguridad» (core/backup.gd): el progreso en un archivo para llevarlo a otro móvil o tablet,
+## sin cuenta ni servidor. Enviar (menú de compartir de Android: correo, Drive…), guardar en el móvil e importar usan
+## el complemento EsperaOnline (android_espera/EsperaOnline.java). Sin él (en el ordenador) se usa el portapapeles.
+const BACKUP_TMP := "user://copia_exportada.json"
+const BACKUP_ERRORS := {
+	"vacio": "El archivo está vacío.",
+	"grande": "El archivo es demasiado grande para ser una copia.",
+	"formato": "Ese archivo no es una copia de A Chess Way.",
+	"version": "Esa copia es de una versión más nueva de la app. Actualiza A Chess Way e inténtalo de nuevo.",
+	"archivo": "La copia está dañada.",
+	"sin_datos": "La copia no tiene datos.",
+}
+
+
+func _open_backup() -> void:
+	var column := _popup("Copia de seguridad", "Guarda tu progreso en un archivo para llevarlo a otro móvil o tablet. Al importarlo allí, sustituye lo que haya en ese dispositivo.")
+	var tint := _tint("sky")
+	var btn := {"font_size": F_SUB, "height": 96.0, "icon": 46.0, "radius": 48}
+	column.add_child(_button("send", "Enviar (correo, Drive…)", _backup_share, tint[0], tint[1], btn))
+	if _aviso_own() != null:
+		column.add_child(_button("copy", "Guardar en el móvil", _backup_save, tint[0], tint[1], btn))
+	column.add_child(_button("open", "Importar una copia", _backup_import, tint[0], tint[1], btn))
+	column.add_child(_button("back", "Cancelar", _close_confirm, _c("field"), _c("ink"), btn))
+
+
+## Escribe la copia en un archivo temporal y devuelve su ruta en el sistema ("" si no se pudo).
+func _backup_file() -> String:
+	var f := FileAccess.open(BACKUP_TMP, FileAccess.WRITE)
+	if f == null:
+		return ""
+	f.store_string(Backup.build())
+	f.close()
+	return ProjectSettings.globalize_path(BACKUP_TMP)
+
+
+func _backup_clean() -> void:
+	if FileAccess.file_exists(BACKUP_TMP):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BACKUP_TMP))
+
+
+func _backup_name() -> String:
+	return Backup.file_name(int(Time.get_unix_time_from_system() + int(Time.get_time_zone_from_system().get("bias", 0)) * 60))
+
+
+func _backup_share() -> void:
+	_close_confirm()
+	var path := _backup_file()
+	if path == "":
+		_prog_toast(Loc.t("No se pudo preparar la copia"), Loc.t("No hay sitio donde guardarla."), false)
+		return
+	var own := _aviso_own()
+	if own == null:
+		DisplayServer.clipboard_set(FileAccess.get_file_as_string(BACKUP_TMP))
+		_backup_clean()
+		_prog_toast(Loc.t("Copia en el portapapeles"), Loc.t("Pégala en un correo o en una nota."), false)
+		return
+	var status := str(own.call("shareBackup", path, _backup_name(), Loc.t("Enviar la copia de seguridad")))
+	# El complemento ya copió el archivo para compartirlo: el temporal sobra.
+	_backup_clean()
+	if status != "ok":
+		_prog_toast(Loc.t("No se pudo enviar la copia"), status, false)
+
+
+func _backup_save() -> void:
+	_close_confirm()
+	var own := _aviso_own()
+	var path := _backup_file()
+	if own == null or path == "":
+		_prog_toast(Loc.t("No se pudo preparar la copia"), Loc.t("No hay sitio donde guardarla."), false)
+		return
+	if not own.is_connected("respaldo_guardado", _backup_saved):
+		own.connect("respaldo_guardado", _backup_saved, CONNECT_DEFERRED)
+	own.call("saveBackup", path, _backup_name())
+
+
+func _backup_saved(result: String) -> void:
+	_backup_clean()
+	if result == "ok":
+		_prog_toast(Loc.t("Copia guardada"), Loc.t("Ya puedes llevarla a otro dispositivo."), false)
+	elif result != "cancel":
+		_prog_toast(Loc.t("No se pudo guardar la copia"), result, false)
+
+
+func _backup_import() -> void:
+	_close_confirm()
+	var own := _aviso_own()
+	if own == null:
+		_backup_read(DisplayServer.clipboard_get())
+		return
+	if not own.is_connected("respaldo_leido", _backup_read):
+		own.connect("respaldo_leido", _backup_read, CONNECT_DEFERRED)
+	own.call("pickBackup")
+
+
+## El texto del archivo elegido (o «cancel» / «error: …» del complemento): se revisa y se pide confirmar.
+func _backup_read(text: String) -> void:
+	if text == "cancel":
+		return
+	if text.begins_with("error:"):
+		_prog_toast(Loc.t("No se pudo leer el archivo"), text, false)
+		return
+	var v := Backup.validate(text)
+	if not bool(v["ok"]):
+		_prog_toast(Loc.t("No se puede importar"), Loc.t(str(BACKUP_ERRORS.get(str(v["error"]), "La copia está dañada."))), false)
+		return
+	var r: Dictionary = v["resumen"]
+	var detail := Loc.f("Tiene %d partidas, %d problemas intentados y %d días con actividad. Sustituirá el progreso de este dispositivo; lo que hay ahora se guarda aparte por si te arrepientes. El aviso diario se apaga: vuelve a activarlo en «Tu día».", [int(r["partidas"]), int(r["problemas"]), int(r["dias"])])
+	_confirm("¿Importar esta copia?", detail, "open", "Importar", func() -> void: _backup_apply(v["datos"]))
+
+
+func _backup_apply(datos: Dictionary) -> void:
+	if not Backup.restore(datos):
+		_prog_toast(Loc.t("No se pudo importar"), Loc.t("No se ha cambiado nada."), false)
+		return
+	# Todo se lee de los archivos al arrancar: se reabre la pantalla para cargar la copia (y no se guarda nada antes,
+	# que pisaría lo importado con lo que hay en memoria).
+	get_tree().reload_current_scene.call_deferred()
 
 
 func _caption(text: String) -> MarginContainer:

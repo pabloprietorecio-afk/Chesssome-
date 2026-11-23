@@ -63,3 +63,21 @@ normal (sin Gradle) no existe el complemento: si minimizas, la espera se para ha
 
 Google Play pide declarar el uso de servicios en primer plano (tipo `dataSync`) en la ficha de la app, con un vídeo
 de cómo se usa. Desde Android 15, los de tipo `dataSync` tienen un límite de 6 horas al día.
+
+## Copia de seguridad (23-11): compartir y elegir archivo
+
+Para pasar el progreso a otro móvil o tablet (Opciones → «Copia de seguridad»; `godot/core/backup.gd`). Sin cuenta ni
+servidor: un archivo JSON que el jugador mueve como quiera.
+
+- `shareBackup(ruta, nombre, titulo)`: menú de compartir de Android (correo, Drive, WhatsApp, Quick Share…). El archivo se
+  copia a `cache/respaldo/` y lo entrega `BackupProvider.java`, un `ContentProvider` propio de solo lectura (sin androidx
+  `FileProvider`: así no añade dependencias). Manifiesto: el `<provider>` lo declara `res://addons/espera_online`
+  (`exported=false`, `grantUriPermissions=true`).
+- `saveBackup(ruta, nombre)`: «Guardar en…» del sistema (Descargas, una carpeta de Drive). Responde con la señal
+  `respaldo_guardado("ok" | "cancel" | "error: …")`.
+- `pickBackup()`: selector de archivos del sistema (`*/*`, porque un adjunto del correo no siempre llega marcado como JSON).
+  Responde con `respaldo_leido(texto | "cancel" | "error: …")`.
+- **Sin probar en un móvil** (solo compila en la CI): hace falta probar enviar por correo y por Drive, «Guardar en el
+  móvil» e importar en otro dispositivo.
+- Qué entra y qué no: ver `godot/core/backup.gd`. **Nunca** viajan `chessome_online.cfg` (token de sesión), `premium.cfg`
+  (clave de la API) ni `chessome.cfg` (ajustes del dispositivo).

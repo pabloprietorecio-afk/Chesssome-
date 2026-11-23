@@ -39,6 +39,8 @@ class AndroidExport extends EditorExportPlugin:
 		return "\n".join([
 			'<meta-data android:name="org.godotengine.plugin.v2.EsperaOnline" android:value="com.pabloprieto.espera.EsperaOnline" />',
 			'<service android:name="com.pabloprieto.espera.EsperaService" android:exported="false" android:foregroundServiceType="dataSync" />',
+			# Copia de seguridad: entrega el archivo a la app que se elige en el menú de compartir (BackupProvider.java).
+			'<provider android:name="com.pabloprieto.espera.BackupProvider" android:authorities="com.pabloprieto.chessome.respaldo" android:exported="false" android:grantUriPermissions="true" />',
 			# Aviso diario con el diseño propio: la alarma y el reinicio del móvil (android_espera/AvisoReceiver.java). El
 			# permiso RECEIVE_BOOT_COMPLETED no se declara aquí (si lo declara también otro complemento, el manifiesto
 			# saldría con el elemento repetido): sin él, tras reiniciar se vuelve a armar al abrir la app.
