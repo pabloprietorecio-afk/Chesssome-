@@ -68,6 +68,21 @@ unos segundos y vuelve (`ambient_swell`); aplausos del final, más altos que el 
 unos 5 dB más bajo). Los efectos se apagan al final (fundido de 0,7–1 s), sin
 corte seco.
 
+## Formatos y ritmo (23 nov)
+
+Pablo, 23 nov: el jugador elige formato y ritmo al empezar un torneo (se recuerda la última elección).
+
+- **Formatos** (`Campeonato.FORMATS`): copa (8, una partida por cruce), copa con mini-match (8, dos partidas por
+  cruce con colores cambiados; 1-1 → desempate 5+3 y armagedón), cuadrangular (tú y 3 rivales de la sala, todos
+  contra todos, 3 partidas), suizo (8, 5 rondas por puntos sin repetir rival) y liga (8, todos contra todos, 7).
+  Con tabla, las tablas son tablas; clasificación por puntos y Sonneborn-Berger; se es campeón si se queda primero.
+- **Ritmo:** siempre con reloj: el de la sala, 3+2, 5+0, 10+0, 15+10, 30+0, 90+30 u «Otro» (minutos e incremento).
+  El desempate y el armagedón son 5+3 y 4+2, o el ritmo elegido si ya es más rápido.
+- **Premium:** desde la tercera ronda de cualquier formato (en el hotel, todo).
+- **Animación al volver de una partida:** se tachan las derrotas de la ronda, la clasificación se reordena y salen
+  los nuevos cruces (`CampeonatoUI._strike`, `_reveal`, `_slide_rows`). Capturas: `tests/animacion_shots.gd`,
+  `tests/formatos_shots.gd`.
+
 ## Pendiente
 
 - (Aparcado por Pablo el 23 nov: nos quedamos con las fotos tal cual.) Vídeos del rival saludando desde la mesa (vista en primera persona, sin manos del jugador): con PixVerse v6 a

@@ -5888,7 +5888,7 @@ func _home_items() -> Array:
 		items.append(["chick", "butter", "Aprende desde cero", Loc.f("%d de %d lecciones hechas.", [done, lessons.size()]) if done > 0 else "Cómo se mueve cada pieza.", _open_course])
 	items.append(["piece_knight", "mint", "Jugar una partida", "Contra el ordenador, 13 niveles.", _open_game_setup.bind(true)])
 	if not kids:
-		items.append(["crown", "butter", "Campeonato", "Eliminatoria de 8: de la escuela al gran hotel.", _open_campeonato])
+		items.append(["crown", "butter", "Campeonato", "Copa, liga, suizo…: de la escuela al gran hotel.", _open_campeonato])
 		items.append(["piece_queen", "sky", "Partida online", "Contra otra persona, en directo.", _open_online_home])
 	if not kids and not _has_player():
 		items.append(["cap", "lilac", "Test de nivel", "Unos problemas para saber por dónde empezar.", _open_experience])
@@ -9048,12 +9048,25 @@ func _wait_bot_farewell() -> void:
 
 var _camp_state := {}
 var _camp_loaded := false
+## Lo que se elige al empezar un torneo: formato (Campeonato.FORMATS), ritmo (0 = el de la sala, 1–6 = los de
+## TIME_CONTROLS, 7 = «Otro» con camp_min + camp_inc). Se acuerda la última elección.
+var camp_fmt := "copa"
+var camp_tc := 0
+var camp_min := 10
+var camp_inc := 5
+var _camp_news := ""
 
 
 func campeonato_state() -> Dictionary:
 	if not _camp_loaded:
 		_camp_state = Campeonato.load_state()
 		_camp_loaded = true
+		var last: Dictionary = _camp_state.get("ultimo", {})
+		if not Campeonato.format_def(str(last.get("formato", ""))).is_empty():
+			camp_fmt = str(last["formato"])
+		camp_tc = clampi(int(last.get("ritmo", camp_tc)), 0, TIME_CONTROLS.size() - 1)
+		camp_min = clampi(int(last.get("min", camp_min)), 1, 180)
+		camp_inc = clampi(int(last.get("inc", camp_inc)), 0, 60)
 	return _camp_state
 
 
@@ -9077,8 +9090,67 @@ func _open_campeonato() -> void:
 	CampeonatoUI.open_list(self)
 
 
-func _open_campeonato_room(key: String, news: String = "") -> void:
-	CampeonatoUI.open_room(self, key, news)
+func _open_campeonato_room(key: String, news: String = "", animate: bool = false) -> void:
+	_camp_news = news
+	CampeonatoUI.open_room(self, key, news, animate)
+
+
+## Vuelve a dibujar la sala (al cambiar formato o ritmo) sin perder por dónde ibas.
+func _campeonato_reopen(key: String) -> void:
+	var scroll := progress_scroll.scroll_vertical if progress_scroll != null and is_instance_valid(progress_scroll) else 0
+	CampeonatoUI.open_room(self, key, _camp_news)
+	if progress_scroll != null:
+		progress_scroll.set_deferred("scroll_vertical", scroll)
+
+
+func _camp_remember() -> void:
+	campeonato_state()["ultimo"] = {"formato": camp_fmt, "ritmo": camp_tc, "min": camp_min, "inc": camp_inc}
+	campeonato_save()
+
+
+func _camp_set_format(key: String, id: String) -> void:
+	camp_fmt = id
+	_camp_remember()
+	_campeonato_reopen(key)
+
+
+## Los botones de _segments y _stepper añaden su valor delante de lo que ya llevan atado: (i, clave).
+func _camp_set_tc(i: int, key: String) -> void:
+	camp_tc = clampi(i, 0, TIME_CONTROLS.size() - 1)
+	_camp_remember()
+	_campeonato_reopen(key)
+
+
+func _camp_set_tc_from(i: int, key: String, offset: int) -> void:
+	_camp_set_tc(i + offset, key)
+
+
+func _camp_step_minutes(dir: int, key: String) -> void:
+	var steps := [1, 2, 3, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120]
+	var at := steps.find(camp_min)
+	camp_min = int(steps[clampi((at if at >= 0 else 4) + dir, 0, steps.size() - 1)])
+	_camp_remember()
+	_campeonato_reopen(key)
+
+
+func _camp_step_increment(dir: int, key: String) -> void:
+	var steps := [0, 1, 2, 3, 5, 10, 15, 20, 30, 60]
+	var at := steps.find(camp_inc)
+	camp_inc = int(steps[clampi((at if at >= 0 else 0) + dir, 0, steps.size() - 1)])
+	_camp_remember()
+	_campeonato_reopen(key)
+
+
+## Ritmo elegido para el torneo de una sala: [minutos, incremento]. Siempre con reloj.
+func _camp_clock(key: String) -> Array:
+	campeonato_state()
+	if camp_tc <= 0:
+		var room: Array = Campeonato.tournament(key)["clock"]
+		return [int(room[0]), int(room[1])]
+	var t: Array = TIME_CONTROLS[camp_tc]
+	if int(t[1]) < 0:
+		return [camp_min, camp_inc]
+	return [int(t[1]), int(t[2])]
 
 
 func _campeonato_locked(text: String) -> void:
@@ -9091,7 +9163,7 @@ func _campeonato_new(key: String) -> void:
 	if you <= 0.0:
 		# Sin partidas: entras al cuadro como el rival más flojo de la sala.
 		you = float(CampeonatoUI._elo_span(key)[0])
-	Campeonato.start(campeonato_state(), key, you, _rng)
+	Campeonato.start(campeonato_state(), key, you, _rng, camp_fmt, _camp_clock(key))
 	campeonato_save()
 	_campeonato_play(key)
 
@@ -9112,7 +9184,7 @@ func _campeonato_start_game(key: String, lv: int) -> void:
 	var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary)[key]
 	var m := Campeonato.current_match(tour, key)
 	var rival := Campeonato.rival(key, str(m["rival"]))
-	var round_name := Loc.t(str(Campeonato.ROUNDS[int(m["ronda"])]))
+	var round_name := str(m["titulo"])
 	# Durante la partida el murmullo se oye de fondo, sin tapar el tablero (Pablo, 23 nov: «más murmullos»).
 	CampeonatoUI.ambient_volume(-11.0)
 	var cfg := {"variant": "", "level": lv, "title": Loc.f("%s · %s (bot)", [round_name, str(rival.get("name", ""))]), "text": "", "kids": "",
@@ -9128,6 +9200,7 @@ func _campeonato_record_once() -> void:
 	game["camp_done"] = true
 	var score := 1.0 if game_won > 0 else (0.5 if game_won == 0 else 0.0)
 	var r := Campeonato.record(campeonato_state(), key, score, _rng)
+	game["camp_decided"] = bool(r.get("decided", false))
 	campeonato_save()
 	game["camp_news"] = _campeonato_news(key, r)
 	CampeonatoUI.ambient_volume(-10.0)
@@ -9146,13 +9219,21 @@ func _campeonato_record_once() -> void:
 func _campeonato_news(key: String, r: Dictionary) -> String:
 	if r.is_empty():
 		return ""
+	var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary)[key]
 	if not bool(r["decided"]):
+		if int(r.get("mini", 0)) == 1:
+			return "Primera partida del mini-match jugada. Ahora, la segunda, con los colores cambiados."
+		if int(r.get("mini", 0)) == 2:
+			return "Mini-match empatado a un punto: desempate rápido, con los colores cambiados."
 		return "Tablas: toca desempate, con los colores cambiados." if int(r["tiebreak"]) == 1 else "Tablas otra vez: armagedón. Si hay tablas, pasan las negras."
 	if str(r["estado"]) == "campeon":
 		return Loc.f("¡Campeón! %s", Loc.t(str(Campeonato.tournament(key)["name"])))
+	if bool(r.get("tabla", false)):
+		if str(r["estado"]) == "terminado":
+			return Loc.f("Has acabado en el puesto %d de %d.", [int(r["puesto"]), (tour["cuadro"] as Array).size()])
+		return Loc.f("Partida apuntada. Siguiente: %s.", Campeonato.round_title(tour, int(tour["ronda"])))
 	if bool(r["won"]):
-		var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary)[key]
-		return Loc.f("¡Has ganado! Siguiente ronda: %s.", Loc.t(str(Campeonato.ROUNDS[int(tour["ronda"])])))
+		return Loc.f("¡Has ganado! Siguiente ronda: %s.", Campeonato.round_title(tour, int(tour["ronda"])))
 	return "Te has quedado fuera esta vez. ¡A por el siguiente!"
 
 
@@ -9160,6 +9241,7 @@ func _campeonato_after_game() -> void:
 	var key := str(game.get("campeonato", ""))
 	_campeonato_record_once()
 	var news := str(game.get("camp_news", ""))
+	var decided := bool(game.get("camp_decided", false))
 	CampeonatoUI.ambient_stop()
 	_stop_game_thread()
 	run_id += 1
@@ -9169,7 +9251,7 @@ func _campeonato_after_game() -> void:
 	view.set_orientation(0)
 	mode = "free"
 	_idle()
-	_open_campeonato_room(key, news)
+	_open_campeonato_room(key, news, decided)
 
 
 # ---------------------------------------------------------------- profesor IA (premium)
@@ -10854,7 +10936,7 @@ func _open_premium_offer(reason: String = "opciones") -> void:
 		"premium": "Las explicaciones y las preguntas al tutor son de Premium.",
 		"cupo": "Has usado las explicaciones de este mes.",
 		"experto": "El rival «Experto» (Stockfish) es de Premium.",
-		"campeonato": "La final del Campeonato (y el torneo del gran hotel, con Stockfish) es de Premium.",
+		"campeonato": "Desde la tercera ronda, el Campeonato (y el torneo del gran hotel, con Stockfish) es de Premium.",
 	}.get(reason, "")
 	var column := _popup("A Chess Way Premium", head)
 	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}

@@ -1113,7 +1113,7 @@ static func _grid_campeonato(d: Variant, height: float) -> Button:
 	var head: Label = d._line("Campeonato", int(u(24.0)), Color.WHITE, d.font_display)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(head)
-	col.add_child(_wrap(d, "Eliminatoria de 8: de la escuela al gran hotel.", u(13.0), Color(1, 1, 1, 0.88), d.font_medium, 2, u(16.0)))
+	col.add_child(_wrap(d, "Copa, liga, suizo…: de la escuela al gran hotel.", u(13.0), Color(1, 1, 1, 0.88), d.font_medium, 2, u(16.0)))
 	return card
 
 

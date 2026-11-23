@@ -112,11 +112,85 @@ func _initialize() -> void:
 	await _frames(2)
 	_ok(demo._premium_offer_reason == "campeonato", "la final pide Premium")
 
+	await _formatos(demo)
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Campeonato.PATH))
 	print("%d comprobaciones, %d fallos" % [hechos, fallos])
 	if fallos == 0:
 		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
+
+
+## Elegir formato y ritmo, y jugar en una liga y en un mini-match.
+func _formatos(demo: Node) -> void:
+	demo._open_campeonato_room("club")
+	await _frames(2)
+	_ok(_has_text(demo.progress, "FORMATO") and _has_text(demo.progress, "RITMO"), "la sala ofrece elegir formato y ritmo")
+	for f: Dictionary in Campeonato.FORMATS:
+		_ok(_find_button(demo.progress, str(f["name"])) != null, "formato: %s" % f["name"])
+	_ok(_find_button(demo.progress, "90+30") != null and _find_button(demo.progress, "Otro") != null and _find_button(demo.progress, "3+2") != null, "ritmos de la app, también «Otro»")
+	_ok(_find_button(demo.progress, "Sin reloj") == null, "pero siempre con reloj")
+	var liga := _find_button(demo.progress, "Liga")
+	liga.pressed.emit()
+	await _frames(2)
+	_ok(demo.camp_fmt == "liga" and _has_text(demo.progress, "siete partidas"), "elegir liga se nota (y se vuelve a dibujar)")
+	var fast := _find_button(demo.progress, "3+2")
+	fast.pressed.emit()
+	await _frames(2)
+	_ok(demo.camp_tc == 1 and (demo._camp_clock("club") as Array) == [3, 2], "ritmo 3+2")
+	_find_button(demo.progress, "Otro").pressed.emit()
+	await _frames(2)
+	_ok(_has_text(demo.progress, "Minutos por jugador") and (demo._camp_clock("club") as Array) == [10, 5], "«Otro»: minutos e incremento a mano")
+	demo._camp_step_minutes(1, "club")
+	await _frames(2)
+	_ok((demo._camp_clock("club") as Array) == [15, 5], "con los botones de más y menos")
+	_find_button(demo.progress, "3+2").pressed.emit()
+	await _frames(2)
+	_ok(Campeonato.load_state()["ultimo"]["formato"] == "liga" and int(Campeonato.load_state()["ultimo"]["ritmo"]) == 1, "se guarda la última elección")
+	demo._campeonato_new("club")
+	await _frames(3)
+	var tl: Dictionary = demo.campeonato_state()["torneos"]["club"]
+	_ok(Campeonato.format_of(tl) == "liga" and (tl["ritmo"] as Array) == [3, 2], "el torneo empieza con el formato y el ritmo elegidos")
+	var w: Node = demo.get_node_or_null("CampeonatoPaseo")
+	if w != null:
+		w.queue_free()
+	var ml := Campeonato.current_match(tl, "club")
+	demo._campeonato_start_game("club", int(ml["level"]))
+	await _frames(3)
+	_ok(demo.game_clocked and (demo.game["clock"] as Array) == [3, 2] and str(demo.game["title"]).contains(Loc.f("Ronda %d", 1)), "la partida, a 3+2 y como «Ronda 1»")
+	demo.game_state = "over"
+	demo.game_won = 0
+	demo.game_result = "Tablas"
+	demo.game_moves = ["e2e4", "e7e5"]
+	demo._refresh()
+	await _frames(2)
+	_ok(int(tl["ronda"]) == 1 and (tl["res"] as Array).size() == 4, "tablas: se apunta y las demás partidas de la ronda se juegan")
+	demo._campeonato_after_game()
+	await _frames(2)
+	_ok(_has_text(demo.progress, "CLASIFICACIÓN") and _has_text(demo.progress, "TUS PARTIDAS") and _has_text(demo.progress, "Ronda 2"), "la sala enseña la clasificación y tus partidas")
+	_ok(_find_button(demo.progress, "Jugar: Ronda 2") != null, "y «Jugar: Ronda 2»")
+	# Mini-match: la barra y el marcador tras la primera partida.
+	demo.camp_fmt = "copa_match"
+	demo.camp_tc = 0
+	demo._campeonato_new("escuela")
+	await _frames(3)
+	var w3: Node = demo.get_node_or_null("CampeonatoPaseo")
+	if w3 != null:
+		w3.queue_free()
+	var tm: Dictionary = demo.campeonato_state()["torneos"]["escuela"]
+	var mm := Campeonato.current_match(tm, "escuela")
+	demo._campeonato_start_game("escuela", int(mm["level"]))
+	await _frames(3)
+	_ok(str(demo.game["title"]).contains("1/2") and (demo.game["clock"] as Array) == [10, 5], "mini-match: partida 1/2, con el reloj de la sala")
+	demo.game_state = "over"
+	demo.game_won = 1
+	demo.game_result = "¡Has ganado!"
+	demo.game_moves = ["e2e4", "e7e5"]
+	demo._refresh()
+	await _frames(2)
+	demo._campeonato_after_game()
+	await _frames(2)
+	_ok(_has_text(demo.progress, "Marcador del mini-match") and _find_button(demo.progress, "Jugar: Cuartos de final · 2/2") != null, "marcador del mini-match y «Jugar» la segunda")
 
 
 func _find_button(node: Node, text: String) -> Button:
