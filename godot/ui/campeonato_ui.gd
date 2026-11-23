@@ -315,6 +315,9 @@ static func _state_text(_d: Variant, key: String, st: Dictionary) -> String:
 # --- Cuadro de un torneo ---
 
 ## Al volver de una partida («animate»): las derrotas de la ronda y los nuevos emparejamientos se van enseñando.
+const ROUND_NONE := -99
+
+
 static func open_room(d: Variant, key: String, news: String = "", animate: bool = false) -> void:
 	var t := Campeonato.tournament(key)
 	var page: Dictionary = d._page("campeonato_sala")
@@ -392,16 +395,14 @@ static func open_room(d: Variant, key: String, news: String = "", animate: bool 
 			body.add_child(_table_block(d, key, tour, anim))
 			body.add_child(d._spacer(18.0))
 		else:
-			for r in Campeonato.round_count(tour):
-				var blk := _round_block(d, key, tour, r, anim)
-				blocks.append(blk)
-				body.add_child(blk)
-				body.add_child(d._spacer(18.0))
-			if not anim.is_empty():
-				var done_r := int(anim["hecha"])
-				_scroll_to(d, blocks[done_r], 0.3, 0.5)
-				if done_r + 1 < blocks.size() and str(tour.get("estado", "")) == "en_curso":
-					_scroll_to(d, blocks[done_r + 1], float(anim["nuevos"]) + 0.2, 0.9)
+			var hecha := int(anim["hecha"]) if not anim.is_empty() else ROUND_NONE
+			if hecha == ROUND_NONE:
+				var gan: Array = tour.get("ganadores", [])
+				for r in gan.size():
+					if not (gan[r] as Array).is_empty():
+						hecha = r
+			body.add_child(CampeonatoCuadro.create(d, key, tour, not anim.is_empty(), maxi(0, hecha)))
+			body.add_child(d._spacer(18.0))
 	body.add_child(d._spacer(8.0, true))
 	var go := {"font_size": d.F_BODY, "height": 116.0, "icon": 56.0, "radius": 58, "trailing": true, "glow": d._c("glow")}
 	var plain := {"font_size": d.F_SUB, "height": 96.0, "icon": 44.0, "font": d.font_medium}
