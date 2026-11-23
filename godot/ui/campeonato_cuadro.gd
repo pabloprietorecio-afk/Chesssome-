@@ -573,11 +573,12 @@ func _crown() -> void:
 	if s < 0:
 		return
 	var face: Control = final_card["faces"][s]
-	var crown: Control = d._icon("crown", 96.0, Color("f2b01e"))
+	var crown: Control = d._icon("crown", 56.0, Color("f2b01e"))
 	crown.z_index = 12
-	crown.pivot_offset = Vector2(48.0, 48.0)
+	crown.pivot_offset = Vector2(28.0, 28.0)
+	crown.rotation = deg_to_rad(-18.0)
 	add_child(crown)
-	var target := face.global_position - global_position + Vector2(float(FACE[2]) * 0.5 - 48.0, -70.0)
+	var target := face.global_position - global_position + Vector2(-18.0, -12.0)
 	crown.position = target + Vector2(0.0, -220.0)
 	crown.modulate.a = 0.0
 	var tw := crown.create_tween().set_parallel(true)
@@ -585,7 +586,7 @@ func _crown() -> void:
 	tw.tween_property(crown, "position", target, 0.7).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	await _wait(0.7)
 	CuadroSonidos.play(d, "fanfare", -3.0)
-	_burst(target + Vector2(48.0, 48.0), 2.4)
+	_burst(target + Vector2(28.0, 28.0), 2.4)
 	var bob := crown.create_tween().set_loops()
 	bob.tween_property(crown, "position:y", target.y - 8.0, 1.2).set_trans(Tween.TRANS_SINE)
 	bob.tween_property(crown, "position:y", target.y, 1.2).set_trans(Tween.TRANS_SINE)
