@@ -39,6 +39,10 @@ export const TOOLS = [
   tool("preguntar_tutor", "Pasa una pregunta de ajedrez sobre la partida al tutor (que la analiza con Stockfish y la contesta).", { pregunta: { type: "string" } }, ["pregunta"]),
 ];
 
+// Lo único que se le enseña al jugador: el modelo debe usar herramientas siempre (tool_choice «any»), y el texto
+// suelto que escriba (a veces su razonamiento, en inglés) se descarta (Pablo, 23 nov).
+export const REPLY = tool("responder", "Lo que se le dice al jugador, en su idioma: una o dos frases. Úsalo solo si no hay nada que hacer con las otras herramientas, si no se puede hacer lo que pide (y qué puede hacer él) o si te ha preguntado algo. Si ya haces una acción, no hace falta confirmarla.", { texto: { type: "string" } }, ["texto"]);
+
 const ENUMS = {};
 for (const t of TOOLS) for (const [k, v] of Object.entries(t.input_schema.properties)) if (v.enum) ENUMS[`${t.name}.${k}`] = v.enum;
 
@@ -73,9 +77,9 @@ export function assistantPrompt(text, state, language) {
   const system = [
     "Eres el asistente de A Chess Way, una app de ajedrez para móvil. El jugador te pide cosas con sus palabras (escritas o dictadas por voz, con posibles faltas) y tú las haces usando las herramientas, que son acciones de la app.",
     "Reglas:",
-    "- Si lo que pide se puede hacer con las herramientas, úsalas directamente (varias si hace falta, en orden). Como mucho, una frase muy corta (menos de 12 palabras) diciendo lo que has hecho, p. ej. «Listo: piezas en figuras 3D.»",
-    "- El jugador ve todo lo que escribes: nunca escribas tu razonamiento, dudas ni explicaciones de cómo has decidido. Si la petición es ambigua pero hay una opción razonable, elígela y hazla sin explicar.",
-    "- Si no se puede, dilo con amabilidad en una o dos frases y sugiere lo más parecido que sí se puede y cómo hacerlo (qué tocar en la app).",
+    "- Responde siempre con herramientas. Si lo que pide se puede hacer, usa las acciones directamente (varias si hace falta, en orden) y nada más: la app ya enseña el cambio.",
+    "- Para decirle algo al jugador usa «responder» (nunca texto suelto, que no le llega). No le cuentes tu razonamiento ni cómo has decidido. Si la petición es ambigua pero hay una opción razonable, hazla sin explicar.",
+    "- Si no se puede, dilo con «responder», con amabilidad, en una o dos frases, y sugiere lo más parecido que sí se puede y cómo hacerlo (qué tocar en la app).",
     "- El texto suele venir del dictado por voz, que no sabe de ajedrez: «al fin» es «alfil», «peor» puede ser «peón», «reina» es la dama, «ce», «de», «e»… son columnas (c, d, e), y los números pueden venir en letra. Interprétalo siempre en clave de ajedrez.",
     "- Para mover: el jugador puede decir la jugada en notación («e4», «Cf3») o con palabras («peón de rey dos pasos», «enroque corto», «la dama come el alfil»). Elige la jugada de la lista de jugadas legales que te doy; si no está claro cuál es o no es legal, pregunta o explica por qué no se puede, sin mover.",
     "- No inventes funciones que la app no tiene. Si pide algo peligroso o irreversible (borrar el progreso, rendirse), explica cómo hacerlo él mismo y no lo hagas.",
@@ -110,7 +114,7 @@ export function assistantPrompt(text, state, language) {
 export function trimSay(say, acted) {
   const s = String(say || "").trim();
   if (!acted) return s;
-  return s.length > 140 ? "" : s;
+  return s.length > 120 ? "" : s;
 }
 
 export async function assist(input, env) {
@@ -120,25 +124,27 @@ export async function assist(input, env) {
   const language = String(input?.language ?? "es").slice(0, 5);
   const state = input?.state && typeof input.state === "object" ? input.state : {};
   const { system, user } = assistantPrompt(text, state, language);
-  const base = { model: env.MODEL_ASSISTANT || "claude-haiku-5-5", max_tokens: 1024, system, tools: TOOLS, messages: [{ role: "user", content: user }] };
+  const base = { model: env.MODEL_ASSISTANT || "claude-haiku-5-5", max_tokens: 1024, system, tools: [...TOOLS, REPLY], messages: [{ role: "user", content: user }] };
   const call = (body) => fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": env.ANTHROPIC_API_KEY },
     body: JSON.stringify(body),
   });
-  let r = await call({ ...base, thinking: { type: "disabled" } });
+  let r = await call({ ...base, thinking: { type: "disabled" }, tool_choice: { type: "any" } });
   if (r.status === 400 && !(await noCredit(r))) r = await call({ ...base, max_tokens: 3000 });
   if (!r.ok) throw (await noCredit(r)) ? noCreditError() : Object.assign(new Error(`api ${r.status}`), { status: 502 });
   const data = await r.json();
   const content = data.content || [];
-  let say = content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim().slice(0, 600);
+  const replies = content.filter((c) => c.type === "tool_use" && c.name === "responder").map((c) => String(c.input?.texto ?? "")).join(" ").trim();
+  const loose = content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim();
   const actions = [];
   let dropped = 0;
-  for (const c of content.filter((x) => x.type === "tool_use")) {
+  for (const c of content.filter((x) => x.type === "tool_use" && x.name !== "responder")) {
     const a = cleanAction(c.name, c.input, state);
     if (a) actions.push(a);
     else dropped += 1;
   }
-  say = trimSay(say, actions.length > 0);
+  // El texto suelto solo cuenta si no hubo ni acciones ni «responder» (p. ej. en el reintento sin tool_choice).
+  const say = trimSay(replies || (actions.length ? "" : loose), actions.length > 0).slice(0, 600);
   return { say, actions: actions.slice(0, 6), dropped };
 }

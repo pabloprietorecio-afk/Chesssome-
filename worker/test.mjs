@@ -400,12 +400,30 @@ test("asistente: acciones válidas; jugada solo si es legal; nombres o valores r
     ] }), { status: 200 });
   };
   const r = await assist({ text: "mármol y peón de rey dos pasos", state, language: "es" }, { ANTHROPIC_API_KEY: "k" });
-  assert.equal(r.say, "Pongo el mármol y juego e4.");
+  assert.equal(r.say, "", "el texto suelto junto a acciones no se enseña");
   assert.deepEqual(r.actions.map((a) => a.name), ["cambiar_material", "mover"]);
   assert.equal(r.dropped, 1);
   assert.equal(sent.model, "claude-haiku-5-5");
-  assert.equal(sent.tools.length, TOOLS.length);
+  assert.equal(sent.tools.length, TOOLS.length + 1);
+  assert.deepEqual(sent.tool_choice, { type: "any" });
   assert.match(sent.messages[0].content, /e4=e2e4/);
+});
+
+test("asistente: lo que se dice al jugador llega por «responder»; el razonamiento suelto, nunca", async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({ content: [
+    { type: "text", text: "The current inclination is 70, so minus 10 degrees gives 60." },
+    { type: "tool_use", id: "a", name: "inclinar_tablero", input: { grados: 60 } },
+  ] }), { status: 200 });
+  let r = await assist({ text: "baja el tablero 10 grados", state: { pantalla: "partida" }, language: "es" }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.say, "");
+  assert.deepEqual(r.actions.map((a) => a.name), ["inclinar_tablero"]);
+  globalThis.fetch = async () => new Response(JSON.stringify({ content: [
+    { type: "text", text: "The user asks for something impossible." },
+    { type: "tool_use", id: "a", name: "responder", input: { texto: "Eso no se puede, pero puedes cambiar el material en Opciones." } },
+  ] }), { status: 200 });
+  r = await assist({ text: "pon el tablero de oro", state: { pantalla: "partida" }, language: "es" }, { ANTHROPIC_API_KEY: "k" });
+  assert.equal(r.say, "Eso no se puede, pero puedes cambiar el material en Opciones.");
+  assert.equal(r.actions.length, 0);
 });
 
 test("asistente: con acciones, un texto largo (razonamiento en voz alta) no se enseña", () => {
