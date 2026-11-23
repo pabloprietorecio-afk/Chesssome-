@@ -8,10 +8,14 @@ extends Control
 const GAP := 14.0
 const LABEL_H := 40.0
 const ARROW_GAP := 92.0
-const FACE := [52.0, 72.0, 84.0]
+const FACE := [46.0, 72.0, 84.0]
 const CARD_W := [0.0, 310.0, 390.0]
 const CARD_H := [170.0, 200.0, 232.0]
 const ROUNDS := 3
+const PAD := 22.0
+const AUD_H := 210.0
+const AUD_OVERLAP := 70.0
+const TEX := "res://textures/campeonato/"
 
 ## Flechas entre fichas: se dibujan siguiendo a las fichas (que levitan), con un trazo que va creciendo.
 class Arrows extends Control:
@@ -78,6 +82,14 @@ var _labels: Array = []
 var _arrows: Arrows
 var _accent := Color("ff8a3d")
 var _dead := false
+var hotel := false
+var _board: Panel
+var _lights: Array = []
+var _floor: Panel
+var _aud: Array = []
+var _paper := Color("fbf3df")
+var _ink := Color("2b2b3d")
+var _thread := Color("c0392b")
 
 
 static func create(dem: Variant, k: String, t: Dictionary, anim: bool, done: int) -> CampeonatoCuadro:
@@ -94,22 +106,30 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = false
 	_accent = d._c("accent")
+	hotel = key == "hotel"
+	if hotel:
+		_paper = Color("f4f6ff")
+		_thread = Color("f2b01e")
 	var total := 0.0
 	for r in ROUNDS:
 		total += LABEL_H + float(CARD_H[r]) + (ARROW_GAP if r < ROUNDS - 1 else 0.0)
-	custom_minimum_size = Vector2(0.0, total + 24.0)
+	custom_minimum_size = Vector2(0.0, total + 2.0 * PAD + 24.0 + AUD_H - AUD_OVERLAP + 8.0)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_build_board()
 	_arrows = Arrows.new()
-	_arrows.color = _accent
+	_arrows.color = _thread
 	_arrows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for r in ROUNDS:
 		var title := Campeonato.round_title(tour, r)
 		if r >= Campeonato.premium_from(key):
 			title += " · Premium"
 		var playing := str(tour.get("estado", "")) == "en_curso" and int(tour.get("ronda", 0)) == r
-		var lab: Label = d._line(title.to_upper(), d.F_CAP, d._c("accent_text") if playing else d._c("quiet"), d.font_semibold)
+		var lab_col := Color("c8d0ff") if hotel else Color("5b3a1e")
+		if playing:
+			lab_col = Color("ffd24a") if hotel else _thread
+		var lab: Label = d._line(title.to_upper(), d.F_CAP, lab_col, d.font_semibold)
 		var lsb := StyleBoxFlat.new()
-		lsb.bg_color = Color(1.0, 1.0, 1.0, 0.82)
+		lsb.bg_color = Color(0.03, 0.05, 0.18, 0.78) if hotel else Color(0.99, 0.95, 0.84, 0.95)
 		lsb.set_corner_radius_all(20)
 		lsb.content_margin_left = 14.0
 		lsb.content_margin_right = 14.0
@@ -128,6 +148,7 @@ func _ready() -> void:
 		cards.append(row)
 	add_child(_arrows)
 	_arrows.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_build_audience()
 	resized.connect(_layout)
 	_populate()
 	_layout()
@@ -152,21 +173,27 @@ func _make_card(r: int, index: int) -> Dictionary:
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.modulate.a = 0.0
 	w.add_child(shadow)
+	var lift := Control.new()
+	lift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	w.add_child(lift)
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	var paper: Color = d._c("surface")
-	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.97)
-	sb.set_corner_radius_all(36)
+	sb.bg_color = _paper
+	sb.set_corner_radius_all(18 if hotel else 8)
 	sb.content_margin_left = 16.0
 	sb.content_margin_right = 14.0
 	sb.content_margin_top = 12.0
 	sb.content_margin_bottom = 12.0
-	sb.shadow_color = Color(0.1, 0.12, 0.25, 0.10 + 0.07 * float(r))
-	sb.shadow_size = 10 + 8 * r
-	sb.shadow_offset = Vector2(0.0, 6.0 + 6.0 * float(r))
+	sb.shadow_color = Color(0.12, 0.06, 0.02, 0.30 + 0.05 * float(r))
+	sb.shadow_size = 8 + 6 * r
+	sb.shadow_offset = Vector2(3.0 + 2.0 * float(r), 6.0 + 5.0 * float(r))
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	w.add_child(panel)
+	lift.add_child(panel)
+	var pin := _make_pin()
+	lift.add_child(pin)
+	# Cada hoja, un poco torcida (siempre igual) para que parezca puesta a mano.
+	w.rotation = deg_to_rad(sin(float(r * 7 + index) * 2.3 + 0.7) * 1.3)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 8)
 	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -182,13 +209,13 @@ func _make_card(r: int, index: int) -> Dictionary:
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var face := _placeholder(float(FACE[r]))
 		row.add_child(face)
-		var name: Label = d._line("", d.F_SUB if r > 0 else d.F_CAP + 2, d._c("ink"), d.font_medium)
+		var name: Label = d._line("", d.F_SUB if r > 0 else d.F_CAP, _ink, d.font_medium)
 		name.clip_text = true
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name.custom_minimum_size.x = 10.0
 		name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(name)
-		var mark_size := 30.0 + 6.0 * float(r)
+		var mark_size := 26.0 + 8.0 * float(r)
 		var slot := Control.new()
 		slot.custom_minimum_size = Vector2(mark_size, mark_size)
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -208,8 +235,113 @@ func _make_card(r: int, index: int) -> Dictionary:
 		checks.append(ok)
 		crosses.append(bad)
 	w.modulate.a = 0.5
-	return {"w": w, "panel": panel, "shadow": shadow, "style": sb, "rows": row_nodes, "faces": faces, "names": names, "checks": checks,
+	w.pivot_offset = Vector2.ZERO
+	return {"w": w, "lift": lift, "pin": pin, "panel": panel, "shadow": shadow, "style": sb, "rows": row_nodes, "faces": faces, "names": names, "checks": checks,
 		"crosses": crosses, "ids": ["", ""], "round": r, "index": index, "filled": false, "float": null}
+
+
+func _make_pin() -> Control:
+	var pin := Control.new()
+	pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pin.size = Vector2(30.0, 30.0)
+	var body := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("ffd24a") if hotel else Color("d7372b")
+	sb.set_corner_radius_all(30)
+	sb.shadow_color = Color(0.1, 0.03, 0.0, 0.4)
+	sb.shadow_size = 5
+	sb.shadow_offset = Vector2(2.0, 4.0)
+	body.add_theme_stylebox_override("panel", sb)
+	body.size = Vector2(30.0, 30.0)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pin.add_child(body)
+	var hi := Panel.new()
+	var hsb := StyleBoxFlat.new()
+	hsb.bg_color = Color(1.0, 1.0, 1.0, 0.65)
+	hsb.set_corner_radius_all(10)
+	hi.add_theme_stylebox_override("panel", hsb)
+	hi.size = Vector2(9.0, 9.0)
+	hi.position = Vector2(7.0, 6.0)
+	hi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pin.add_child(hi)
+	return pin
+
+
+## El panel: un corcho con marco de madera (o la pantalla gigante del hotel) y dos focos desde arriba.
+func _build_board() -> void:
+	_board = Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("1a1f44") if hotel else Color("c4975c")
+	sb.set_corner_radius_all(44)
+	sb.set_border_width_all(16)
+	sb.border_color = Color("2c3157") if hotel else Color("7a4a24")
+	sb.shadow_color = Color(0.05, 0.03, 0.15, 0.35)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0.0, 10.0)
+	_board.add_theme_stylebox_override("panel", sb)
+	_board.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_board)
+	var tex := TextureRect.new()
+	tex.texture = load(TEX + ("pantalla.jpg" if hotel else "corcho.jpg")) as Texture2D
+	tex.stretch_mode = TextureRect.STRETCH_SCALE if hotel else TextureRect.STRETCH_TILE
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board.add_child(tex)
+	for i in 2:
+		var cone := Polygon2D.new()
+		var tint := Color(0.75, 0.85, 1.0) if hotel else Color(1.0, 0.93, 0.74)
+		cone.polygon = PackedVector2Array([Vector2(-26, 0), Vector2(26, 0), Vector2(190, 760), Vector2(-190, 760)])
+		cone.vertex_colors = PackedColorArray([Color(tint, 0.34), Color(tint, 0.34), Color(tint, 0.0), Color(tint, 0.0)])
+		_board.add_child(cone)
+		_lights.append(cone)
+
+
+## El público, de espaldas, en dos filas delante del panel; se balancea y aplaude cuando alguien avanza.
+func _build_audience() -> void:
+	_floor = Panel.new()
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color("0d0f2a") if hotel else Color("0e1030")
+	fsb.corner_radius_bottom_left = 44
+	fsb.corner_radius_bottom_right = 44
+	_floor.add_theme_stylebox_override("panel", fsb)
+	_floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_floor.z_index = 19
+	add_child(_floor)
+	for i in 2:
+		var holder := Control.new()
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.z_index = 20 + i
+		var tex := TextureRect.new()
+		tex.texture = load(TEX + "publico_%d.png" % i) as Texture2D
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_SCALE
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tex.size = Vector2(100.0, AUD_H)
+		tex.name = "tex"
+		if hotel:
+			tex.modulate = Color(0.85, 0.9, 1.3)
+		holder.add_child(tex)
+		add_child(holder)
+		_aud.append(holder)
+		var amp := 4.0 + 3.0 * float(i)
+		var dur := 2.3 - 0.5 * float(i)
+		var tw := tex.create_tween().set_loops()
+		tw.tween_interval(0.4 * float(i))
+		tw.tween_property(tex, "position:y", -amp, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(tex, "position:y", 0.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## El público se anima: un salto corto de cada fila (primero la de delante) y vuelta.
+func _cheer(power: float = 1.0) -> void:
+	for i in _aud.size():
+		var holder: Control = _aud[i]
+		var up := -(20.0 + 12.0 * float(1 - i)) * power
+		var tw := holder.create_tween()
+		tw.tween_interval(0.06 * float(1 - i))
+		tw.tween_property(holder, "position:y", holder.position.y + up, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(holder, "position:y", holder.position.y, 0.5).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
 
 func _placeholder(side: float) -> Control:
@@ -342,7 +474,7 @@ func _float(card: Dictionary) -> void:
 		return
 	var r := int(card["round"])
 	var amp := 7.0 + 3.0 * float(r - 1)
-	var panel: Control = card["panel"]
+	var panel: Control = card["lift"]
 	var shadow: Control = card["shadow"]
 	var tw := panel.create_tween().set_loops()
 	var phase := 0.35 * float(card["index"]) + 0.2 * float(r)
@@ -363,34 +495,51 @@ func _layout() -> void:
 	var width := size.x
 	if width < 100.0:
 		return
-	var w0 := (width - 3.0 * GAP) / 4.0
+	var inner := width - 2.0 * PAD
+	var w0 := (inner - 3.0 * GAP) / 4.0
 	var centers: Array = []
 	var c0: Array = []
 	for i in 4:
-		c0.append(float(i) * (w0 + GAP) + w0 * 0.5)
+		c0.append(PAD + float(i) * (w0 + GAP) + w0 * 0.5)
 	centers.append(c0)
 	var c1: Array = [(c0[0] + c0[1]) * 0.5, (c0[2] + c0[3]) * 0.5]
 	centers.append(c1)
 	centers.append([(c1[0] + c1[1]) * 0.5])
 	# De arriba abajo: final (r = 2), semifinal (1), cuartos (0).
-	var top := 0.0
+	var top := PAD
 	for r in range(ROUNDS - 1, -1, -1):
 		var lab: Control = _labels[r]
-		lab.position = Vector2(0.0, top)
+		lab.position = Vector2(PAD + 6.0, top)
 		var cw := w0 if r == 0 else float(CARD_W[r])
 		for i in cards[r].size():
 			var card: Dictionary = cards[r][i]
 			var wrap: Control = card["w"]
 			wrap.size = Vector2(cw, float(CARD_H[r]))
 			wrap.position = Vector2(float(centers[r][i]) - cw * 0.5, top + LABEL_H)
-			var panel: Control = card["panel"]
-			panel.size = wrap.size
-			panel.position.x = 0.0
+			wrap.pivot_offset = wrap.size * 0.5
+			for k: String in ["lift", "panel"]:
+				var c: Control = card[k]
+				c.size = wrap.size
+			var pin: Control = card["pin"]
+			pin.position = Vector2(cw * 0.5 - 15.0, -12.0)
 			var shadow: Control = card["shadow"]
-			shadow.size = Vector2(cw * 0.7, 20.0)
-			shadow.position = Vector2(cw * 0.15, float(CARD_H[r]) + 14.0)
+			shadow.size = Vector2(cw * 0.78, 24.0)
+			shadow.position = Vector2(cw * 0.11, float(CARD_H[r]) + 10.0)
 			shadow.pivot_offset = shadow.size * 0.5
 		top += LABEL_H + float(CARD_H[r]) + ARROW_GAP
+	var board_h := top - ARROW_GAP + PAD + 24.0
+	_board.position = Vector2.ZERO
+	_board.size = Vector2(width, board_h)
+	for i in _lights.size():
+		var cone: Polygon2D = _lights[i]
+		cone.position = Vector2(width * (0.24 + 0.52 * float(i)), -4.0)
+	for i in _aud.size():
+		var holder: Control = _aud[i]
+		holder.size = Vector2(width, AUD_H)
+		holder.position = Vector2(0.0, board_h - AUD_OVERLAP)
+		(holder.get_node("tex") as Control).size = Vector2(width, AUD_H)
+	_floor.position = Vector2(0.0, board_h - AUD_OVERLAP + AUD_H * 0.62)
+	_floor.size = Vector2(width, AUD_H * 0.38 + 4.0)
 
 
 # --- La animación ---
@@ -519,6 +668,7 @@ func _lift(card: Dictionary) -> void:
 	tw.tween_property(wrap, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_burst(wrap.position + wrap.size * 0.5, 1.6)
 	CuadroSonidos.play(d, "chime", -5.0)
+	_cheer(1.0)
 	_float(card)
 
 
@@ -586,7 +736,14 @@ func _crown() -> void:
 	tw.tween_property(crown, "position", target, 0.7).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	await _wait(0.7)
 	CuadroSonidos.play(d, "fanfare", -3.0)
+	_cheer(2.0)
+	_cheer_again()
 	_burst(target + Vector2(28.0, 28.0), 2.4)
 	var bob := crown.create_tween().set_loops()
 	bob.tween_property(crown, "position:y", target.y - 8.0, 1.2).set_trans(Tween.TRANS_SINE)
 	bob.tween_property(crown, "position:y", target.y, 1.2).set_trans(Tween.TRANS_SINE)
+
+
+func _cheer_again() -> void:
+	await _wait(0.7)
+	_cheer(1.6)

@@ -90,3 +90,6 @@ Pablo, 23 nov: el jugador elige formato y ritmo al empezar un torneo (se recuerd
   saldo prepago de «unified billing» en AI Gateway (la primera prueba falló por eso, 23 nov). O los hace Pablo en
   PixVerse. Irán en `godot/campeonato/videos/<sala>/<id>.ogv` y sustituirán a la foto fija.
 - Más rivales por sala (Pablo hará más caras con PixVerse; prompts en la conversación del 23 nov).
+
+## Cuadro de la copa: panel de corcho y público (23 nov)
+El cuadro de las copas (`ui/campeonato_cuadro.gd`) es un panel de corcho con marco de madera (en el gran hotel, una pantalla gigante): hojas con chincheta, hilo rojo entre ellas, dos focos y el público de espaldas delante (dos filas que se balancean y saltan al avanzar alguien). Las fichas nuevas se elevan sobre las anteriores con sombra y levitan. Sonidos sintetizados en `ui/cuadro_sonidos.gd`. Los fondos se generan con `tools/campeonato/escenario.py` (godot/textures/campeonato/). Vídeo de prueba: `tests/cuadro_video.gd` con `--write-movie`.
