@@ -22,9 +22,9 @@ static var _ambient_base := -8.0
 static var _ambient_tw: Tween
 ## Volumen de los comentarios del público (exclamaciones, lamento) y de los aplausos, en dB. Bajos: el murmullo
 ## manda y los comentarios asoman por encima (petición de Pablo, 23 nov: «más murmullos y menos altos los
-## comentarios»).
+## comentarios»). Los aplausos del final, algo más altos que todo lo demás (también petición de Pablo).
 const CROWD_DB := -15.0
-const CHEER_DB := -6.0
+const CHEER_DB := -3.0
 
 
 # --- Fotos y sonido ---

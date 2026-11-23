@@ -9132,7 +9132,9 @@ func _campeonato_record_once() -> void:
 	game["camp_news"] = _campeonato_news(key, r)
 	CampeonatoUI.ambient_volume(-10.0)
 	if game_won > 0:
-		CampeonatoUI.effect(self, "aplausos_grande" if CampeonatoUI.big_room(key) else "aplausos_pequeno", CampeonatoUI.CHEER_DB)
+		# El archivo de la sala pequeña está grabado unos 5 dB más bajo: se compensa casi todo.
+		var big := CampeonatoUI.big_room(key)
+		CampeonatoUI.effect(self, "aplausos_grande" if big else "aplausos_pequeno", CampeonatoUI.CHEER_DB + (0.0 if big else 3.0))
 	elif game_won < 0:
 		CampeonatoUI.effect(self, "lamento", CampeonatoUI.CROWD_DB)
 		CampeonatoUI.ambient_swell(5.0, 3.0)

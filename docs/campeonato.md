@@ -64,7 +64,8 @@ murmullo suena en bucle durante el paseo y, más bajo, durante la partida; el p�
 
 Niveles (Pablo, 23 nov: «más murmullos y menos altos los comentarios»): murmullo a −11 dB en la partida (−6 en el
 paseo, −10 al acabar); exclamaciones y lamento a −15 dB (`CampeonatoUI.CROWD_DB`), y con cada uno el murmullo sube
-unos segundos y vuelve (`ambient_swell`); aplausos a −6 dB. Los efectos se apagan al final (fundido de 0,7–1 s), sin
+unos segundos y vuelve (`ambient_swell`); aplausos del final, más altos que el resto: −3 dB en salas grandes y 0 dB en las pequeñas (su archivo está grabado
+unos 5 dB más bajo). Los efectos se apagan al final (fundido de 0,7–1 s), sin
 corte seco.
 
 ## Pendiente
