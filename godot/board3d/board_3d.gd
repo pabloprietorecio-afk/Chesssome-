@@ -79,13 +79,13 @@ const FIT_HEIGHT_TOKENS := 0.3
 ## claras y las oscuras, más oscuras que las casillas oscuras. Así cada pieza destaca sobre las dos casillas.
 const FINISHES := {
 	"madera": {
-		"light": {"tex": "arce", "normal": "arce_normal", "tint": Color(0.98, 0.94, 0.86), "grain": 0.24, "turn": 1.0},
-		"dark": {"tex": "nogal", "normal": "nogal_normal", "tint": Color(0.8, 0.72, 0.66), "grain": 0.16, "turn": 0.0},
+		"light": {"tex": "arce", "normal": "arce_normal", "tint": Color(0.6, 0.55, 0.47), "grain": 0.24, "turn": 1.0, "contrast": 3.0},
+		"dark": {"tex": "nogal", "normal": "nogal_normal", "tint": Color(0.54, 0.45, 0.4), "grain": 0.16, "turn": 0.0, "contrast": 1.8},
 		"board": {"rough": 0.3, "coat": 0.4, "metallic": 0.0, "normal_depth": 0.6, "joint": 0.5},
-		"frame": {"tex": "palisandro", "tint": Color(0.62, 0.56, 0.54), "rough": 0.3, "coat": 0.4, "metallic": 0.0, "grain": 0.22},
+		"frame": {"tex": "palisandro", "tint": Color(0.5, 0.4, 0.36), "rough": 0.3, "coat": 0.4, "metallic": 0.0, "grain": 0.22, "contrast": 1.4},
 		"pieces": [
-			{"tex": "boj", "tint": Color(1.08, 1.02, 0.9), "grain": 0.3, "rough": 0.36, "coat": 0.35, "metallic": 0.0, "rim": 0.0},
-			{"tex": "ebano", "tint": Color(0.34, 0.31, 0.3), "grain": 0.3, "rough": 0.27, "coat": 0.35, "metallic": 0.0, "rim": 0.14},
+			{"tex": "boj", "tint": Color(1.14, 1.06, 0.94), "grain": 0.3, "rough": 0.36, "coat": 0.35, "metallic": 0.0, "rim": 0.0, "contrast": 1.6},
+			{"tex": "ebano", "tint": Color(0.4, 0.31, 0.26), "grain": 0.3, "rough": 0.27, "coat": 0.35, "metallic": 0.0, "rim": 0.14, "contrast": 2.0},
 		],
 		"labels": [Color("f6e9cf"), Color("5b3d27")],
 		"outline": [Color("2b1a10"), Color("050302")],
@@ -701,6 +701,7 @@ func _apply_style() -> void:
 			_squares_tex.set_shader_parameter(key + "_tint", half["tint"])
 			_squares_tex.set_shader_parameter(key + "_grain", half["grain"])
 			_squares_tex.set_shader_parameter(key + "_turn", half["turn"])
+			_squares_tex.set_shader_parameter(key + "_contrast", half.get("contrast", 1.0))
 		var board: Dictionary = fin["board"]
 		_squares_tex.set_shader_parameter("rough", board["rough"])
 		_squares_tex.set_shader_parameter("coat", board["coat"])
@@ -711,6 +712,7 @@ func _apply_style() -> void:
 		_frame_tex.set_shader_parameter("wood", _texture(frame["tex"]))
 		for key: String in ["tint", "rough", "coat", "metallic", "grain"]:
 			_frame_tex.set_shader_parameter(key, frame[key])
+		_frame_tex.set_shader_parameter("contrast", frame.get("contrast", 1.0))
 		for side in 2:
 			var piece: Dictionary = fin["pieces"][side]
 			_tex_mats[side].set_shader_parameter("wood", _texture(piece["tex"]))
@@ -721,6 +723,7 @@ func _apply_style() -> void:
 			_tex_mats[side].set_shader_parameter("metallic", piece["metallic"])
 			_tex_mats[side].set_shader_parameter("rim_amount", piece["rim"])
 			_tex_mats[side].set_shader_parameter("rim_color", Color("c9d6f2"))
+			_tex_mats[side].set_shader_parameter("contrast", piece.get("contrast", 1.0))
 	# Fichas: el cuerpo es del material de su bando y el icono, del material del bando contrario.
 	for side in 2:
 		var km := _token_mats[side]

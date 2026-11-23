@@ -15,6 +15,9 @@ uniform float dark_grain = 0.16;
 // 1 = la textura se gira un cuarto de vuelta (para igualar el sentido de la veta, o para cruzar el cepillado).
 uniform float light_turn = 0.0;
 uniform float dark_turn = 0.0;
+// Cuánto se marca la veta (1 = como la foto; más, la veta se ve más: las chapas fotografiadas son muy suaves).
+uniform float light_contrast = 1.0;
+uniform float dark_contrast = 1.0;
 uniform float rough : hint_range(0.0, 1.0) = 0.3;
 uniform float coat : hint_range(0.0, 1.0) = 0.4;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
@@ -60,14 +63,16 @@ void fragment() {
 		vec2 uv = (turn ? base.yx : base) * dark_grain + offset;
 		vec2 gx = (turn ? dx.yx : dx) * dark_grain;
 		vec2 gy = (turn ? dy.yx : dy) * dark_grain;
-		col = textureGrad(dark_tex, uv, gx, gy).rgb * dark_tint;
+		col = textureGrad(dark_tex, uv, gx, gy).rgb;
+		col = max(mix(textureLod(dark_tex, uv, 12.0).rgb, col, dark_contrast), vec3(0.0)) * dark_tint;
 		nm = textureGrad(dark_normal, uv, gx, gy).rgb;
 	} else {
 		bool turn = light_turn > 0.5;
 		vec2 uv = (turn ? base.yx : base) * light_grain + offset;
 		vec2 gx = (turn ? dx.yx : dx) * light_grain;
 		vec2 gy = (turn ? dy.yx : dy) * light_grain;
-		col = textureGrad(light_tex, uv, gx, gy).rgb * light_tint;
+		col = textureGrad(light_tex, uv, gx, gy).rgb;
+		col = max(mix(textureLod(light_tex, uv, 12.0).rgb, col, light_contrast), vec3(0.0)) * light_tint;
 		nm = textureGrad(light_normal, uv, gx, gy).rgb;
 	}
 	// Cada trozo tiene su tono.

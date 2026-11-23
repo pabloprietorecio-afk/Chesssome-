@@ -8,6 +8,8 @@ uniform float metallic : hint_range(0.0, 1.0) = 0.0;
 uniform vec3 tint : source_color = vec3(1.0);
 // Repeticiones de la textura por casilla de altura.
 uniform float grain_scale = 0.3;
+// Cuánto se marca la veta (1 = como la foto).
+uniform float contrast = 1.0;
 uniform float rough : hint_range(0.0, 1.0) = 0.34;
 uniform float spec : hint_range(0.0, 1.0) = 0.5;
 uniform float coat : hint_range(0.0, 1.0) = 0.35;
@@ -34,7 +36,8 @@ void fragment() {
 	vec3 along_x = texture(wood, vec2(p.y, p.z + 0.21)).rgb;
 	vec3 along_z = texture(wood, vec2(p.y + 0.43, p.x + 0.37)).rgb;
 	vec3 along_y = texture(wood, vec2(p.x + 0.13, p.z + 0.61)).rgb;
-	vec3 col = (along_x * w.x + along_y * w.y + along_z * w.z) * tint;
+	vec3 avg = textureLod(wood, vec2(0.5), 12.0).rgb;
+	vec3 col = max(mix(avg, along_x * w.x + along_y * w.y + along_z * w.z, contrast), vec3(0.0)) * tint;
 	float ao = mix(1.0, COLOR.r, ao_amount);
 	col *= mix(0.5, 1.0, ao);
 	float fres = pow(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), 3.0);
