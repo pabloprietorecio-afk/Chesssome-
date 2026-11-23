@@ -1,0 +1,29 @@
+name: Campeonato · profundidad (foto viva)
+
+# Mapas de profundidad de las fotos del Campeonato (tools/campeonato/profundidad.py, Depth Anything V2 Small) para
+# la «foto viva». Los deja en la rama «campeonato-profundidad» para pasarlos a godot/campeonato.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  profundidad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Calcular
+        run: |
+          pip install --quiet onnxruntime pillow numpy
+          curl -sfL -o /tmp/modelo.onnx https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx
+          ls -lh /tmp/modelo.onnx
+          python3 tools/campeonato/profundidad.py /tmp/modelo.onnx godot/campeonato /tmp/prof
+      - name: Publicar en la rama campeonato-profundidad
+        run: |
+          cd /tmp/prof
+          git init -q
+          git checkout -q -b campeonato-profundidad
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Profundidad de las fotos del Campeonato"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" campeonato-profundidad
