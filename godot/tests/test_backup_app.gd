@@ -4,6 +4,7 @@ extends SceneTree
 ## Uso: godot --headless --path godot -s tests/test_backup_app.gd
 
 var fallos := 0
+var hechos := 0
 
 
 func _initialize() -> void:
@@ -47,11 +48,14 @@ func _initialize() -> void:
 	await _frames(3)
 	_ok(_buttons(demo, ["Copia de seguridad"]).is_empty(), "en Kids no hay «Copia de seguridad»")
 
-	print("test_backup_app: %s" % ("OK" if fallos == 0 else "%d fallos" % fallos))
+	print("%d comprobaciones, %d fallos" % [hechos, fallos])
+	if fallos == 0:
+		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
 
 
 func _ok(c: bool, what: String) -> void:
+	hechos += 1
 	if not c:
 		fallos += 1
 		printerr("FALLO: ", what)

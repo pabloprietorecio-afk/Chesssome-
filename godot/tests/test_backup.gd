@@ -4,6 +4,7 @@ extends SceneTree
 ## Uso: godot --headless --path godot -s tests/test_backup.gd
 
 var fallos := 0
+var hechos := 0
 const A := "user://_bk_a"
 const B := "user://_bk_b"
 
@@ -79,11 +80,14 @@ func _initialize() -> void:
 
 	_clean(A)
 	_clean(B)
-	print("test_backup: %s" % ("OK" if fallos == 0 else "%d fallos" % fallos))
+	print("%d comprobaciones, %d fallos" % [hechos, fallos])
+	if fallos == 0:
+		print("TODO OK")
 	quit(1 if fallos > 0 else 0)
 
 
 func _check(cond: bool, what: String) -> void:
+	hechos += 1
 	if not cond:
 		fallos += 1
 		printerr("FALLO: ", what)
