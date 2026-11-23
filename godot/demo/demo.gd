@@ -5011,6 +5011,9 @@ func _skip_test() -> void:
 	_close_progress()
 	_save_player()
 	_next_training()
+	# Y a la pantalla de inicio, no directos a un problema (Pablo, 23 nov): desde ahí elige qué hacer.
+	if use_settings:
+		_open_home()
 
 
 func _next_test() -> void:

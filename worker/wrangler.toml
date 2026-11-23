@@ -16,7 +16,7 @@ PACKAGE_NAME = "com.pabloprieto.chessome"
 # "1": las explicaciones exigen cuenta (cuando todas las versiones de la app la manden). Mientras, "0".
 REQUIRE_ACCOUNT = "0"
 # Probadores: cuentas (Opciones → Premium del APK de pruebas) tratadas como premium sin compra. Separadas por comas.
-PROBADORES = ""
+PROBADORES = "8d56f67a7d3f5a71b9ee05f819ac84b3"
 
 # Como mucho 10 peticiones por minuto por IP (más que suficiente para corregir errores de una partida).
 [[ratelimits]]
