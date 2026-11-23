@@ -588,6 +588,17 @@ static func _record_knockout(st: Dictionary, key: String, t: Dictionary, m: Dict
 	return {"decided": true, "won": won, "tiebreak": 0, "estado": str(t["estado"])}
 
 
+## Abandonar el torneo: pierdes por incomparecencia lo que te queda (en una copa, la eliminatoria en curso; con tabla,
+## tus partidas de las rondas que faltan) y el resto del torneo se juega hasta el final, para ver quién gana.
+static func abandon(st: Dictionary, key: String, rng: RandomNumberGenerator) -> void:
+	var t: Dictionary = (st["torneos"] as Dictionary).get(key, {})
+	var guard := 0
+	while str(t.get("estado", "")) == "en_curso" and guard < 40:
+		guard += 1
+		record(st, key, 0.0, rng)
+	t["abandonado"] = true
+
+
 ## Ganador del torneo (vacío si aún no se sabe).
 static func champion(t: Dictionary) -> String:
 	if is_table(t):

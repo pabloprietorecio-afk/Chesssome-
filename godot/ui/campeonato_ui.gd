@@ -479,6 +479,8 @@ static func open_room(d: Variant, key: String, news: String = "", animate: bool 
 		footer.add_child(b)
 		if Campeonato.needs_premium(tour, Premium.active(), key):
 			footer.add_child(d._para(_premium_note(key, tour), d.F_FOOT, quiet, d.font_medium))
+		var leave := {"font_size": d.F_FOOT, "height": 84.0, "icon": 38.0, "font": d.font_medium}
+		footer.add_child(d._button("close", "Abandonar el torneo", Callable(d, "_campeonato_abandon").bind(key), d._c("field"), Color("b03224"), leave))
 	footer.add_child(d._button("back", "Salas", Callable(d, "_open_campeonato"), d._c("field"), ink, plain))
 
 

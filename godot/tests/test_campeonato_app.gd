@@ -202,6 +202,18 @@ func _formatos(demo: Node) -> void:
 	demo._campeonato_after_game()
 	await _frames(2)
 	_ok(_has_text(demo.progress, "Marcador del mini-match") and _find_button(demo.progress, "Jugar: Cuartos de final · 2/2") != null, "marcador del mini-match y «Jugar» la segunda")
+	# Abandonar el torneo, con confirmación.
+	var leave := _find_button(demo.progress, "Abandonar el torneo")
+	_ok(leave != null, "la sala ofrece «Abandonar el torneo»")
+	if leave != null:
+		leave.pressed.emit()
+		await _frames(3)
+		var sure := _find_button(demo, "Abandonar")
+		_ok(sure != null, "pide confirmación")
+		if sure != null:
+			sure.pressed.emit()
+			await _frames(4)
+	_ok(str(tm["estado"]) == "eliminado" and _has_text(demo.progress, "Has abandonado el torneo.") and _find_button(demo.progress, "Jugar otro torneo") != null, "tras abandonar: fuera del torneo y «Jugar otro torneo»")
 
 
 func _find_button(node: Node, text: String) -> Button:

@@ -232,6 +232,14 @@ func _formatos(rng: RandomNumberGenerator) -> void:
 	var back2 := Campeonato.load_state(path2)
 	_ok(Campeonato.is_table(back2["torneos"]["escuela"]) and (back2["torneos"]["escuela"]["clasificacion"] as Array).size() == 8, "se guarda y se lee un suizo")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path2))
+	# Abandonar: en cualquier formato, el torneo termina contigo fuera y con el resto jugado hasta el final.
+	for fmt: String in ["copa", "copa_match", "cuadrangular", "liga", "suizo"]:
+		var sa := {"torneos": {}, "titulos": {}}
+		var ta := Campeonato.start(sa, "club", 1200.0, rng, fmt)
+		Campeonato.record(sa, "club", 1.0, rng)
+		Campeonato.abandon(sa, "club", rng)
+		var done := str(ta["estado"]) != "en_curso" and bool(ta.get("abandonado", false))
+		_ok(done and str(ta["estado"]) != "campeon" and Campeonato.champion(ta) != "" and Campeonato.champion(ta) != Campeonato.YOU, "abandonar (%s): terminado, sin título y con campeón" % fmt)
 
 
 func _ok(cond: bool, msg: String) -> void:

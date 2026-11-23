@@ -9315,6 +9315,14 @@ func _campeonato_new(key: String) -> void:
 	_campeonato_play(key)
 
 
+## «Abandonar el torneo» (Pablo, 23 nov): con confirmación; pierdes lo que te queda y vuelves al cuadro terminado.
+func _campeonato_abandon(key: String) -> void:
+	_confirm("¿Abandonar el torneo?", "Pierdes las partidas que te quedan y el torneo sigue sin ti hasta el final.", "close", "Abandonar", func() -> void:
+		Campeonato.abandon(campeonato_state(), key, _rng)
+		campeonato_save()
+		_open_campeonato_room(key, Loc.t("Has abandonado el torneo.")))
+
+
 func _campeonato_play(key: String) -> void:
 	var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary).get(key, {})
 	if tour.is_empty() or Campeonato.current_match(tour, key).is_empty():
