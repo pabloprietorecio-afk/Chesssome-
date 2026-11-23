@@ -32,8 +32,9 @@ for f in /tmp/snd/*.src; do
       d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f")
       ffmpeg -v error -y -i "$f" -ac 1 -ar 44100 -af "loudnorm=I=-26:TP=-3,afade=t=in:d=1.5,afade=t=out:st=$(echo "$d - 1.5" | bc):d=1.5" -c:a libvorbis -q:a 3 "$OUT/$n.ogg" ;;
     *)
-      # Efectos: sin silencio al principio ni al final, volumen igualado.
-      ffmpeg -v error -y -i "$f" -ac 1 -ar 44100 -af "silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse,loudnorm=I=-18:TP=-2" -c:a libvorbis -q:a 4 "$OUT/$n.ogg" ;;
+      # Efectos: sin silencio al principio ni al final, volumen igualado y un final que se apaga (sin corte seco;
+      # el fundido se hace al revés para no tener que saber la duración).
+      ffmpeg -v error -y -i "$f" -ac 1 -ar 44100 -af "silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,afade=t=in:d=1.0:curve=qsin,areverse,afade=t=in:d=0.04,loudnorm=I=-18:TP=-2" -c:a libvorbis -q:a 4 "$OUT/$n.ogg" ;;
   esac
 done
 ls -l "$OUT"

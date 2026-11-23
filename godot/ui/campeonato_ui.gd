@@ -18,6 +18,13 @@ static var _ambient: AudioStreamPlayer
 static var _fx: AudioStreamPlayer
 static var _last_cheer := -100000
 static var _faces := {}
+static var _ambient_base := -8.0
+static var _ambient_tw: Tween
+## Volumen de los comentarios del público (exclamaciones, lamento) y de los aplausos, en dB. Bajos: el murmullo
+## manda y los comentarios asoman por encima (petición de Pablo, 23 nov: «más murmullos y menos altos los
+## comentarios»).
+const CROWD_DB := -15.0
+const CHEER_DB := -6.0
 
 
 # --- Fotos y sonido ---
@@ -100,13 +107,34 @@ static func ambient_start(d: Node, key: String, volume_db: float = -8.0) -> void
 	if _ambient.stream != s or not _ambient.playing:
 		_ambient.stream = s
 		_ambient.play()
+	_kill_ambient_tween()
+	_ambient_base = volume_db
 	_ambient.volume_db = volume_db
 
 
 static func ambient_volume(volume_db: float) -> void:
+	_ambient_base = volume_db
 	if _ambient != null and is_instance_valid(_ambient) and _ambient.playing:
-		var tw := _ambient.create_tween()
-		tw.tween_property(_ambient, "volume_db", volume_db, 1.2)
+		_kill_ambient_tween()
+		_ambient_tw = _ambient.create_tween()
+		_ambient_tw.tween_property(_ambient, "volume_db", volume_db, 1.2)
+
+
+## La sala reacciona a una jugada: el murmullo sube unos segundos y vuelve a su nivel.
+static func ambient_swell(up_db: float = 6.0, hold: float = 2.2) -> void:
+	if _ambient == null or not is_instance_valid(_ambient) or not _ambient.playing:
+		return
+	_kill_ambient_tween()
+	_ambient_tw = _ambient.create_tween()
+	_ambient_tw.tween_property(_ambient, "volume_db", _ambient_base + up_db, 0.5).set_trans(Tween.TRANS_SINE)
+	_ambient_tw.tween_interval(hold)
+	_ambient_tw.tween_property(_ambient, "volume_db", _ambient_base, 2.5).set_trans(Tween.TRANS_SINE)
+
+
+static func _kill_ambient_tween() -> void:
+	if _ambient_tw != null and _ambient_tw.is_valid():
+		_ambient_tw.kill()
+	_ambient_tw = null
 
 
 static func ambient_stop() -> void:
@@ -149,7 +177,8 @@ static func react(d: Node, before: Chess, m: int) -> void:
 		return  # Al acabar suenan los aplausos o el lamento.
 	if big or Chess.move_promo(m) != 0:
 		_last_cheer = now
-		effect(d, "exclamacion", -6.0)
+		effect(d, "exclamacion", CROWD_DB)
+		ambient_swell()
 
 
 # --- Lista de salas ---

@@ -62,9 +62,14 @@ Sardin, CC0); exclamaciones («ooh», sorpresa) y lamento de BudgetPixel AI (CC 
 murmullo suena en bucle durante el paseo y, más bajo, durante la partida; el público reacciona (como mucho cada
 20 s) a capturas de torre o dama y a coronaciones; al acabar, aplausos (de sala pequeña o grande) o lamento.
 
+Niveles (Pablo, 23 nov: «más murmullos y menos altos los comentarios»): murmullo a −11 dB en la partida (−6 en el
+paseo, −10 al acabar); exclamaciones y lamento a −15 dB (`CampeonatoUI.CROWD_DB`), y con cada uno el murmullo sube
+unos segundos y vuelve (`ambient_swell`); aplausos a −6 dB. Los efectos se apagan al final (fundido de 0,7–1 s), sin
+corte seco.
+
 ## Pendiente
 
-- Vídeos del rival saludando desde la mesa (vista en primera persona, sin manos del jugador): con PixVerse v6 a
+- (Aparcado por Pablo el 23 nov: nos quedamos con las fotos tal cual.) Vídeos del rival saludando desde la mesa (vista en primera persona, sin manos del jugador): con PixVerse v6 a
   través de Cloudflare (`tools/campeonato/videos.py`, `lote_video_1.json`, unos 0,45 $ por vídeo en 1080p). Hace falta
   saldo prepago de «unified billing» en AI Gateway (la primera prueba falló por eso, 23 nov). O los hace Pablo en
   PixVerse. Irán en `godot/campeonato/videos/<sala>/<id>.ogv` y sustituirán a la foto fija.
