@@ -1,0 +1,13 @@
+{
+ "ilustrado/rivales/escuela/tomas_sonrisa": {
+  "nombre": "ilustrado/rivales/escuela/tomas_sonrisa",
+  "prompt": "Edit of the reference image: keep exactly the same man, face shape, his thick grey mustache, grey hair, eyebrows, plaid shirt, pose, hands, framing, chessboard, background, colors and lighting. He keeps his thick grey mustache. The only change: a warm friendly smile under the mustache, cheeks slightly raised, eyes looking at the viewer. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+  "width": 1024,
+  "height": 1792,
+  "steps": 28,
+  "seed": 922,
+  "refs": [
+   "ilustrado/rivales/escuela/tomas"
+  ]
+ }
+}
