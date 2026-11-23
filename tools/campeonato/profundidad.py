@@ -38,11 +38,11 @@ def main():
     n = 0
     for root, _, files in os.walk(src):
         for f in sorted(files):
-            if not f.endswith(".bin") or f.endswith("_prof.bin"):
+            if not (f.endswith(".bin") or f.endswith(".jpg")) or "_prof." in f:
                 continue
             path = os.path.join(root, f)
             rel = os.path.relpath(path, src)
-            out = os.path.join(dst, rel[:-4] + "_prof.bin")
+            out = os.path.join(dst, rel[:-4] + ("_prof.bin" if f.endswith(".bin") else "_prof.png"))
             os.makedirs(os.path.dirname(out), exist_ok=True)
             depth(sess, Image.open(path)).save(out, "PNG", optimize=True)
             n += 1

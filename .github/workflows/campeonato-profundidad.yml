@@ -4,6 +4,10 @@ name: Campeonato · profundidad (foto viva)
 # la «foto viva». Los deja en la rama «campeonato-profundidad» para pasarlos a godot/campeonato.
 on:
   workflow_dispatch:
+    inputs:
+      origen:
+        description: "Carpeta del repositorio, o «rama:<nombre>/<carpeta>» para sacar las fotos de una rama"
+        default: "godot/campeonato"
 
 permissions:
   contents: write
@@ -18,7 +22,13 @@ jobs:
           pip install --quiet onnxruntime pillow numpy
           curl -sfL -o /tmp/modelo.onnx https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx
           ls -lh /tmp/modelo.onnx
-          python3 tools/campeonato/profundidad.py /tmp/modelo.onnx godot/campeonato /tmp/prof
+          src="${{ inputs.origen }}"
+          if [ "${src#rama:}" != "$src" ]; then
+            ref="${src#rama:}"; branch="${ref%%/*}"; sub="${ref#*/}"
+            git fetch -q origin "$branch" && mkdir -p /tmp/src && git archive FETCH_HEAD "$sub" | tar -x -C /tmp/src
+            src="/tmp/src/$sub"
+          fi
+          python3 tools/campeonato/profundidad.py /tmp/modelo.onnx "$src" /tmp/prof
       - name: Publicar en la rama campeonato-profundidad
         run: |
           cd /tmp/prof
