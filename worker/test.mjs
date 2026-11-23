@@ -377,7 +377,7 @@ test("con Stockfish en el móvil: usa sus análisis; una chapa mala se confirma 
   assert.ok(r3.drop < 5);
 });
 
-import { assist, cleanAction, TOOLS } from "./src/assistant.js";
+import { assist, cleanAction, TOOLS, trimSay } from "./src/assistant.js";
 
 test("asistente: acciones válidas; jugada solo si es legal; nombres o valores raros, fuera", async () => {
   const state = { pantalla: "partida", legal: ["e4=e2e4", "Cf3=g1f3"] };
@@ -406,6 +406,13 @@ test("asistente: acciones válidas; jugada solo si es legal; nombres o valores r
   assert.equal(sent.model, "claude-haiku-5-5");
   assert.equal(sent.tools.length, TOOLS.length);
   assert.match(sent.messages[0].content, /e4=e2e4/);
+});
+
+test("asistente: con acciones, un texto largo (razonamiento en voz alta) no se enseña", () => {
+  const long = 'The user wants "fichas 3D". The app has "figuras" (3D classic pieces), "fichas" (discs with icon), and "simple". I\'ll switch to figuras and explain.';
+  assert.equal(trimSay(long, true), "");
+  assert.equal(trimSay("Listo: piezas en figuras 3D.", true), "Listo: piezas en figuras 3D.");
+  assert.equal(trimSay(long, false), long);
 });
 
 import { transcribe } from "./src/voice.js";

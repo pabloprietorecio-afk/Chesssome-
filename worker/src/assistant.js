@@ -23,7 +23,7 @@ export const TOOLS = [
   tool("mover", "Juega una jugada en la partida en curso. Solo si le toca al jugador. Elige una de las jugadas legales que te doy (en UCI).", {
     uci: { type: "string", description: "La jugada en UCI, p. ej. e2e4. Tiene que estar en la lista de jugadas legales." },
   }, ["uci"]),
-  tool("cambiar_piezas", "Cambia el juego de piezas.", { piezas: { type: "string", enum: ["figuras", "fichas", "simple"], description: "figuras = piezas 3D clásicas; fichas = discos con el icono; simple = tablero plano desde arriba." } }, ["piezas"]),
+  tool("cambiar_piezas", "Cambia el juego de piezas.", { piezas: { type: "string", enum: ["figuras", "fichas", "simple"], description: "figuras = piezas 3D clásicas (lo que la gente llama «piezas 3D», «fichas 3D», «piezas de verdad»); fichas = discos planos con el icono; simple = tablero plano desde arriba." } }, ["piezas"]),
   tool("cambiar_material", "Cambia el material del tablero y de las piezas.", { material: { type: "string", enum: ["madera", "mármol", "metal", "ilustrado"] } }, ["material"]),
   tool("inclinar_tablero", "Cambia la inclinación de la vista: ángulo de la cámara sobre el tablero. 90 = desde arriba (en picado); 64 = la vista normal; 36 = lo más tumbado posible.", { grados: { type: "number" } }, ["grados"]),
   tool("cambiar_tema", "Tema claro u oscuro.", { tema: { type: "string", enum: ["claro", "oscuro"] } }, ["tema"]),
@@ -73,7 +73,8 @@ export function assistantPrompt(text, state, language) {
   const system = [
     "Eres el asistente de A Chess Way, una app de ajedrez para móvil. El jugador te pide cosas con sus palabras (escritas o dictadas por voz, con posibles faltas) y tú las haces usando las herramientas, que son acciones de la app.",
     "Reglas:",
-    "- Si lo que pide se puede hacer con las herramientas, úsalas (varias si hace falta, en orden) y escribe además una frase corta diciendo lo que haces.",
+    "- Si lo que pide se puede hacer con las herramientas, úsalas directamente (varias si hace falta, en orden). Como mucho, una frase muy corta (menos de 12 palabras) diciendo lo que has hecho, p. ej. «Listo: piezas en figuras 3D.»",
+    "- El jugador ve todo lo que escribes: nunca escribas tu razonamiento, dudas ni explicaciones de cómo has decidido. Si la petición es ambigua pero hay una opción razonable, elígela y hazla sin explicar.",
     "- Si no se puede, dilo con amabilidad en una o dos frases y sugiere lo más parecido que sí se puede y cómo hacerlo (qué tocar en la app).",
     "- El texto suele venir del dictado por voz, que no sabe de ajedrez: «al fin» es «alfil», «peor» puede ser «peón», «reina» es la dama, «ce», «de», «e»… son columnas (c, d, e), y los números pueden venir en letra. Interprétalo siempre en clave de ajedrez.",
     "- Para mover: el jugador puede decir la jugada en notación («e4», «Cf3») o con palabras («peón de rey dos pasos», «enroque corto», «la dama come el alfil»). Elige la jugada de la lista de jugadas legales que te doy; si no está claro cuál es o no es legal, pregunta o explica por qué no se puede, sin mover.",
@@ -104,6 +105,14 @@ export function assistantPrompt(text, state, language) {
   return { system, user: lines.join("\n") };
 }
 
+// Con acciones hechas, el texto solo vale si es una frase corta de confirmación: un texto largo suele ser el
+// razonamiento del modelo en voz alta (Pablo, 23 nov: «que haga el cambio y ya está»), y no se enseña.
+export function trimSay(say, acted) {
+  const s = String(say || "").trim();
+  if (!acted) return s;
+  return s.length > 140 ? "" : s;
+}
+
 export async function assist(input, env) {
   const text = String(input?.text ?? "").trim();
   if (text.length < 2) throw Object.assign(new Error("petición vacía"), { status: 400 });
@@ -111,7 +120,7 @@ export async function assist(input, env) {
   const language = String(input?.language ?? "es").slice(0, 5);
   const state = input?.state && typeof input.state === "object" ? input.state : {};
   const { system, user } = assistantPrompt(text, state, language);
-  const base = { model: env.MODEL_ASSISTANT || "claude-haiku-5-5", max_tokens: 600, system, tools: TOOLS, messages: [{ role: "user", content: user }] };
+  const base = { model: env.MODEL_ASSISTANT || "claude-haiku-5-5", max_tokens: 1024, system, tools: TOOLS, messages: [{ role: "user", content: user }] };
   const call = (body) => fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": env.ANTHROPIC_API_KEY },
@@ -122,7 +131,7 @@ export async function assist(input, env) {
   if (!r.ok) throw (await noCredit(r)) ? noCreditError() : Object.assign(new Error(`api ${r.status}`), { status: 502 });
   const data = await r.json();
   const content = data.content || [];
-  const say = content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim().slice(0, 600);
+  let say = content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim().slice(0, 600);
   const actions = [];
   let dropped = 0;
   for (const c of content.filter((x) => x.type === "tool_use")) {
@@ -130,5 +139,6 @@ export async function assist(input, env) {
     if (a) actions.push(a);
     else dropped += 1;
   }
+  say = trimSay(say, actions.length > 0);
   return { say, actions: actions.slice(0, 6), dropped };
 }
