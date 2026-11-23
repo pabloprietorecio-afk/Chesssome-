@@ -376,9 +376,15 @@ var _coach_pending := false
 ## resaltada. Flota en el hueco entre la barra y el tablero, como la pista de gestos; si no cabe, no sale y la
 ## valoración va en la tarjeta.
 var coach_legend: HBoxContainer
+## El rival del Campeonato encima del tablero (ver _sync_camp_tag).
+var camp_tag: Control
+var _camp_tag_key := ""
+var _camp_tag_top := 0.0
 var _coach_legend_key := ""
 var _coach_legend_was := false
 const COACH_LEGEND_H := 112.0
+## Lado de la cara del rival del Campeonato encima del tablero (px).
+const CAMP_TAG_FACE := 116.0
 const COACH_LEGEND := [GameDetail.BEST, GameDetail.GOOD, GameDetail.INACCURACY, GameDetail.MISTAKE, GameDetail.BLUNDER]
 var _coach_badge_kind := ""
 var _coach_gen := 0
@@ -2092,6 +2098,55 @@ func _note(text: String) -> void:
 	_place_tip()
 
 
+## En las partidas del Campeonato, el rival va arriba a la izquierda, entre la barra y el tablero (como en
+## chess.com): su cara, su nombre y «Bot». Solo si cabe; si no, el reloj ya lleva su nombre. Dice si se ve.
+func _sync_camp_tag() -> bool:
+	var key := str(game.get("campeonato", "")) if mode == "game" else ""
+	var id := str(game.get("rival_id", ""))
+	var room := 0.0
+	var floor_y := 0.0
+	if key != "" and id != "" and not _tip_note and board_slot != null and is_instance_valid(board_slot) and board_slot.is_inside_tree():
+		# Hasta lo más alto del tablero que se ve (con la perspectiva, el tablero no llena su hueco por arriba). Las
+		# piezas que ha comido el rival van a su derecha, en la misma franja (ver _sync_cap_pad).
+		floor_y = view.get_global_rect().position.y + view.board_top() if view != null and view.is_inside_tree() else board_slot.get_global_rect().position.y
+		room = floor_y - _coach_legend_floor()
+	# Dos tamaños (grande o compacto), para no rehacerlo a cada fotograma si el tablero se amplía.
+	var side := CAMP_TAG_FACE if room >= CAMP_TAG_FACE + 60.0 else (84.0 if room >= 144.0 else 0.0)
+	_camp_tag_top = floor_y
+	if side <= 0.0:
+		if camp_tag != null and is_instance_valid(camp_tag):
+			camp_tag.visible = false
+		_sync_cap_pad(0.0)
+		return false
+	var thinking := game_state == "think"
+	var tag_key := "%s|%s|%d|%s|%s|%s" % [key, id, int(side), str(thinking), str(dark), Loc.language]
+	if tag_key != _camp_tag_key or camp_tag == null or not is_instance_valid(camp_tag):
+		_camp_tag_key = tag_key
+		if camp_tag != null and is_instance_valid(camp_tag):
+			camp_tag.queue_free()
+		camp_tag = CampeonatoUI.game_tag(self, key, id, thinking, side)
+		add_child(camp_tag)
+		if gesture_tip != null and is_instance_valid(gesture_tip):
+			# Al nivel de la pista de gestos: por debajo de las páginas y ventanas.
+			move_child(camp_tag, gesture_tip.get_index())
+	camp_tag.visible = true
+	camp_tag.reset_size()
+	# Pegado al tablero (encima de las piezas comidas), alineado con su borde izquierdo.
+	camp_tag.position = Vector2(24.0, maxf(_coach_legend_floor() + 12.0, floor_y - camp_tag.size.y - 18.0))
+	_sync_cap_pad(camp_tag.position.x + camp_tag.size.x + 24.0)
+	return true
+
+
+## Las piezas comidas de arriba empiezan a la derecha del rival del Campeonato (`after`: su borde derecho; 0, sin él).
+func _sync_cap_pad(after: float) -> void:
+	if cap_top == null or not is_instance_valid(cap_top):
+		return
+	var pad := maxf(56.0, after)
+	if absf(cap_top.pad_x - pad) > 0.5:
+		cap_top.pad_x = pad
+		cap_top.queue_redraw()
+
+
 ## El jugador ha ampliado, girado o desplazado el tablero: ya sabe hacerlo y la pista sobra.
 func _on_view_gesture(_kind: String) -> void:
 	if not gesture_hint:
@@ -2112,7 +2167,8 @@ func _place_tip() -> void:
 	var bar_bottom := bar_row.get_global_rect().end.y if bar_row != null and is_instance_valid(bar_row) else 0.0
 	var room := slot_top - bar_bottom
 	var fits := room >= gesture_tip.size.y + 56.0
-	gesture_tip.visible = _tip_note or (gesture_hint and not view.view_locked and welcome == null and progress == null and fits)
+	var tag_on := _sync_camp_tag()
+	gesture_tip.visible = _tip_note or (gesture_hint and not view.view_locked and welcome == null and progress == null and fits and not tag_on)
 	if not film.is_empty():
 		# Con el vídeo arriba no hay sitio: la pista quedaría debajo del reproductor (que va encima de todo).
 		gesture_tip.visible = false
@@ -8715,6 +8771,11 @@ func _process(delta: float) -> void:
 	if not film.is_empty():
 		_film_tick()
 	_sync_captures()
+	if mode == "game" and game.has("rival_id") and view != null and view.is_inside_tree():
+		# Al ampliar, girar o inclinar el tablero, el rival de encima se recoloca (o se esconde si no cabe).
+		var top := view.get_global_rect().position.y + view.board_top()
+		if absf(top - _camp_tag_top) > 1.5:
+			_sync_camp_tag()
 	if mode == "game" and bool(game.get("online", false)) and game_state in ["play", "think", "press"]:
 		_online_idle_tick()
 	if mode != "game" or not game_clocked or not (game_state in ["play", "think", "press"]):
@@ -9054,7 +9115,7 @@ func _campeonato_start_game(key: String, lv: int) -> void:
 	var round_name := Loc.t(str(Campeonato.ROUNDS[int(m["ronda"])]))
 	CampeonatoUI.ambient_volume(-18.0)
 	var cfg := {"variant": "", "level": lv, "title": Loc.f("%s · %s (bot)", [round_name, str(rival.get("name", ""))]), "text": "", "kids": "",
-		"unit": "", "clock": m["clock"], "campeonato": key, "rival_nombre": str(rival.get("name", ""))}
+		"unit": "", "clock": m["clock"], "campeonato": key, "rival_nombre": str(rival.get("name", "")), "rival_id": str(m["rival"])}
 	_start_game(cfg, int(m["color"]))
 
 

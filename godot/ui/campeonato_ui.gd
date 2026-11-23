@@ -17,6 +17,7 @@ static var _cache := {}
 static var _ambient: AudioStreamPlayer
 static var _fx: AudioStreamPlayer
 static var _last_cheer := -100000
+static var _faces := {}
 
 
 # --- Fotos y sonido ---
@@ -403,6 +404,81 @@ static func _face(d: Variant, key: String, id: String, side: float) -> Control:
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	holder.add_child(pic)
 	return disc
+
+
+## Recorte de la cara de un retrato: [x, y, lado] en fracciones del ancho y del alto. Medido con
+## tools/campeonato/caras.py (data/campeonato_caras.json); si falta, la parte de arriba del centro.
+static func face_region(key: String, id: String) -> Array:
+	if _faces.is_empty():
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/campeonato_caras.json")) if FileAccess.file_exists("res://data/campeonato_caras.json") else null
+		_faces = data if data is Dictionary else {"": []}
+	var r: Variant = _faces.get("%s/%s" % [key, id], [])
+	if r is Array and (r as Array).size() == 3:
+		return r
+	return [0.2, 0.0, 0.6]
+
+
+## El rival encima del tablero en las partidas del Campeonato (arriba a la izquierda, como en chess.com): su cara,
+## su nombre y que es un bot. `thinking`: le toca; el aro de la cara late y dice «pensando…».
+static func game_tag(d: Variant, key: String, id: String, thinking: bool, side: float) -> Control:
+	var rival := Campeonato.rival(key, id)
+	var pill := PanelContainer.new()
+	pill.name = "campeonato_rival"
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	var paper: Color = d._c("surface")
+	sb.bg_color = Color(paper.r, paper.g, paper.b, 0.94)
+	sb.set_corner_radius_all(int(side / 2.0) + 10)
+	sb.content_margin_left = 10.0
+	sb.content_margin_top = 10.0
+	sb.content_margin_bottom = 10.0
+	sb.content_margin_right = 36.0
+	sb.shadow_color = d._c("shadow")
+	sb.shadow_size = 14
+	sb.shadow_offset = Vector2(0.0, 4.0)
+	pill.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 22)
+	pill.add_child(row)
+	var disc := PanelContainer.new()
+	disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	disc.custom_minimum_size = Vector2(side, side)
+	disc.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	var ring := StyleBoxFlat.new()
+	ring.bg_color = d._c("field")
+	ring.set_corner_radius_all(int(side / 2.0))
+	ring.set_border_width_all(6)
+	var accent: Color = d._c("accent")
+	ring.border_color = accent if thinking else d._c("field")
+	disc.add_theme_stylebox_override("panel", ring)
+	var tex := photo(Campeonato.portrait_path(key, id))
+	if tex != null:
+		var reg := face_region(key, id)
+		var at := AtlasTexture.new()
+		at.atlas = tex
+		at.region = Rect2(float(reg[0]) * tex.get_width(), float(reg[1]) * tex.get_height(), float(reg[2]) * tex.get_width(), float(reg[2]) * tex.get_width())
+		var pic := TextureRect.new()
+		pic.texture = at
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_SCALE
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		disc.add_child(pic)
+	row.add_child(disc)
+	if thinking:
+		# Mientras piensa, el aro late despacio.
+		var beat := pill.create_tween().set_loops()
+		beat.tween_property(ring, "border_color", Color(accent.r, accent.g, accent.b, 0.35), 0.7).set_trans(Tween.TRANS_SINE)
+		beat.tween_property(ring, "border_color", accent, 0.7).set_trans(Tween.TRANS_SINE)
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", 2)
+	col.add_child(d._line(str(rival.get("name", "")), d.F_SUB, d._c("ink"), d.font_semibold))
+	var sub := Loc.t("Bot · pensando…") if thinking else Loc.f("Bot · Elo %d", int(rival.get("elo", 0)))
+	col.add_child(d._line(sub, d.F_CAP, d._c("accent_text") if thinking else d._c("quiet"), d.font_medium))
+	row.add_child(col)
+	return pill
 
 
 ## Una ronda del cuadro: sus partidas, con el ganador resaltado.

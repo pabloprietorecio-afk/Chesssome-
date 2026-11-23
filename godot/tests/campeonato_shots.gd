@@ -49,6 +49,13 @@ func _initialize() -> void:
 	demo._open_campeonato_room("escuela", "¡Has ganado! Pasas a la semifinal.")
 	await _frames(10)
 	await _shot("c6_cuadro")
+	demo._campeonato_start_game("escuela", 3)
+	await _frames(30)
+	await _shot("c7_partida")
+	demo.game_state = "think"
+	demo._refresh()
+	await _frames(20)
+	await _shot("c8_piensa")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Campeonato.PATH))
 	quit()
 

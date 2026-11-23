@@ -76,6 +76,21 @@ func _initialize() -> void:
 	var m := Campeonato.current_match(t2, "escuela")
 	demo._campeonato_start_game("escuela", int(m["level"]))
 	await _frames(3)
+	# Durante la partida, el rival va encima del tablero: su cara, su nombre y que es un bot (si hay sitio: en
+	# pantallas 16:9 no lo hay y el reloj ya lleva su nombre).
+	demo._place_tip()
+	var rv := Campeonato.rival("escuela", str(m["rival"]))
+	var built := CampeonatoUI.game_tag(demo, "escuela", str(m["rival"]), false, 116.0)
+	_ok(_has_text(built, str(rv.get("name", ""))) and _has_text(built, Loc.f("Bot · Elo %d", int(rv.get("elo", 0)))), "el rival de encima del tablero: nombre y «Bot · Elo»")
+	built.free()
+	var thinking := CampeonatoUI.game_tag(demo, "escuela", str(m["rival"]), true, 84.0)
+	_ok(_has_text(thinking, Loc.t("Bot · pensando…")), "mientras piensa: «Bot · pensando…»")
+	thinking.free()
+	var sky: float = demo.view.get_global_rect().position.y + demo.view.board_top() - demo._coach_legend_floor()
+	var tag: Control = demo.camp_tag
+	var shown := tag != null and is_instance_valid(tag) and tag.visible
+	_ok(shown == (sky >= 144.0), "se ve si cabe entre la barra y el tablero (%d px)" % int(sky))
+	_ok(not shown or tag.get_global_rect().end.y <= demo.view.get_global_rect().position.y + demo.view.board_top() + 1.0, "sin tapar el tablero")
 	demo.game_state = "over"
 	demo.game_won = 1
 	demo.game_result = "¡Has ganado!"

@@ -201,6 +201,23 @@ func board_bottom() -> float:
 				low = maxf(low, p.y)
 	return view_to_local(Vector2(0.0, low)).y
 
+## Dónde empieza el tablero por arriba, en unidades de este control: lo más alto en pantalla de las piezas más altas
+## de la fila del fondo (un rey). Lo de encima es cielo libre (ahí va, por ejemplo, el rival del Campeonato).
+func board_top() -> float:
+	if board == null or board.camera == null or not board.camera.is_inside_tree():
+		return 0.0
+	var high := INF
+	var h := Board3D.FRAME_HALF
+	var tall := float(Board3D.PIECE_HEIGHT[6]) * Board3D.PIECE_SCALE
+	for ix: int in [-1, 0, 1]:
+		for iz: int in [-1, 1]:
+			for y: float in [0.0, tall]:
+				# La pieza más alta en la fila del fondo (esquinas y centro, media casilla dentro del marco).
+				var p := board.camera.unproject_position(Vector3(float(ix) * (h - 0.6), y, float(iz) * (h - 0.6)))
+				high = minf(high, p.y)
+	return view_to_local(Vector2(0.0, high)).y
+
+
 func set_fen(fen: String) -> void:
 	_hide_promotion()
 	_reset_touch()
