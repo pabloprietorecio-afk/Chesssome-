@@ -46,7 +46,12 @@ func load_config() -> void:
 			cfg[k] = parsed[k]
 
 
-## Una vez, al arrancar (y nunca en Kids).
+## ¿Ya se ha arrancado (y pedido el consentimiento)?
+func started() -> bool:
+	return _started
+
+
+## Una vez, con el inicio ya en pantalla (y nunca en Kids).
 func start() -> void:
 	if _started or not available():
 		return

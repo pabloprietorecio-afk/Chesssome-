@@ -1273,8 +1273,8 @@ func _ready() -> void:
 		return
 	_load_player()
 	_aviso_setup()
-	if not kids:
-		ads.start()
+	# Los anuncios (y el aviso de consentimiento de Google) no arrancan aquí: esperan a que se vea el inicio
+	# (Pablo, 23 nov: la primera vez salía encima de la animación de entrada). Ver _ads_start_later.
 	_idle()
 	if not welcome_seen:
 		_open_welcome()
@@ -5933,6 +5933,31 @@ func _set_home_style(i: int) -> void:
 		_sync_sheet()
 
 
+var _ads_waiting := false
+
+
+## Arranca los anuncios (y con ellos el aviso de consentimiento de Google, si hace falta) la primera vez que el
+## inicio está en pantalla, ya elegido el idioma y acabada la animación de entrada; con un respiro para que el
+## inicio se vea antes. Si mientras tanto el jugador sale del inicio, espera a que vuelva.
+func _ads_start_later() -> void:
+	if kids or ads.started() or _ads_waiting or not use_settings:
+		return
+	_ads_waiting = true
+	await _wait(1.5)
+	while is_inside_tree() and (_intro_on_screen() or progress_kind != "home" or kids):
+		await _wait(0.5)
+	_ads_waiting = false
+	if is_inside_tree() and not kids and progress_kind == "home":
+		ads.start()
+
+
+func _intro_on_screen() -> bool:
+	for c in get_children():
+		if c is Intro:
+			return true
+	return false
+
+
 ## Inicio: lo que se puede hacer en la app, con lo que estaba haciendo el jugador en primer lugar.
 func _open_home() -> void:
 	_film_close()
@@ -5946,6 +5971,7 @@ func _open_home() -> void:
 		else:
 			HomeScreens.build_list(self, _home_items())
 		_place_tip()
+		_ads_start_later()
 		# Entre actividades y solo aquí (core/ads.gd): nunca en Kids, online ni en mitad de nada.
 		ads.maybe_show(kids or (online != null and online.phase != "idle") or online_busy)
 		return
