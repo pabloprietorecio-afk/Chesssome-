@@ -86,6 +86,12 @@ func _initialize() -> void:
 	var thinking := CampeonatoUI.game_tag(demo, "escuela", str(m["rival"]), true, 84.0)
 	_ok(_has_text(thinking, Loc.t("Bot · pensando…")), "mientras piensa: «Bot · pensando…»")
 	thinking.free()
+	var quiet := CampeonatoUI.mute_button(demo)
+	quiet.pressed.emit()
+	_ok(CampeonatoUI.murmullo_off(demo), "botón de silencio: apaga el murmullo")
+	quiet.pressed.emit()
+	_ok(not CampeonatoUI.murmullo_off(demo), "botón de silencio: lo devuelve")
+	quiet.free()
 	var sky: float = demo.view.get_global_rect().position.y + demo.view.board_top() - demo._coach_legend_floor()
 	var tag: Control = demo.camp_tag
 	var shown := tag != null and is_instance_valid(tag) and tag.visible

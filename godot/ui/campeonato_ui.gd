@@ -20,6 +20,7 @@ static var _last_cheer := -100000
 static var _faces := {}
 static var _ambient_base := -8.0
 static var _ambient_tw: Tween
+static var _ambient_key := ""
 ## Volumen de los comentarios del público (exclamaciones, lamento) y de los aplausos, en dB. Bajos: el murmullo
 ## manda y los comentarios asoman por encima (petición de Pablo, 23 nov: «más murmullos y menos altos los
 ## comentarios»). Los aplausos del final, algo más altos que todo lo demás (también petición de Pablo).
@@ -93,8 +94,49 @@ static func big_room(key: String) -> bool:
 	return Campeonato.index_of(key) >= 3
 
 
+## Silencio del murmullo (botón del paseo y de la partida); se recuerda en el estado del campeonato.
+static func murmullo_off(d: Variant) -> bool:
+	return bool((d.campeonato_state() as Dictionary).get("silencio", false))
+
+
+static func set_murmullo_off(d: Variant, off: bool) -> void:
+	(d.campeonato_state() as Dictionary)["silencio"] = off
+	d.campeonato_save()
+	if off:
+		ambient_stop()
+	elif _ambient_key != "":
+		ambient_start(d, _ambient_key, _ambient_base)
+
+
+## Botón redondo de altavoz; tachado cuando el murmullo está silenciado. Al tocarlo, silencia o devuelve el murmullo.
+static func mute_button(d: Variant, side: float = 76.0) -> Button:
+	var b: Button = d._round_button("sound", func() -> void: pass, side, d._c("field"), d._c("ink"), false)
+	b.name = "silencio"
+	var strike := ColorRect.new()
+	strike.color = Color("c0392b")
+	strike.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strike.size = Vector2(side * 0.78, 6.0)
+	strike.pivot_offset = strike.size * 0.5
+	strike.position = Vector2(side * 0.5, side * 0.5) - strike.size * 0.5
+	strike.rotation = deg_to_rad(-42.0)
+	b.add_child(strike)
+	var refresh := func() -> void:
+		var off := murmullo_off(d)
+		strike.visible = off
+		b.modulate.a = 0.6 if off else 1.0
+	refresh.call()
+	b.pressed.connect(func() -> void:
+		set_murmullo_off(d, not murmullo_off(d))
+		refresh.call())
+	return b
+
+
 ## Murmullo de la sala, en bucle (más bajo durante la partida). Sonidos: tools/campeonato/sonidos.sh (CC0).
-static func ambient_start(d: Node, key: String, volume_db: float = -8.0) -> void:
+static func ambient_start(d: Node, key: String, volume_db: float = -16.0) -> void:
+	_ambient_key = key
+	_ambient_base = volume_db
+	if murmullo_off(d):
+		return
 	var s := _stream("murmullo_%s.ogg" % ("b" if big_room(key) else "a"))
 	if s == null:
 		return
@@ -110,6 +152,21 @@ static func ambient_start(d: Node, key: String, volume_db: float = -8.0) -> void
 	_kill_ambient_tween()
 	_ambient_base = volume_db
 	_ambient.volume_db = volume_db
+	_breathe()
+
+
+## El murmullo respira: baja unos 9 dB y vuelve a subir despacio, para que no suene siempre igual (Pablo, 23 nov).
+static func _breathe() -> void:
+	if _ambient == null or not is_instance_valid(_ambient):
+		return
+	_kill_ambient_tween()
+	_ambient_tw = _ambient.create_tween()
+	_ambient_tw.tween_interval(3.0)
+	_ambient_tw.tween_property(_ambient, "volume_db", _ambient_base - 9.0, 4.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_ambient_tw.tween_interval(2.5)
+	_ambient_tw.tween_property(_ambient, "volume_db", _ambient_base, 5.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_ambient_tw.tween_interval(4.0)
+	_ambient_tw.set_loops()
 
 
 static func ambient_volume(volume_db: float) -> void:
@@ -118,10 +175,11 @@ static func ambient_volume(volume_db: float) -> void:
 		_kill_ambient_tween()
 		_ambient_tw = _ambient.create_tween()
 		_ambient_tw.tween_property(_ambient, "volume_db", volume_db, 1.2)
+		_ambient_tw.tween_callback(_breathe)
 
 
 ## La sala reacciona a una jugada: el murmullo sube unos segundos y vuelve a su nivel.
-static func ambient_swell(up_db: float = 6.0, hold: float = 2.2) -> void:
+static func ambient_swell(up_db: float = 3.0, hold: float = 1.6) -> void:
 	if _ambient == null or not is_instance_valid(_ambient) or not _ambient.playing:
 		return
 	_kill_ambient_tween()
@@ -129,6 +187,7 @@ static func ambient_swell(up_db: float = 6.0, hold: float = 2.2) -> void:
 	_ambient_tw.tween_property(_ambient, "volume_db", _ambient_base + up_db, 0.5).set_trans(Tween.TRANS_SINE)
 	_ambient_tw.tween_interval(hold)
 	_ambient_tw.tween_property(_ambient, "volume_db", _ambient_base, 2.5).set_trans(Tween.TRANS_SINE)
+	_ambient_tw.tween_callback(_breathe)
 
 
 static func _kill_ambient_tween() -> void:
@@ -546,6 +605,9 @@ static func game_tag(d: Variant, key: String, id: String, thinking: bool, side: 
 	var sub := Loc.t("Bot · pensando…") if thinking else Loc.f("Bot · Elo %d", int(rival.get("elo", 0)))
 	col.add_child(d._line(sub, d.F_CAP, d._c("accent_text") if thinking else d._c("quiet"), d.font_medium))
 	row.add_child(col)
+	var quiet := mute_button(d, minf(side * 0.62, 72.0))
+	quiet.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(quiet)
 	return pill
 
 
@@ -914,7 +976,7 @@ static func walk(d: Variant, key: String) -> void:
 	black.set_anchors_preset(Control.PRESET_FULL_RECT)
 	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(black)
-	ambient_start(d, key, -6.0)
+	ambient_start(d, key, -15.0)
 	var shots: Array = [Campeonato.room_path(key, "entrada"), Campeonato.room_path(key, "pasillo"), Campeonato.portrait_path(key, str(m["rival"]))]
 	var state := {"skip": false, "done": false}
 	var skipper := Button.new()
@@ -923,6 +985,10 @@ static func walk(d: Variant, key: String) -> void:
 	skipper.set_anchors_preset(Control.PRESET_FULL_RECT)
 	skipper.pressed.connect(func() -> void: state["skip"] = true)
 	layer.add_child(skipper)
+	var quiet := mute_button(d, 84.0)
+	quiet.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	quiet.position = Vector2((d as Control).size.x - 84.0 - 28.0, 70.0)
+	layer.add_child(quiet)
 	var size: Vector2 = (d as Control).size
 	var prev: TextureRect = null
 	for i in shots.size():

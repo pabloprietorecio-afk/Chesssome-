@@ -9333,7 +9333,7 @@ func _campeonato_start_game(key: String, lv: int) -> void:
 	var rival := Campeonato.rival(key, str(m["rival"]))
 	var round_name := str(m["titulo"])
 	# Durante la partida el murmullo se oye de fondo, sin tapar el tablero (Pablo, 23 nov: «más murmullos»).
-	CampeonatoUI.ambient_volume(-11.0)
+	CampeonatoUI.ambient_volume(-19.0)
 	var cfg := {"variant": "", "level": lv, "title": Loc.f("%s · %s (bot)", [round_name, str(rival.get("name", ""))]), "text": "", "kids": "",
 		"unit": "", "clock": m["clock"], "campeonato": key, "rival_nombre": str(rival.get("name", "")), "rival_id": str(m["rival"])}
 	_start_game(cfg, int(m["color"]))
@@ -9350,17 +9350,17 @@ func _campeonato_record_once() -> void:
 	game["camp_decided"] = bool(r.get("decided", false))
 	campeonato_save()
 	game["camp_news"] = _campeonato_news(key, r)
-	CampeonatoUI.ambient_volume(-10.0)
+	CampeonatoUI.ambient_volume(-18.0)
 	if game_won > 0:
 		# El archivo de la sala pequeña está grabado unos 5 dB más bajo: se compensa casi todo.
 		var big := CampeonatoUI.big_room(key)
 		CampeonatoUI.effect(self, "aplausos_grande" if big else "aplausos_pequeno", CampeonatoUI.CHEER_DB + (0.0 if big else 3.0))
 	elif game_won < 0:
 		CampeonatoUI.effect(self, "lamento", CampeonatoUI.CROWD_DB)
-		CampeonatoUI.ambient_swell(5.0, 3.0)
+		CampeonatoUI.ambient_swell(3.0, 1.8)
 	else:
 		CampeonatoUI.effect(self, "exclamacion", CampeonatoUI.CROWD_DB)
-		CampeonatoUI.ambient_swell(5.0, 3.0)
+		CampeonatoUI.ambient_swell(3.0, 1.8)
 
 
 func _campeonato_news(key: String, r: Dictionary) -> String:

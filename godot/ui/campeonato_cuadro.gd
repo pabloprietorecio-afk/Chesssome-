@@ -10,7 +10,7 @@ const LABEL_H := 40.0
 const ARROW_GAP := 92.0
 const FACE := [46.0, 72.0, 84.0]
 const CARD_W := [0.0, 310.0, 390.0]
-const CARD_H := [170.0, 200.0, 232.0]
+const CARD_H := [128.0, 200.0, 232.0]
 const ROUNDS := 3
 const PAD := 22.0
 const AUD_H := 210.0
@@ -113,7 +113,7 @@ func _ready() -> void:
 	var total := 0.0
 	for r in ROUNDS:
 		total += LABEL_H + float(CARD_H[r]) + (ARROW_GAP if r < ROUNDS - 1 else 0.0)
-	custom_minimum_size = Vector2(0.0, total + 2.0 * PAD + 24.0 + AUD_H - AUD_OVERLAP + 8.0)
+	custom_minimum_size = Vector2(0.0, total + 2.0 * PAD + 24.0 + 8.0)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_build_board()
 	_arrows = Arrows.new()
@@ -148,7 +148,6 @@ func _ready() -> void:
 		cards.append(row)
 	add_child(_arrows)
 	_arrows.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_build_audience()
 	resized.connect(_layout)
 	_populate()
 	_layout()
@@ -275,9 +274,6 @@ func _build_board() -> void:
 	sb.set_corner_radius_all(44)
 	sb.set_border_width_all(16)
 	sb.border_color = Color("2c3157") if hotel else Color("7a4a24")
-	sb.shadow_color = Color(0.05, 0.03, 0.15, 0.35)
-	sb.shadow_size = 18
-	sb.shadow_offset = Vector2(0.0, 10.0)
 	_board.add_theme_stylebox_override("panel", sb)
 	_board.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -538,8 +534,6 @@ func _layout() -> void:
 		holder.size = Vector2(width, AUD_H)
 		holder.position = Vector2(0.0, board_h - AUD_OVERLAP)
 		(holder.get_node("tex") as Control).size = Vector2(width, AUD_H)
-	_floor.position = Vector2(0.0, board_h - AUD_OVERLAP + AUD_H * 0.62)
-	_floor.size = Vector2(width, AUD_H * 0.38 + 4.0)
 
 
 # --- La animación ---
