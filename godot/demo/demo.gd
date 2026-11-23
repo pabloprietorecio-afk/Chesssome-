@@ -8897,7 +8897,7 @@ func _game_think(bot: Bot, pos: Chess, my_run: int, started: int) -> void:
 
 func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	_stop_game_thread()
-	if my_run != run_id or mode != "game":
+	if my_run != run_id or mode != "game" or game_state == "over":
 		return
 	# Que no conteste de golpe: medio segundo como mínimo (Robi, el de la espera online, piensa como una persona).
 	var waited := Time.get_ticks_msec() - started
@@ -8906,7 +8906,7 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 		least = WaitBot.think_ms(_rng.randf(), game_history.size(), game_clock[1 - game_color] if game_clocked else 0.0)
 	if waited < least:
 		await _wait((least - float(waited)) / 1000.0)
-		if my_run != run_id or mode != "game":
+		if my_run != run_id or mode != "game" or game_state == "over":
 			return
 	# Con el profesor: el rival espera a que salga la valoración de tu jugada (y medio segundo más, para que se
 	# vea la chapa sobre tu pieza antes de que el tablero cambie). Como mucho, 7,5 segundos (con Stockfish en el
@@ -8915,11 +8915,11 @@ func _game_bot_done(pos: Chess, m: int, my_run: int, started: int) -> void:
 	while _coach_pending and held < 150:
 		held += 1
 		await _wait(0.05)
-		if my_run != run_id or mode != "game":
+		if my_run != run_id or mode != "game" or game_state == "over":
 			return
 	if held > 0:
 		await _wait(0.5)
-		if my_run != run_id or mode != "game":
+		if my_run != run_id or mode != "game" or game_state == "over":
 			return
 	if m < 0:
 		_game_check_end(null, -1)
