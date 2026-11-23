@@ -3856,6 +3856,12 @@ func _open_licences() -> void:
 	var btn := {"font_size": F_SUB, "height": 96.0, "icon": 46.0, "radius": 48}
 	column.add_child(_button("open", "Código fuente de Stockfish 19", func() -> void: OS.shell_open(STOCKFISH_SOURCE), tint[0], tint[1], btn))
 	column.add_child(_button("book", "Texto de la licencia (GPL v3)", _open_licence_text, tint[0], tint[1], btn))
+	# Campeonato: fotos hechas con IA y sonidos de terceros (tools/campeonato/sonidos.sh). Los de BudgetPixel son
+	# CC BY 4.0: hay que citarlos así.
+	column.add_child(_para("Campeonato", F_BODY, _c("ink"), font_semibold))
+	column.add_child(_para("Fotos de las salas y de los rivales (personas inventadas) hechas con IA: FLUX.2 [dev] de Black Forest Labs, en Cloudflare Workers AI.", F_SUB, _c("quiet"), font_regular))
+	column.add_child(_para("Murmullo y aplausos: BigSoundBank.com, de Joseph Sardin (CC0, dominio público).", F_SUB, _c("quiet"), font_regular))
+	column.add_child(_para("«Impressed Crowd Ooh», «Collective Crowd Gasp», «Surprised Crowd Gasp» y «Near Miss Crowd Aww», de BudgetPixel AI (budgetpixel.com/sfx), con licencia CC BY 4.0.", F_SUB, _c("quiet"), font_regular))
 	column.add_child(_button("check", "Entendido", _close_confirm, _c("field"), _c("ink"), btn))
 
 
@@ -9047,7 +9053,7 @@ func _campeonato_start_game(key: String, lv: int) -> void:
 	var rival := Campeonato.rival(key, str(m["rival"]))
 	var round_name := Loc.t(str(Campeonato.ROUNDS[int(m["ronda"])]))
 	CampeonatoUI.ambient_volume(-18.0)
-	var cfg := {"variant": "", "level": lv, "title": "%s · %s (bot)" % [round_name, str(rival.get("name", ""))], "text": "", "kids": "",
+	var cfg := {"variant": "", "level": lv, "title": Loc.f("%s · %s (bot)", [round_name, str(rival.get("name", ""))]), "text": "", "kids": "",
 		"unit": "", "clock": m["clock"], "campeonato": key, "rival_nombre": str(rival.get("name", ""))}
 	_start_game(cfg, int(m["color"]))
 
@@ -9064,7 +9070,7 @@ func _campeonato_record_once() -> void:
 	game["camp_news"] = _campeonato_news(key, r)
 	CampeonatoUI.ambient_volume(-10.0)
 	if game_won > 0:
-		CampeonatoUI.effect(self, "aplausos", -2.0)
+		CampeonatoUI.effect(self, "aplausos_grande" if CampeonatoUI.big_room(key) else "aplausos_pequeno", -2.0)
 	elif game_won < 0:
 		CampeonatoUI.effect(self, "lamento", -4.0)
 	else:
@@ -9077,10 +9083,10 @@ func _campeonato_news(key: String, r: Dictionary) -> String:
 	if not bool(r["decided"]):
 		return "Tablas: toca desempate, con los colores cambiados." if int(r["tiebreak"]) == 1 else "Tablas otra vez: armagedón. Si hay tablas, pasan las negras."
 	if str(r["estado"]) == "campeon":
-		return Loc.f("¡Campeón del %s!", Loc.t(str(Campeonato.tournament(key)["name"])).to_lower())
+		return Loc.f("¡Campeón! %s", Loc.t(str(Campeonato.tournament(key)["name"])))
 	if bool(r["won"]):
 		var tour: Dictionary = (campeonato_state()["torneos"] as Dictionary)[key]
-		return Loc.f("¡Has ganado! Pasas a la %s.", Loc.t(str(Campeonato.ROUNDS[int(tour["ronda"])])).to_lower())
+		return Loc.f("¡Has ganado! Siguiente ronda: %s.", Loc.t(str(Campeonato.ROUNDS[int(tour["ronda"])])))
 	return "Te has quedado fuera esta vez. ¡A por el siguiente!"
 
 

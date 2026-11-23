@@ -197,7 +197,8 @@ func _initialize() -> void:
 	demo.view.show_move("g1e2")
 	demo._game_move("g1e2")
 	await _until(func() -> bool: return demo.coach_verdict != "" and not demo._coach_remote_wait)
-	_ok(demo.coach_verdict == "blunder" and not demo.coach_lesson.is_empty() and demo.coach_debug.contains("Stockfish del móvil"), "Stockfish del móvil sin conexión: error grave y lección en el tablero (%s)" % demo.coach_verdict)
+	# +1,2 → −1,5: unos 20 puntos esperados con la curva medida (error o error grave según el nivel del jugador).
+	_ok((demo.coach_verdict == "blunder" or demo.coach_verdict == "mistake") and not demo.coach_lesson.is_empty() and demo.coach_debug.contains("Stockfish del móvil"), "Stockfish del móvil sin conexión: error y lección en el tablero (%s)" % demo.coach_verdict)
 	await _until(func() -> bool: return demo.game_state == "play")
 	demo.local_engine.fake = Callable()
 

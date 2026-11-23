@@ -17,6 +17,9 @@ func _initialize() -> void:
 	root.add_child(demo)
 	await _frames(4)
 
+	for f: String in ["murmullo_a.ogg", "murmullo_b.ogg", "aplausos_pequeno.ogg", "aplausos_grande.ogg", "exclamacion_1.ogg", "lamento.ogg"]:
+		_ok(CampeonatoUI._stream(f) != null, "sonido %s" % f)
+	_ok((CampeonatoUI._stream("murmullo_a.ogg") as AudioStreamOggVorbis).loop, "el murmullo va en bucle")
 	demo._open_campeonato()
 	await _frames(2)
 	_ok(demo.progress_kind == "campeonato", "se abre la lista de salas")

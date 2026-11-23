@@ -50,11 +50,14 @@ static func _stream(file: String) -> AudioStream:
 	return load(path) as AudioStream
 
 
-## Murmullo de la sala, en bucle (más bajo durante la partida).
+## Salas grandes (casino, palacio, hotel): más público, otro murmullo y aplausos de sala grande.
+static func big_room(key: String) -> bool:
+	return Campeonato.index_of(key) >= 3
+
+
+## Murmullo de la sala, en bucle (más bajo durante la partida). Sonidos: tools/campeonato/sonidos.sh (CC0).
 static func ambient_start(d: Node, key: String, volume_db: float = -8.0) -> void:
-	var s := _stream("murmullo_%s.ogg" % key)
-	if s == null:
-		s = _stream("murmullo.ogg")
+	var s := _stream("murmullo_%s.ogg" % ("b" if big_room(key) else "a"))
 	if s == null:
 		return
 	if _ambient == null or not is_instance_valid(_ambient):
@@ -137,7 +140,7 @@ static func open_list(d: Variant) -> void:
 			continue
 		body.add_child(_room_card(d, t, st, you))
 		body.add_child(d._spacer(24.0))
-	body.add_child(d._para("Los rivales son personajes inventados: todos son bots de la app y juegan con su nivel del rival. Las fotos están hechas con IA.", d.F_FOOT, quiet, d.font_regular))
+	body.add_child(d._para("Los rivales son personajes inventados: todos son bots de la app. Las fotos están hechas con IA.", d.F_FOOT, quiet, d.font_regular))
 	body.add_child(d._spacer(8.0, true))
 	footer.add_child(d._button("home", "Inicio", Callable(d, "_open_home"), d._c("field"), ink, {"font_size": d.F_SUB, "height": 96.0, "icon": 44.0, "font": d.font_medium}))
 
@@ -236,14 +239,14 @@ static func _elo_span(key: String) -> Array:
 static func _lock_text(t: Dictionary, st: Dictionary) -> String:
 	var i := Campeonato.index_of(str(t["key"]))
 	var prev: Dictionary = Campeonato.TOURNAMENTS[maxi(0, i - 1)]
-	return Loc.f("Se abre al ganar el %s o al llegar a %d de nivel de juego.", [Loc.t(str(prev["name"])).to_lower(), int(_elo_span(str(t["key"]))[0])])
+	return Loc.f("Se abre al ganar «%s» o al llegar a %d de nivel de juego.", [Loc.t(str(prev["name"])), int(_elo_span(str(t["key"]))[0])])
 
 
 static func _state_text(_d: Variant, key: String, st: Dictionary) -> String:
 	var t: Dictionary = (st.get("torneos", {}) as Dictionary).get(key, {})
 	var titles := int((st.get("titulos", {}) as Dictionary).get(key, 0))
 	if not t.is_empty() and str(t.get("estado", "")) == "en_curso":
-		return Loc.f("En juego: %s", Loc.t(str(Campeonato.ROUNDS[int(t["ronda"])])).to_lower())
+		return Loc.f("En juego: %s", Loc.t(str(Campeonato.ROUNDS[int(t["ronda"])])))
 	if titles > 0:
 		return Loc.t("Campeón") + ("" if titles == 1 else " ×%d" % titles)
 	return ""
@@ -309,7 +312,7 @@ static func open_room(d: Variant, key: String, news: String = "") -> void:
 	else:
 		var m := Campeonato.current_match(tour, key)
 		var round_name := Loc.t(str(Campeonato.ROUNDS[int(m["ronda"])]))
-		var label := Loc.f("Jugar: %s", round_name.to_lower())
+		var label := Loc.f("Jugar: %s", round_name)
 		if int(m["desempate"]) == 1:
 			label = Loc.t("Jugar el desempate")
 		elif int(m["desempate"]) >= 2:
@@ -317,7 +320,7 @@ static func open_room(d: Variant, key: String, news: String = "") -> void:
 		var b: Button = d._button("play", label, Callable(d, "_campeonato_play").bind(key), d._c("accent"), d._c("accent_ink"), go)
 		footer.add_child(b)
 		if Campeonato.needs_premium(tour, Premium.active(), key):
-			footer.add_child(d._para("Premium: " + (Loc.t("todo este torneo es de Premium (juega Stockfish).") if Campeonato.premium_from(key) == 0 else Loc.t("la final es de Premium.")), d.F_FOOT, quiet, d.font_medium))
+			footer.add_child(d._para("Todo este torneo es de Premium (juega Stockfish)." if Campeonato.premium_from(key) == 0 else "La final es de Premium.", d.F_FOOT, quiet, d.font_medium))
 	footer.add_child(d._button("back", "Salas", Callable(d, "_open_campeonato"), d._c("field"), ink, plain))
 
 
