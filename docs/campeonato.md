@@ -53,10 +53,19 @@ pasillo de las seis salas y los siete rivales de la escuela, para aprobar el est
   al acabar, «Seguir el torneo» (sin «Otra»). El resultado se apunta una sola vez, al acabar.
 - Inicio: «Campeonato» en la lista y una tarjeta con foto en la rejilla.
 - Fotos: `godot/campeonato/` (JPEG con extensión .bin, 5,8 MB), con `tools/campeonato/a_la_app.py`.
+- Textos traducidos a los nueve idiomas (`tools/i18n/trad/ui_campeonato.tsv`).
+
+## Sonido (23 nov)
+
+`tools/campeonato/sonidos.sh` (flujo `campeonato-sonidos.yml`): murmullo de sala y aplausos de BigSoundBank (Joseph
+Sardin, CC0); exclamaciones («ooh», sorpresa) y lamento de BudgetPixel AI (CC BY 4.0: citados en Licencias). El
+murmullo suena en bucle durante el paseo y, más bajo, durante la partida; el público reacciona (como mucho cada
+20 s) a capturas de torre o dama y a coronaciones; al acabar, aplausos (de sala pequeña o grande) o lamento.
 
 ## Pendiente
 
-- Sonidos (murmullo por sala, exclamaciones, aplausos, lamento) en `godot/campeonato/sonidos/`: sin ellos la app
-  funciona en silencio. Hay que buscarlos con licencia libre (CC0) o generarlos.
-- Vídeos de Pablo con PixVerse (el rival da la mano): `godot/campeonato/rivales/<sala>/<id>.ogv` sustituirá a la foto.
-- Más rivales por sala (Pablo hará más caras con PixVerse) y traducir los textos nuevos a los nueve idiomas.
+- Vídeos del rival saludando desde la mesa (vista en primera persona, sin manos del jugador): con PixVerse v6 a
+  través de Cloudflare (`tools/campeonato/videos.py`, `lote_video_1.json`, unos 0,45 $ por vídeo en 1080p). Hace falta
+  saldo prepago de «unified billing» en AI Gateway (la primera prueba falló por eso, 23 nov). O los hace Pablo en
+  PixVerse. Irán en `godot/campeonato/videos/<sala>/<id>.ogv` y sustituirán a la foto fija.
+- Más rivales por sala (Pablo hará más caras con PixVerse; prompts en la conversación del 23 nov).
