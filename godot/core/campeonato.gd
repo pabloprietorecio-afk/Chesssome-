@@ -21,8 +21,6 @@ const YOU := "tu"
 const ROUNDS := ["Cuartos de final", "Semifinal", "Final"]
 ## La tercera ronda (la final) es Premium (Pablo, 22 nov).
 const PREMIUM_ROUND := 2
-## Orden del cuadro de 8 por cabezas de serie: 1-8 y 4-5 en una mitad, 2-7 y 3-6 en la otra.
-const SEEDING := [0, 7, 3, 4, 1, 6, 2, 5]
 ## Desempate: tras unas tablas, otra partida con los colores cambiados y más rápida; si vuelve a ser tablas,
 ## «armagedón»: las negras pasan con tablas.
 const TIEBREAK_CLOCK := [5, 3]
@@ -31,18 +29,37 @@ const ARMAGEDDON_CLOCK := [4, 2]
 const BOT_DRAW := 0.15
 
 ## Formatos de torneo. «players»: jugadores; «rounds»: rondas; «table»: con clasificación por puntos (si no, eliminatoria).
-## «games»: partidas que juegas como mucho (para el texto).
+## «short»: lo que se lee en la tarjeta; «info»: la explicación de la ventana con la «i» (párrafos).
 const FORMATS := [
-	{"id": "copa", "name": "Copa", "icon": "crown", "players": 8, "rounds": 3, "table": false, "games": "3",
-		"about": "Ocho jugadores. Cada cruce es una partida y quien pierde queda fuera: tres partidas si vas ganando."},
-	{"id": "copa_match", "name": "Copa con mini-match", "icon": "flag", "players": 8, "rounds": 3, "table": false, "games": "6",
-		"about": "Ocho jugadores. Cada cruce son dos partidas, una con cada color. Si empatáis, desempate rápido."},
-	{"id": "cuadrangular", "name": "Cuadrangular", "icon": "users", "players": 4, "rounds": 3, "table": true, "games": "3",
-		"about": "Cuatro jugadores (tú y tres rivales de la sala), todos contra todos: tres partidas. Gana quien sume más puntos."},
-	{"id": "suizo", "name": "Suizo", "icon": "rows", "players": 8, "rounds": 5, "table": true, "games": "5",
-		"about": "Ocho jugadores y cinco rondas contra rivales con puntos parecidos. Nadie queda eliminado."},
-	{"id": "liga", "name": "Liga", "icon": "tiles", "players": 8, "rounds": 7, "table": true, "games": "7",
-		"about": "Ocho jugadores, todos contra todos: siete partidas. Gana quien sume más puntos."},
+	{"id": "copa", "name": "Copa", "icon": "crown", "players": 8, "rounds": 3, "table": false,
+		"short": "8 jugadores · eliminatoria",
+		"info": ["Ocho jugadores y tres rondas: cuartos de final, semifinal y final.",
+			"En cada cruce se juega una sola partida. Quien gana pasa a la siguiente ronda y quien pierde queda fuera.",
+			"Si hay tablas, se juega un desempate rápido con los colores cambiados y, si vuelve a haber tablas, un armagedón: las negras pasan con tablas.",
+			"Si vas ganando, juegas tres partidas. Los cruces se sortean al azar."]},
+	{"id": "copa_match", "name": "Copa con mini-match", "icon": "flag", "players": 8, "rounds": 3, "table": false,
+		"short": "8 jugadores · cruces a dos partidas",
+		"info": ["Ocho jugadores y tres rondas, como la copa, pero cada cruce se juega a dos partidas: una con blancas y otra con negras.",
+			"Pasa quien sume más puntos (1 por victoria, ½ por tablas). Así, una mala partida no te deja fuera de golpe.",
+			"Si empatáis a un punto, hay un desempate rápido y, si sigue igual, un armagedón.",
+			"Juegas hasta seis partidas, más los desempates."]},
+	{"id": "cuadrangular", "name": "Cuadrangular", "icon": "users", "players": 4, "rounds": 3, "table": true,
+		"short": "4 jugadores · todos contra todos",
+		"info": ["Cuatro jugadores: tú y tres rivales de la sala.",
+			"Todos juegan contra todos: tres rondas, con una partida contra cada rival.",
+			"La victoria vale 1 punto y las tablas, ½. Gana quien sume más puntos; si hay empate, decide la suma de los puntos de los rivales a los que ha ganado.",
+			"Nadie queda eliminado: juegas siempre las tres partidas."]},
+	{"id": "suizo", "name": "Suizo", "icon": "rows", "players": 8, "rounds": 5, "table": true,
+		"short": "8 jugadores · 5 rondas, sin eliminar",
+		"info": ["Ocho jugadores y cinco rondas. Es el formato de la mayoría de los torneos abiertos.",
+			"En la primera ronda los cruces se sortean. En las siguientes juegas contra rivales con los mismos puntos que tú, o parecidos, sin repetir rival.",
+			"La victoria vale 1 punto y las tablas, ½. Gana quien sume más puntos.",
+			"Nadie queda eliminado: juegas las cinco rondas."]},
+	{"id": "liga", "name": "Liga", "icon": "tiles", "players": 8, "rounds": 7, "table": true,
+		"short": "8 jugadores · todos contra todos",
+		"info": ["Ocho jugadores: juegas una vez contra cada uno de los otros siete, en siete rondas.",
+			"La victoria vale 1 punto y las tablas, ½. Gana quien sume más puntos; si hay empate, decide la suma de los puntos de los rivales a los que ha ganado.",
+			"Es el formato más largo y el más justo: nadie queda eliminado."]},
 ]
 
 ## Las salas, de la más sencilla a la más elegante; una por grupo de nivel del rival (Bot.GROUPS). «clock»:
@@ -271,16 +288,13 @@ static func start(st: Dictionary, key: String, you_elo: float, rng: RandomNumber
 		rivals = pool.slice(0, n - 1)
 	var ids: Array = [YOU]
 	ids.append_array(rivals)
-	# Cabezas de serie por Elo (con un poco de azar para el jugador: no siempre cae en el mismo sitio).
-	var noisy := you_elo + rng.randf_range(-60.0, 60.0)
-	ids.sort_custom(func(a: String, b: String) -> bool:
-		return (noisy if a == YOU else elo_of(key, a, you_elo)) > (noisy if b == YOU else elo_of(key, b, you_elo)))
-	var cuadro: Array = []
-	if bool(fmt["table"]):
-		cuadro = ids
-	else:
-		for s: int in SEEDING:
-			cuadro.append(ids[s])
+	# Emparejamientos al azar (Pablo, 23 nov: «siempre toca el mismo en primera ronda»): se sortea el orden del cuadro.
+	for i in range(ids.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp: Variant = ids[i]
+		ids[i] = ids[j]
+		ids[j] = tmp
+	var cuadro: Array = ids
 	var clock: Array = ritmo if ritmo.size() == 2 and int(ritmo[0]) > 0 else (tournament(key)["clock"] as Array).duplicate()
 	var t := {"formato": formato, "ritmo": [int(clock[0]), int(clock[1])], "cuadro": cuadro, "elo_tu": you_elo, "ronda": 0,
 		"ganadores": [] if bool(fmt["table"]) else [[], [], []], "estado": "en_curso", "desempate": 0, "juego": 0,
@@ -325,8 +339,10 @@ static func swiss_pairs(t: Dictionary, key: String) -> Array:
 		return elo_of(key, a, you_elo) > elo_of(key, b, you_elo))
 	var out: Array = []
 	if (t["res"] as Array).is_empty():
-		for i in ids.size() / 2:
-			out.append([ids[i], ids[i + ids.size() / 2]])
+		# Primera ronda: los cruces salen del sorteo del cuadro.
+		var drawn: Array = t["cuadro"]
+		for i in range(0, drawn.size() - 1, 2):
+			out.append([drawn[i], drawn[i + 1]])
 		return out
 	var played := {}
 	for g: Dictionary in t["res"]:

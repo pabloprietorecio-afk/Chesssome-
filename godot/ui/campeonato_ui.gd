@@ -402,15 +402,12 @@ static func open_room(d: Variant, key: String, news: String = "", animate: bool 
 				_scroll_to(d, blocks[done_r], 0.3, 0.5)
 				if done_r + 1 < blocks.size() and str(tour.get("estado", "")) == "en_curso":
 					_scroll_to(d, blocks[done_r + 1], float(anim["nuevos"]) + 0.2, 0.9)
-	if tour.is_empty() or estado != "en_curso":
-		body.add_child(d._spacer(28.0))
-		body.add_child(_setup_block(d, key))
 	body.add_child(d._spacer(8.0, true))
 	var go := {"font_size": d.F_BODY, "height": 116.0, "icon": 56.0, "radius": 58, "trailing": true, "glow": d._c("glow")}
 	var plain := {"font_size": d.F_SUB, "height": 96.0, "icon": 44.0, "font": d.font_medium}
 	if tour.is_empty() or estado != "en_curso":
 		var label := "Empezar el torneo" if tour.is_empty() else "Jugar otro torneo"
-		footer.add_child(d._button("play", label, Callable(d, "_campeonato_new").bind(key), d._c("accent"), d._c("accent_ink"), go))
+		footer.add_child(d._button("play", label, Callable(d, "_campeonato_options").bind(key), d._c("accent"), d._c("accent_ink"), go))
 	else:
 		var m := Campeonato.current_match(tour, key)
 		var label := Loc.f("Jugar: %s", str(m["titulo"]))
@@ -895,39 +892,6 @@ static func _slide_rows(d: Variant, rows: Array, olds: Array, delay: float) -> v
 		var tw := row.create_tween()
 		tw.tween_interval(delay)
 		tw.tween_property(row, "position:y", target, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
-
-## Elegir formato y ritmo antes de empezar un torneo.
-static func _setup_block(d: Variant, key: String) -> Control:
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var quiet: Color = d._c("quiet")
-	col.add_child(d._line(Loc.t("Formato").to_upper(), d.F_CAP, quiet, d.font_semibold))
-	for f: Dictionary in Campeonato.FORMATS:
-		var chosen := str(f["id"]) == str(d.camp_fmt)
-		var colors: Array = d._choice_colors(chosen)
-		col.add_child(d._button(str(f["icon"]), str(f["name"]), Callable(d, "_camp_set_format").bind(key, str(f["id"])), colors[0], colors[1],
-			{"font_size": d.F_SUB, "height": 100.0, "icon": 48.0, "pad_x": 24.0, "border": colors[2], "font": d.font_semibold if chosen else d.font_medium}))
-	var fmt := Campeonato.format_def(str(d.camp_fmt))
-	col.add_child(d._para(str(fmt["about"]), d.F_FOOT, quiet, d.font_regular))
-	if not Premium.active():
-		col.add_child(d._para("Todo este torneo es de Premium (juega Stockfish)." if Campeonato.premium_from(key) == 0 else "Las dos primeras rondas son gratis; desde la tercera, Premium.", d.F_FOOT, quiet, d.font_regular))
-	col.add_child(d._spacer(14.0))
-	col.add_child(d._line(Loc.t("Ritmo").to_upper(), d.F_CAP, quiet, d.font_semibold))
-	var room_clock: Array = Campeonato.tournament(key)["clock"]
-	var names: Array = [Loc.f("Sala %s", "%d+%d" % [int(room_clock[0]), int(room_clock[1])])]
-	for i in range(1, d.TIME_CONTROLS.size()):
-		names.append(str(d.TIME_CONTROLS[i][0]))
-	var pick := int(d.camp_tc)
-	col.add_child(d._segments(names.slice(0, 4), pick, Callable(d, "_camp_set_tc").bind(key)))
-	col.add_child(d._segments(names.slice(4), pick - 4, Callable(d, "_camp_set_tc_from").bind(key, 4)))
-	if pick == names.size() - 1:
-		col.add_child(d._stepper("Minutos por jugador", int(d.camp_min), Callable(d, "_camp_step_minutes").bind(key)))
-		col.add_child(d._stepper("Segundos más por jugada", int(d.camp_inc), Callable(d, "_camp_step_increment").bind(key)))
-	var tc: Array = d._camp_clock(key)
-	col.add_child(d._para(Loc.f("%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes.", [tc[0], Loc.t(" y %d segundos más por jugada") % tc[1] if tc[1] > 0 else ""]), d.F_FOOT, quiet, d.font_regular))
-	return col
 
 
 # --- El paseo hasta la mesa ---

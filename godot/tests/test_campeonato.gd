@@ -31,10 +31,6 @@ func _initialize() -> void:
 	var cuadro: Array = t["cuadro"]
 	_ok(cuadro.size() == 8 and cuadro.has(Campeonato.YOU), "cuadro de 8 contigo dentro")
 	_ok(Campeonato.pairs(t, 0).size() == 4, "cuatro cuartos de final")
-	# El 1 y el 2 de la clasificación por Elo, en mitades distintas.
-	var top := "lucia"
-	var second := "tomas"
-	_ok(cuadro.find(top) < 4 and cuadro.find(second) >= 4, "las dos primeras cabezas de serie, en mitades distintas")
 	var m := Campeonato.current_match(t, "escuela")
 	_ok(not m.is_empty() and int(m["ronda"]) == 0 and (m["clock"] as Array) == [10, 5], "tu partida de cuartos, con el reloj de la escuela")
 
@@ -102,6 +98,14 @@ func _initialize() -> void:
 ## Los cinco formatos y el ritmo elegido.
 func _formatos(rng: RandomNumberGenerator) -> void:
 	_ok(Campeonato.FORMATS.size() == 5, "cinco formatos")
+	# Emparejamientos al azar: el primer rival cambia de un torneo a otro, en todos los formatos.
+	for f: Dictionary in Campeonato.FORMATS:
+		var firsts := {}
+		for i in 60:
+			var sv := {"torneos": {}, "titulos": {}}
+			var tv := Campeonato.start(sv, "club", 1400.0, rng, str(f["id"]))
+			firsts[str(Campeonato.current_match(tv, "club")["rival"])] = true
+		_ok(firsts.size() >= 3, "%s: el primer rival varía (%d distintos en 60 torneos)" % [f["id"], firsts.size()])
 	# Ritmo elegido: manda sobre el de la sala; sin elegir, el de la sala.
 	var st := {"torneos": {}, "titulos": {}}
 	var c := Campeonato.start(st, "escuela", 300.0, rng, "copa", [3, 2])

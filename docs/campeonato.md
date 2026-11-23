@@ -26,7 +26,7 @@ Stockfish propio). Todavía no hay nada hecho.
 
 ## Decisiones (23 nov)
 
-- **Formato:** eliminatoria de 8 (cuartos, semifinal y final). Las otras partidas del cuadro las juega la app entre
+- **Formato:** eliminatoria de 8 (cuartos, semifinal y final; el cuadro se sortea al azar, sin cabezas de serie). Las otras partidas del cuadro las juega la app entre
   bots (resultado según su Elo). La final, tercera ronda, es Premium.
 - **Salas:** fotos fotorrealistas hechas con IA (FLUX.2 en Workers AI) con movimiento de cámara y sonido. Una sala
   por grupo de nivel: escuela (Muy fácil), centro cívico (Fácil), club de ajedrez (Medio), casino histórico

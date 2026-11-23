@@ -9095,12 +9095,159 @@ func _open_campeonato_room(key: String, news: String = "", animate: bool = false
 	CampeonatoUI.open_room(self, key, news, animate)
 
 
-## Vuelve a dibujar la sala (al cambiar formato o ritmo) sin perder por dónde ibas.
-func _campeonato_reopen(key: String) -> void:
-	var scroll := progress_scroll.scroll_vertical if progress_scroll != null and is_instance_valid(progress_scroll) else 0
-	CampeonatoUI.open_room(self, key, _camp_news)
-	if progress_scroll != null:
-		progress_scroll.set_deferred("scroll_vertical", scroll)
+var _camp_opts_box: VBoxContainer
+var _camp_opts_scroll: ScrollContainer
+const CAMP_FMT_TINTS := {"copa": "butter", "copa_match": "peach", "cuadrangular": "mint", "suizo": "sky", "liga": "lilac"}
+## Nombre del tipo de ritmo bajo cada casilla (índices de TIME_CONTROLS; 0 es el de la sala).
+const CAMP_TC_KIND := ["De la sala", "Blitz", "Blitz", "Rápida", "Rápida", "Clásica", "Clásica", "A tu gusto"]
+
+
+## La ventana de «Empezar el torneo»: formato y ritmo en grande y con su color, y «Empezar» al final. Los cambios
+## valen al momento; tocar fuera solo la cierra.
+func _campeonato_options(key: String) -> void:
+	campeonato_state()
+	var column := _popup(Loc.t("Tu torneo"), "")
+	_camp_opts_scroll = ScrollContainer.new()
+	_camp_opts_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(_camp_opts_scroll)
+	_camp_opts_box = VBoxContainer.new()
+	_camp_opts_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_camp_opts_box.add_theme_constant_override("separation", 14)
+	_camp_opts_scroll.add_child(_camp_opts_box)
+	_fill_camp_options(key)
+	column.add_child(_spacer(6.0))
+	var go := _button("play", "Empezar el torneo", func() -> void:
+		_close_confirm()
+		_campeonato_new(key), _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": 124.0, "icon": 56.0, "radius": 62, "trailing": true, "glow": _c("glow")})
+	go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(go)
+	_confirm_on_close = func() -> void:
+		_camp_opts_box = null
+		_camp_opts_scroll = null
+
+
+func _fill_camp_options(key: String) -> void:
+	if _camp_opts_box == null or not is_instance_valid(_camp_opts_box):
+		return
+	for c in _camp_opts_box.get_children():
+		_camp_opts_box.remove_child(c)
+		c.queue_free()
+	var box := _camp_opts_box
+	var quiet := _c("quiet")
+	box.add_child(_line(Loc.t("Formato").to_upper(), F_SUB, quiet, font_semibold))
+	for f: Dictionary in Campeonato.FORMATS:
+		var id := str(f["id"])
+		box.add_child(_choice_card(str(f["icon"]), str(CAMP_FMT_TINTS.get(id, "peach")), Loc.t(str(f["name"])), Loc.t(str(f["short"])), id == camp_fmt, _camp_set_format.bind(key, id), _camp_format_info.bind(key, id)))
+	box.add_child(_spacer(12.0))
+	box.add_child(_line(Loc.t("Ritmo").to_upper(), F_SUB, quiet, font_semibold))
+	var room: Array = Campeonato.tournament(key)["clock"]
+	for row_i in 2:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		for col_i in 4:
+			var i := row_i * 4 + col_i
+			var big := "%d+%d" % [int(room[0]), int(room[1])] if i == 0 else (str(TIME_CONTROLS[i][0]) if i < TIME_CONTROLS.size() - 1 else "···")
+			var tile := _rhythm_tile(big, Loc.t(str(CAMP_TC_KIND[i])), i == camp_tc, _camp_set_tc_at.bind(i, key))
+			row.add_child(tile)
+		box.add_child(row)
+	if camp_tc == TIME_CONTROLS.size() - 1:
+		box.add_child(_stepper("Minutos por jugador", camp_min, _camp_step_minutes.bind(key)))
+		box.add_child(_stepper("Segundos más por jugada", camp_inc, _camp_step_increment.bind(key)))
+	var tc := _camp_clock(key)
+	box.add_child(_para(Loc.f("%d minutos por jugador%s. Con reloj no hay deshacer ni pistas, como en una partida oficial; si se te acaba el tiempo, pierdes.", [tc[0], Loc.t(" y %d segundos más por jugada") % tc[1] if tc[1] > 0 else ""]), F_FOOT, quiet, font_regular))
+	if not Premium.active():
+		box.add_child(_para("Todo este torneo es de Premium (juega Stockfish)." if Campeonato.premium_from(key) == 0 else "Las dos primeras rondas son gratis; desde la tercera, Premium.", F_FOOT, quiet, font_regular))
+	_fit_camp_options.call_deferred()
+
+
+## La explicación de un formato, en otra ventana. «OK» (o tocar fuera) vuelve a la de elegir.
+func _camp_format_info(key: String, id: String) -> void:
+	var f := Campeonato.format_def(id)
+	var column := _popup(Loc.t("Formato"), "")
+	var head := _icon_row(str(f["icon"]), str(CAMP_FMT_TINTS.get(id, "peach")), Loc.t(str(f["name"])), Loc.t(str(f["short"])), 132.0, F_HEAD, F_SUB)
+	column.add_child(head)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 16)
+	scroll.add_child(box)
+	for para: String in f["info"]:
+		box.add_child(_para(para, F_BODY, _c("ink"), font_regular))
+	column.add_child(_spacer(6.0))
+	var ok := _button("check", "OK", _close_confirm, _c("accent"), _c("accent_ink"), {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58})
+	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(ok)
+	_confirm_on_close = func() -> void:
+		_campeonato_options.call_deferred(key)
+	var fit := func() -> void:
+		if is_instance_valid(scroll) and is_instance_valid(box):
+			scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y, maxf(400.0, size.y - 760.0))
+	box.minimum_size_changed.connect(fit)
+	fit.call_deferred()
+
+
+func _fit_camp_options() -> void:
+	if _camp_opts_scroll == null or not is_instance_valid(_camp_opts_scroll):
+		return
+	var want := _camp_opts_box.get_combined_minimum_size().y
+	_camp_opts_scroll.custom_minimum_size.y = minf(want, maxf(400.0, size.y - 560.0))
+
+
+## Tarjeta grande de una opción: su icono de color, el nombre en grande y lo que es; la elegida, con borde y marca.
+func _choice_card(icon_name: String, tint_name: String, heading: String, text: String, chosen: bool, on_press: Callable, on_info: Callable = Callable()) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.pressed.connect(on_press)
+	_style_button(b, _c("accent_soft") if chosen else _c("field"), _c("ink"), 44, F_BODY, font_semibold, Color(0, 0, 0, 0), _c("accent") if chosen else Color(0, 0, 0, 0))
+	var pad := _pad(22, 22, 24, 22)
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	b.add_child(pad)
+	var row := _icon_row(icon_name, tint_name, heading, text, 132.0, F_HEAD, F_SUB)
+	pad.add_child(row)
+	if chosen:
+		row.add_child(_icon("check", 60.0, _c("accent_text")))
+	if on_info.is_valid():
+		var sky := _tint("sky")
+		var info := _button("info", "", on_info, sky[0], sky[1], {"height": 104.0, "icon": 60.0, "radius": 52})
+		info.custom_minimum_size.x = 104.0
+		info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(info)
+	var fit := func() -> void:
+		if is_instance_valid(b) and is_instance_valid(pad):
+			b.custom_minimum_size = Vector2(0.0, pad.get_combined_minimum_size().y)
+	pad.minimum_size_changed.connect(fit)
+	fit.call()
+	b.set_meta("label", heading)
+	return b
+
+
+## Casilla de un ritmo: el número grande y debajo qué tipo es.
+func _rhythm_tile(big: String, small: String, chosen: bool, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.pressed.connect(on_press)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.custom_minimum_size = Vector2(0.0, 158.0)
+	var colors := _choice_colors(chosen)
+	_style_button(b, colors[0], colors[1], 40, F_BODY, font_semibold, Color(0, 0, 0, 0), colors[2])
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.set_anchors_preset(Control.PRESET_FULL_RECT)
+	col.add_theme_constant_override("separation", 2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(col)
+	var top := _line(big, F_HEAD, _c("accent_text") if chosen else _c("ink"), font_display)
+	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(top)
+	var bottom := _line(small, F_FOOT, colors[1], font_medium)
+	bottom.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(bottom)
+	b.set_meta("label", big)
+	return b
 
 
 func _camp_remember() -> void:
@@ -9111,18 +9258,18 @@ func _camp_remember() -> void:
 func _camp_set_format(key: String, id: String) -> void:
 	camp_fmt = id
 	_camp_remember()
-	_campeonato_reopen(key)
+	_fill_camp_options(key)
 
 
-## Los botones de _segments y _stepper añaden su valor delante de lo que ya llevan atado: (i, clave).
+## Los botones de _stepper añaden su valor delante de lo que ya llevan atado: (paso, clave).
+func _camp_set_tc_at(i: int, key: String) -> void:
+	_camp_set_tc(i, key)
+
+
 func _camp_set_tc(i: int, key: String) -> void:
 	camp_tc = clampi(i, 0, TIME_CONTROLS.size() - 1)
 	_camp_remember()
-	_campeonato_reopen(key)
-
-
-func _camp_set_tc_from(i: int, key: String, offset: int) -> void:
-	_camp_set_tc(i + offset, key)
+	_fill_camp_options(key)
 
 
 func _camp_step_minutes(dir: int, key: String) -> void:
@@ -9130,7 +9277,7 @@ func _camp_step_minutes(dir: int, key: String) -> void:
 	var at := steps.find(camp_min)
 	camp_min = int(steps[clampi((at if at >= 0 else 4) + dir, 0, steps.size() - 1)])
 	_camp_remember()
-	_campeonato_reopen(key)
+	_fill_camp_options(key)
 
 
 func _camp_step_increment(dir: int, key: String) -> void:
@@ -9138,7 +9285,7 @@ func _camp_step_increment(dir: int, key: String) -> void:
 	var at := steps.find(camp_inc)
 	camp_inc = int(steps[clampi((at if at >= 0 else 0) + dir, 0, steps.size() - 1)])
 	_camp_remember()
-	_campeonato_reopen(key)
+	_fill_camp_options(key)
 
 
 ## Ritmo elegido para el torneo de una sala: [minutos, incremento]. Siempre con reloj.
