@@ -10,6 +10,9 @@ on:
       lote:
         description: "Lote (ruta en el repositorio)"
         default: "tools/campeonato/lote_1.json"
+      tipo:
+        description: "imagenes o videos"
+        default: "imagenes"
 
 permissions:
   contents: write
@@ -54,7 +57,12 @@ jobs:
       - name: Generar
         run: |
           pip install --quiet pillow
-          python3 tools/campeonato/generar.py "${{ inputs.lote }}" salida
+          if [ "${{ inputs.tipo }}" = "videos" ]; then
+            sudo apt-get install -y -qq ffmpeg > /dev/null
+            python3 tools/campeonato/videos.py "${{ inputs.lote }}" salida
+          else
+            python3 tools/campeonato/generar.py "${{ inputs.lote }}" salida
+          fi
       - name: Borrar el estudio
         if: always()
         working-directory: tools/campeonato/estudio

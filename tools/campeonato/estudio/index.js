@@ -5,6 +5,24 @@ export default {
   async fetch(request, env) {
     if (request.method !== "POST" || request.headers.get("x-clave") !== env.CLAVE) return new Response("no", { status: 403 });
     const p = await request.json();
+    if (p.video) {
+      // Vídeo (PixVerse v6, a través de Cloudflare): la foto del rival como primer fotograma. Devuelve la URL del MP4.
+      try {
+        const out = await env.AI.run(p.modelo || "pixverse/v6", {
+          prompt: String(p.prompt),
+          negative_prompt: p.negative_prompt ? String(p.negative_prompt) : undefined,
+          image_input: p.image ? `data:image/jpeg;base64,${p.image}` : undefined,
+          duration: Number(p.duration || 5),
+          aspect_ratio: String(p.aspect_ratio || "9:16"),
+          quality: String(p.quality || "1080p"),
+          generate_audio: false,
+          seed: p.seed ? Number(p.seed) : undefined,
+        });
+        return Response.json(out);
+      } catch (e) {
+        return Response.json({ error: String(e?.message || e) }, { status: 502 });
+      }
+    }
     const form = new FormData();
     form.append("prompt", String(p.prompt));
     form.append("width", String(p.width || 1024));

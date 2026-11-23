@@ -1,0 +1,8 @@
+{
+ "descripcion": "Prueba: Lucía (escuela) saluda desde la mesa. PixVerse v6, 1080p, 5 s, vertical, sin audio.",
+ "items": [
+  {"nombre": "videos/escuela/lucia", "foto": "rivales/escuela/lucia.jpg", "quality": "1080p", "duration": 5, "aspect_ratio": "9:16", "seed": 11,
+   "prompt": "First-person point of view of someone arriving at the chess table; the viewer's body and hands are never visible. The seated woman looks up from the chessboard, makes eye contact with the camera, smiles warmly and gives a friendly nod, silently mouths good luck, then gestures with an open palm toward the board, inviting the viewer to sit, and settles back ready to play. Very subtle natural camera movement. Realistic, photorealistic, the background stays softly blurred, no text.",
+   "negative_prompt": "hands of the viewer, extra people in front, text, subtitles, logos, watermark, distorted face, extra fingers"}
+ ]
+}
