@@ -32,7 +32,7 @@ const FRAME_THICK := 0.36
 ## Altura que se reserva para las piezas al encuadrar (un rey en una casilla de esquina).
 const FIT_HEIGHT := 1.8
 ## Grosor del contorno de las piezas, en casillas.
-const OUTLINE_WIDTH := 0.026
+const OUTLINE_WIDTH := 0.011
 ## Color del contorno de las piezas negras (amarillo, para que se vea sobre piezas y casillas oscuras).
 const BLACK_OUTLINE := Color("f5c542")
 ## Juegos de piezas: figuras de la colección o fichas planas con el icono de la pieza en relieve.
