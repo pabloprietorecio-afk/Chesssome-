@@ -1,0 +1,73 @@
+{
+ "descripcion": "Muestra ilustrada: la escuela y dos rivales (Lucía y Tomás) con parpadeo y sonrisa para animarlos.",
+ "items": [
+  {
+   "nombre": "ilustrado/salas/escuela_pasillo",
+   "prompt": "Vertical first-person view walking down the central aisle of a cheerful school gymnasium set up for a small local chess tournament: rows of folding tables with green-and-white roll-up chess boards and simple chess clocks, a few adult players concentrating on their games, basketball hoops, big windows with soft afternoon light, and at the far end one empty table waiting with the pieces set up. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 901
+  },
+  {
+   "nombre": "ilustrado/rivales/escuela/lucia",
+   "prompt": "Stylized character portrait of a friendly 34-year-old Spanish woman, a primary school teacher, shoulder-length brown hair, light grey cardigan, seated at a chess table facing the viewer as if waiting for the opponent, hands resting near the board, a warm, slightly nervous smile, in a cheerful school gymnasium softly blurred behind, vertical composition, head and upper body in the upper half, the chessboard with neatly set up pieces in the foreground. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 902
+  },
+  {
+   "nombre": "ilustrado/rivales/escuela/tomas",
+   "prompt": "Stylized character portrait of a 67-year-old Spanish man, a retired school caretaker, grey moustache, short grey hair, checked flannel shirt, seated at a chess table facing the viewer as if waiting for the opponent, hands resting near the board, a kind, curious expression, in a cheerful school gymnasium softly blurred behind, vertical composition, head and upper body in the upper half, the chessboard with neatly set up pieces in the foreground. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 903
+  },
+  {
+   "nombre": "ilustrado/rivales/escuela/lucia_parpadeo",
+   "prompt": "Edit of the reference image: keep exactly the same character, face, hairstyle, clothes, pose, framing, chessboard, background, colors and lighting. The only change: her eyes are gently closed, a natural blink. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 911,
+   "refs": [
+    "ilustrado/rivales/escuela/lucia"
+   ]
+  },
+  {
+   "nombre": "ilustrado/rivales/escuela/lucia_sonrisa",
+   "prompt": "Edit of the reference image: keep exactly the same character, face, hairstyle, clothes, pose, framing, chessboard, background, colors and lighting. The only change: a bigger, warmer smile and a small friendly nod, her head tilted very slightly down toward the viewer. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 912,
+   "refs": [
+    "ilustrado/rivales/escuela/lucia"
+   ]
+  },
+  {
+   "nombre": "ilustrado/rivales/escuela/tomas_parpadeo",
+   "prompt": "Edit of the reference image: keep exactly the same character, face, hairstyle, clothes, pose, framing, chessboard, background, colors and lighting. The only change: his eyes are gently closed, a natural blink. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 911,
+   "refs": [
+    "ilustrado/rivales/escuela/tomas"
+   ]
+  },
+  {
+   "nombre": "ilustrado/rivales/escuela/tomas_sonrisa",
+   "prompt": "Edit of the reference image: keep exactly the same character, face, hairstyle, clothes, pose, framing, chessboard, background, colors and lighting. The only change: a bigger, warmer smile and a small friendly nod, his head tilted very slightly down toward the viewer. Soft stylized 3D illustration in the style of a modern mobile game: pastel palette, smooth clay-like shading, gentle warm light, rounded friendly shapes, clean simple details, no text, no letters, no logos, no watermark.",
+   "width": 1024,
+   "height": 1792,
+   "steps": 28,
+   "seed": 912,
+   "refs": [
+    "ilustrado/rivales/escuela/tomas"
+   ]
+  }
+ ]
+}
