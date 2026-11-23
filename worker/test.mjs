@@ -474,7 +474,20 @@ test("sin saldo en la API de Claude: 503 «tutor no disponible», sin reintentar
   assert.equal(calls, 1);
 });
 
-import { spend, refund, status, emptyRecord, Cuentas, withQuota, premiumRoute, PREMIUM_MONTHLY, FREE_TOTAL, PACK_SIZE, monthOf } from "./src/cuentas.js";
+import { spend, refund, status, emptyRecord, Cuentas, withQuota, premiumRoute, PREMIUM_MONTHLY, FREE_TOTAL, PACK_SIZE, monthOf, isTester } from "./src/cuentas.js";
+
+test("probadores: premium sin compra ni cupo (lista PROBADORES)", async () => {
+  const acc = "a".repeat(32);
+  const env = { PROBADORES: " " + acc + ", " + "b".repeat(32) };
+  assert.ok(isTester(env, acc));
+  assert.ok(!isTester(env, "c".repeat(32)));
+  assert.ok(!isTester({}, acc));
+  const st = await premiumRoute("/premium/estado", { cuenta: acc }, env);
+  assert.equal(st.premium, true);
+  const out = await withQuota({ cuenta: acc }, env, async () => ({ texto: "hola" }));
+  assert.equal(out.texto, "hola");
+  assert.equal(out.cupo.premium, true);
+});
 
 // Durable Objects de mentira, en memoria (uno por nombre).
 function fakeCuentas() {

@@ -17,6 +17,17 @@ export const cleanAccount = (v) => (ACCOUNT.test(String(v ?? "")) ? String(v) : 
 const TOKEN = /^[A-Za-z0-9._\-]{20,600}$/;
 export const cleanToken = (v) => (TOKEN.test(String(v ?? "")) ? String(v) : null);
 
+// Probadores (Pablo, 23 nov: «necesito probar todo»): cuentas que el servidor trata como premium sin compra ni
+// cupo. Lista separada por comas en la variable PROBADORES (wrangler.toml); la cuenta sale en Opciones → Premium
+// del APK de pruebas.
+export function isTester(env, account) {
+  return Boolean(account) && String(env?.PROBADORES ?? "").split(",").map((x) => x.trim()).filter(Boolean).includes(account);
+}
+
+export function testerStatus(now) {
+  return { premium: true, quedan: PREMIUM_MONTHLY, extra: 0, gratis: FREE_TOTAL, caduca: now + 30 * 24 * 3600 * 1000, mes: PREMIUM_MONTHLY, probador: true };
+}
+
 export const monthOf = (ms) => new Date(ms).toISOString().slice(0, 7);
 
 export function emptyRecord() {
@@ -174,6 +185,7 @@ export async function call(env, name, body) {
 export async function premiumRoute(path, input, env) {
   const account = cleanAccount(input?.cuenta);
   if (!account) throw Object.assign(new Error("cuenta no válida"), { status: 400 });
+  if (path === "/premium/estado" && isTester(env, account)) return testerStatus(Date.now());
   if (!env.CUENTAS) throw Object.assign(new Error("cuentas no configuradas"), { status: 503 });
   if (path === "/premium/estado") {
     const { rec, status: st } = await call(env, account, { op: "estado" });
@@ -209,6 +221,7 @@ export async function premiumRoute(path, input, env) {
 // Sin cuenta (versiones de la app anteriores al cupo) se deja pasar mientras REQUIRE_ACCOUNT no sea "1".
 export async function withQuota(input, env, run) {
   const account = cleanAccount(input?.cuenta);
+  if (isTester(env, account)) return { ...(await run()), cupo: testerStatus(Date.now()) };
   if (!account || !env.CUENTAS) {
     if (env.REQUIRE_ACCOUNT === "1") throw Object.assign(new Error("actualiza la app"), { status: 426 });
     return run();

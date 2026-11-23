@@ -11121,6 +11121,11 @@ func _open_premium_offer(reason: String = "opciones") -> void:
 	}.get(reason, "")
 	var column := _popup("A Chess Way Premium", head)
 	var opts := {"font_size": F_BODY, "height": 116.0, "icon": 56.0, "radius": 58}
+	# APK de pruebas: el interruptor aquí mismo, para probarlo todo sin comprar (Pablo, 23 nov).
+	if Premium.test_allowed():
+		column.add_child(_switch_row("party", "butter", "Premium de prueba", "Solo en el APK de pruebas: activa la versión premium sin comprarla.", Premium.test_on, func(on: bool) -> void:
+			_set_premium_test(on)
+			_open_premium_offer(reason)))
 	var st := Premium.server
 	if Premium.active():
 		column.add_child(_para(Loc.f("Premium activo: te quedan %d explicaciones este mes.", int(st.get("quedan", 0))) + (" " + Loc.f("Y %d de recargas.", int(st.get("extra", 0))) if int(st.get("extra", 0)) > 0 else ""), F_BODY, _c("ink"), font_semibold))
@@ -11165,6 +11170,12 @@ func _premium_rows(box: VBoxContainer) -> void:
 	box.add_child(_caption("Premium"))
 	if Premium.test_allowed():
 		box.add_child(_switch_row("party", "butter", "Premium de prueba", "Solo en el APK de pruebas: activa la versión premium sin comprarla.", Premium.test_on, _set_premium_test))
+		# La cuenta, para darla de alta como probador en el servidor (explicaciones sin cupo).
+		box.add_child(_para(Loc.f("Tu cuenta (para pruebas): %s", Premium.account_id()), F_FOOT, _c("quiet"), font_regular))
+		var tc := _tint("sky")
+		box.add_child(_button("check", "Copiar el texto", func() -> void:
+			DisplayServer.clipboard_set(Premium.account_id())
+			_prog_toast(Premium.account_id(), "", false), tc[0], tc[1], {"font_size": F_SUB, "height": 96.0, "icon": 44.0}))
 	var st := Premium.server
 	var state := Loc.f("Premium activo: te quedan %d explicaciones este mes.", int(st.get("quedan", 0))) if Premium.active() \
 		else Loc.f("Te quedan %d de %d partidas gratis con explicaciones.", [Premium.trial_left(), Premium.TRIAL_GAMES])
