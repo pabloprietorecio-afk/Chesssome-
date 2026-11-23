@@ -156,12 +156,9 @@ func _ready() -> void:
 		lsb.content_margin_top = 3.0
 		lsb.content_margin_bottom = 3.0
 		lab.add_theme_stylebox_override("normal", lsb)
-		lab.z_index = 5
-		add_child(lab)
 		_labels.append(lab)
-	add_child(_threads)
-	_threads.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_threads.z_index = 3
+	# Sin z_index (es global: se pintaba encima de las ventanas, Pablo 23 nov): el orden lo da el de los hijos.
+	# Cartas, encima los hilos y encima los rótulos; lo que se añade luego (cartas al vuelo, polvo, corona), arriba.
 	for lv in LEVELS:
 		var row: Array = []
 		for i in (8 >> lv):
@@ -169,6 +166,10 @@ func _ready() -> void:
 			add_child(card["w"])
 			row.append(card)
 		cards.append(row)
+	add_child(_threads)
+	_threads.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for lab: Control in _labels:
+		add_child(lab)
 	resized.connect(_layout)
 	_populate()
 	_layout()
@@ -669,7 +670,6 @@ func _dust(wrap: Control) -> void:
 		var sz := rng.randf_range(5.0, 12.0)
 		dot.size = Vector2(sz, sz)
 		dot.position = wrap.position + Vector2(rng.randf() * wrap.size.x, rng.randf() * wrap.size.y)
-		dot.z_index = 9
 		dot.rotation = rng.randf() * TAU
 		add_child(dot)
 		var drift := Vector2(rng.randf_range(-40.0, 70.0), rng.randf_range(-120.0, -30.0))
@@ -711,7 +711,6 @@ func _fly(src: Dictionary, dst: Dictionary, id: String, delay: float, landed: Di
 	add_child(cw)
 	_set_card(clone, id)
 	cw.modulate.a = 0.0
-	cw.z_index = 12
 	cw.rotation = 0.0
 	cw.size = b.size
 	cw.pivot_offset = Vector2.ZERO
@@ -779,7 +778,6 @@ func _burst(at: Vector2, power: float) -> void:
 	ring.size = Vector2(40.0, 40.0)
 	ring.pivot_offset = Vector2(20.0, 20.0)
 	ring.position = at - Vector2(20.0, 20.0)
-	ring.z_index = 8
 	add_child(ring)
 	var tw := ring.create_tween().set_parallel(true)
 	tw.tween_property(ring, "scale", Vector2(4.5, 4.5) * power, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -797,7 +795,6 @@ func _burst(at: Vector2, power: float) -> void:
 		var sz := rng.randf_range(8.0, 15.0)
 		dot.size = Vector2(sz, sz)
 		dot.position = at - dot.size * 0.5
-		dot.z_index = 9
 		add_child(dot)
 		var ang := rng.randf() * TAU
 		var dist := rng.randf_range(60.0, 140.0) * power
@@ -815,7 +812,6 @@ func _place_crown(animated: bool) -> void:
 	var wrap: Control = card["w"]
 	if _crown == null or not is_instance_valid(_crown):
 		_crown = d._icon("crown", 92.0, GOLD)
-		_crown.z_index = 14
 		_crown.pivot_offset = Vector2(46.0, 46.0)
 		_crown.rotation = deg_to_rad(-22.0)
 		_crown.mouse_filter = Control.MOUSE_FILTER_IGNORE

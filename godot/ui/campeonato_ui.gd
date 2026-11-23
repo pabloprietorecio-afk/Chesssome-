@@ -957,6 +957,8 @@ static func _slide_rows(d: Variant, rows: Array, olds: Array, delay: float) -> v
 		var tw := row.create_tween()
 		tw.tween_interval(delay)
 		tw.tween_property(row, "position:y", target, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		# z_index es global: si se queda en 1, la fila se pinta encima de las ventanas.
+		tw.tween_callback(func() -> void: row.z_index = 0)
 
 
 # --- El paseo hasta la mesa ---
