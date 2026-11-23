@@ -203,7 +203,7 @@ jobs:
           # Lo que la app lee como archivo suelto tiene que ir dentro del APK.
           MISSING=0
           FIRST=$(python3 -c "import json; print(json.load(open('godot/data/demo_puzzles.json'))['puzzles'][0]['id'])")
-          for f in assets/data/demo_puzzles.json assets/data/defensas.json assets/data/version.json assets/data/explain/$FIRST.json assets/sets/fichas/iconos.bin assets/ui/iconos.bin assets/ui/iconos.json assets/ui/emblema.bin assets/data/curso.json assets/board3d/escudo.bin assets/board3d/escudo_roto.bin assets/campeonato/salas/escuela_pasillo.bin assets/campeonato/rivales/escuela/lucia.bin; do
+          for f in assets/data/demo_puzzles.json assets/data/defensas.json assets/data/version.json assets/data/explain/$FIRST.json assets/sets/fichas/iconos.bin assets/ui/iconos.bin assets/ui/iconos.json assets/ui/emblema.bin assets/data/curso.json assets/board3d/escudo.bin assets/board3d/escudo_roto.bin assets/campeonato/salas/escuela_pasillo.bin assets/campeonato/rivales/escuela/lucia.bin assets/campeonato/rivales/escuela/lucia_prof.bin; do
             if unzip -l $A | grep -q " $f$"; then echo "OK $f"; else echo "FALTA $f"; MISSING=1; fi
           done
           [ "$MISSING" = 0 ]
@@ -668,7 +668,7 @@ jobs:
           # Sonido de la intro (importado por Godot: va como .oggvorbisstr dentro de .godot/imported).
           if grep -q "intro_sonido.ogg" build/avisos-log/apk-contenido.txt; then echo "OK sonido de la intro"; else echo "FALTA el sonido de la intro"; exit 1; fi
           if grep -q "murmullo_a.ogg" build/avisos-log/apk-contenido.txt; then echo "OK sonidos del Campeonato"; else echo "FALTAN los sonidos del Campeonato"; exit 1; fi
-          for f in assets/data/demo_puzzles.json assets/data/defensas.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/data/ads.json assets/ui/iconos.json assets/intro/intro.ogv assets/espera/caballo_1.ogv assets/espera/caballo_2.ogv assets/espera/caballo_3.ogv assets/board3d/escudo.bin assets/board3d/escudo_roto.bin assets/campeonato/salas/escuela_pasillo.bin assets/campeonato/rivales/escuela/lucia.bin; do
+          for f in assets/data/demo_puzzles.json assets/data/defensas.json assets/data/version.json assets/data/curso.json assets/data/cine.json assets/data/ads.json assets/ui/iconos.json assets/intro/intro.ogv assets/espera/caballo_1.ogv assets/espera/caballo_2.ogv assets/espera/caballo_3.ogv assets/board3d/escudo.bin assets/board3d/escudo_roto.bin assets/campeonato/salas/escuela_pasillo.bin assets/campeonato/rivales/escuela/lucia.bin assets/campeonato/rivales/escuela/lucia_prof.bin; do
             if grep -q " $f$" build/avisos-log/apk-contenido.txt; then echo "OK $f"; else echo "FALTA $f"; exit 1; fi
           done
 

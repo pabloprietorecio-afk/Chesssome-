@@ -20,6 +20,10 @@ func _initialize() -> void:
 	for f: String in ["murmullo_a.ogg", "murmullo_b.ogg", "aplausos_pequeno.ogg", "aplausos_grande.ogg", "exclamacion_1.ogg", "lamento.ogg"]:
 		_ok(CampeonatoUI._stream(f) != null, "sonido %s" % f)
 	_ok((CampeonatoUI._stream("murmullo_a.ogg") as AudioStreamOggVorbis).loop, "el murmullo va en bucle")
+	_ok(CampeonatoUI.depth_of(Campeonato.portrait_path("escuela", "lucia")) != null and CampeonatoUI.depth_of(Campeonato.room_path("hotel", "pasillo")) != null, "fotos vivas: hay mapas de profundidad")
+	var probe := TextureRect.new()
+	_ok(CampeonatoUI.alive(probe, Campeonato.portrait_path("escuela", "lucia"), 0.5) != null and probe.material is ShaderMaterial, "la foto viva se monta con su shader")
+	probe.free()
 	demo._open_campeonato()
 	await _frames(2)
 	_ok(demo.progress_kind == "campeonato", "se abre la lista de salas")

@@ -8,6 +8,7 @@ extends RefCounted
 ## res://campeonato/rivales/<sala>/. Si falta alguna, se ve un fondo liso: nada se rompe.
 
 const SOUNDS := "res://campeonato/sonidos/"
+const ALIVE_SHADER := preload("res://ui/foto_viva.gdshader")
 ## Tiempo de cada foto del paseo y del fundido entre fotos (segundos).
 const SHOT_TIME := 3.2
 const FADE := 0.9
@@ -30,6 +31,35 @@ static func photo(path: String) -> Texture2D:
 			tex = ImageTexture.create_from_image(img)
 	_cache[path] = tex
 	return tex
+
+
+## Mapa de profundidad de una foto (<foto>_prof.bin, PNG en grises; blanco = cerca), o null.
+static func depth_of(path: String) -> Texture2D:
+	var p := path.replace(".bin", "_prof.bin")
+	if _cache.has(p):
+		return _cache[p]
+	var tex: Texture2D = null
+	if FileAccess.file_exists(p):
+		var img := Image.new()
+		if img.load_png_from_buffer(FileAccess.get_file_as_bytes(p)) == OK:
+			tex = ImageTexture.create_from_image(img)
+	_cache[p] = tex
+	return tex
+
+
+## «Foto viva»: la foto se mueve en 2,5D según su profundidad (ui/foto_viva.gdshader). Devuelve el material para
+## animar «shader_parameter/shift» (o null si la foto no tiene mapa de profundidad).
+static func alive(pic: TextureRect, path: String, focus: float) -> ShaderMaterial:
+	var depth := depth_of(path)
+	if depth == null:
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = ALIVE_SHADER
+	mat.set_shader_parameter("depth_tex", depth)
+	mat.set_shader_parameter("focus", focus)
+	mat.set_shader_parameter("shift", Vector2.ZERO)
+	pic.material = mat
+	return mat
 
 
 ## Foto que llena su caja sin deformarse (recorta lo que sobra).
@@ -476,7 +506,12 @@ static func walk(d: Variant, key: String) -> void:
 		tw.tween_property(pic, "modulate:a", 1.0, FADE)
 		# Se avanza hacia el fondo de la sala (acercando la imagen); el rival, más despacio.
 		pic.scale = Vector2.ONE * (1.0 if not last else 1.04)
-		tw.tween_property(pic, "scale", Vector2.ONE * (1.14 if not last else 1.0), SHOT_TIME + FADE).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(pic, "scale", Vector2.ONE * (1.10 if not last else 1.0), SHOT_TIME + FADE).set_trans(Tween.TRANS_SINE)
+		# Foto viva: al andar, lo cercano se desplaza más que el fondo (en el rival, el foco en la persona).
+		var mat := alive(pic, str(shots[i]), 0.55 if last else 0.3)
+		if mat != null:
+			var to := Vector2(0.010, -0.016) if not last else Vector2(-0.006, -0.008)
+			tw.tween_property(mat, "shader_parameter/shift", to, SHOT_TIME + FADE).from(Vector2(-0.004, 0.0)).set_trans(Tween.TRANS_SINE)
 		if prev != null:
 			var old := prev
 			pic.create_tween().tween_property(old, "modulate:a", 0.0, FADE).finished.connect(func() -> void:
@@ -492,8 +527,17 @@ static func walk(d: Variant, key: String) -> void:
 		return
 	skipper.queue_free()
 	if prev == null:
-		var face := cover(photo(Campeonato.portrait_path(key, str(m["rival"]))))
-		layer.add_child(face)
+		prev = cover(photo(Campeonato.portrait_path(key, str(m["rival"]))))
+		prev.pivot_offset = size / 2.0
+		layer.add_child(prev)
+	# El rival «respira»: un vaivén lento de la cámara mientras lees su tarjeta.
+	var still := prev.material as ShaderMaterial
+	if still == null:
+		still = alive(prev, Campeonato.portrait_path(key, str(m["rival"])), 0.55)
+	if still != null:
+		var loop := prev.create_tween().set_loops()
+		loop.tween_property(still, "shader_parameter/shift", Vector2(0.007, -0.004), 3.4).set_trans(Tween.TRANS_SINE)
+		loop.tween_property(still, "shader_parameter/shift", Vector2(-0.007, -0.008), 3.4).set_trans(Tween.TRANS_SINE)
 	_rival_card(d, layer, key, m, rival)
 
 
