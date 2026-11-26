@@ -1,0 +1,41 @@
+# Despliega el servidor de partidas de A Tank Story online (tanques_online/) en Cloudflare Workers, con los mismos
+# secretos de Cloudflare que el profesor IA (CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID). Antes, sus pruebas con
+# el servidor en local; después, las mismas contra el servidor desplegado.
+name: Servidor de A Tank Story online
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [tanques-online]
+    paths: ["tanques_online/**", ".github/workflows/tanques-online.yml"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tanques_online
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pruebas en local
+        run: |
+          npm install --no-audit --no-fund
+          node --test test.mjs
+      - name: Desplegar en Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: tanques_online
+          wranglerVersion: "4"
+      - name: Pruebas contra el servidor desplegado
+        env:
+          SERVIDOR: https://atankstory-online.pablo-prieto-recio.workers.dev
+        run: |
+          sleep 5
+          curl -s -m 20 "$SERVIDOR/"; echo
+          node --test test.mjs

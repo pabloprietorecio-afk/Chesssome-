@@ -1,0 +1,7 @@
+{
+  "name": "atankstory-online",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test.mjs" },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

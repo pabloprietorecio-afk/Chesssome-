@@ -1,0 +1,14 @@
+# Servidor de partidas de A Tank Story online (prueba). Vive en este repositorio porque aquí están los secretos de
+# Cloudflare de la cuenta (los mismos que el profesor IA de A Chess Way); el juego está en Tank-Ahead.
+name = "atankstory-online"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+# Una sala por código: un Durable Object con almacenamiento SQLite (WebSockets con hibernación).
+[[durable_objects.bindings]]
+name = "SALAS"
+class_name = "Sala"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Sala"]
