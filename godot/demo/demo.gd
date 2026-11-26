@@ -275,6 +275,14 @@ var my_games_back := "online"
 ## Filtros de «Mis partidas»: resultado ("", "ganadas", "tablas", "perdidas") y cómo terminó (GameLog.reason).
 var my_games_result := ""
 var my_games_why := ""
+## «Importar partidas» (core/game_import.gd): lo traído de Lichess y de Chess.com, el servicio elegido, el campo del
+## nombre, el último error, si hay una petición en marcha y hasta cuándo esperar tras un «429» (por servicio).
+var import_store := {}
+var import_source := "lichess"
+var _import_edit: LineEdit
+var _import_error := ""
+var _import_busy := false
+var _import_wait := {}
 ## Fotos de rivales ya decodificadas, por identificador.
 var _photo_cache := {}
 ## Lo que enseña el rival y su foto ya decodificada.
@@ -7904,6 +7912,9 @@ func _open_my_games() -> void:
 	if not kids:
 		body.add_child(_levels_row(log))
 		body.add_child(_spacer(18.0))
+		# Partidas jugadas fuera de la app (Lichess, Chess.com), para analizarlas aquí.
+		body.add_child(_option_button("open", "sky", "Importar partidas", "Tus partidas de Lichess o Chess.com, con tu nombre de usuario.", _open_import))
+		body.add_child(_spacer(18.0))
 	if int(st["total"]) == 0:
 		body.add_child(_centered(_para("Todavía no has terminado ninguna partida. Aquí verás contra quién has jugado, tus resultados y tus estadísticas.", F_BODY, _c("quiet"), font_regular)))
 	else:
@@ -8188,13 +8199,18 @@ func _open_saved_game(i: int) -> void:
 	var games: Array = _log()["partidas"]
 	if i < 0 or i >= games.size():
 		return
-	var g: Dictionary = games[i]
+	_open_game_record(games[i], false)
+
+
+## Abre una partida guardada (`g`, como las de GameLog) en el tablero y con su análisis. `imported`: una traída de
+## Lichess o Chess.com; su botón de la barra vuelve a «Importar partidas».
+func _open_game_record(g: Dictionary, imported: bool) -> void:
 	_close_progress()
 	_stop_game_thread()
 	run_id += 1
 	_clear_explanation()
 	mode = "game"
-	game = {"variant": "", "level": 0, "title": str(g.get("rival_nombre", "Partida")), "text": "", "kids": "", "unit": "", "clock": [], "online": false, "saved": true}
+	game = {"variant": "", "level": 0, "title": str(g.get("rival_nombre", "Partida")), "text": "", "kids": "", "unit": "", "clock": [], "online": false, "saved": true, "imported": imported}
 	game_color = int(g.get("color", 0))
 	game_clocked = false
 	var pos := Chess.from_fen(str(g.get("inicio", Board3D.START_FEN)))
@@ -8229,6 +8245,186 @@ func _open_saved_game(i: int) -> void:
 	_actions_mode = ""
 	_refresh()
 	_open_review()
+
+# ---------------------------------------------------------------- importar partidas (Lichess, Chess.com)
+
+## «Importar partidas»: elegir Lichess o Chess.com, escribir el nombre de usuario y traer las últimas partidas
+## (core/game_import.gd). Se tocan para analizarlas como las de «Mis partidas», pero no se suman a ellas.
+func _open_import() -> void:
+	if import_store.is_empty():
+		import_store = GameImport.load_store()
+		import_source = str(import_store.get("ultima", "lichess"))
+	var page := _page("import_games")
+	var body: VBoxContainer = page["body"]
+	var footer: VBoxContainer = page["footer"]
+	var who := str(GameImport.SOURCE_NAMES[import_source])
+	var tile := _icon_tile("open", "sky", 156.0, 98.0)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(tile)
+	body.add_child(_spacer(16.0))
+	body.add_child(_centered(_para("Importar partidas", F_LARGE, _c("ink"), font_display)))
+	body.add_child(_spacer(12.0))
+	body.add_child(_centered(_para(Loc.f("Escribe tu nombre de usuario y trae tus últimas %d partidas para analizarlas. No hace falta contraseña.", GameImport.MAX), F_BODY, _c("quiet"), font_regular)))
+	body.add_child(_spacer(22.0))
+	var chips := HBoxContainer.new()
+	chips.alignment = BoxContainer.ALIGNMENT_CENTER
+	chips.add_theme_constant_override("separation", 14)
+	for src: String in GameImport.SOURCES:
+		chips.add_child(_filter_chip(str(GameImport.SOURCE_NAMES[src]), "users", src == import_source, _import_pick.bind(src)))
+	body.add_child(chips)
+	body.add_child(_spacer(18.0))
+	var saved: Dictionary = import_store.get(import_source, {})
+	_import_edit = LineEdit.new()
+	_show_caret(_import_edit)
+	_import_edit.placeholder_text = Loc.f("Tu nombre en %s", who)
+	_import_edit.max_length = 30
+	_import_edit.text = str(saved.get("usuario", ""))
+	_import_edit.add_theme_font_size_override("font_size", F_HEAD)
+	_import_edit.add_theme_font_override("font", font_medium)
+	_import_edit.custom_minimum_size = Vector2(0.0, 120.0)
+	_import_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Los nombres de usuario no llevan mayúsculas automáticas ni correcciones del teclado.
+	_import_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = _c("surface")
+	sb.set_corner_radius_all(40)
+	sb.border_color = _c("track")
+	sb.set_border_width_all(3)
+	sb.content_margin_left = 30
+	sb.content_margin_right = 30
+	_import_edit.add_theme_stylebox_override("normal", sb)
+	_import_edit.add_theme_stylebox_override("focus", sb)
+	_import_edit.add_theme_color_override("font_color", _c("ink"))
+	_import_edit.text_submitted.connect(func(_t: String) -> void: _import_fetch())
+	body.add_child(_import_edit)
+	body.add_child(_spacer(14.0))
+	if _import_error != "":
+		body.add_child(_centered(_para(_import_error, F_SUB, _c("bad"), font_medium)))
+		body.add_child(_spacer(10.0))
+	var tint := _tint("sky")
+	var go := _button("open", "Buscando…" if _import_busy else "Traer mis partidas", _import_fetch, tint[0], tint[1], {"font_size": F_BODY, "height": 116.0, "icon": 56.0})
+	go.disabled = _import_busy
+	body.add_child(go)
+	body.add_child(_spacer(12.0))
+	body.add_child(_centered(_para(Loc.f("Se piden a %s por Internet con ese nombre. Se guardan solo en este móvil y no cuentan para tus estadísticas ni para tu nivel.", who), F_FOOT, _c("quiet"), font_regular)))
+	var games: Array = saved.get("partidas", [])
+	if not games.is_empty():
+		body.add_child(_section(Loc.f("Tus partidas en %s · %s", [who, str(saved.get("usuario", ""))])))
+		for i in games.size():
+			var g := GameImport.normalized(games[i])
+			var res := int(g.get("resultado", 0))
+			var word: Array = RESULT_WORDS.get(res, RESULT_WORDS[0])
+			var moves_n := (g.get("jugadas", []) as Array).size()
+			var line := Loc.f("%s · %s · %d jugadas · %s", [str(g.get("rival_nombre", "Rival")), "blancas" if int(g.get("color", 0)) == 0 else "negras", (moves_n + 1) / 2, _date_text(int(g.get("fecha", 0)))])
+			if bool(g.get("cortada", false)):
+				line += " · " + Loc.t("incompleta")
+			body.add_child(_option_button("check" if res > 0 else ("info" if res == 0 else "wrong"), str(word[1]), str(word[0]), line, _open_imported_game.bind(i)))
+			body.add_child(_spacer(10.0))
+	body.add_child(_spacer(10.0, true))
+	footer.add_child(_button("back", "Volver", _open_my_games, _c("field"), _c("ink"), {"font_size": F_BODY, "height": 104.0, "icon": 48.0, "font": font_medium}))
+
+
+func _import_pick(src: String) -> void:
+	if _import_busy or src == import_source:
+		return
+	import_source = src
+	_import_error = ""
+	_open_import()
+
+
+## Trae las partidas del servicio elegido (una petición cada vez; Chess.com, mes a mes hasta tener las que caben).
+func _import_fetch() -> void:
+	if _import_busy or _import_edit == null or not is_instance_valid(_import_edit):
+		return
+	var src := import_source
+	var user := _import_edit.text.strip_edges()
+	var problem := GameImport.username_problem(user)
+	if problem != "":
+		_import_error = Loc.t(problem)
+		_open_import()
+		return
+	var now := Time.get_unix_time_from_system()
+	if now < float(_import_wait.get(src, 0.0)):
+		_import_error = GameImport.error_text(src, 429)
+		_open_import()
+		return
+	_import_busy = true
+	_import_error = ""
+	_open_import()
+	var version := _raw_version()
+	var games: Array = []
+	var code := 200
+	if src == "lichess":
+		var r := await _import_http(GameImport.lichess_url(user), GameImport.lichess_headers(version))
+		code = int(r["code"])
+		if code == 200:
+			games = GameImport.from_lichess(str(r["body"]), user)
+	else:
+		var a := await _import_http(GameImport.chesscom_archives_url(user), GameImport.chesscom_headers(version))
+		code = int(a["code"])
+		if code == 200:
+			# Del mes más reciente hacia atrás, hasta tener las que caben (como mucho tres meses).
+			for url: String in GameImport.chesscom_months(str(a["body"])).slice(0, 3):
+				var m := await _import_http(url, GameImport.chesscom_headers(version))
+				if int(m["code"]) != 200:
+					code = int(m["code"])
+					break
+				games = GameImport.merge(games, GameImport.from_chesscom(str(m["body"]), user))
+				if games.size() >= GameImport.MAX:
+					break
+	_import_busy = false
+	if code == 429:
+		# Lichess pide esperar un minuto entero tras un «429»; con Chess.com se hace igual.
+		_import_wait[src] = Time.get_unix_time_from_system() + 60.0
+	if code != 200 and games.is_empty():
+		_import_error = GameImport.error_text(src, code)
+	elif games.is_empty():
+		_import_error = Loc.f("%s no tiene partidas de ajedrez normal terminadas (las variantes no se traen).", user)
+	else:
+		GameImport.put(import_store, src, user, games, int(Time.get_unix_time_from_system()))
+		GameImport.save_store(import_store)
+	if progress_kind == "import_games" and import_source == src:
+		_open_import()
+
+
+func _import_http(url: String, headers: PackedStringArray) -> Dictionary:
+	var req := HTTPRequest.new()
+	req.timeout = 20.0
+	add_child(req)
+	if req.request(url, headers) != OK:
+		req.queue_free()
+		return {"code": 0, "body": ""}
+	var r: Array = await req.request_completed
+	req.queue_free()
+	if int(r[0]) != HTTPRequest.RESULT_SUCCESS:
+		return {"code": 0, "body": ""}
+	return {"code": int(r[1]), "body": (r[3] as PackedByteArray).get_string_from_utf8()}
+
+
+## La versión del APK («0.1.250»), para el User-Agent; vacía en desarrollo.
+func _raw_version() -> String:
+	if not FileAccess.file_exists("res://data/version.json"):
+		return ""
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/version.json"))
+	return str(data.get("version", "")) if typeof(data) == TYPE_DICTIONARY else ""
+
+
+func _open_imported_game(i: int) -> void:
+	var games: Array = (import_store.get(import_source, {}) as Dictionary).get("partidas", [])
+	if i < 0 or i >= games.size():
+		return
+	_open_game_record(GameImport.normalized(games[i]), true)
+
+
+func _back_to_imports() -> void:
+	_stop_game_thread()
+	run_id += 1
+	game_state = ""
+	mode = "free"
+	view.board.set_arrows([])
+	view.set_orientation(0)
+	_idle()
+	_open_import()
 
 
 ## Fila del rival en la tarjeta de la partida online. `compact`: con reloj no caben los gestos en su fila; van en
@@ -12010,7 +12206,10 @@ func _build_game_actions() -> void:
 		# Una partida guardada: su análisis (resumen o jugada a jugada) y volver a la lista.
 		left_button = _tool_button("chart", "Análisis", _open_review, "lilac")
 		var det0 := _tool_button("line", "Jugada a jugada", _open_detail_from_over, "sky")
-		right_button = _button("trend", "Mis partidas", _back_to_my_games, _c("accent"), _c("accent_ink"), go)
+		if bool(game.get("imported", false)):
+			right_button = _button("open", "Importadas", _back_to_imports, _c("accent"), _c("accent_ink"), go)
+		else:
+			right_button = _button("trend", "Mis partidas", _back_to_my_games, _c("accent"), _c("accent_ink"), go)
 		row = [left_button, det0, right_button]
 	elif game_state == "over" and str(game.get("campeonato", "")) != "":
 		_record_game()
@@ -14133,6 +14332,8 @@ func _leave_progress() -> void:
 		_open_home()
 	elif progress_kind == "campeonato_sala":
 		_open_campeonato()
+	elif progress_kind == "import_games":
+		_open_my_games()
 	elif progress_kind == "progress" or (progress_kind == "course" and mode == "learn" and not lesson.is_empty()):
 		_close_progress()
 	elif progress_kind in ["course", "experience"] and use_settings:
