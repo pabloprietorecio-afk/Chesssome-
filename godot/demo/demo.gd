@@ -334,6 +334,9 @@ var ask_text := ""
 var ask_answer := {}
 var ask_error := 0
 var ask_edit: LineEdit
+## La onda del dictado dentro de `ask_edit` (solo mientras escucha) y el botón «Hablar»/«Parar».
+var ask_wave: VoiceWave
+var ask_talk: Button
 ## La ventana de preguntas sirve al tutor («tutor») y al asistente de la app («assistant»).
 var ask_mode := "tutor"
 ## Botón flotante del asistente (en todas las pantallas, menos en Kids).
@@ -1219,6 +1222,7 @@ func _ready() -> void:
 	local_engine = LocalEngine.new()
 	add_child(local_engine)
 	tutor_voice.heard_partial.connect(_on_voice_partial)
+	tutor_voice.level.connect(_on_voice_level)
 	tutor_voice.heard.connect(_on_voice_heard)
 	tutor_voice.failed.connect(_on_voice_failed)
 	tutor_speech = TutorSpeech.new()
@@ -9998,7 +10002,16 @@ func _build_ask_window() -> void:
 			ask_edit.text_changed.connect(func(t: String) -> void: ask_text = t)
 			ask_edit.text_submitted.connect(func(_t: String) -> void: _send_question())
 			column.add_child(ask_edit)
+			ask_wave = null
+			ask_talk = null
 			if ask_state == "listen":
+				# La onda que sigue la voz, en el propio campo (Pablo, 26 nov); el texto de ayuda sobra mientras.
+				ask_edit.placeholder_text = ""
+				ask_wave = VoiceWave.new()
+				ask_wave.color = _c("accent")
+				ask_edit.add_child(ask_wave)
+				ask_wave.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				_wave_compact(ask_text != "")
 				column.add_child(_para("Te escucho… habla con calma.", F_SUB, _c("accent_text"), font_semibold))
 			elif ask_text == "":
 				# Ideas para empezar: tocar una la pregunta tal cual.
@@ -10015,6 +10028,7 @@ func _build_ask_window() -> void:
 				var talk := _button("mic", "Parar" if ask_state == "listen" else "Hablar", _toggle_listen, tint[0], tint[1], btn)
 				talk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				row.add_child(talk)
+				ask_talk = talk
 			var send := _button("send", "Preguntar", _send_question, _c("accent"), _c("accent_ink"), btn)
 			send.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(send)
@@ -10547,6 +10561,8 @@ func _ask_closed() -> void:
 		ask_state = ""
 	view.board.set_focus([])
 	ask_edit = null
+	ask_wave = null
+	ask_talk = null
 
 
 func _toggle_listen() -> void:
@@ -10567,6 +10583,26 @@ func _on_voice_transcribing() -> void:
 		for c in col.get_children():
 			if c is Label and (c as Label).text == Loc.t("Te escucho… habla con calma."):
 				(c as Label).text = Loc.t("Un momento, que lo escribo…")
+	# Ya no escucha: la onda se queda quieta y «Parar» no hace nada mientras lo pasa a texto.
+	if ask_wave != null and is_instance_valid(ask_wave):
+		ask_wave.settle()
+	if ask_talk != null and is_instance_valid(ask_talk):
+		ask_talk.disabled = true
+
+
+func _on_voice_level(v: float) -> void:
+	if ask_state == "listen" and ask_wave != null and is_instance_valid(ask_wave):
+		ask_wave.push(v)
+
+
+## Con texto ya dictado, la onda se encoge a la derecha y el texto le deja sitio.
+func _wave_compact(on: bool) -> void:
+	if ask_wave == null or not is_instance_valid(ask_wave) or ask_edit == null or not is_instance_valid(ask_edit):
+		return
+	ask_wave.compact = on
+	var sb := ask_edit.get_theme_stylebox("normal") as StyleBoxFlat
+	if sb != null:
+		sb.content_margin_right = VoiceWave.COMPACT_W if on else 28.0
 
 
 func _on_voice_partial(t: String) -> void:
@@ -10575,6 +10611,7 @@ func _on_voice_partial(t: String) -> void:
 	ask_text = t
 	if ask_edit != null and is_instance_valid(ask_edit):
 		ask_edit.text = t
+		_wave_compact(t != "")
 
 
 func _on_voice_heard(t: String) -> void:

@@ -300,6 +300,45 @@ func _initialize() -> void:
 	demo.tutor_voice.heard.disconnect(on_heard)
 	demo.tutor_voice.fake_server = Callable()
 
+	# 5a'. La onda del dictado (Pablo, 26 nov): dentro del campo, sigue la voz y, sin voz, quieta.
+	var keep := [demo.ask_mode, demo.ask_state, demo.ask_text]
+	demo.ask_mode = "assistant"
+	demo.ask_text = ""
+	demo.ask_state = "listen"
+	demo._build_ask_window()
+	await _frames(2)
+	var wave: VoiceWave = demo.ask_wave
+	_ok(wave != null and wave.get_parent() == demo.ask_edit and demo.ask_edit.placeholder_text == "", "escuchando: la onda va dentro del campo, sin el texto de ayuda")
+	for i in 6:
+		demo._on_voice_level(0.0)
+	await _frames(10)
+	_ok(wave.level_shown() == 0.0 and not wave.is_processing(), "sin voz, la onda no se mueve")
+	demo._on_voice_level(0.9)
+	await _frames(12)
+	_ok(wave.level_shown() > 0.5, "con voz, la onda sube (%.2f)" % wave.level_shown())
+	var center := wave.target(VoiceWave.BARS / 2)
+	demo._on_voice_level(0.3)
+	_ok(wave.target(VoiceWave.BARS / 2) < center and wave.target(VoiceWave.BARS / 2 + 1) > 0.5, "la última medida, en el centro; las de antes, hacia los lados")
+	for i in VoiceWave.BARS:
+		demo._on_voice_level(0.0)
+	await _until(func() -> bool: return not wave.is_processing())
+	_ok(wave.level_shown() == 0.0, "al callarse, vuelve a la línea quieta")
+	demo._on_voice_partial("hola")
+	_ok(wave.compact and (demo.ask_edit.get_theme_stylebox("normal") as StyleBoxFlat).content_margin_right == VoiceWave.COMPACT_W, "con texto dictado, la onda se encoge a la derecha")
+	demo._on_voice_level(0.8)
+	demo._on_voice_transcribing()
+	await _until(func() -> bool: return not wave.is_processing())
+	_ok(wave.level_shown() == 0.0, "pasándolo a texto: la onda, quieta")
+	demo.ask_state = "edit"
+	demo._build_ask_window()
+	await _frames(2)
+	_ok(demo.ask_wave == null and demo.ask_edit.placeholder_text != "", "sin escuchar, sin onda")
+	demo._close_confirm()
+	await _frames(2)
+	demo.ask_mode = keep[0]
+	demo.ask_state = keep[1]
+	demo.ask_text = keep[2]
+
 	# 5b. El asistente: órdenes con palabras (servidor simulado).
 	demo._sync_assistant_button()
 	_ok(demo.assistant_button != null and demo.assistant_button.visible, "botón flotante del asistente")

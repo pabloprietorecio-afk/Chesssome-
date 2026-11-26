@@ -54,6 +54,7 @@ public class TutorVoz extends GodotPlugin {
 		out.add(new SignalInfo("voz_texto", String.class));
 		out.add(new SignalInfo("voz_error", Integer.class));
 		out.add(new SignalInfo("voz_audio", String.class));
+		out.add(new SignalInfo("voz_nivel", Float.class));
 		return out;
 	}
 
@@ -186,6 +187,13 @@ public class TutorVoz extends GodotPlugin {
 				} else if (heard && quietSince < 0) {
 					quietSince = now;
 				}
+				// La onda del campo de texto (Pablo, 26 nov): sigue la voz de verdad. Bajo el umbral (silencio o ruido
+				// de fondo), 0: la onda se queda quieta. Encima, en decibelios sobre el umbral (unos 26 dB llenan la barra).
+				float level = 0f;
+				if (rms >= threshold) {
+					level = (float) Math.max(0.12, Math.min(1.0, 20.0 * Math.log10(rms / threshold) / 26.0));
+				}
+				if (recording) emit("voz_nivel", Float.valueOf(level));
 				// 2,2 s de silencio: deja pensar entre palabras («caballo… a efe tres»). Se puede cortar antes tocando.
 				if (heard && quietSince > 0 && now - quietSince >= 2200) break;
 				if (now - start >= 20000) break;
@@ -281,7 +289,16 @@ public class TutorVoz extends GodotPlugin {
 	private class Listener implements RecognitionListener {
 		@Override public void onReadyForSpeech(Bundle params) { emit("voz_lista"); }
 		@Override public void onBeginningOfSpeech() {}
-		@Override public void onRmsChanged(float rmsdB) {}
+		/**
+		 * Volumen del micrófono según el reconocedor del sistema (sin servidor de dictado). Cada servicio da su escala;
+		 * el de Google suele moverse entre −2 dB (silencio) y 10 dB: por debajo de 2, la onda quieta. Algunos móviles
+		 * lo mandan a ratos o nada: entonces la onda no se mueve (sin animación de adorno).
+		 */
+		@Override
+		public void onRmsChanged(float rmsdB) {
+			float level = rmsdB <= 2f ? 0f : Math.max(0.12f, Math.min(1f, (rmsdB - 2f) / 8f));
+			emit("voz_nivel", Float.valueOf(level));
+		}
 		@Override public void onBufferReceived(byte[] buffer) {}
 		@Override public void onEndOfSpeech() {}
 

@@ -9,6 +9,8 @@ signal heard_partial(text: String)
 signal heard(text: String)
 signal failed(code: int)
 signal listening_changed(on: bool)
+## Volumen de la voz mientras se escucha, de 0 (nada: silencio o ruido de fondo) a 1, unas diez veces por segundo.
+signal level(value: float)
 
 const SINGLETON := "TutorVoz"
 const PERMISSION := "android.permission.RECORD_AUDIO"
@@ -38,6 +40,8 @@ func _plugin() -> Object:
 		_p.connect("voz_texto", _on_text, CONNECT_DEFERRED)
 		_p.connect("voz_error", _on_error, CONNECT_DEFERRED)
 		_p.connect("voz_audio", _on_audio, CONNECT_DEFERRED)
+		if _p.has_signal("voz_nivel"):
+			_p.connect("voz_nivel", _on_level, CONNECT_DEFERRED)
 		_wire_permission()
 	return _p
 
@@ -116,6 +120,11 @@ func _on_permission(permission: String, granted: bool) -> void:
 	else:
 		_set_listening(false)
 		failed.emit(PERMISSION_DENIED)
+
+
+func _on_level(v: float) -> void:
+	if listening:
+		level.emit(clampf(v, 0.0, 1.0))
 
 
 func _on_text(t: String) -> void:

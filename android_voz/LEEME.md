@@ -12,7 +12,9 @@ micrófono lo pide GDScript (`OS.request_permission`), como allí.
   `res://addons/tutor_voz`, que lo registra en el manifiesto con el permiso `RECORD_AUDIO` y la consulta
   `android.speech.RecognitionService` (sin ella, en Android 11+ la app no ve el reconocedor) y el micrófono como
   hardware opcional. En el APK de pruebas el aviso de error lleva el código de Android entre paréntesis.
-- Señales: `voz_lista`, `voz_parcial(texto)`, `voz_texto(texto)`, `voz_error(código)`.
+- Señales: `voz_lista`, `voz_parcial(texto)`, `voz_texto(texto)`, `voz_error(código)`, `voz_audio(wav)` y
+  `voz_nivel(0–1)`: el volumen de la voz para la onda del campo de texto (0 en silencio; con la grabación propia,
+  medido sobre el ruido de fondo cada 100 ms; con el reconocedor del sistema, su `onRmsChanged`).
   Métodos: `available()`, `start(idioma)`, `stop()`, `cancel()`.
 - Sin el complemento (escritorio, pruebas, APK sin Gradle) el botón de micrófono no sale; queda escribir la
   pregunta, y el teclado de Android también deja dictar.
