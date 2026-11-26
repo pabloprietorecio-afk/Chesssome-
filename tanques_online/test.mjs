@@ -174,7 +174,8 @@ test("sala: dos jugadores se ven, se reenvía el estado y el ping responde", { t
     assert.equal(a.inbox.some((m) => m.t === "e" || m.t === "f"), false);
 
     const t0 = Date.now();
-    b.send({ t: "ping", c: t0 });
+    // Como lo manda Godot (JSON.stringify ordena las claves): «c» antes que «t».
+    b.ws.send(JSON.stringify({ c: t0, t: "ping" }));
     const pong = await b.wait((m) => m.t === "pong");
     assert.equal(pong.c, t0);
     console.log(`  ping al servidor: ${Date.now() - t0} ms`);

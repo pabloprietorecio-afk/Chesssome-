@@ -97,6 +97,11 @@ export class TestBot {
     this.seq = 0;
     this.sendEvery = 0.1;
     this.sendDue = 0;
+    // Velocidad de los proyectiles del juego (m/s): el impacto se avisa cuando el proyectil llegaría.
+    this.shellSpeed = 150;
+    this.damage = 25;
+    this.clock = 0;
+    this.pending = [];
   }
 
   hello() {
@@ -134,6 +139,11 @@ export class TestBot {
 
   tick(dt) {
     const out = [];
+    this.clock += dt;
+    while (this.pending.length && this.pending[0].at <= this.clock) {
+      const hit = this.pending.shift();
+      if (this.deadFor < 0) out.push(hit.msg);
+    }
     if (this.deadFor >= 0) {
       this.deadFor += dt;
       if (this.deadFor < 5) return out;
@@ -169,7 +179,7 @@ export class TestBot {
       const dir = [Math.sin(yaw) * flat, to.y - from.y, Math.cos(yaw) * flat];
       const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
       out.push({ t: "f", de: BOT_ID, o: [round(from.x), from.y, round(from.z)], d: dir.map((v) => round(v / len, 4)) });
-      if (hits) out.push({ t: "i", de: BOT_ID, a: this.target.id, d: 18 });
+      if (hits) this.pending.push({ at: this.clock + distance / this.shellSpeed, msg: { t: "i", de: BOT_ID, a: this.target.id, d: this.damage } });
     }
     this.sendDue -= dt;
     if (this.sendDue <= 0) {

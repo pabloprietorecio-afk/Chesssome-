@@ -1,6 +1,6 @@
 // Servidor de partidas de A Tank Story online (prueba, 26 nov): un Durable Object por sala que reenvía los mensajes
 // de cada jugador a los demás por WebSocket. No simula la partida: cada móvil manda la posición de su tanque y
-// sus disparos, y decide sus impactos (ver docs en el repositorio del juego, «Online (prueba)»).
+// sus disparos, y decide sus impactos (ver README del juego, «Online (prueba)»).
 //
 //   GET /                                  → {ok: true}
 //   GET /sala/<CÓDIGO>?frente=0..2&bando=0..1&bot=0|1   (WebSocket)
@@ -88,12 +88,15 @@ export class Sala {
     const seat = ws.deserializeAttachment();
     if (!seat || typeof message !== "string") return;
     if (!this.gate.allow(seat.id, Date.now())) return;
-    if (message.startsWith('{"t":"ping"')) {
+    // El ping se contesta al momento (el juego lo manda cada segundo para medir el retraso).
+    if (message.length < 80 && message.includes('"ping"')) {
       try {
         const ping = JSON.parse(message);
-        safeSend(ws, JSON.stringify({ t: "pong", c: ping.c }));
+        if (ping && ping.t === "ping") {
+          safeSend(ws, JSON.stringify({ t: "pong", c: ping.c }));
+          return;
+        }
       } catch {}
-      return;
     }
     const msg = relayable(message, seat.id);
     if (!msg) return;
