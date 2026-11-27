@@ -175,7 +175,7 @@ jobs:
         run: |
           set -o pipefail
           G=~/godot-dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video test_dia test_retos test_espera test_niveles test_neon test_reloj test_war test_war_app test_opciones_partida test_volver_analisis test_practica test_repaso_fallos test_defensas test_por_que test_idioma_ventana test_notas test_profesor_ia test_profesor_app test_espera_bot test_tutor test_stockfish_app test_premium test_voz_tutor test_campeonato test_campeonato_app test_backup test_backup_app test_importar test_importar_app; do
+          for T in test_glicko2 test_chess test_explain test_assessment test_course test_bot test_review test_online test_move_why test_game_detail test_game_log test_captures test_progress test_reminder test_inicio test_cine test_ads test_intro test_cine_film test_cine_video test_dia test_retos test_espera test_niveles test_neon test_reloj test_war test_war_app test_opciones_partida test_volver_analisis test_practica test_repaso_fallos test_defensas test_por_que test_idioma_ventana test_notas test_profesor_ia test_profesor_app test_espera_bot test_tutor test_stockfish_app test_premium test_voz_tutor test_campeonato test_campeonato_app test_backup test_backup_app test_importar test_importar_app test_valorar_atras; do
             timeout 600 $G --headless --path godot -s tests/$T.gd 2>&1 | tee $T.log
             # un error de guion no siempre cambia el código de salida: se busca también en la salida
             ! grep -E -q "SCRIPT ERROR|Parse Error|Failed to load script" $T.log
@@ -636,6 +636,7 @@ jobs:
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/motor"; then echo "OK MotorStockfish dentro del APK"; else echo "FALTA MotorStockfish en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/pabloprieto/pagos"; then echo "OK PagosGoogle dentro del APK"; else echo "FALTA PagosGoogle en el APK"; exit 1; fi
           if unzip -p $A 'classes*.dex' | grep -a -q "com/android/billingclient"; then echo "OK Play Billing dentro del APK"; else echo "FALTA Play Billing en el APK"; exit 1; fi
+          if unzip -p $A 'classes*.dex' | grep -a -q "com/google/android/play/core/review"; then echo "OK valoraciones de Play dentro del APK"; else echo "FALTA la librería de valoraciones de Play en el APK"; exit 1; fi
           if grep -q "lib/arm64-v8a/libstockfish.so" build/avisos-log/apk-contenido.txt; then echo "OK Stockfish dentro del APK"; else echo "FALTA Stockfish en el APK"; exit 1; fi
           grep "lib/arm64-v8a/libstockfish.so\|lib/arm64-v8a/libgodot" build/avisos-log/apk-contenido.txt || true
           if grep -q "data/licencias/gpl-3.0.txt" build/avisos-log/apk-contenido.txt; then echo "OK licencia GPL"; else echo "FALTA la licencia GPL"; exit 1; fi
@@ -752,6 +753,7 @@ jobs:
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/pabloprieto/espera" && echo "OK EsperaOnline en el AAB" || { echo "FALTA EsperaOnline en el AAB"; exit 1; }
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/pabloprieto/pagos" && echo "OK PagosGoogle en el AAB" || { echo "FALTA PagosGoogle en el AAB"; exit 1; }
           unzip -p $B 'base/dex/*.dex' | grep -a -q "com/android/billingclient" && echo "OK Play Billing en el AAB" || { echo "FALTA Play Billing en el AAB"; exit 1; }
+          unzip -p $B 'base/dex/*.dex' | grep -a -q "com/google/android/play/core/review" && echo "OK valoraciones de Play en el AAB" || { echo "FALTA la librería de valoraciones de Play en el AAB"; exit 1; }
           unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "com.android.vending.BILLING" && echo "OK permiso BILLING en el AAB" || { echo "FALTA el permiso BILLING en el AAB"; exit 1; }
           unzip -p $B base/manifest/AndroidManifest.xml | grep -a -q "com.pabloprieto.chessome" && echo "OK paquete com.pabloprieto.chessome" || { echo "paquete distinto en el AAB"; exit 1; }
           # Play bloquea la versión si la pantalla vertical queda como función obligatoria (20 nov): debe ir declarada.

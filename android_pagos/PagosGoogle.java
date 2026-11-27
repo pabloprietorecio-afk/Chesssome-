@@ -14,6 +14,9 @@ import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.google.android.play.core.review.ReviewInfo;
+import com.google.android.play.core.review.ReviewManager;
+import com.google.android.play.core.review.ReviewManagerFactory;
 
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
@@ -58,6 +61,33 @@ public class PagosGoogle extends GodotPlugin implements PurchasesUpdatedListener
 		s.add(new SignalInfo("fallo", Integer.class, String.class));
 		s.add(new SignalInfo("hecho", String.class, String.class));
 		return s;
+	}
+
+	/**
+	 * Ventanita de valoración de Google Play (In-App Review API). La app la pide en un buen momento (al cerrar la
+	 * enhorabuena de subir de nivel), nunca desde un botón y sin preguntar nada antes. Google decide si la enseña
+	 * (tiene su propio cupo) y no dice si el jugador ha valorado: no hay señal de vuelta y, si falla, no se avisa.
+	 */
+	@UsedByGodot
+	public void valorar() {
+		final Activity a = getActivity();
+		if (a == null) {
+			return;
+		}
+		a.runOnUiThread(() -> {
+			try {
+				final ReviewManager manager = ReviewManagerFactory.create(a);
+				manager.requestReviewFlow().addOnCompleteListener(task -> {
+					if (!task.isSuccessful()) {
+						return;
+					}
+					ReviewInfo info = task.getResult();
+					manager.launchReviewFlow(a, info);
+				});
+			} catch (Exception e) {
+				// Sin Play Store o con un error: la app sigue igual.
+			}
+		});
 	}
 
 	@UsedByGodot

@@ -325,6 +325,14 @@ var game_note := ""
 var coach: CoachAI
 ## Compras en Google Play (Premium y recargas).
 var pagos: Pagos
+## Cuántas veces y cuándo se ha pedido la valoración de Google Play (core/review_ask.gd).
+var review_state := ReviewAsk.new_state()
+## Botón «atrás» en el inicio: la primera pulsación avisa y la segunda, antes de EXIT_WINDOW_MS, cierra la app.
+const EXIT_WINDOW_MS := 2000
+var _exit_armed_ms := -100000
+var _exit_toast_node: Control
+## Pruebas: sustituye a cerrar la app.
+var quit_hook := Callable()
 var coach_note := ""
 var coach_from_ai := false
 var coach_waiting := false
@@ -795,6 +803,9 @@ class LevelPath extends Control:
 		draw_colored_polygon(pts, col)
 
 	func _hills(base_y: float, amp: float, col: Color, phase: float, bottom: float) -> void:
+		# Sin sitio (primer dibujo, aún sin su tamaño final), el polígono se cruza y Godot da error al triangularlo.
+		if size.x <= 1.0 or bottom <= base_y + amp * 0.4:
+			return
 		var pts := PackedVector2Array()
 		var steps := 40
 		for k in steps + 1:
@@ -1440,6 +1451,7 @@ func _load_settings() -> void:
 		intro_mode = INTRO_MODES[0]
 	intro_seen = bool(cfg.get_value("app", "intro_vista", false))
 	wait_clip = int(cfg.get_value("app", "espera", 0))
+	review_state = ReviewAsk.clean(cfg.get_value("app", "valorar", {}))
 	var subs: Variant = cfg.get_value("partida", "subniveles", {})
 	game_sublevels = subs if subs is Dictionary else {}
 	if not home_style in HomeScreens.STYLES:
@@ -1504,6 +1516,7 @@ func _save_settings() -> void:
 	cfg.set_value("app", "intro", intro_mode)
 	cfg.set_value("app", "intro_vista", intro_seen)
 	cfg.set_value("app", "espera", wait_clip)
+	cfg.set_value("app", "valorar", review_state)
 	cfg.set_value("app", "idioma", language)
 	cfg.set_value("app", "mundo", kids_world)
 	cfg.set_value("app", "icono", avatar)
@@ -3905,6 +3918,7 @@ func _build_sheet() -> void:
 	box.add_child(licences)
 	if not kids:
 		box.add_child(_button("send", "Copia de seguridad", _open_backup, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 50.0}))
+		box.add_child(_button("spark", "Valorar la app", _open_store_page, _c("field"), _c("ink"), {"font_size": F_SUB, "height": 104.0, "icon": 50.0}))
 	var about := _para(Loc.f("A Chess Way · %s", app_version), F_CAP, _c("quiet"), font_regular)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(about)
@@ -13302,7 +13316,7 @@ func _level_up(level_now: int, before: float, now: float) -> void:
 	column.add_child(pad)
 	column.add_child(_spacer(26.0))
 	var go_pad := _pad(90, 0, 90, 0)
-	var go := _button("next", "¡Seguir jugando!", _close_celebration, _c("accent"), _c("accent_ink"), {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")})
+	var go := _button("next", "¡Seguir jugando!", _level_up_done, _c("accent"), _c("accent_ink"), {"font_size": F_HEAD, "height": 148.0, "icon": 60.0, "trailing": true, "glow": _c("glow")})
 	go.mouse_filter = Control.MOUSE_FILTER_STOP
 	go_pad.add_child(go)
 	column.add_child(go_pad)
@@ -13320,6 +13334,36 @@ func _level_up(level_now: int, before: float, now: float) -> void:
 	tw.set_parallel(true)
 	tw.tween_property(layer, "modulate:a", 1.0, 0.25)
 	tw.tween_property(trophy, "scale", Vector2.ONE, 0.55).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+## Al cerrar la enhorabuena de subir de nivel, un buen momento para la valoración de Google Play (si toca).
+func _level_up_done() -> void:
+	_close_celebration()
+	_maybe_ask_review()
+
+
+## Ventanita de valoración de Google Play, solo si toca (core/review_ask.gd): sin preguntar nada antes.
+func _maybe_ask_review() -> bool:
+	if pagos == null or not _has_player():
+		return false
+	var days := (_prog()["dias"] as Dictionary).size()
+	var solved := 0
+	for t: Dictionary in player["tries"]:
+		if bool(t.get("correct", false)):
+			solved += 1
+	var now := int(Time.get_unix_time_from_system())
+	if not ReviewAsk.should_ask(review_state, days, solved, now, kids):
+		return false
+	if not pagos.request_review():
+		return false
+	ReviewAsk.asked(review_state, now)
+	_save_settings()
+	return true
+
+
+## Opciones → «Valorar la app»: abre la ficha de Google Play (no la ventanita: esa no se lanza desde un botón).
+func _open_store_page() -> void:
+	OS.shell_open(ReviewAsk.STORE_URL)
 
 
 func _close_celebration() -> void:
@@ -14338,6 +14382,72 @@ func _leave_progress() -> void:
 		_close_progress()
 	elif progress_kind in ["course", "experience"] and use_settings:
 		_open_home()
+	# Informe de testers (27 nov): en estas páginas «atrás» no hacía nada. Hace lo mismo que su botón «Volver».
+	elif progress_kind == "levels":
+		_open_train_hub()
+	elif progress_kind == "train_hub":
+		_open_home()
+	elif progress_kind == "my_games":
+		_close_my_games()
+	elif progress_kind == "online":
+		_close_online()
+	elif progress_kind in ["online_blocked", "online_custom", "online_rules"]:
+		_open_online()
+	elif progress_kind == "home":
+		_back_on_home()
+
+
+## «Atrás» en el inicio: la primera vez, «Pulsa otra vez para salir»; la segunda, en menos de 2 s, cierra la app (lo
+## habitual en Android; sin ventana de confirmación). Antes no hacía nada y no había forma de salir con «atrás».
+func _back_on_home() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _exit_armed_ms <= EXIT_WINDOW_MS:
+		_exit_armed_ms = -100000
+		if quit_hook.is_valid():
+			quit_hook.call()
+		else:
+			get_tree().quit()
+		return
+	_exit_armed_ms = now
+	_exit_toast()
+
+
+func _exit_toast() -> void:
+	if _exit_toast_node != null and is_instance_valid(_exit_toast_node):
+		_exit_toast_node.queue_free()
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(layer)
+	_exit_toast_node = layer
+	var pill := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(_c("ink"), 0.92)
+	sb.set_corner_radius_all(48)
+	sb.shadow_color = _c("shadow")
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0.0, 6.0)
+	sb.content_margin_left = 44
+	sb.content_margin_right = 44
+	sb.content_margin_top = 22
+	sb.content_margin_bottom = 22
+	pill.add_theme_stylebox_override("panel", sb)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(_line("Pulsa otra vez para salir", F_SUB, _c("bg"), font_semibold))
+	layer.add_child(pill)
+	var place := func() -> void:
+		if not is_instance_valid(pill):
+			return
+		pill.reset_size()
+		var w := pill.get_combined_minimum_size().x
+		pill.position = Vector2((size.x - w) * 0.5, size.y - pill.get_combined_minimum_size().y - 180.0)
+	place.call_deferred()
+	pill.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(pill, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(EXIT_WINDOW_MS / 1000.0 - 0.45)
+	tw.tween_property(pill, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(layer.queue_free)
 
 
 func _start_training() -> void:

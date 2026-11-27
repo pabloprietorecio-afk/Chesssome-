@@ -59,3 +59,11 @@ cada pocos minutos.
 
 `worker/wrangler.toml` → `REQUIRE_ACCOUNT = "1"`: el servidor dejará de dar explicaciones a versiones antiguas de la
 app sin cupo (hoy las deja pasar para no romperlas).
+
+## Valoraciones (27 nov)
+
+`valorar()`: la ventanita de valoración de Google Play (In-App Review API, `com.google.android.play:review:2.0.2`).
+La app la pide solo al cerrar la enhorabuena de subir de nivel, con las reglas de `godot/core/review_ask.gd` (días de
+uso, problemas resueltos, como mucho 3 veces, 90 días entre una y otra). Nunca desde un botón ni con preguntas antes:
+lo prohíben las normas de Google. Google decide si la enseña y no devuelve nada. Solo funciona con la app instalada
+desde Play (en un APK suelto no sale nada).

@@ -18,7 +18,8 @@ var prices := {}
 var connected := false
 var busy := false
 var coach: CoachAI
-## Pruebas: sustituye al complemento ({"conectar", "productos", "comprar", "consultar", "reconocer", "consumir"}).
+## Pruebas: sustituye al complemento ({"conectar", "productos", "comprar", "consultar", "reconocer", "consumir",
+## "valorar"}).
 var fake: Object = null
 var _plugin: Object = null
 
@@ -40,6 +41,15 @@ func _p() -> Object:
 
 func available() -> bool:
 	return _p() != null
+
+
+## Ventanita de valoración de Google Play (cuándo: core/review_ask.gd). Dice si se ha podido pedir (con el
+## complemento); Google decide si la enseña y no avisa de nada.
+func request_review() -> bool:
+	if _p() == null or not _p().has_method("valorar"):
+		return false
+	_p().call("valorar")
+	return true
 
 
 ## Al abrir la app: conecta, pide precios y mira si hay compras sin confirmar (o de otro móvil).
